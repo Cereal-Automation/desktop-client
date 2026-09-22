@@ -1,0 +1,58 @@
+name: CEREAL - CI
+
+on:
+  pull_request:
+  push:
+    branches:
+      - master
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+# This workflow is fork-reachable through `pull_request`, so it runs on GitHub-hosted runners
+# (never self-hosted: that would execute a stranger's code on our own hardware) with a read-only
+# token. Nothing here needs write access or secrets.
+permissions:
+  contents: read
+
+jobs:
+
+  validate:
+    name: Validate gradle wrapper
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: gradle/actions/wrapper-validation@9c971963bec38e04b3d30dcc455b5382be2fdbfb # v6.3.0
+
+  build:
+    name: Build
+    runs-on: ubuntu-latest
+    needs: [ validate ]
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: ./.github/actions/setup-jdks
+      - name: Building
+        run: ./gradlew build --stacktrace -x test --build-cache --console=plain
+
+  test:
+    name: Test
+    runs-on: ubuntu-latest
+    needs: [ validate ]
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: ./.github/actions/setup-jdks
+      - name: Testing
+        run: ./gradlew test --stacktrace --build-cache --console=plain
+      - name: Coverage
+        run: ./gradlew koverLog --build-cache --console=plain
+
+  ktlint:
+    name: Ktlint
+    runs-on: ubuntu-latest
+    needs: [ validate ]
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: ./.github/actions/setup-jdks
+      - name: Checking code conventions
+        run: ./gradlew ktlintCheck --build-cache --console=plain

@@ -1,0 +1,5 @@
+DoubleKeyCSV,DoubleKeyNullableCSV,FloatingKeyCSV,FloatingKeyNullableCSV,IntegerKeyCSV,IntegerKeyNullableCSV,StringKeyCSV,StringKeyNullableCSV
+1.1,,2.1,,1,,test1,
+1.1,,2.1,,1,,test2,
+1.1,,2.1,,1,,test3,
+1.1,,2.1,,1,,test4,

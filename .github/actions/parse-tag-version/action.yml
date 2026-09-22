@@ -1,0 +1,55 @@
+name: 'Parse Tag Version'
+description: 'Parse version information from a git tag'
+
+inputs:
+  tag:
+    description: 'The git tag to parse (e.g., cereal-client/1.0.0 or cereal-client/1.0.0-rc1)'
+    required: true
+
+outputs:
+  module:
+    description: 'Gradle module the tag belongs to (e.g. cereal-client or cereal-licensing)'
+    value: ${{ steps.split.outputs.module }}
+  version:
+    description: 'Full version string (e.g., 1.0.0 or 1.0.0-rc1)'
+    value: ${{ steps.split.outputs.version }}
+  version-number:
+    description: 'Version number without RC suffix (e.g., 1.0.0)'
+    value: ${{ steps.split.outputs.version-number }}
+  is-rc:
+    description: 'Whether this is a release candidate'
+    value: ${{ steps.split.outputs.is-rc }}
+  rc-suffix:
+    description: 'RC suffix if present (e.g., rc1)'
+    value: ${{ steps.split.outputs.rc-suffix }}
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Parse tag version
+      id: split
+      shell: bash
+      run: |
+        TAG="${{ inputs.tag }}"
+        # Extract module from tag (cereal-client/1.0.0 -> cereal-client)
+        MODULE=$(echo "$TAG" | cut -d'/' -f1)
+        echo "module=$MODULE" >> $GITHUB_OUTPUT
+
+        # Extract version from tag (cereal-client/1.0.0 -> 1.0.0)
+        VERSION=$(echo "$TAG" | cut -d'/' -f2)
+        echo "version=$VERSION" >> $GITHUB_OUTPUT
+        
+        # Split version and RC suffix
+        VERSION_NUMBER=$(echo "$VERSION" | cut -d'-' -f1)
+        echo "version-number=$VERSION_NUMBER" >> $GITHUB_OUTPUT
+        
+        # Check if it's an RC
+        if [[ "$VERSION" == *"-rc"* ]]; then
+          echo "is-rc=true" >> $GITHUB_OUTPUT
+          RC_SUFFIX=$(echo "$VERSION" | cut -d'-' -f2)
+          echo "rc-suffix=$RC_SUFFIX" >> $GITHUB_OUTPUT
+        else
+          echo "is-rc=false" >> $GITHUB_OUTPUT
+          echo "rc-suffix=" >> $GITHUB_OUTPUT
+        fi
+

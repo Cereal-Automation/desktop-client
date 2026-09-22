@@ -1,0 +1,26 @@
+name: 'Setup Build Environment'
+description: 'Setup Gradle cache and configure JDK(s)'
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Make gradlew executable
+      shell: bash
+      run: chmod +x ./gradlew
+
+    - name: Set up JDKs
+      uses: actions/setup-java@de7274f081f381c8f8158605e0321c36c376e2e6 # v6.0.1
+      with:
+        distribution: 'zulu'
+        java-version: |
+          17
+          21
+
+    - name: Setup Gradle
+      uses: gradle/actions/setup-gradle@9c971963bec38e04b3d30dcc455b5382be2fdbfb # v6.3.0
+      with:
+        # Release jobs run on tag pushes (a non-default branch ref), where
+        # setup-gradle defaults to read-only caching. Force writes so each
+        # release run warms the cache for the next.
+        cache-read-only: false
+

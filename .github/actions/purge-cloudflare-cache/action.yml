@@ -1,0 +1,72 @@
+name: 'Purge Cloudflare Cache'
+description: >-
+  Purge specific URLs from the Cloudflare edge cache. The release artifacts use mutable "latest"
+  filenames (e.g. cereal-client-latest-arm64.zip, latest-macos-arm64.json), so a re-release updates
+  the R2 origin but leaves the previous file cached at the edge. Without this purge the CDN can serve
+  a stale zip against freshly-signed metadata, and the client rejects it with a SHA-256 mismatch.
+
+inputs:
+  zone-id:
+    description: 'Cloudflare zone ID for the CDN domain'
+    required: true
+  api-token:
+    description: 'Cloudflare API token with the Zone > Cache Purge permission'
+    required: true
+  files:
+    description: 'Newline-separated list of absolute URLs to purge from the edge cache'
+    required: true
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Purge Cloudflare cache
+      shell: bash
+      env:
+        CF_ZONE_ID: ${{ inputs.zone-id }}
+        CF_API_TOKEN: ${{ inputs.api-token }}
+        CF_FILES: ${{ inputs.files }}
+      run: |
+        set -euo pipefail
+
+        # Not configured yet: warn loudly but don't fail the release. Once the zone id + token are
+        # set the purge runs and a failed purge fails the release (below), so we never silently ship
+        # a release that clients get a stale/mismatched download for.
+        if [ -z "${CF_ZONE_ID:-}" ] || [ -z "${CF_API_TOKEN:-}" ]; then
+          echo "::warning::Cloudflare zone-id or api-token not set — skipping cache purge. Stale 'latest-*' artifacts may be served from the edge until the cache expires. Set CLOUDFLARE_ZONE_ID and CLOUDFLARE_CACHE_PURGE_TOKEN to enable automatic purging."
+          exit 0
+        fi
+
+        # Build a JSON array of the (trimmed, non-empty) URLs without depending on jq — this action
+        # runs on Windows, macOS and Linux runners.
+        FILES_JSON=""
+        while IFS= read -r line; do
+          url="$(echo "$line" | tr -d '[:space:]')"
+          [ -z "$url" ] && continue
+          if [ -z "$FILES_JSON" ]; then
+            FILES_JSON="\"$url\""
+          else
+            FILES_JSON="$FILES_JSON,\"$url\""
+          fi
+          echo "Purging: $url"
+        done <<< "$CF_FILES"
+
+        if [ -z "$FILES_JSON" ]; then
+          echo "::warning::No URLs to purge."
+          exit 0
+        fi
+
+        RESPONSE="$(curl -sS -X POST \
+          "https://api.cloudflare.com/client/v4/zones/${CF_ZONE_ID}/purge_cache" \
+          -H "Authorization: Bearer ${CF_API_TOKEN}" \
+          -H "Content-Type: application/json" \
+          --data "{\"files\":[${FILES_JSON}]}")"
+
+        echo "Cloudflare response: $RESPONSE"
+
+        # The API returns {"success":true,...} on success. Anything else fails the release.
+        if ! echo "$RESPONSE" | grep -q '"success":[[:space:]]*true'; then
+          echo "::error::Cloudflare cache purge failed. Response: $RESPONSE"
+          exit 1
+        fi
+
+        echo "Cache purge succeeded."

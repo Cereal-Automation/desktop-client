@@ -1,0 +1,100 @@
+name: 'Create MSIX Package'
+description: 'Create MSIX package from MSI for Microsoft Store submission'
+
+inputs:
+  version:
+    description: 'Version number (e.g., 1.0.0)'
+    required: true
+
+outputs:
+  msix-path:
+    description: 'Path to the created MSIX file'
+    value: ${{ steps.create.outputs.msix-path }}
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Create MSIX from MSI
+      id: create
+      shell: pwsh
+      run: |
+        # Extract MSI contents
+        $msiPath = Get-ChildItem -Path "cereal-client/build/compose/binaries/main-release/msi/*.msi" | Select-Object -First 1
+        $installDir = "$env:TEMP\CerealInstall"
+        Start-Process msiexec.exe -ArgumentList "/a `"$($msiPath.FullName)`" /qn TARGETDIR=`"$installDir`"" -Wait -NoNewWindow
+        
+        # Create MSIX directory structure
+        $msixDir = "msix-content"
+        New-Item -ItemType Directory -Force -Path $msixDir
+        Copy-Item -Path "$installDir\Cereal\*" -Destination $msixDir -Recurse -Force
+        
+        # Create Assets directory and copy pre-made store assets
+        New-Item -ItemType Directory -Force -Path "$msixDir\Assets"
+        Copy-Item -Path "cereal-client/msix-assets/*" -Destination "$msixDir\Assets" -Force
+        
+        # Verify all required assets exist
+        $requiredAssets = @("StoreLogo.png", "Square44x44Logo.png", "Square150x150Logo.png", "Wide310x150Logo.png")
+        foreach ($asset in $requiredAssets) {
+          $assetPath = "$msixDir\Assets\$asset"
+          if (-not (Test-Path $assetPath)) {
+            Write-Error "Required asset missing: $asset"
+            exit 1
+          }
+          Write-Host "Verified asset: $asset"
+        }
+        
+        # Create AppxManifest.xml with capabilities for nodriver/Chrome communication
+        $version = "${{ inputs.version }}.0"
+        @"
+        <?xml version="1.0" encoding="utf-8"?>
+        <Package xmlns="http://schemas.microsoft.com/appx/manifest/foundation/windows10"
+                 xmlns:uap="http://schemas.microsoft.com/appx/manifest/uap/windows10"
+                 xmlns:rescap="http://schemas.microsoft.com/appx/manifest/foundation/windows10/restrictedcapabilities"
+                 xmlns:desktop="http://schemas.microsoft.com/appx/manifest/desktop/windows10"
+                 IgnorableNamespaces="rescap desktop">
+          <Identity Name="CerealAutomation.Cereal"
+                    Publisher="CN=81F555E9-4C57-4623-AF24-35EFEF5B96AA"
+                    Version="$version"
+                    ProcessorArchitecture="x64" />
+          <Properties>
+            <DisplayName>Cereal</DisplayName>
+            <PublisherDisplayName>Cereal Automation</PublisherDisplayName>
+            <Description>Cereal - Desktop Automation Client</Description>
+            <Logo>Assets\StoreLogo.png</Logo>
+          </Properties>
+          <Dependencies>
+            <TargetDeviceFamily Name="Windows.Desktop" MinVersion="10.0.17763.0" MaxVersionTested="10.0.22621.0" />
+          </Dependencies>
+          <Resources>
+            <Resource Language="en-us" />
+          </Resources>
+          <Applications>
+            <Application Id="Cereal" Executable="Cereal.exe" EntryPoint="Windows.FullTrustApplication">
+              <uap:VisualElements DisplayName="Cereal"
+                                  Description="Cereal - Desktop Automation Client"
+                                  BackgroundColor="transparent"
+                                  Square150x150Logo="Assets\Square150x150Logo.png"
+                                  Square44x44Logo="Assets\Square44x44Logo.png">
+                <uap:DefaultTile Wide310x150Logo="Assets\Wide310x150Logo.png" />
+              </uap:VisualElements>
+            </Application>
+          </Applications>
+          <Capabilities>
+            <!-- Full trust required for desktop application -->
+            <rescap:Capability Name="runFullTrust" />
+        
+            <!-- Network capabilities for Chrome DevTools Protocol (WebSocket on localhost) -->
+            <Capability Name="internetClient" />
+            <Capability Name="internetClientServer" />
+            <Capability Name="privateNetworkClientServer" />
+          </Capabilities>
+        </Package>
+        "@ | Out-File -FilePath "$msixDir\AppxManifest.xml" -Encoding utf8
+        
+        # Create MSIX package
+        $msixPath = "cereal-client-${{ inputs.version }}.msix"
+        $windowsSdkPath = Get-ChildItem "C:\Program Files (x86)\Windows Kits\10\bin\10.*\x64\makeappx.exe" | Sort-Object -Descending | Select-Object -First 1
+        & $windowsSdkPath.FullName pack /d $msixDir /p $msixPath /nv
+        
+        echo "msix-path=$msixPath" >> $env:GITHUB_OUTPUT
+

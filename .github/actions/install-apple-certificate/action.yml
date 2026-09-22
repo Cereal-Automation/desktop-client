@@ -1,0 +1,40 @@
+name: 'Install Apple Certificate'
+description: 'Installs Apple signing certificate and configures keychain for code signing'
+inputs:
+  certificate-base64:
+    description: 'Base64-encoded Apple certificate (P12 format)'
+    required: true
+  certificate-password:
+    description: 'Password for the Apple certificate'
+    required: true
+outputs:
+  keychain-path:
+    description: 'Path to the created keychain'
+    value: ${{ steps.install.outputs.keychain-path }}
+runs:
+  using: 'composite'
+  steps:
+    - name: Install Apple certificate
+      id: install
+      shell: bash
+      run: |
+        KEYCHAIN_PATH=$RUNNER_TEMP/app-signing.keychain-db
+        KEYCHAIN_PASSWORD=$(openssl rand -base64 32)
+        
+        security create-keychain -p "$KEYCHAIN_PASSWORD" $KEYCHAIN_PATH
+        security set-keychain-settings -lut 21600 $KEYCHAIN_PATH
+        security unlock-keychain -p "$KEYCHAIN_PASSWORD" $KEYCHAIN_PATH
+        
+        CERTIFICATE_PATH=$RUNNER_TEMP/certificate.p12
+        echo -n "${{ inputs.certificate-base64 }}" | base64 --decode -o $CERTIFICATE_PATH
+        security import $CERTIFICATE_PATH -P "${{ inputs.certificate-password }}" -A -t cert -f pkcs12 -k $KEYCHAIN_PATH
+        security list-keychain -d user -s $KEYCHAIN_PATH /Library/Keychains/System.keychain
+        
+        echo "keychain-path=$KEYCHAIN_PATH" >> $GITHUB_OUTPUT
+
+        # Download and install Apple WWDR Intermediate Certificate
+        curl -o $RUNNER_TEMP/AppleWWDRCAG3.cer https://www.apple.com/certificateauthority/AppleWWDRCAG3.cer
+        security import $RUNNER_TEMP/AppleWWDRCAG3.cer -k $KEYCHAIN_PATH -T /usr/bin/codesign
+
+        # Allow codesign to access the key without a UI prompt
+        security set-key-partition-list -S apple-tool:,apple:,codesign: -s -k "$KEYCHAIN_PASSWORD" $KEYCHAIN_PATH

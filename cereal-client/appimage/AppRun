@@ -1,0 +1,6 @@
+#!/bin/sh
+# AppImage entrypoint. Resolves its own location (the mounted AppDir) and launches the bundled
+# jpackage app-image launcher. jpackage names the launcher after the Compose `packageName`
+# ("Cereal"), placing it at bin/Cereal inside the app-image that we copy into the AppDir.
+HERE="$(dirname "$(readlink -f "${0}")")"
+exec "${HERE}/bin/Cereal" "$@"

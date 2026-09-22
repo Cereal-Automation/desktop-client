@@ -1,0 +1,19 @@
+I want to notify our users in Discord using a discord webhook embed that a new version of Cereal Automation update is live. The text does not need to be technical since it's for our end users. All content needs to be part of the embed.
+
+The title needs to be 🥣 Cereal Automation Client • {version} Released!
+
+The first section needs to be: "This release brings several important improvements and performance upgrades to make your automation smoother and more reliable. Upon restart, the client automatically checks for and requests the newest available version:"
+
+Followed by a section of "✨ Highlights:" followed by a summary of the change log, but avoid it to be too technical.
+
+Below the highlights section want a new section with the following content: 💡 Got ideas? We’re listening. We're always looking to improve Cereal and bring you the scripts and features you actually need. Have a site, raffle or automation you'd love to see next? Drop your suggestions in ⁠suggestions or send us a DM; your feedback drives what we build next. 🚀
+
+That last section needs to be: "Let us know if you encounter any issues. Thanks for using Cereal! 🥣 — The Cereal Dev Team".
+
+We send out our messages using Discohook, so can you create a format for the JSON Editor:
+Avatar URL: https://i.imgur.com/bJGntxN.png
+Username: Cereal Automation
+Embed body color: 9568256
+Footer text: Cereal Automation • Client Release
+
+Here is the diff:

@@ -1,0 +1,164 @@
+name: 'Publish Artifact'
+description: 'Shared release tail: hash + sign the version JSON, upload to R2, and back up to DO Spaces'
+
+inputs:
+  # Version inputs
+  version:
+    description: 'Version string (e.g., 1.2.0)'
+    required: true
+  is-rc:
+    description: 'Whether this is a release candidate (RC skips the signed version JSON + R2 upload)'
+    required: true
+
+  # The already-final binary to hash, sign, upload and back up. Must be in final shipped form
+  # (e.g. for macOS: notarized AND stapled) and must not be modified after this action runs, or the
+  # client's SHA-256 verification (#484) will reject the download.
+  binary-path:
+    description: 'Path to the final binary that download_sha256 is computed from'
+    required: true
+
+  # Version JSON inputs
+  platform:
+    description: 'Platform for version JSON (windows, linux, macos, macos-arm64, macos-x64, windows-store)'
+    required: true
+  cdn-url:
+    description: 'CDN URL'
+    required: true
+  download-url:
+    description: 'Download URL for the binary (for direct downloads)'
+    required: false
+    default: ''
+  store-url:
+    description: 'Store URL (for store builds)'
+    required: false
+    default: ''
+  min-version:
+    description: 'Minimum required version for this platform'
+    required: true
+  release-private-key:
+    description: 'PEM-encoded RSA private key used to sign release metadata (for direct downloads)'
+    required: false
+    default: ''
+
+  # Cloudflare cache-purge inputs (optional — purge is skipped with a warning when unset)
+  cloudflare-zone-id:
+    description: 'Cloudflare zone ID for the CDN domain (enables edge cache purge of the updated artifacts)'
+    required: false
+    default: ''
+  cloudflare-api-token:
+    description: 'Cloudflare API token with the Zone > Cache Purge permission'
+    required: false
+    default: ''
+
+  # R2 upload inputs
+  r2-account-id:
+    description: 'R2 account ID'
+    required: true
+  r2-access-key-id:
+    description: 'R2 access key ID'
+    required: true
+  r2-secret-access-key:
+    description: 'R2 secret access key'
+    required: true
+  r2-bucket:
+    description: 'R2 bucket name'
+    required: true
+
+  # DO Spaces backup inputs
+  do-access-key:
+    description: 'DO Spaces access key'
+    required: true
+  do-secret-key:
+    description: 'DO Spaces secret key'
+    required: true
+  do-space-name:
+    description: 'DO Spaces name'
+    required: true
+  do-space-region:
+    description: 'DO Spaces region'
+    required: true
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Create latest version json
+      if: inputs.is-rc == 'false'
+      uses: ./.github/actions/create-latest-version-json
+      with:
+        version: ${{ inputs.version }}
+        platform: ${{ inputs.platform }}
+        cdn-url: ${{ inputs.cdn-url }}
+        download-url: ${{ inputs.download-url }}
+        store-url: ${{ inputs.store-url }}
+        min-version: ${{ inputs.min-version }}
+        binary-path: ${{ inputs.binary-path }}
+        release-private-key: ${{ inputs.release-private-key }}
+
+    - name: Upload to Cloudflare R2
+      if: inputs.is-rc == 'false'
+      uses: ./.github/actions/upload-to-r2
+      with:
+        account-id: ${{ inputs.r2-account-id }}
+        access-key-id: ${{ inputs.r2-access-key-id }}
+        secret-access-key: ${{ inputs.r2-secret-access-key }}
+        bucket: ${{ inputs.r2-bucket }}
+        source-dir: dist
+
+    # ".AppImage" has no registered MIME type, so the bulk upload above guesses Content-Type from the
+    # extension and falls back to application/octet-stream. That is enough for a browser to download
+    # rather than render it, but not enough to save it under the right filename — so re-stamp the
+    # object with an explicit Content-Disposition. This only affects Linux; .exe/.dmg map to
+    # non-renderable types that browsers already download with their own name. Re-stamping HTTP
+    # metadata does not alter the bytes, so the signed download_sha256 (#484) still matches the
+    # served file.
+    - name: Set AppImage download headers on R2
+      if: inputs.is-rc == 'false' && inputs.platform == 'linux'
+      shell: bash
+      env:
+        AWS_ACCESS_KEY_ID: ${{ inputs.r2-access-key-id }}
+        AWS_SECRET_ACCESS_KEY: ${{ inputs.r2-secret-access-key }}
+        AWS_DEFAULT_REGION: auto
+      run: |
+        set -euo pipefail
+        KEY="client/cereal-client-latest.AppImage"
+        aws s3 cp \
+          "s3://${{ inputs.r2-bucket }}/$KEY" \
+          "s3://${{ inputs.r2-bucket }}/$KEY" \
+          --endpoint-url "https://${{ inputs.r2-account-id }}.r2.cloudflarestorage.com" \
+          --metadata-directive REPLACE \
+          --content-type application/octet-stream \
+          --content-disposition 'attachment; filename="cereal-client-latest.AppImage"'
+
+    # The download zip and its version JSON reuse mutable "latest" filenames, so the R2 upload above
+    # replaces the origin object but the previous copy stays cached at the Cloudflare edge. Purge both
+    # keys so the edge re-fetches the just-published files; otherwise a client can download a stale zip
+    # that no longer matches the freshly-signed download_sha256 and reject it as a SHA-256 mismatch.
+    - name: Purge Cloudflare cache for updated artifacts
+      if: inputs.is-rc == 'false' && inputs.download-url != ''
+      uses: ./.github/actions/purge-cloudflare-cache
+      with:
+        zone-id: ${{ inputs.cloudflare-zone-id }}
+        api-token: ${{ inputs.cloudflare-api-token }}
+        files: |
+          ${{ inputs.download-url }}
+          ${{ inputs.cdn-url }}/client/latest-${{ inputs.platform }}.json
+
+    - name: Backup binaries to DO Spaces
+      uses: ./.github/actions/upload-to-do-spaces
+      with:
+        access-key: ${{ inputs.do-access-key }}
+        secret-key: ${{ inputs.do-secret-key }}
+        space-name: ${{ inputs.do-space-name }}
+        space-region: ${{ inputs.do-space-region }}
+        source: dist/client
+        out-dir: 'client/${{ inputs.version }}/'
+
+    - name: Backup proguard mapping to DO Spaces
+      uses: ./.github/actions/upload-to-do-spaces
+      with:
+        access-key: ${{ inputs.do-access-key }}
+        secret-key: ${{ inputs.do-secret-key }}
+        space-name: ${{ inputs.do-space-name }}
+        space-region: ${{ inputs.do-space-region }}
+        source: cereal-client/proguard.map
+        out-dir: 'client/${{ inputs.version }}/'

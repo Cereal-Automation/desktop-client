@@ -1,0 +1,49 @@
+{
+  "skill_name": "cereal-release-notes",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "Hey, can you write up the release notes for Cereal v2.3.0? The repo is at /tmp/cereal-fake-repo. Use the commits since the last tag (v2.2.0..v2.3.0).",
+      "expected_output": "All five outputs generated: a Discord announcement, Instagram caption, X thread (3-7 tweets), a formal markdown changelog, and a short blog post. The file is saved as cereal-v2.3.0-release-notes-<date>.md. Features and fixes are highlighted. Internal/chore commits appear only in the formal changelog.",
+      "files": [],
+      "expectations": [
+        "A Discord announcement section is present with bold headers and bullet points",
+        "An Instagram caption is present, uses flowing prose (not bullet points), and ends with hashtags",
+        "An X thread is present with at least 3 separate tweets, each under 280 characters",
+        "A formal changelog section is present using Keep a Changelog format with ### Added / ### Fixed headers",
+        "A blog post section is present, written in prose (not bullet lists), 200-400 words, with subheadings like 'What's new' or 'Fixes and improvements'",
+        "The output is saved to a .md file",
+        "Chore/CI commits are excluded from Discord, Instagram, and blog content",
+        "Feature commits are prominently highlighted in Discord, X, and blog sections"
+      ]
+    },
+    {
+      "id": 2,
+      "prompt": "Write release notes for the Cereal app version 1.0.0 — it's a big milestone release! Repo path: /tmp/cereal-v1-repo. Show me the range v0.9.5..v1.0.0.",
+      "expected_output": "Release notes treating this as a milestone release. Discord post acknowledges the v1.0 milestone with appropriate excitement. Instagram and X treat it as a major launch moment. Formal changelog is complete and structured.",
+      "files": [],
+      "expectations": [
+        "Discord section acknowledges v1.0 as a milestone (e.g., uses words like '1.0', 'milestone', or similar celebratory language)",
+        "Instagram caption has a hook that conveys a major launch",
+        "X thread has a hook tweet that calls out the v1.0 milestone",
+        "Formal changelog uses ## [1.0.0] header",
+        "Blog post treats v1.0 as a milestone with a slightly longer intro or closing reflection",
+        "All five sections are present in the output file"
+      ]
+    },
+    {
+      "id": 3,
+      "prompt": "Quick patch release — Cereal v2.4.1 has just a few bug fixes. Repo is at /tmp/cereal-patch-repo, range v2.4.0..v2.4.1. Keep things appropriately low-key.",
+      "expected_output": "Release notes sized appropriately for a small patch. Discord post is brief and doesn't oversell. Instagram and X are short. Formal changelog still complete. No invented features.",
+      "files": [],
+      "expectations": [
+        "Discord section is concise — not inflated with fake excitement for a patch release",
+        "X thread is short (3-4 tweets max for a patch)",
+        "Instagram caption reflects patch scope (not written like a major launch)",
+        "Formal changelog is present with ## [2.4.1] header",
+        "Blog post is short (under ~200 words is appropriate for a patch) and does not oversell",
+        "No content is fabricated — if commits are few, output is appropriately brief"
+      ]
+    }
+  ]
+}

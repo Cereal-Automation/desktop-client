@@ -1,0 +1,71 @@
+name: 'Package macOS self-update zip'
+description: >
+  Produces the macOS auto-update artifact: a .zip of the notarized+stapled .app app-image. The
+  client's MacAppBundleInstaller expands this zip with ditto and atomically swaps it over the running
+  bundle (see the cross-OS self-update spec, issue #754). The .dmg remains the website's first-time
+  download; only this .zip is referenced by the update feed.
+
+  IMPORTANT: the compose build signs the .app app-image but does NOT notarize/staple it (only the
+  .dmg is notarized+stapled, in build-client). Gatekeeper validates the *swapped* bundle offline via
+  its embedded stapled ticket, so this action notarizes a zip of the .app and then staples the .app
+  itself before producing the final artifact. Stapling rewrites the .app in place, so it must finish
+  here — before the zip that is hashed/signed/uploaded is created. Do not modify the .app afterwards
+  or the client's SHA-256 verification (#484) will reject every download.
+
+inputs:
+  mac-arch:
+    description: 'macOS architecture suffix for the artifact name (arm64, x64)'
+    required: true
+  notarization-apple-id:
+    description: 'Apple ID for notarization'
+    required: true
+  notarization-password:
+    description: 'App-specific password for notarization'
+    required: true
+  notarization-team-id:
+    description: 'Apple Team ID for notarization'
+    required: true
+
+outputs:
+  zip-path:
+    description: 'Path to the produced self-update .zip'
+    value: ${{ steps.package.outputs.zip-path }}
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Notarize, staple and zip the .app for self-update
+      id: package
+      shell: bash
+      run: |
+        set -euo pipefail
+
+        APP_DIR="cereal-client/build/compose/binaries/main-release/app"
+        # -print -quit (not `| head -1`): pipefail would flag find's SIGPIPE when head closes early.
+        APP_PATH="$(find "$APP_DIR" -maxdepth 1 -name '*.app' -print -quit)"
+        if [ -z "$APP_PATH" ]; then
+          echo "::error::No .app bundle found under $APP_DIR; cannot build the macOS self-update zip."
+          exit 1
+        fi
+        echo "Found app bundle: $APP_PATH"
+
+        # Notarize a zip of the signed .app (a separate submission from the .dmg), so the ticket can
+        # be stapled into the bundle itself.
+        NOTARIZE_ZIP="$(mktemp -d)/notarize.zip"
+        /usr/bin/ditto -c -k --keepParent "$APP_PATH" "$NOTARIZE_ZIP"
+        xcrun notarytool submit "$NOTARIZE_ZIP" \
+          --wait \
+          --apple-id '${{ inputs.notarization-apple-id }}' \
+          --password '${{ inputs.notarization-password }}' \
+          --team-id '${{ inputs.notarization-team-id }}'
+
+        # Staple the ticket into the .app so Gatekeeper validates the swapped bundle offline.
+        xcrun stapler staple "$APP_PATH"
+
+        # Final artifact: a zip of the stapled .app. --keepParent preserves the top-level "<App>.app"
+        # directory so the client's ditto expansion yields <stageDir>/<App>.app.
+        mkdir -p dist/client
+        ZIP_PATH="dist/client/cereal-client-latest-${{ inputs.mac-arch }}.zip"
+        /usr/bin/ditto -c -k --keepParent "$APP_PATH" "$ZIP_PATH"
+        echo "Built self-update artifact: $ZIP_PATH"
+        echo "zip-path=$ZIP_PATH" >> "$GITHUB_OUTPUT"

@@ -1,0 +1,19 @@
+name: 'Setup Sekret'
+description: 'Setup sekret.properties and generate native binary'
+
+inputs:
+  sekret-properties:
+    description: 'Content of sekret.properties file'
+    required: true
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Write sekret.properties
+      shell: bash
+      run: echo "${{ inputs.sekret-properties }}" > cereal-client/sekret.properties
+
+    - name: Generate Sekret native binary
+      shell: bash
+      run: ./gradlew cereal-client:createAndCopySekretNativeBinary
+

@@ -1,0 +1,72 @@
+name: Publish Windows Store Version
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version number that is now live in the Microsoft Store (e.g., 1.2.0)'
+        required: true
+        type: string
+
+env:
+  R2_ACCOUNT_ID: ${{ vars.R2_ACCOUNT_ID }}
+  R2_ACCESS_KEY_ID: ${{ vars.R2_ACCESS_KEY_ID }}
+  R2_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+  R2_BUCKET_CDN: ${{ vars.R2_BUCKET_CDN }}
+  CDN_URL: ${{ vars.CDN_URL }}
+  CLOUDFLARE_ZONE_ID: ${{ vars.CLOUDFLARE_ZONE_ID }}
+  CLOUDFLARE_CACHE_PURGE_TOKEN: ${{ secrets.CLOUDFLARE_CACHE_PURGE_TOKEN }}
+  MICROSOFT_STORE_URL: ${{ vars.MICROSOFT_STORE_URL }}
+  MIN_VERSION_WINDOWS_STORE: ${{ vars.MIN_VERSION_WINDOWS_STORE }}
+
+jobs:
+  publish-version:
+    name: Publish Windows Store Version JSON
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Validate version format
+        run: |
+          if [[ ! "${{ github.event.inputs.version }}" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "Error: Version must be in format X.Y.Z (e.g., 1.2.0)"
+            exit 1
+          fi
+
+      - name: Create latest version JSON
+        uses: ./.github/actions/create-latest-version-json
+        with:
+          version: ${{ github.event.inputs.version }}
+          platform: windows-store
+          cdn-url: ${{ env.CDN_URL }}
+          store-url: ${{ env.MICROSOFT_STORE_URL }}
+          min-version: ${{ env.MIN_VERSION_WINDOWS_STORE }}
+
+      - name: Upload to Cloudflare R2
+        uses: ./.github/actions/upload-to-r2
+        with:
+          account-id: ${{ env.R2_ACCOUNT_ID }}
+          access-key-id: ${{ env.R2_ACCESS_KEY_ID }}
+          secret-access-key: ${{ env.R2_SECRET_ACCESS_KEY }}
+          bucket: ${{ env.R2_BUCKET_CDN }}
+          source-dir: dist
+
+      # latest-windows-store.json is a mutable "latest" key, so purge the edge cache to avoid
+      # advertising a stale store version until the cache expires.
+      - name: Purge Cloudflare cache for Windows Store version JSON
+        uses: ./.github/actions/purge-cloudflare-cache
+        with:
+          zone-id: ${{ env.CLOUDFLARE_ZONE_ID }}
+          api-token: ${{ env.CLOUDFLARE_CACHE_PURGE_TOKEN }}
+          files: |
+            ${{ env.CDN_URL }}/client/latest-windows-store.json
+
+      - name: Summary
+        run: |
+          echo "## ✅ Windows Store Version Published" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "Version **${{ github.event.inputs.version }}** is now advertised as the latest Windows Store version." >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "Users will be directed to: ${{ env.MICROSOFT_STORE_URL }}" >> $GITHUB_STEP_SUMMARY
+

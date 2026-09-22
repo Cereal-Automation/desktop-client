@@ -1,0 +1,55 @@
+apply plugin: 'maven-publish'
+
+
+
+
+tasks {
+    jar {
+        archiveFileName.set("release.jar")
+    }
+}
+
+publishing {
+    publications {
+
+        register("unobfuscated", MavenPublication) {
+            artifactId = libraryArtifactId
+            from components["java"]
+            addLibInfoToPom(it)
+        }
+
+    }
+    repositories {
+        maven {
+            name = "LocalBuild"
+            url = "file://${project.layout.buildDirectory.get()}/maven"
+        }
+    }
+}
+
+
+private addLibInfoToPom(Publication publication) {
+    publication.pom {
+        name = libraryArtifactName
+        description = libraryArtifactDescription
+        url = "https://cereal-automation.com"
+        organization {
+            name = "Cereal"
+            url = "https://cereal-automation.com"
+        }
+    }
+}
+
+private addDependenciesToPom(MavenPublication publication) {
+    publication.pom {
+        withXml {
+            def dependencies = asNode().appendNode("dependencies")
+            configurations.implementation.allDependencies.each { dep ->
+                def depNode = dependencies.appendNode("dependency")
+                depNode.appendNode("groupId", dep.group)
+                depNode.appendNode("artifactId", dep.name)
+                depNode.appendNode("version", dep.version)
+            }
+        }
+    }
+}

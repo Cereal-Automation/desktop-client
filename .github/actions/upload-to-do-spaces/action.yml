@@ -1,0 +1,75 @@
+name: 'Upload to DO Spaces'
+description: 'Upload a file or directory to DigitalOcean Spaces'
+
+inputs:
+  access-key:
+    description: 'DO Spaces access key'
+    required: true
+  secret-key:
+    description: 'DO Spaces secret key'
+    required: true
+  space-name:
+    description: 'DO Spaces bucket name'
+    required: true
+  space-region:
+    description: 'DO Spaces region'
+    required: true
+  source:
+    description: 'Source file or directory to upload'
+    required: true
+  out-dir:
+    description: 'Destination directory in the space'
+    required: true
+  permission:
+    description: 'File permission (private or public-read)'
+    required: false
+    default: 'private'
+
+# Uploads with the AWS CLI (preinstalled on every GitHub-hosted runner image) rather than a
+# third-party upload action. This step receives the Spaces credentials, so it must not be possible
+# for an upstream repository to change what runs here (#803).
+#
+# Behaviour preserved from the action it replaced: a directory source uploads its contents (its own
+# basename is not part of the key), a file source lands at out-dir + its basename, and `permission`
+# maps to the object ACL. Unlike R2, Spaces does honour ACLs — the default here is `private`
+# (backups), and the public Maven repository passes `public-read` explicitly.
+runs:
+  using: 'composite'
+  steps:
+    - name: Upload to DO Spaces
+      shell: bash
+      env:
+        AWS_ACCESS_KEY_ID: ${{ inputs.access-key }}
+        AWS_SECRET_ACCESS_KEY: ${{ inputs.secret-key }}
+        AWS_DEFAULT_REGION: ${{ inputs.space-region }}
+        # Spaces rejects the trailing checksums newer AWS CLI v2 releases send by default on upload.
+        AWS_REQUEST_CHECKSUM_CALCULATION: when_required
+        AWS_RESPONSE_CHECKSUM_VALIDATION: when_required
+        SPACE_NAME: ${{ inputs.space-name }}
+        SOURCE: ${{ inputs.source }}
+        OUT_DIR: ${{ inputs.out-dir }}
+        PERMISSION: ${{ inputs.permission }}
+        ENDPOINT_URL: 'https://${{ inputs.space-region }}.digitaloceanspaces.com'
+      run: |
+        set -euo pipefail
+
+        # Normalise the destination into either "" (space root) or "prefix/".
+        DEST="${OUT_DIR#./}"
+        DEST="${DEST#/}"
+        DEST="${DEST%/}"
+        if [ -n "$DEST" ]; then
+          DEST="$DEST/"
+        fi
+
+        if [ -d "$SOURCE" ]; then
+          aws s3 cp "$SOURCE" "s3://$SPACE_NAME/$DEST" \
+            --recursive \
+            --acl "$PERMISSION" \
+            --endpoint-url "$ENDPOINT_URL" \
+            --no-progress
+        else
+          aws s3 cp "$SOURCE" "s3://$SPACE_NAME/$DEST$(basename "$SOURCE")" \
+            --acl "$PERMISSION" \
+            --endpoint-url "$ENDPOINT_URL" \
+            --no-progress
+        fi

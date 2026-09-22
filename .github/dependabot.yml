@@ -1,0 +1,28 @@
+version: 2
+
+updates:
+  # Every external action is pinned to a full commit SHA so an upstream repository cannot change
+  # what runs inside a workflow holding our storage, signing, and CDN secrets (#803). A SHA never
+  # moves, which is the point — and also means security fixes never arrive on their own. Dependabot
+  # is what keeps the pins current: it rewrites both the SHA and the trailing version comment.
+  - package-ecosystem: github-actions
+    # `directories` (plural) rather than `directory: /`, because for github-actions the singular key
+    # scans only .github/workflows plus a root-level action.yml. Our composite actions under
+    # .github/actions/ pin setup-java and setup-gradle, and those pins would rot unsupervised.
+    # This key is the one that supports globs.
+    directories:
+      - /
+      - /.github/actions/*
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 5
+    labels:
+      - skip-changelog
+    groups:
+      # One PR per week for the routine bumps; a major arrives on its own so it gets read.
+      actions-minor-and-patch:
+        patterns:
+          - '*'
+        update-types:
+          - minor
+          - patch

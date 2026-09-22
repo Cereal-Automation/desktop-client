@@ -1,0 +1,233 @@
+name: 'Build and Upload'
+description: 'Common build, version JSON creation, and upload steps'
+
+inputs:
+  # Version inputs
+  version:
+    description: 'Version string (e.g., 1.2.0)'
+    required: true
+  version-number:
+    description: 'Version number without prefix'
+    required: true
+  is-rc:
+    description: 'Whether this is a release candidate'
+    required: true
+
+  # Build inputs
+  target:
+    description: 'Build target (exe, deb, Dmg, Msi)'
+    required: true
+  store-build:
+    description: 'Whether this is a store build'
+    required: false
+    default: 'false'
+
+  # Secrets
+  sentry-auth-token:
+    description: 'Sentry auth token'
+    required: true
+  sentry-dsn:
+    description: 'Sentry DSN'
+    required: true
+  sekret-key:
+    description: 'Sekret key'
+    required: true
+
+  # macOS signing (optional)
+  mac-signing-enabled:
+    description: 'Enable macOS code signing'
+    required: false
+    default: 'false'
+  mac-signing-identity:
+    description: 'macOS signing identity'
+    required: false
+    default: ''
+  mac-signing-keychain:
+    description: 'Path to keychain'
+    required: false
+    default: ''
+  mac-notarization-apple-id:
+    description: 'Apple ID for notarization'
+    required: false
+    default: ''
+  mac-notarization-password:
+    description: 'App-specific password for notarization'
+    required: false
+    default: ''
+  mac-notarization-team-id:
+    description: 'Apple Team ID'
+    required: false
+    default: ''
+  mac-entitlements-path:
+    description: 'Path to entitlements plist'
+    required: false
+    default: ''
+  mac-arch:
+    description: 'macOS architecture (arm64, x64)'
+    required: false
+    default: ''
+
+  # Version JSON inputs
+  version-json-platform:
+    description: 'Platform for version JSON (windows, linux, macos, windows-store)'
+    required: true
+  cdn-url:
+    description: 'CDN URL'
+    required: true
+  download-url:
+    description: 'Download URL for the binary (for direct downloads)'
+    required: false
+    default: ''
+  store-url:
+    description: 'Store URL (for store builds)'
+    required: false
+    default: ''
+  min-version:
+    description: 'Minimum required version for this platform'
+    required: true
+  release-private-key:
+    description: 'PEM-encoded RSA private key used to sign release metadata (for direct downloads)'
+    required: false
+    default: ''
+
+  # Cloudflare cache-purge inputs (optional — purge is skipped with a warning when unset)
+  cloudflare-zone-id:
+    description: 'Cloudflare zone ID for the CDN domain (enables edge cache purge of the updated artifacts)'
+    required: false
+    default: ''
+  cloudflare-api-token:
+    description: 'Cloudflare API token with the Zone > Cache Purge permission'
+    required: false
+    default: ''
+
+  # R2 upload inputs
+  r2-account-id:
+    description: 'R2 account ID'
+    required: true
+  r2-access-key-id:
+    description: 'R2 access key ID'
+    required: true
+  r2-secret-access-key:
+    description: 'R2 secret access key'
+    required: true
+  r2-bucket:
+    description: 'R2 bucket name'
+    required: true
+
+  # DO Spaces backup inputs
+  do-access-key:
+    description: 'DO Spaces access key'
+    required: true
+  do-secret-key:
+    description: 'DO Spaces secret key'
+    required: true
+  do-space-name:
+    description: 'DO Spaces name'
+    required: true
+  do-space-region:
+    description: 'DO Spaces region'
+    required: true
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Build
+      uses: ./.github/actions/build-client
+      with:
+        target: ${{ inputs.target }}
+        version: ${{ inputs.version-number }}
+        store-build: ${{ inputs.store-build }}
+        sentry-auth-token: ${{ inputs.sentry-auth-token }}
+        sentry-dsn: ${{ inputs.sentry-dsn }}
+        sekret-key: ${{ inputs.sekret-key }}
+        mac-signing-enabled: ${{ inputs.mac-signing-enabled }}
+        mac-signing-identity: ${{ inputs.mac-signing-identity }}
+        mac-signing-keychain: ${{ inputs.mac-signing-keychain }}
+        mac-notarization-apple-id: ${{ inputs.mac-notarization-apple-id }}
+        mac-notarization-password: ${{ inputs.mac-notarization-password }}
+        mac-notarization-team-id: ${{ inputs.mac-notarization-team-id }}
+        mac-entitlements-path: ${{ inputs.mac-entitlements-path }}
+
+    # Obfuscation gate: boot the just-built, signed distributable headlessly and block the publish if
+    # a ProGuard-fragile path is broken. Runs after the Build step (which signs/notarizes) and before
+    # the binary is copied/hashed/uploaded, so a broken build never reaches R2. Scoped to release
+    # candidates (`-rc` tags) — the acceptance builds where obfuscation regressions are caught before
+    # promotion to a final release.
+    - name: Smoke test (obfuscation gate)
+      if: inputs.is-rc == 'true'
+      uses: ./.github/actions/smoke-test
+      with:
+        target: ${{ inputs.target }}
+
+    # macOS auto-update artifact: a .zip of the notarized+stapled .app. Runs after the signed build
+    # (and the RC smoke gate) and before the binary is copied/hashed/uploaded, so the stapled .app is
+    # in final form when it is zipped. Gated to non-RC signed macOS DMG builds with a known arch;
+    # other targets are unaffected, and RC builds skip it (publish-artifact publishes nothing for RC).
+    - name: Package macOS self-update zip
+      if: inputs.target == 'Dmg' && inputs.mac-signing-enabled == 'true' && inputs.mac-arch != '' && inputs.is-rc == 'false'
+      uses: ./.github/actions/package-macos-selfupdate-zip
+      with:
+        mac-arch: ${{ inputs.mac-arch }}
+        notarization-apple-id: ${{ inputs.mac-notarization-apple-id }}
+        notarization-password: ${{ inputs.mac-notarization-password }}
+        notarization-team-id: ${{ inputs.mac-notarization-team-id }}
+
+    # The binary copied here is hashed and signed by create-latest-version-json and then uploaded
+    # as-is. It must already be in final shipped form (for macOS: notarized AND stapled by the build
+    # step). Do not modify the file between this copy, the hashing, and the upload, or the client's
+    # SHA-256 verification (#484) will reject every download.
+    - name: Copy binary to dist folder
+      id: copy
+      shell: bash
+      run: |
+        mkdir -p dist/client
+        TARGET_LOWER=$(echo "${{ inputs.target }}" | tr '[:upper:]' '[:lower:]')
+
+        # Add architecture suffix for macOS builds
+        ARCH_SUFFIX=""
+        if [ "${{ inputs.target }}" == "Dmg" ] && [ -n "${{ inputs.mac-arch }}" ]; then
+          ARCH_SUFFIX="-${{ inputs.mac-arch }}"
+        fi
+
+        DEST="dist/client/cereal-client-latest${ARCH_SUFFIX}.$TARGET_LOWER"
+        cp cereal-client/build/compose/binaries/main-release/$TARGET_LOWER/*.$TARGET_LOWER "$DEST"
+        echo "binary-path=$DEST" >> $GITHUB_OUTPUT
+
+    # The macOS auto-update feed points at the .app .zip (the self-appliable artifact), not the .dmg.
+    # The .dmg still ships in dist/client for the website's first-time download. Every other platform
+    # feeds its copied binary directly. The condition is identical to the zip-production step above so
+    # the feed never points at a zip that was not produced.
+    - name: Select feed binary
+      id: feed
+      shell: bash
+      run: |
+        if [ "${{ inputs.target }}" == "Dmg" ] && [ "${{ inputs.mac-signing-enabled }}" == "true" ] && [ -n "${{ inputs.mac-arch }}" ] && [ "${{ inputs.is-rc }}" == "false" ]; then
+          echo "binary-path=dist/client/cereal-client-latest-${{ inputs.mac-arch }}.zip" >> "$GITHUB_OUTPUT"
+        else
+          echo "binary-path=${{ steps.copy.outputs.binary-path }}" >> "$GITHUB_OUTPUT"
+        fi
+
+    # Shared release tail: hash + sign the version JSON, upload to R2, back up to DO Spaces.
+    - name: Publish artifact
+      uses: ./.github/actions/publish-artifact
+      with:
+        version: ${{ inputs.version }}
+        is-rc: ${{ inputs.is-rc }}
+        binary-path: ${{ steps.feed.outputs.binary-path }}
+        platform: ${{ inputs.version-json-platform }}
+        cdn-url: ${{ inputs.cdn-url }}
+        download-url: ${{ inputs.download-url }}
+        store-url: ${{ inputs.store-url }}
+        min-version: ${{ inputs.min-version }}
+        release-private-key: ${{ inputs.release-private-key }}
+        cloudflare-zone-id: ${{ inputs.cloudflare-zone-id }}
+        cloudflare-api-token: ${{ inputs.cloudflare-api-token }}
+        r2-account-id: ${{ inputs.r2-account-id }}
+        r2-access-key-id: ${{ inputs.r2-access-key-id }}
+        r2-secret-access-key: ${{ inputs.r2-secret-access-key }}
+        r2-bucket: ${{ inputs.r2-bucket }}
+        do-access-key: ${{ inputs.do-access-key }}
+        do-secret-key: ${{ inputs.do-secret-key }}
+        do-space-name: ${{ inputs.do-space-name }}
+        do-space-region: ${{ inputs.do-space-region }}
+

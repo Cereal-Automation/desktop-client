@@ -1,0 +1,96 @@
+Cereal Client
+=============
+
+Copyright 2020-2026 Cereal Automation
+
+This product includes third-party software. The notices below are reproduced as
+required by the licences of those components. A complete inventory of every
+third-party dependency, with its licence, is in THIRD-PARTY.md.
+
+Licensed under the Apache License, Version 2.0 — see LICENSE.
+
+
+-------------------------------------------------------------------------------
+Discord RPC (native library)
+-------------------------------------------------------------------------------
+
+Redistributed in binary form as libdiscord-rpc.dylib / libdiscord-rpc.so /
+discord-rpc.dll.
+
+Copyright 2017 Discord, Inc.
+
+Permission is hereby granted, free of charge, to any person obtaining a copy of
+this software and associated documentation files (the "Software"), to deal in
+the Software without restriction, including without limitation the rights to
+use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies
+of the Software, and to permit persons to whom the Software is furnished to do
+so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+
+
+-------------------------------------------------------------------------------
+RapidJSON (statically linked into the Discord RPC binaries)
+-------------------------------------------------------------------------------
+
+Every Discord RPC binary in this repository vendors RapidJSON 1.1.0.
+
+Tencent is pleased to support the open source community by making RapidJSON
+available.
+
+Copyright (C) 2015 THL A29 Limited, a Tencent company, and Milo Yip.
+
+Licensed under the MIT License. RapidJSON in turn bundles a copy of msinttypes
+(BSD 3-Clause, copyright 2006-2013 Alexander Chemeris) and derives its JSON
+conformance tests from JSON_checker (JSON License, copyright 2002 JSON.org).
+
+
+-------------------------------------------------------------------------------
+Montserrat (typeface)
+-------------------------------------------------------------------------------
+
+Montserrat version 9.000, bundled as Montserrat-Regular.ttf, Montserrat-Medium.ttf,
+Montserrat-SemiBold.ttf and Montserrat-Bold.ttf.
+
+Copyright 2011 The Montserrat Project Authors
+(https://github.com/JulietaUla/Montserrat)
+
+This Font Software is licensed under the SIL Open Font License, Version 1.1.
+The licence is available with a FAQ at https://openfontlicense.org
+
+The Montserrat name is a Reserved Font Name under that licence.
+
+
+-------------------------------------------------------------------------------
+Material Symbols (icons)
+-------------------------------------------------------------------------------
+
+ic_material_logout.svg and ic_cancel.svg are from Google's Material Symbols set.
+
+Copyright Google LLC. Licensed under the Apache License, Version 2.0.
+
+
+-------------------------------------------------------------------------------
+Trademarks of third parties
+-------------------------------------------------------------------------------
+
+ic_discord.svg reproduces the Discord logo. Discord and the Discord logo are
+trademarks of Discord, Inc.
+
+ic_google.svg reproduces the Google "G" logo. Google and the Google logo are
+trademarks of Google LLC.
+
+Both marks are used nominatively, to identify the corresponding integration
+within this application. Neither Discord, Inc. nor Google LLC sponsors,
+endorses, or is affiliated with this project. No trademark rights are granted
+by the Apache License, Version 2.0 (see its section 6), and none are claimed
+here.

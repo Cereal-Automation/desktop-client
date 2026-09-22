@@ -1,0 +1,77 @@
+name: 'Smoke test (obfuscation gate)'
+description: >
+  Boots the freshly-built, signed prod distributable headlessly with CEREAL_SMOKE_TEST=1 so it
+  exercises the ProGuard-fragile subsystems (DI graph, Room/SQLite, pinned network stack,
+  serialization, release-signature crypto) and fails the release if any obfuscation/packaging path
+  is broken. Runs after signing so per-OS native-lib and macOS-notarization failures are caught
+  before the artifact is published.
+
+inputs:
+  target:
+    description: 'Build target that was produced (Dmg, Exe, Msi, or AppImage) — selects the launcher.'
+    required: true
+  timeout-seconds:
+    description: 'Maximum seconds to wait for the headless smoke run before failing.'
+    required: false
+    default: '240'
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Run obfuscation smoke test
+      shell: bash
+      env:
+        CEREAL_SMOKE_TEST: '1'
+      run: |
+        # Deliberately no `set -e`: we run the launcher, then always surface its output and decide
+        # pass/fail from its exit code ourselves — `set -e` + `wait` would abort before the report is
+        # printed on a failing build, which is exactly when the per-probe breakdown is needed.
+        set -uo pipefail
+        APP_DIR="cereal-client/build/compose/binaries/main-release/app"
+
+        case "${{ inputs.target }}" in
+          Dmg)
+            LAUNCHER=$(find "$APP_DIR" -path "*.app/Contents/MacOS/*" -type f | head -1) ;;
+          Exe|Msi)
+            LAUNCHER=$(find "$APP_DIR" -maxdepth 2 -name "*.exe" -type f | head -1) ;;
+          *)
+            LAUNCHER=$(find "$APP_DIR" -path "*/bin/*" -type f -perm -u+x | head -1) ;;
+        esac
+
+        if [ -z "${LAUNCHER:-}" ] || [ ! -f "$LAUNCHER" ]; then
+          echo "::error::Could not locate the ${{ inputs.target }} launcher under $APP_DIR"
+          find "$APP_DIR" -maxdepth 3 -type f | head -50
+          exit 1
+        fi
+
+        echo "Running obfuscation smoke test: $LAUNCHER"
+        # Capture the launcher's stdout+stderr to a relative file (bash-side redirect, so the path is
+        # portable and needs no OS translation) and print it afterwards — this carries the per-probe
+        # report into the CI log on both the passing and failing paths.
+        "$LAUNCHER" > smoke-output.log 2>&1 &
+        PID=$!
+
+        WAITED=0
+        while kill -0 "$PID" 2>/dev/null; do
+          if [ "$WAITED" -ge "${{ inputs.timeout-seconds }}" ]; then
+            kill -9 "$PID" 2>/dev/null || true
+            echo "----- smoke output -----"; cat smoke-output.log 2>/dev/null || true; echo "------------------------"
+            echo "::error::Smoke test did not finish within ${{ inputs.timeout-seconds }}s — treating as a failure."
+            exit 1
+          fi
+          sleep 2
+          WAITED=$((WAITED + 2))
+        done
+
+        wait "$PID"
+        EXIT_CODE=$?
+
+        echo "----- smoke output -----"
+        cat smoke-output.log 2>/dev/null || echo "(no output captured)"
+        echo "------------------------"
+
+        if [ "$EXIT_CODE" -ne 0 ]; then
+          echo "::error::Obfuscation smoke test failed (exit $EXIT_CODE) — refusing to publish this build."
+          exit "$EXIT_CODE"
+        fi
+        echo "Obfuscation smoke test passed."

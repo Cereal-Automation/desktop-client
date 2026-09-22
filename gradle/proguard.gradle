@@ -1,0 +1,32 @@
+import proguard.gradle.ProGuardTask
+
+buildscript {
+    repositories {
+        google()
+        mavenCentral()
+    }
+    dependencies {
+        classpath "com.guardsquare:proguard-gradle:7.8.2"
+    }
+}
+
+tasks.register('obfuscateArtifact', ProGuardTask) {
+    dependsOn jar
+    description = "Obfuscates source files"
+
+    def artifactName = "release.jar"
+    def obfuscatedFolder = "${project.layout.buildDirectory.get()}/obfuscated"
+
+    injars "${project.layout.buildDirectory.get()}/libs/$artifactName"
+    outjars "$obfuscatedFolder/$artifactName"
+
+    // For de-obfuscating stack traces later on
+    printseeds "$obfuscatedFolder/seeds.txt"
+    printmapping "$obfuscatedFolder/mapping.txt"
+
+    // dependencies
+    libraryjars sourceSets.main.compileClasspath
+
+    configuration files("${project.rootDir}/gradle/default-proguard-rules.pro")
+    configuration files("proguard-rules.pro")
+}

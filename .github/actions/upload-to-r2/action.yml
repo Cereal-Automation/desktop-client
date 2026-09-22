@@ -1,0 +1,67 @@
+name: 'Upload to Cloudflare R2'
+description: 'Upload files to Cloudflare R2 storage'
+
+inputs:
+  account-id:
+    description: 'Cloudflare R2 account ID'
+    required: true
+  access-key-id:
+    description: 'R2 access key ID'
+    required: true
+  secret-access-key:
+    description: 'R2 secret access key'
+    required: true
+  bucket:
+    description: 'R2 bucket name'
+    required: true
+  source-dir:
+    description: 'Source directory to upload'
+    required: true
+  destination-dir:
+    description: 'Destination directory in R2'
+    required: false
+    default: './'
+
+# Uploads with the AWS CLI (preinstalled on every GitHub-hosted runner image) rather than a
+# third-party upload action. This step receives the R2 credentials, so it must not be possible for
+# an upstream repository to change what runs here (#803). The previous action was referenced by a
+# moving branch, which is the worst case of that risk.
+#
+# Behaviour preserved from the action it replaced: object keys are the file paths relative to
+# source-dir, joined onto destination-dir. Two deliberate differences:
+#   - No ACL is sent. R2 has no per-object ACLs; the bucket is served publicly through its
+#     Cloudflare custom domain, so the old `public-read` was a no-op.
+#   - Unknown file extensions get Content-Type application/octet-stream instead of text/plain.
+#     That is what we want for downloads (see the AppImage note in publish-artifact).
+runs:
+  using: 'composite'
+  steps:
+    - name: Upload to Cloudflare R2
+      shell: bash
+      env:
+        AWS_ACCESS_KEY_ID: ${{ inputs.access-key-id }}
+        AWS_SECRET_ACCESS_KEY: ${{ inputs.secret-access-key }}
+        AWS_DEFAULT_REGION: auto
+        # R2 rejects the trailing checksums newer AWS CLI v2 releases send by default on upload.
+        AWS_REQUEST_CHECKSUM_CALCULATION: when_required
+        AWS_RESPONSE_CHECKSUM_VALIDATION: when_required
+        BUCKET: ${{ inputs.bucket }}
+        SOURCE_DIR: ${{ inputs.source-dir }}
+        DESTINATION_DIR: ${{ inputs.destination-dir }}
+        ENDPOINT_URL: 'https://${{ inputs.account-id }}.r2.cloudflarestorage.com'
+      run: |
+        set -euo pipefail
+
+        # Normalise the destination into either "" (bucket root) or "prefix/", so the keys match
+        # what the replaced action produced for the default './'.
+        DEST="${DESTINATION_DIR#./}"
+        DEST="${DEST#/}"
+        DEST="${DEST%/}"
+        if [ -n "$DEST" ]; then
+          DEST="$DEST/"
+        fi
+
+        aws s3 cp "$SOURCE_DIR" "s3://$BUCKET/$DEST" \
+          --recursive \
+          --endpoint-url "$ENDPOINT_URL" \
+          --no-progress

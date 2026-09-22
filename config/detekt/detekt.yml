@@ -1,0 +1,159 @@
+# Detekt configuration for the Cereal client.
+#
+# `buildUponDefaultConfig = true` is set in the root build, so this file only
+# needs to declare *overrides* to detekt's bundled defaults. Anything not listed
+# here keeps its default behaviour.
+#
+# Formatting rules are intentionally NOT enabled here: ktlint already owns code
+# style for this project, and running both produces conflicting noise.
+#
+# Tuning rationale: this is a Compose for Desktop UI, so several "smells" are
+# normal in @Composable code (PascalCase function names, many UI parameters,
+# long layout functions, dp/sp number literals). Those rules are relaxed or
+# scoped to @Composable rather than disabled wholesale.
+
+build:
+  maxIssues: 0 # Fail the build on any new finding not covered by a baseline.
+  excludeCorrectable: false
+
+config:
+  validation: true
+  warningsAsErrors: false
+  checkExhaustiveness: false
+
+console-reports:
+  active: true
+
+comments:
+  active: true
+  UndocumentedPublicClass:
+    active: false # KDoc on every public class is not the team convention.
+  UndocumentedPublicFunction:
+    active: false
+  UndocumentedPublicProperty:
+    active: false
+
+complexity:
+  active: true
+  CyclomaticComplexMethod:
+    active: true
+    threshold: 18
+    ignoreAnnotated: ['Composable']
+  LongMethod:
+    active: true
+    threshold: 80
+    ignoreAnnotated: ['Composable'] # Layout composables are legitimately long.
+  LongParameterList:
+    active: true
+    functionThreshold: 8
+    constructorThreshold: 9
+    ignoreDefaultParameters: true
+    ignoreAnnotated: ['Composable'] # Composables take many hoisted state/callback params.
+  NestedBlockDepth:
+    active: true
+    threshold: 5
+  TooManyFunctions:
+    active: true
+    thresholdInFiles: 20
+    thresholdInClasses: 20
+    thresholdInInterfaces: 20
+    thresholdInObjects: 20
+    thresholdInEnums: 20
+    ignoreDeprecated: true
+    ignorePrivate: true
+    ignoreOverridden: true
+
+coroutines:
+  active: true
+  GlobalCoroutineUsage:
+    active: true # Project standard: scopes are injected, never GlobalScope.
+  RedundantSuspendModifier:
+    active: true
+  SuspendFunWithFlowReturnType:
+    active: true
+
+empty-blocks:
+  active: true
+  EmptyFunctionBlock:
+    active: true
+    ignoreOverridden: true
+
+exceptions:
+  active: true
+  SwallowedException:
+    active: true
+    ignoredExceptionTypes:
+      - 'CancellationException' # Cooperative cancellation is rethrown by the Interactor base.
+      - 'InterruptedException'
+  TooGenericExceptionCaught:
+    active: true
+    exceptionNames:
+      - Error
+      - Throwable
+    # `Exception`/`RuntimeException` are caught on purpose by the Interactor base
+    # class and reported to Sentry, so they are not flagged here.
+  TooGenericExceptionThrown:
+    active: true
+    exceptionNames:
+      - Error
+      - Throwable
+
+naming:
+  active: true
+  FunctionNaming:
+    active: true
+    functionPattern: '[a-z][a-zA-Z0-9]*'
+    ignoreAnnotated: ['Composable'] # Composables are PascalCase by convention.
+  TopLevelPropertyNaming:
+    active: true
+    constantPattern: '[A-Z][_A-Z0-9]*'
+  MatchingDeclarationName:
+    active: false # Filename rule is disabled in ktlint too; keep them aligned.
+
+performance:
+  active: true
+  SpreadOperator:
+    active: false # Common and acceptable in this codebase.
+
+potential-bugs:
+  active: true
+  UnsafeCallOnNullableType:
+    active: true # Surfaces the `!!` assertions flagged in the audit.
+  LateinitUsage:
+    active: false
+
+style:
+  active: true
+  MagicNumber:
+    active: true
+    ignoreNumbers: ['-1', '0', '1', '2']
+    ignoreHashCodeFunction: true
+    ignorePropertyDeclaration: true
+    ignoreCompanionObjectPropertyDeclaration: true
+    ignoreAnnotation: true
+    ignoreEnums: true
+    ignoreAnnotated: ['Composable', 'Preview'] # dp/sp/color literals in UI code.
+  MaxLineLength:
+    active: false # ktlint owns line length; it is set to "off" there.
+  ReturnCount:
+    active: true
+    max: 4
+  ThrowsCount:
+    active: true
+    max: 3
+  UnusedPrivateMember:
+    active: true
+  UnusedParameter:
+    active: true
+    ignoreAnnotated: ['Composable', 'Preview']
+  ForbiddenComment:
+    active: true
+    comments:
+      - reason: 'Track work in the issue tracker, not in source.'
+        value: 'FIXME:'
+      - reason: 'Use a dedicated logger, not stdout.'
+        value: 'STOPSHIP:'
+    # `TODO:` is intentionally not forbidden — the codebase uses a handful as
+    # acknowledged backlog markers.
+  WildcardImport:
+    active: true # Matches the "no wildcard imports" convention in AGENTS.md.

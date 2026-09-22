@@ -1,0 +1,440 @@
+name: Release cereal client
+
+on:
+  push:
+    tags:
+      - 'cereal-client/*'
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version number (e.g., 1.2.0)'
+        required: true
+        type: string
+      build_target:
+        description: 'Build target'
+        required: true
+        type: choice
+        options:
+          - all
+          - windows
+          - linux
+          - macos
+          - macos-arm64
+          - macos-x64
+          - windows-store
+        default: 'all'
+
+env:
+  R2_ACCOUNT_ID: ${{ vars.R2_ACCOUNT_ID }}
+  R2_ACCESS_KEY_ID: ${{ vars.R2_ACCESS_KEY_ID }}
+  R2_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+  R2_BUCKET_CDN: ${{ vars.R2_BUCKET_CDN }}
+  DO_ACCESS_KEY: ${{ vars.DO_ACCESS_KEY }}
+  DO_SECRET_KEY: ${{ secrets.DO_SECRET_KEY }}
+  DO_SPACE_NAME_BACKUPS: ${{ vars.DO_SPACE_NAME_BACKUPS }}
+  DO_SPACE_REGION: ${{ vars.DO_SPACE_REGION }}
+  CDN_URL: ${{ vars.CDN_URL }}
+  # Cloudflare edge cache purge for the mutable "latest-*" artifacts. Without a purge after each
+  # upload the CDN can serve a stale zip against freshly-signed metadata, which the client rejects
+  # as a SHA-256 mismatch. The token needs only the Zone > Cache Purge permission.
+  CLOUDFLARE_ZONE_ID: ${{ vars.CLOUDFLARE_ZONE_ID }}
+  CLOUDFLARE_CACHE_PURGE_TOKEN: ${{ secrets.CLOUDFLARE_CACHE_PURGE_TOKEN }}
+  MICROSOFT_STORE_URL: ${{ vars.MICROSOFT_STORE_URL }}
+  SENTRY_DSN: ${{ vars.SENTRY_DSN }}
+  SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
+  SEKRET_KEY: ${{ secrets.SEKRET_KEY }}
+  SEKRET_PROPERTIES: ${{ secrets.SEKRET_PROPERTIES }}
+  # RSA private key (PEM) used to sign release metadata. Its public counterpart is embedded in the
+  # client (ApplicationConfig.releasePublicKey) and verifies latest-<os>.json before updating.
+  RELEASE_PRIVATE_KEY: ${{ secrets.RELEASE_PRIVATE_KEY }}
+  # Apple signing credentials
+  APPLE_SIGNING_IDENTITY: ${{ secrets.APPLE_SIGNING_IDENTITY }}
+  APPLE_CERTIFICATE_BASE64: ${{ secrets.APPLE_CERTIFICATE_BASE64 }}
+  APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
+  APPLE_TEAM_ID: ${{ vars.APPLE_TEAM_ID }}
+  APPLE_ID: ${{ vars.APPLE_ID }}
+  APPLE_ID_PASSWORD: ${{ secrets.APPLE_ID_PASSWORD }}
+  # Minimum versions per platform
+  MIN_VERSION_WINDOWS: ${{ vars.MIN_VERSION_WINDOWS }}
+  MIN_VERSION_LINUX: ${{ vars.MIN_VERSION_LINUX }}
+  MIN_VERSION_MACOS_ARM64: ${{ vars.MIN_VERSION_MACOS_ARM64 }}
+  MIN_VERSION_MACOS_X64: ${{ vars.MIN_VERSION_MACOS_X64 }}
+  MIN_VERSION_MACOS: ${{ vars.MIN_VERSION_MACOS }}
+  MIN_VERSION_WINDOWS_STORE: ${{ vars.MIN_VERSION_WINDOWS_STORE }}
+
+jobs:
+  build-windows:
+    name: Build Windows (exe)
+    runs-on: windows-latest
+    if: github.event_name == 'push' || github.event.inputs.build_target == 'all' || github.event.inputs.build_target == 'windows'
+
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: ./.github/actions/setup-build-environment
+
+      - name: Parse tag version
+        id: version
+        uses: ./.github/actions/parse-tag-version
+        with:
+          tag: ${{ github.event_name == 'workflow_dispatch' && format('cereal-client/{0}', github.event.inputs.version) || github.ref_name }}
+
+      - uses: ./.github/actions/setup-sekret
+        with:
+          sekret-properties: ${{ env.SEKRET_PROPERTIES }}
+
+      - name: Build and upload
+        uses: ./.github/actions/build-and-upload
+        with:
+          version: ${{ steps.version.outputs.version }}
+          version-number: ${{ steps.version.outputs.version-number }}
+          is-rc: ${{ steps.version.outputs.is-rc }}
+          target: exe
+          sentry-auth-token: ${{ env.SENTRY_AUTH_TOKEN }}
+          sentry-dsn: ${{ env.SENTRY_DSN }}
+          sekret-key: ${{ env.SEKRET_KEY }}
+          version-json-platform: windows
+          cdn-url: ${{ env.CDN_URL }}
+          download-url: ${{ env.CDN_URL }}/client/cereal-client-latest.exe
+          min-version: ${{ env.MIN_VERSION_WINDOWS }}
+          release-private-key: ${{ env.RELEASE_PRIVATE_KEY }}
+          cloudflare-zone-id: ${{ env.CLOUDFLARE_ZONE_ID }}
+          cloudflare-api-token: ${{ env.CLOUDFLARE_CACHE_PURGE_TOKEN }}
+          r2-account-id: ${{ env.R2_ACCOUNT_ID }}
+          r2-access-key-id: ${{ env.R2_ACCESS_KEY_ID }}
+          r2-secret-access-key: ${{ env.R2_SECRET_ACCESS_KEY }}
+          r2-bucket: ${{ env.R2_BUCKET_CDN }}
+          do-access-key: ${{ env.DO_ACCESS_KEY }}
+          do-secret-key: ${{ env.DO_SECRET_KEY }}
+          do-space-name: ${{ env.DO_SPACE_NAME_BACKUPS }}
+          do-space-region: ${{ env.DO_SPACE_REGION }}
+
+  build-linux:
+    name: Build Linux (AppImage)
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push' || github.event.inputs.build_target == 'all' || github.event.inputs.build_target == 'linux'
+
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: ./.github/actions/setup-build-environment
+
+      - name: Parse tag version
+        id: version
+        uses: ./.github/actions/parse-tag-version
+        with:
+          tag: ${{ github.event_name == 'workflow_dispatch' && format('cereal-client/{0}', github.event.inputs.version) || github.ref_name }}
+
+      - uses: ./.github/actions/setup-sekret
+        with:
+          sekret-properties: ${{ env.SEKRET_PROPERTIES }}
+
+      # AppImage is the self-installing auto-update artifact (the client replaces its own running
+      # image and relaunches — no package manager, no root). This is what latest-linux.json points to.
+      - name: Build AppImage
+        uses: ./.github/actions/build-appimage
+        with:
+          version: ${{ steps.version.outputs.version-number }}
+          is-rc: ${{ steps.version.outputs.is-rc }}
+          sentry-auth-token: ${{ env.SENTRY_AUTH_TOKEN }}
+          sentry-dsn: ${{ env.SENTRY_DSN }}
+          sekret-key: ${{ env.SEKRET_KEY }}
+
+      # Hash + RSA-sign the AppImage, upload to R2, back up to DO Spaces. The signed download_sha256
+      # must match the file the client fetches, so the AppImage must not be modified after this step
+      # (see #484).
+      - name: Publish artifact
+        uses: ./.github/actions/publish-artifact
+        with:
+          version: ${{ steps.version.outputs.version }}
+          is-rc: ${{ steps.version.outputs.is-rc }}
+          binary-path: dist/client/cereal-client-latest.AppImage
+          platform: linux
+          cdn-url: ${{ env.CDN_URL }}
+          download-url: ${{ env.CDN_URL }}/client/cereal-client-latest.AppImage
+          min-version: ${{ env.MIN_VERSION_LINUX }}
+          release-private-key: ${{ env.RELEASE_PRIVATE_KEY }}
+          cloudflare-zone-id: ${{ env.CLOUDFLARE_ZONE_ID }}
+          cloudflare-api-token: ${{ env.CLOUDFLARE_CACHE_PURGE_TOKEN }}
+          r2-account-id: ${{ env.R2_ACCOUNT_ID }}
+          r2-access-key-id: ${{ env.R2_ACCESS_KEY_ID }}
+          r2-secret-access-key: ${{ env.R2_SECRET_ACCESS_KEY }}
+          r2-bucket: ${{ env.R2_BUCKET_CDN }}
+          do-access-key: ${{ env.DO_ACCESS_KEY }}
+          do-secret-key: ${{ env.DO_SECRET_KEY }}
+          do-space-name: ${{ env.DO_SPACE_NAME_BACKUPS }}
+          do-space-region: ${{ env.DO_SPACE_REGION }}
+
+  build-macos-arm64:
+    name: Build macOS ARM64 (DMG)
+    runs-on: macos-15
+    if: github.event_name == 'push' || github.event.inputs.build_target == 'all' || github.event.inputs.build_target == 'macos' || github.event.inputs.build_target == 'macos-arm64'
+
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: ./.github/actions/setup-build-environment
+
+      - name: Parse tag version
+        id: version
+        uses: ./.github/actions/parse-tag-version
+        with:
+          tag: ${{ github.event_name == 'workflow_dispatch' && format('cereal-client/{0}', github.event.inputs.version) || github.ref_name }}
+
+      - name: Install Apple certificate
+        id: apple-cert
+        uses: ./.github/actions/install-apple-certificate
+        with:
+          certificate-base64: ${{ env.APPLE_CERTIFICATE_BASE64 }}
+          certificate-password: ${{ env.APPLE_CERTIFICATE_PASSWORD }}
+
+      - uses: ./.github/actions/setup-sekret
+        with:
+          sekret-properties: ${{ env.SEKRET_PROPERTIES }}
+
+      - name: Build and upload
+        uses: ./.github/actions/build-and-upload
+        with:
+          version: ${{ steps.version.outputs.version }}
+          version-number: ${{ steps.version.outputs.version-number }}
+          is-rc: ${{ steps.version.outputs.is-rc }}
+          target: Dmg
+          mac-arch: arm64
+          sentry-auth-token: ${{ env.SENTRY_AUTH_TOKEN }}
+          sentry-dsn: ${{ env.SENTRY_DSN }}
+          sekret-key: ${{ env.SEKRET_KEY }}
+          mac-signing-enabled: 'true'
+          mac-signing-identity: ${{ env.APPLE_SIGNING_IDENTITY }}
+          mac-signing-keychain: ${{ steps.apple-cert.outputs.keychain-path }}
+          mac-notarization-apple-id: ${{ env.APPLE_ID }}
+          mac-notarization-password: ${{ env.APPLE_ID_PASSWORD }}
+          mac-notarization-team-id: ${{ env.APPLE_TEAM_ID }}
+          mac-entitlements-path: 'cereal-client/entitlements.plist'
+          version-json-platform: macos-arm64
+          cdn-url: ${{ env.CDN_URL }}
+          # Auto-update feed points at the self-appliable .app zip, not the .dmg (the .dmg stays on
+          # the CDN for the website's first-time download). See build-and-upload's feed-binary step.
+          download-url: ${{ env.CDN_URL }}/client/cereal-client-latest-arm64.zip
+          min-version: ${{ env.MIN_VERSION_MACOS_ARM64 }}
+          release-private-key: ${{ env.RELEASE_PRIVATE_KEY }}
+          cloudflare-zone-id: ${{ env.CLOUDFLARE_ZONE_ID }}
+          cloudflare-api-token: ${{ env.CLOUDFLARE_CACHE_PURGE_TOKEN }}
+          r2-account-id: ${{ env.R2_ACCOUNT_ID }}
+          r2-access-key-id: ${{ env.R2_ACCESS_KEY_ID }}
+          r2-secret-access-key: ${{ env.R2_SECRET_ACCESS_KEY }}
+          r2-bucket: ${{ env.R2_BUCKET_CDN }}
+          do-access-key: ${{ env.DO_ACCESS_KEY }}
+          do-secret-key: ${{ env.DO_SECRET_KEY }}
+          do-space-name: ${{ env.DO_SPACE_NAME_BACKUPS }}
+          do-space-region: ${{ env.DO_SPACE_REGION }}
+
+      - name: Upload build logs on failure
+        if: failure()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: build-logs-macos-arm64
+          path: cereal-client/build/compose/logs/
+          retention-days: 7
+
+      # Also create a generic 'macos' version JSON for backward compatibility (points to ARM64)
+      - name: Create generic macOS version JSON
+        if: steps.version.outputs.is-rc == 'false'
+        uses: ./.github/actions/create-latest-version-json
+        with:
+          version: ${{ steps.version.outputs.version }}
+          platform: macos
+          cdn-url: ${{ env.CDN_URL }}
+          download-url: ${{ env.CDN_URL }}/client/cereal-client-latest-arm64.zip
+          min-version: ${{ env.MIN_VERSION_MACOS }}
+          # Reuse the ARM64 self-update .zip that the build-and-upload step already placed in
+          # dist/client (must match its download-url so the signed hash covers the served file).
+          binary-path: dist/client/cereal-client-latest-arm64.zip
+          release-private-key: ${{ env.RELEASE_PRIVATE_KEY }}
+
+      - name: Upload generic macOS version JSON to R2
+        if: steps.version.outputs.is-rc == 'false'
+        uses: ./.github/actions/upload-to-r2
+        with:
+          account-id: ${{ env.R2_ACCOUNT_ID }}
+          access-key-id: ${{ env.R2_ACCESS_KEY_ID }}
+          secret-access-key: ${{ env.R2_SECRET_ACCESS_KEY }}
+          bucket: ${{ env.R2_BUCKET_CDN }}
+          source-dir: dist
+
+      # Purge the generic macos JSON too. The arm64 zip it points at is already purged by the
+      # publish-artifact tail in the Build and upload step above.
+      - name: Purge Cloudflare cache for generic macOS version JSON
+        if: steps.version.outputs.is-rc == 'false'
+        uses: ./.github/actions/purge-cloudflare-cache
+        with:
+          zone-id: ${{ env.CLOUDFLARE_ZONE_ID }}
+          api-token: ${{ env.CLOUDFLARE_CACHE_PURGE_TOKEN }}
+          files: |
+            ${{ env.CDN_URL }}/client/latest-macos.json
+
+      - name: Clean up keychain
+        if: always()
+        run: security delete-keychain ${{ steps.apple-cert.outputs.keychain-path }} || true
+
+  build-macos-x64:
+    name: Build macOS Intel x64 (DMG)
+    runs-on: macos-15-intel
+    if: github.event_name == 'push' || github.event.inputs.build_target == 'all' || github.event.inputs.build_target == 'macos' || github.event.inputs.build_target == 'macos-x64'
+
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: ./.github/actions/setup-build-environment
+
+      - name: Parse tag version
+        id: version
+        uses: ./.github/actions/parse-tag-version
+        with:
+          tag: ${{ github.event_name == 'workflow_dispatch' && format('cereal-client/{0}', github.event.inputs.version) || github.ref_name }}
+
+      - name: Install Apple certificate
+        id: apple-cert
+        uses: ./.github/actions/install-apple-certificate
+        with:
+          certificate-base64: ${{ env.APPLE_CERTIFICATE_BASE64 }}
+          certificate-password: ${{ env.APPLE_CERTIFICATE_PASSWORD }}
+
+      - uses: ./.github/actions/setup-sekret
+        with:
+          sekret-properties: ${{ env.SEKRET_PROPERTIES }}
+
+      - name: Build and upload
+        uses: ./.github/actions/build-and-upload
+        with:
+          version: ${{ steps.version.outputs.version }}
+          version-number: ${{ steps.version.outputs.version-number }}
+          is-rc: ${{ steps.version.outputs.is-rc }}
+          target: Dmg
+          mac-arch: x64
+          sentry-auth-token: ${{ env.SENTRY_AUTH_TOKEN }}
+          sentry-dsn: ${{ env.SENTRY_DSN }}
+          sekret-key: ${{ env.SEKRET_KEY }}
+          mac-signing-enabled: 'true'
+          mac-signing-identity: ${{ env.APPLE_SIGNING_IDENTITY }}
+          mac-signing-keychain: ${{ steps.apple-cert.outputs.keychain-path }}
+          mac-notarization-apple-id: ${{ env.APPLE_ID }}
+          mac-notarization-password: ${{ env.APPLE_ID_PASSWORD }}
+          mac-notarization-team-id: ${{ env.APPLE_TEAM_ID }}
+          mac-entitlements-path: 'cereal-client/entitlements.plist'
+          version-json-platform: macos-x64
+          cdn-url: ${{ env.CDN_URL }}
+          # Auto-update feed points at the self-appliable .app zip, not the .dmg (see arm64 job).
+          download-url: ${{ env.CDN_URL }}/client/cereal-client-latest-x64.zip
+          min-version: ${{ env.MIN_VERSION_MACOS_X64 }}
+          release-private-key: ${{ env.RELEASE_PRIVATE_KEY }}
+          cloudflare-zone-id: ${{ env.CLOUDFLARE_ZONE_ID }}
+          cloudflare-api-token: ${{ env.CLOUDFLARE_CACHE_PURGE_TOKEN }}
+          r2-account-id: ${{ env.R2_ACCOUNT_ID }}
+          r2-access-key-id: ${{ env.R2_ACCESS_KEY_ID }}
+          r2-secret-access-key: ${{ env.R2_SECRET_ACCESS_KEY }}
+          r2-bucket: ${{ env.R2_BUCKET_CDN }}
+          do-access-key: ${{ env.DO_ACCESS_KEY }}
+          do-secret-key: ${{ env.DO_SECRET_KEY }}
+          do-space-name: ${{ env.DO_SPACE_NAME_BACKUPS }}
+          do-space-region: ${{ env.DO_SPACE_REGION }}
+
+      - name: Upload build logs on failure
+        if: failure()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: build-logs-macos-x64
+          path: cereal-client/build/compose/logs/
+          retention-days: 7
+
+      - name: Clean up keychain
+        if: always()
+        run: security delete-keychain ${{ steps.apple-cert.outputs.keychain-path }} || true
+
+  build-windows-store:
+    name: Build Windows Store (MSIX)
+    runs-on: windows-latest
+    if: |
+      (github.event_name == 'push' && !contains(github.ref_name, '-rc')) ||
+      (github.event_name == 'workflow_dispatch' && (github.event.inputs.build_target == 'all' || github.event.inputs.build_target == 'windows-store'))
+
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: ./.github/actions/setup-build-environment
+
+      - name: Parse tag version
+        id: version
+        uses: ./.github/actions/parse-tag-version
+        with:
+          tag: ${{ github.event_name == 'workflow_dispatch' && format('cereal-client/{0}', github.event.inputs.version) || github.ref_name }}
+
+      - uses: ./.github/actions/setup-sekret
+        with:
+          sekret-properties: ${{ env.SEKRET_PROPERTIES }}
+
+      - name: Build MSI
+        uses: ./.github/actions/build-client
+        with:
+          target: Msi
+          version: ${{ steps.version.outputs.version-number }}
+          store-build: 'true'
+          sentry-auth-token: ${{ env.SENTRY_AUTH_TOKEN }}
+          sentry-dsn: ${{ env.SENTRY_DSN }}
+          sekret-key: ${{ env.SEKRET_KEY }}
+
+      - name: Create MSIX from MSI
+        id: msix
+        uses: ./.github/actions/create-msix
+        with:
+          version: ${{ steps.version.outputs.version-number }}
+
+      # NOTE: The latest version JSON for Windows Store is NOT uploaded here.
+      # Use the "Publish Windows Store Version" workflow manually after the MSIX
+      # has been published to the Microsoft Store.
+
+      - name: Backup MSIX to DO Spaces
+        uses: ./.github/actions/upload-to-do-spaces
+        with:
+          access-key: ${{ env.DO_ACCESS_KEY }}
+          secret-key: ${{ env.DO_SECRET_KEY }}
+          space-name: ${{ env.DO_SPACE_NAME_BACKUPS }}
+          space-region: ${{ env.DO_SPACE_REGION }}
+          source: ${{ steps.msix.outputs.msix-path }}
+          out-dir: 'client/${{ steps.version.outputs.version }}/'
+
+      - name: Backup proguard mapping to DO Spaces
+        uses: ./.github/actions/upload-to-do-spaces
+        with:
+          access-key: ${{ env.DO_ACCESS_KEY }}
+          secret-key: ${{ env.DO_SECRET_KEY }}
+          space-name: ${{ env.DO_SPACE_NAME_BACKUPS }}
+          space-region: ${{ env.DO_SPACE_REGION }}
+          source: cereal-client/proguard.map
+          out-dir: 'client/${{ steps.version.outputs.version }}/msix/'
+
+  release:
+    name: Create GitHub Release
+    runs-on: ubuntu-latest
+    # Needed to create the tag (manual dispatch) and publish the release.
+    permissions:
+      contents: write
+    # Always create a release: on a tag push and on every manual dispatch, whatever the
+    # build target. The target is surfaced in the release name so partial manual builds
+    # are distinguishable.
+
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Parse tag version
+        id: version
+        uses: ./.github/actions/parse-tag-version
+        with:
+          tag: ${{ github.event_name == 'workflow_dispatch' && format('cereal-client/{0}', github.event.inputs.version) || github.ref_name }}
+
+      - name: Create Github Release
+        uses: softprops/action-gh-release@efb35369e0ad2afab669f228072c1b0d510eae64 # v3.0.3
+        with:
+          # On a tag push the tag already exists; on manual dispatch the action creates
+          # this tag on the checked-out commit before publishing the release.
+          tag_name: ${{ github.event_name == 'workflow_dispatch' && format('cereal-client/{0}', github.event.inputs.version) || github.ref_name }}
+          # Manual single-platform runs append the build target, e.g. "1.2.0 (windows)";
+          # tag pushes and full ('all') manual builds stay "1.2.0".
+          name: ${{ steps.version.outputs.version }}${{ github.event_name == 'workflow_dispatch' && github.event.inputs.build_target != 'all' && format(' ({0})', github.event.inputs.build_target) || '' }}
+          prerelease: ${{ steps.version.outputs.is-rc == 'true' }}
+          make_latest: ${{ steps.version.outputs.is-rc == 'false' }}
+          generate_release_notes: true

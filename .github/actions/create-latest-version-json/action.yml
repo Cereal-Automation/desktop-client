@@ -1,0 +1,102 @@
+name: 'Create Latest Version JSON'
+description: 'Create a latest version JSON file for CDN distribution'
+
+inputs:
+  version:
+    description: 'The full version string (e.g., 1.0.0 or 1.0.0-rc1)'
+    required: true
+  platform:
+    description: 'Platform identifier (e.g., macos, windows, linux, windows-store, macos-store)'
+    required: true
+  cdn-url:
+    description: 'Base CDN URL'
+    required: true
+  download-url:
+    description: 'Direct download URL (leave empty for store builds)'
+    required: false
+    default: ''
+  store-url:
+    description: 'Store URL (for store builds)'
+    required: false
+    default: ''
+  min-version:
+    description: 'Minimum required version for this platform'
+    required: true
+  binary-path:
+    description: 'Path to the installer binary to hash and sign (required for direct downloads)'
+    required: false
+    default: ''
+  release-private-key:
+    description: 'PEM-encoded RSA private key used to sign release metadata (required for direct downloads)'
+    required: false
+    default: ''
+  output-dir:
+    description: 'Output directory for the JSON file'
+    required: false
+    default: 'dist/client'
+
+outputs:
+  json-path:
+    description: 'Path to the created JSON file'
+    value: ${{ steps.create.outputs.json-path }}
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Create latest version JSON
+      id: create
+      shell: bash
+      env:
+        RELEASE_PRIVATE_KEY: ${{ inputs.release-private-key }}
+      run: |
+        set -euo pipefail
+        mkdir -p "${{ inputs.output-dir }}"
+
+        JSON_PATH="${{ inputs.output-dir }}/latest-${{ inputs.platform }}.json"
+        VERSION="${{ inputs.version }}"
+        MIN_VERSION="${{ inputs.min-version }}"
+        DOWNLOAD_URL="${{ inputs.download-url }}"
+        STORE_URL="${{ inputs.store-url }}"
+
+        if [ -n "$STORE_URL" ]; then
+          # Store build: no installer is downloaded or launched by the client, so no hash/signature.
+          cat > "$JSON_PATH" << EOF
+        {"version":"$VERSION", "min_version":"$MIN_VERSION", "download_url": "", "store_url": "$STORE_URL"}
+        EOF
+        else
+          # Direct download: the client requires a SHA-256 and an RSA-SHA256 signature over a
+          # canonical message and will reject metadata that is missing or fails to verify (issue #484).
+          BINARY_PATH="${{ inputs.binary-path }}"
+
+          if [ -z "$BINARY_PATH" ] || [ ! -f "$BINARY_PATH" ]; then
+            echo "::error::binary-path '$BINARY_PATH' is required and must exist to sign direct-download metadata."
+            exit 1
+          fi
+          if [ -z "${RELEASE_PRIVATE_KEY:-}" ]; then
+            echo "::error::release-private-key is required to sign direct-download metadata."
+            exit 1
+          fi
+
+          # Lowercase hex SHA-256 of the installer (cross-platform via openssl).
+          # The client verifies the downloaded file against this hash, so BINARY_PATH must already be
+          # in its final, shipped form. For macOS .dmg builds that means fully notarized AND stapled
+          # (stapling rewrites the file) — see the "Notarize and staple DMG" step in build-client.
+          # The same file that is hashed here is uploaded as-is, so do not modify it afterwards.
+          DOWNLOAD_SHA256="$(openssl dgst -sha256 "$BINARY_PATH" | awk '{print $NF}')"
+
+          # Canonical message — MUST match ReleaseMetadataVerifier.canonicalMessage on the client.
+          MESSAGE="${VERSION}|${MIN_VERSION}|${DOWNLOAD_URL}|${DOWNLOAD_SHA256}"
+
+          KEY_FILE="$(mktemp)"
+          trap 'rm -f "$KEY_FILE"' EXIT
+          printf '%s' "$RELEASE_PRIVATE_KEY" > "$KEY_FILE"
+
+          # SHA256withRSA (PKCS#1 v1.5), Base64-encoded on a single line.
+          DOWNLOAD_SIGNATURE="$(printf '%s' "$MESSAGE" | openssl dgst -sha256 -sign "$KEY_FILE" | openssl base64 -A)"
+
+          cat > "$JSON_PATH" << EOF
+        {"version":"$VERSION", "min_version":"$MIN_VERSION", "download_url": "$DOWNLOAD_URL", "download_sha256": "$DOWNLOAD_SHA256", "download_signature": "$DOWNLOAD_SIGNATURE"}
+        EOF
+        fi
+
+        echo "json-path=$JSON_PATH" >> $GITHUB_OUTPUT

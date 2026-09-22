@@ -1,0 +1,31 @@
+name: 'Setup JDKs'
+description: 'Make gradlew executable, configure Zulu JDK 17 + 21, and restore the Gradle cache'
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Make gradlew executable
+      shell: bash
+      run: chmod +x ./gradlew
+
+    - name: Set up JDKs
+      uses: actions/setup-java@de7274f081f381c8f8158605e0321c36c376e2e6 # v6.0.1
+      with:
+        distribution: 'zulu'
+        # macOS runners are Apple Silicon, but the Actions runner binary is the
+        # Intel build and reports RUNNER_ARCH=X64, so setup-java would otherwise
+        # install an x64 JDK that runs under Rosetta (os.arch=x86_64). That breaks
+        # androidx.sqlite:sqlite-bundled, which ships no osx_x64 native (only
+        # osx_arm64). Force aarch64 on macOS; leave auto-detection elsewhere.
+        architecture: ${{ runner.os == 'macOS' && 'aarch64' || '' }}
+        java-version: |
+          17
+          21
+
+    # CI used to run on self-hosted runners, where the Gradle user home persisted between
+    # runs and `--build-cache` hit a warm local cache. GitHub-hosted runners start empty, so
+    # the cache has to be restored explicitly. setup-gradle writes the cache only from the
+    # default branch and restores it read-only on pull requests, which is exactly right for a
+    # fork-reachable workflow: a stranger's PR can read the master-warmed cache but not poison it.
+    - name: Setup Gradle
+      uses: gradle/actions/setup-gradle@9c971963bec38e04b3d30dcc455b5382be2fdbfb # v6.3.0

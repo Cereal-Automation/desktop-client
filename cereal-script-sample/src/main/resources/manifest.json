@@ -1,0 +1,10 @@
+{
+  "package_name": "com.cereal",
+  "name": "SampleScript",
+  "version_code": 1,
+  "script": "com.cereal.script.sample.SampleScript",
+  "child_scripts": [
+    "com.cereal.script.sample.child.TestChildScript"
+  ],
+  "instructions": "This is a sample script that demonstrates various configuration options. Please configure all required fields before running. For more information, visit https://example.com/docs"
+}

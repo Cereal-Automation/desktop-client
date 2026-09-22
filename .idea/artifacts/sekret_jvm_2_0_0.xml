@@ -1,0 +1,6 @@
+<component name="ArtifactManager">
+  <artifact type="jar" name="sekret-jvm-2.0.0">
+    <output-path>$PROJECT_DIR$/cereal-client/sekret/build/libs</output-path>
+    <root id="archive" name="sekret-jvm-2.0.0.jar" />
+  </artifact>
+</component>

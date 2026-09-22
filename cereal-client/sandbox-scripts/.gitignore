@@ -1,0 +1,15 @@
+# Local-only sandbox scripts.
+#
+# Drop *.jar files here to have them seeded into the sandboxed `mock` flavor on startup
+# (see SandboxScriptSeeder). They are bundled into the app's resources ONLY for the mock flavor,
+# so they never ship in production builds (-Pflavor=prod).
+#
+# These JARs are intentionally NOT committed — keep them local.
+#
+# Requirements per JAR:
+#   - plaintext/unencrypted (the sandbox runs environment=local)
+#   - contains a valid manifest.json at the root (package_name, name, version_code, script)
+#   - filename must not be "release.jar" (reserved for the bundled :cereal-script-sample)
+*.jar
+!.gitignore
+!README.md

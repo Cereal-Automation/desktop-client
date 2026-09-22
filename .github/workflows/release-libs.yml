@@ -1,0 +1,57 @@
+name: Release cereal developer libraries
+
+on:
+  push:
+    tags:
+      - 'cereal-licensing/*'
+
+env:
+  DO_ACCESS_KEY: ${{ vars.DO_ACCESS_KEY }}
+  DO_SECRET_KEY: ${{ secrets.DO_SECRET_KEY }}
+  DO_SPACE_NAME_MAVEN: ${{ vars.DO_SPACE_NAME_MAVEN }}
+  DO_SPACE_REGION: ${{ vars.DO_SPACE_REGION }}
+
+jobs:
+  build:
+    name: Build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Make gradlew executable
+        run: chmod +x ./gradlew
+      - name: Set up JDK 17
+        uses: actions/setup-java@de7274f081f381c8f8158605e0321c36c376e2e6 # v6.0.1
+        with:
+          distribution: 'zulu'
+          java-version: |
+            17
+            21
+          cache: 'gradle'
+      - name: Parse tag version
+        id: version
+        uses: ./.github/actions/parse-tag-version
+        with:
+          tag: ${{ github.ref_name }}
+      - name: Build
+        run:
+          ./gradlew ${{ steps.version.outputs.module }}:jar --console=plain
+      - name: Create maven artifact
+        run:
+          ./gradlew ${{ steps.version.outputs.module }}:publishUnobfuscatedPublicationToLocalBuildRepository -Pversion=${{ steps.version.outputs.version }} --console=plain
+      # The Maven repository is consumed by script authors, so these objects must stay world-readable
+      # — unlike the release backups, which use the action's `private` default.
+      - name: Upload artifacts to maven repository
+        uses: ./.github/actions/upload-to-do-spaces
+        with:
+          access-key: ${{ env.DO_ACCESS_KEY }}
+          secret-key: ${{ env.DO_SECRET_KEY }}
+          space-name: ${{ env.DO_SPACE_NAME_MAVEN }}
+          space-region: ${{ env.DO_SPACE_REGION }}
+          source: ${{ steps.version.outputs.module }}/build/maven
+          out-dir: releases
+          permission: public-read
+      - name: Store release jar
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: ${{ steps.version.outputs.module }}-${{ steps.version.outputs.version }}-release
+          path: ${{ steps.version.outputs.module }}/build/libs/release.jar

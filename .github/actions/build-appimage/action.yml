@@ -1,0 +1,95 @@
+name: 'Build AppImage'
+description: 'Builds the Linux app-image with jpackage (via Compose) and wraps it into a self-updating AppImage'
+
+inputs:
+  version:
+    description: 'Version number for the build'
+    required: true
+  sentry-auth-token:
+    description: 'Sentry auth token'
+    required: true
+  sentry-dsn:
+    description: 'Sentry DSN'
+    required: true
+  sekret-key:
+    description: 'Sekret key'
+    required: true
+  is-rc:
+    description: 'Whether this is a release candidate (only then does the obfuscation smoke gate run).'
+    required: false
+    default: 'false'
+
+outputs:
+  appimage-path:
+    description: 'Path to the produced .AppImage file'
+    value: ${{ steps.package.outputs.appimage-path }}
+
+runs:
+  using: 'composite'
+  steps:
+    # Produces the jpackage app-image directory (bin/, lib/, lib/runtime, lib/app/resources/...) at
+    # cereal-client/build/compose/binaries/main-release/app/Cereal. This bundles the app-resources
+    # (e.g. libsekret.so) from appResourcesRootDir, so the AppImage is fully self-contained.
+    - name: Build app-image (distributable)
+      shell: bash
+      run: |
+        ./gradlew cereal-client:createReleaseDistributable \
+          -Pversion='${{ inputs.version }}' \
+          -Pdebug=false \
+          -Pflavor=prod \
+          -Pstore_build=false \
+          -Psentry_auth_token=${{ inputs.sentry-auth-token }} \
+          -Psentry_dsn=${{ inputs.sentry-dsn }} \
+          -Penvironment=production \
+          -Psekret_key=${{ inputs.sekret-key }}
+
+    # Obfuscation gate: boot the jpackage app-image headlessly and block the release if a
+    # ProGuard-fragile path is broken, before it is wrapped into the published AppImage. Scoped to
+    # release candidates (`-rc` tags) — the acceptance builds where these regressions are caught.
+    - name: Smoke test (obfuscation gate)
+      if: inputs.is-rc == 'true'
+      uses: ./.github/actions/smoke-test
+      with:
+        target: AppImage
+
+    - name: Download appimagetool
+      shell: bash
+      run: |
+        set -euo pipefail
+        curl -fsSL -o /tmp/appimagetool \
+          "https://github.com/AppImage/appimagetool/releases/download/continuous/appimagetool-x86_64.AppImage"
+        chmod +x /tmp/appimagetool
+
+    - name: Assemble AppDir and build AppImage
+      id: package
+      shell: bash
+      run: |
+        set -euo pipefail
+
+        APP_IMAGE_DIR="cereal-client/build/compose/binaries/main-release/app/Cereal"
+        if [ ! -d "$APP_IMAGE_DIR" ]; then
+          echo "::error::Expected app-image at $APP_IMAGE_DIR was not produced by createReleaseDistributable."
+          exit 1
+        fi
+
+        APPDIR="$(mktemp -d)/Cereal.AppDir"
+        mkdir -p "$APPDIR"
+        cp -a "$APP_IMAGE_DIR/." "$APPDIR/"
+
+        # AppImage metadata at the AppDir root.
+        cp cereal-client/appimage/AppRun "$APPDIR/AppRun"
+        chmod +x "$APPDIR/AppRun"
+        cp cereal-client/appimage/cereal.desktop "$APPDIR/cereal.desktop"
+        cp cereal-client/icon-linux.png "$APPDIR/cereal.png"
+
+        mkdir -p dist/client
+        OUT="$(pwd)/dist/client/cereal-client-latest.AppImage"
+
+        # GitHub runners have no FUSE; extract-and-run avoids the libfuse2 dependency. ARCH pins the
+        # output to x86_64.
+        export APPIMAGE_EXTRACT_AND_RUN=1
+        export ARCH=x86_64
+        /tmp/appimagetool "$APPDIR" "$OUT"
+        chmod +x "$OUT"
+
+        echo "appimage-path=$OUT" >> "$GITHUB_OUTPUT"

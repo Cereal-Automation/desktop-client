@@ -1,0 +1,102 @@
+name: 'Build Client'
+description: 'Build the cereal client for a specific target'
+
+inputs:
+  target:
+    description: 'Build target (dmg, exe, deb, msi)'
+    required: true
+  version:
+    description: 'Version number for the build'
+    required: true
+  store-build:
+    description: 'Whether this is a store build'
+    required: false
+    default: 'false'
+  brand:
+    description: >-
+      White-label Brand id. Empty = stock Cereal. A non-empty value requires the private
+      overlay repository checked out at cereal-client/brands/<id> beforehand — descriptors
+      are not committed to this repository (see docs/adr/0008).
+    required: false
+    default: ''
+  sentry-auth-token:
+    description: 'Sentry auth token'
+    required: true
+  sentry-dsn:
+    description: 'Sentry DSN'
+    required: true
+  sekret-key:
+    description: 'Sekret key'
+    required: true
+  # macOS signing inputs
+  mac-signing-enabled:
+    description: 'Enable macOS code signing'
+    required: false
+    default: 'false'
+  mac-signing-identity:
+    description: 'macOS signing identity (Developer ID Application certificate)'
+    required: false
+    default: ''
+  mac-signing-keychain:
+    description: 'Path to the keychain containing the signing certificate'
+    required: false
+    default: ''
+  mac-notarization-apple-id:
+    description: 'Apple ID for notarization'
+    required: false
+    default: ''
+  mac-notarization-password:
+    description: 'App-specific password for notarization'
+    required: false
+    default: ''
+  mac-notarization-team-id:
+    description: 'Apple Team ID for notarization'
+    required: false
+    default: ''
+  mac-entitlements-path:
+    description: 'Path to the entitlements plist file'
+    required: false
+    default: ''
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Build ${{ inputs.target }}
+      shell: bash
+      run: |
+        ./gradlew cereal-client:packageRelease${{ inputs.target }} \
+          -Pversion='${{ inputs.version }}' \
+          -Pdebug=false \
+          -Pflavor=prod \
+          -Pbrand='${{ inputs.brand }}' \
+          -Pstore_build=${{ inputs.store-build }} \
+          -Psentry_auth_token=${{ inputs.sentry-auth-token }} \
+          -Psentry_dsn=${{ inputs.sentry-dsn }} \
+          -Penvironment=production \
+          -Psekret_key=${{ inputs.sekret-key }} \
+          -Pmac_signing_enabled=${{ inputs.mac-signing-enabled }} \
+          -Pmac_signing_identity='${{ inputs.mac-signing-identity }}' \
+          -Pmac_signing_keychain='${{ inputs.mac-signing-keychain }}' \
+          -Pmac_notarization_apple_id='${{ inputs.mac-notarization-apple-id }}' \
+          -Pmac_notarization_password='${{ inputs.mac-notarization-password }}' \
+          -Pmac_notarization_team_id='${{ inputs.mac-notarization-team-id }}' \
+          -Pmac_entitlements_path='${{ inputs.mac-entitlements-path }}'
+
+    # IMPORTANT: stapling rewrites the .dmg in place, so it MUST finish here — before the binary is
+    # copied, hashed, and signed in build-and-upload. The client verifies the downloaded .dmg against
+    # the signed download_sha256 (#484); hashing a pre-staple (or otherwise re-modified) .dmg would
+    # make every macOS auto-update fail verification. Do not move hashing earlier or re-sign/re-staple
+    # the .dmg after it has been hashed/uploaded.
+    - name: Notarize and staple DMG
+      if: ${{ inputs.target == 'Dmg' && inputs.mac-signing-enabled == 'true' }}
+      shell: bash
+      run: |
+        DMG_PATH=$(find cereal-client/build/compose/binaries/main-release/dmg -name "*.dmg" | head -1)
+        echo "Notarizing: $DMG_PATH"
+        xcrun notarytool submit "$DMG_PATH" \
+          --wait \
+          --apple-id '${{ inputs.mac-notarization-apple-id }}' \
+          --password '${{ inputs.mac-notarization-password }}' \
+          --team-id '${{ inputs.mac-notarization-team-id }}'
+        xcrun stapler staple "$DMG_PATH"
+

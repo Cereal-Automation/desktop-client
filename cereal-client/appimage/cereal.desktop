@@ -1,0 +1,8 @@
+[Desktop Entry]
+Type=Application
+Name=Cereal
+Comment=Cereal - Desktop Automation Client
+Exec=Cereal
+Icon=cereal
+Categories=Utility;
+Terminal=false
