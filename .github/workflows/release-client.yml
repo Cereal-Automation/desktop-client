@@ -62,9 +62,13 @@ env:
   MIN_VERSION_MACOS: ${{ vars.MIN_VERSION_MACOS }}
   MIN_VERSION_WINDOWS_STORE: ${{ vars.MIN_VERSION_WINDOWS_STORE }}
 
+# Every secret above is a `release` *environment* secret, not a repository one: a job sees them only
+# if it declares `environment: release`, and that environment requires a maintainer's approval and
+# accepts only master and release tags. The `release` job needs none of them, only GITHUB_TOKEN.
 jobs:
   build-windows:
     name: Build Windows (exe)
+    environment: release
     runs-on: windows-latest
     if: github.event_name == 'push' || github.event.inputs.build_target == 'all' || github.event.inputs.build_target == 'windows'
 
@@ -110,6 +114,7 @@ jobs:
 
   build-linux:
     name: Build Linux (AppImage)
+    environment: release
     runs-on: ubuntu-latest
     if: github.event_name == 'push' || github.event.inputs.build_target == 'all' || github.event.inputs.build_target == 'linux'
 
@@ -165,6 +170,7 @@ jobs:
 
   build-macos-arm64:
     name: Build macOS ARM64 (DMG)
+    environment: release
     runs-on: macos-15
     if: github.event_name == 'push' || github.event.inputs.build_target == 'all' || github.event.inputs.build_target == 'macos' || github.event.inputs.build_target == 'macos-arm64'
 
@@ -275,6 +281,7 @@ jobs:
 
   build-macos-x64:
     name: Build macOS Intel x64 (DMG)
+    environment: release
     runs-on: macos-15-intel
     if: github.event_name == 'push' || github.event.inputs.build_target == 'all' || github.event.inputs.build_target == 'macos' || github.event.inputs.build_target == 'macos-x64'
 
@@ -348,6 +355,7 @@ jobs:
 
   build-windows-store:
     name: Build Windows Store (MSIX)
+    environment: release
     runs-on: windows-latest
     if: |
       (github.event_name == 'push' && !contains(github.ref_name, '-rc')) ||

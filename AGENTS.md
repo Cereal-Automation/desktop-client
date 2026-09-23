@@ -156,6 +156,11 @@ For flows, extend `FlowInteractor<ReturnType, Params>`.
 - Standard Kotlin formatting: 4-space indentation, trailing commas in multi-line parameter lists.
 - Use `ktlintFormat` to auto-fix most violations.
 
+### Commits
+
+- Sign off every commit (`git commit -s`): CI's DCO check fails a pull request with any commit lacking a
+  `Signed-off-by` for its author, and `master` accepts changes only through a pull request. See `CONTRIBUTING.md`.
+
 ### Compose Best Practices
 
 - Hoist state up; use unidirectional data flow.

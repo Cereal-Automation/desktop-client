@@ -76,12 +76,12 @@ The purge needs two values; **until both are set the purge is skipped with a war
 succeed, but stale-cache mismatches remain possible):
 
 - `CLOUDFLARE_ZONE_ID` — repository **variable**, the zone id of `cereal-automation.com`.
-- `CLOUDFLARE_CACHE_PURGE_TOKEN` — repository **secret**, a Cloudflare API token scoped to only the
+- `CLOUDFLARE_CACHE_PURGE_TOKEN` — `release` environment **secret**, a Cloudflare API token scoped to only the
   **Zone → Cache Purge** permission on that zone.
 
 ```bash
 gh variable set CLOUDFLARE_ZONE_ID --repo Cereal-Automation/desktop-client --body '<zone-id>'
-gh secret   set CLOUDFLARE_CACHE_PURGE_TOKEN --repo Cereal-Automation/desktop-client --body '<api-token>'
+gh secret   set CLOUDFLARE_CACHE_PURGE_TOKEN --repo Cereal-Automation/desktop-client --env release --body '<api-token>'
 ```
 
 ### Manually verifying / fixing the served files
@@ -124,10 +124,10 @@ Then:
 1. Paste the contents of `release_public.pem` into `releasePublicKey` in
    [`CerealConfiguration.kt`](../cereal-client/src/main/java/com/cereal/client/infrastructure/CerealConfiguration.kt).
 2. Add the **full contents** of `release_private.pem` (the PEM, including the
-   `-----BEGIN/END PRIVATE KEY-----` lines) as the `RELEASE_PRIVATE_KEY` repository secret:
+   `-----BEGIN/END PRIVATE KEY-----` lines) as the `RELEASE_PRIVATE_KEY` secret of the `release` environment:
 
    ```bash
-   gh secret set RELEASE_PRIVATE_KEY --repo Cereal-Automation/desktop-client < release_private.pem
+   gh secret set RELEASE_PRIVATE_KEY --repo Cereal-Automation/desktop-client --env release < release_private.pem
    ```
 
 3. Securely delete the local private key:
