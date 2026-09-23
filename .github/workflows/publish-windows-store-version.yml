@@ -22,6 +22,7 @@ env:
 jobs:
   publish-version:
     name: Publish Windows Store Version JSON
+    environment: release
     runs-on: ubuntu-latest
 
     steps:

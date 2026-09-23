@@ -18,6 +18,31 @@ permissions:
 
 jobs:
 
+  dco:
+    name: DCO
+    runs-on: ubuntu-latest
+    # CONTRIBUTING.md requires every commit to carry a Signed-off-by matching its author. This is
+    # the check that makes it a rule rather than a request; the default-branch ruleset requires it.
+    if: github.event_name == 'pull_request'
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+      - name: Checking sign-off
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          fail=0
+          for c in $(git rev-list --no-merges "$BASE_SHA..$HEAD_SHA"); do
+            email=$(git show -s --format=%ae "$c")
+            if ! git show -s --format='%(trailers:key=Signed-off-by,valueonly)' "$c" | grep -qiF "<$email>"; then
+              echo "::error::$(git show -s --format='%h %s' "$c") has no Signed-off-by for <$email>. Fix with: git rebase --signoff $BASE_SHA"
+              fail=1
+            fi
+          done
+          exit $fail
+
   validate:
     name: Validate gradle wrapper
     runs-on: ubuntu-latest
