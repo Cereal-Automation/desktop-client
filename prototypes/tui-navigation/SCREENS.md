@@ -49,9 +49,9 @@ The verdict lives on the ticket's resolution comment. Every screen below is 80x2
  Status: ▶ Running - Waiting for browser interaction...
 
  ! Waiting for browser interaction: Solve captcha on nike.com
-   Open http://<server-ip>:6080/vnc.html
+   Open http://<server-ip>:6080/prompt/7660
    Password: k7Qm-2xPa
-   Finish it in the Chrome window there. Only way to cancel: x (stop task).
+   Finish it on that page. Only way to cancel: x (stop task).
 
  Logs [ALL]  (f cycles ALL/INFO/WARN/ERR)
    INFO Started
@@ -103,15 +103,15 @@ The verdict lives on the ticket's resolution comment. Every screen below is 80x2
 ```text
  1 Tasks [2 Waiting 3!] 3 Proxies  4 Settings                 4 running  v1.9.0
 ────────────────────────────────────────────────────────────────────────────────
- Tasks waiting for you (browser prompts share one noVNC display):
+ Tasks waiting for you:
 
  > BROWSER  Nike SNKRS Monitor #2  - Solve captcha on nike.com
    INPUT    Zalando Restock #1  - 2FA code
    CONTINUE Footlocker Raffle #2  - continue
 
- noVNC: http://<server-ip>:6080/vnc.html
+ Prompt page: http://<server-ip>:6080/
  Password: k7Qm-2xPa
- Each prompt is its own Chrome window, titled with script + task number.
+ It lists each browser prompt by script + task number.
 
 
 

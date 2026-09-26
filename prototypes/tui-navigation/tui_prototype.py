@@ -12,10 +12,10 @@ Run:   python3 tui_prototype.py                  (fake data, fake tasks that tic
        python3 tui_prototype.py --update=required
        python3 tui_prototype.py --dump           (print every screen at 80x24, for SCREENS.md)
 """
-import os, select, shutil, signal, sys, termios, tty
+import os, select, shutil, signal, sys, termios, tty, zlib
 
-VNC = "http://<server-ip>:6080/vnc.html"   # noVNC address (ticket: browser prompts)
-VNC_PW = "k7Qm-2xPa"                        # generated at boot unless CEREAL_VNC_PASSWORD
+PROMPTS = "http://<server-ip>:6080"        # prompt page served by Cereal (ticket: browser prompts)
+PROMPT_PW = "k7Qm-2xPa"                     # generated at boot unless CEREAL_PROMPT_PASSWORD
 DETACH = "Ctrl-P Ctrl-Q detaches (docker attach)"  # or "Ctrl-B d detaches (tmux)"
 VERSION, NEW_VERSION = "1.9.0", "1.10.0"
 UPGRADE = ["docker pull ghcr.io/cereal-automation/cereal:latest",
@@ -105,14 +105,15 @@ def body_tasks():
 def sel_task():
     return list(all_tasks())[S["sel"]]
 
-def ask_block(t):
+def ask_block(s, t):
     a = t["ask"]
     if not a:
         return []
     if a[0] == "browser":
         return [f" ! Waiting for browser interaction: {a[1]}",
-                f"   Open {VNC}", f"   Password: {VNC_PW}",
-                "   Finish it in the Chrome window there. Only way to cancel: x (stop task)."]
+                f"   Open {PROMPTS}/prompt/{zlib.crc32(f'{s["title"]}#{t["n"]}'.encode()) & 0xffff:04x}",
+                f"   Password: {PROMPT_PW}",
+                "   Finish it on that page. Only way to cancel: x (stop task)."]
     if a[0] == "text":
         return [f" ! {a[1]}: {a[2]}", "   i  type the answer"]
     return [" ! The script is waiting for you to continue.", "   c  continue"]
@@ -120,7 +121,7 @@ def ask_block(t):
 def body_task():
     g, s, t = S["detail"]
     rows = [f" {g['name']} / {s['title']} / task #{t['n']}", f" Status: {ICON[t['status']]} {t['status']} - {t['msg']}", ""]
-    rows += ask_block(t) + ([""] if t["ask"] else [])
+    rows += ask_block(s, t) + ([""] if t["ask"] else [])
     rows.append(f" Logs [{S['filter']}]  (f cycles ALL/INFO/WARN/ERR)")
     logs = [l for l in t["logs"] if S["filter"] == "ALL" or l.startswith(S["filter"])]
     rows += ["   " + l for l in logs] or ["   (no log lines)"]
@@ -128,13 +129,13 @@ def body_task():
 
 def body_waiting():
     w = waiting()
-    rows = [" Tasks waiting for you (browser prompts share one noVNC display):", ""]
+    rows = [" Tasks waiting for you:", ""]
     for i, (g, s, t) in enumerate(w):
         cur = ">" if i == S["sel"] else " "
         rows.append(f" {cur} {ask_label(t['ask']):<8} {s['title']} #{t['n']}  - {t['ask'][1] if len(t['ask']) > 1 else 'continue'}")
     if any(t["ask"][0] == "browser" for _, _, t in w):
-        rows += ["", f" noVNC: {VNC}", f" Password: {VNC_PW}",
-                 " Each prompt is its own Chrome window, titled with script + task number."]
+        rows += ["", f" Prompt page: {PROMPTS}/", f" Password: {PROMPT_PW}",
+                 " It lists each browser prompt by script + task number."]
     if not w:
         rows.append("   Nothing is waiting.")
     return rows, len(w), "↑↓ select  Enter answer/open task  x stop task"
