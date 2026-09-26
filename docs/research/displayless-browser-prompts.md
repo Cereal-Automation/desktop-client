@@ -66,25 +66,33 @@ human finish a page opened by `showUrl` / `showHtml` (a captcha, a login, a chec
 
 ## Recommendation
 
-- **Ship A first, behind a flag, as the zero-code path.** Document an `Xvfb + x11vnc -localhost + noVNC`
-  compose recipe, keep `headless = false`, and expose noVNC only through TLS or a reverse proxy with auth.
-  It works with every page today, including the checkout flow.
-- **Offer C as the documented power-user and ops fallback.** It costs nothing: just log the CDP port, or make
-  it configurable.
-- **Treat B as the long-term product feature** if a headless/TUI Cereal is a first-class target. It is the
-  only option that gives a slim image, prompt-scoped UX and Cereal-owned auth. Budget for the experimental
-  status of screencast and for keyboard fidelity.
+Constraint (added after review): headless mode must not ship `headless = false` support. A headful Chrome
+needs an X server (Xvfb, x11vnc, websockify, fonts), and that raises the total binary and image size too much.
+Chrome runs `--headless=new` only, which rules out A.
+
+- **B is the in-product path.** Cereal serves the tab's `Page.startScreencast` frames and forwards
+  `Input.dispatch*` events, with Chrome on `--headless=new`. It gives a slim image with no X stack, a
+  prompt-scoped UX and Cereal-owned auth. Budget for the experimental status of screencast, for keyboard/IME
+  fidelity, and for the missing native dialogs, file pickers and drag.
+- **C is the documented power-user and ops fallback.** It works with `--headless=new` too (DevTools
+  screencasts the headless tab) and costs almost nothing: log the CDP port, or make it configurable.
+- **E stays an option** for users who need their own browser and fingerprint. It needs no X stack on the server.
+- **A is dropped.** It is the only option that works with every page with zero code, but it needs
+  `headless = false` and the X stack.
 - **Never do D.**
+
+Consequence: the `--headless=new` detection question below is no longer secondary. Every prompt runs headless,
+so if captcha providers escalate on it, B and C both suffer and there is no headful escape hatch on the server.
+Test it against the real providers before committing to the build.
 
 ## Open questions / not verified
 
-- Does `--headless=new` still leak detectable signals (UA token, `navigator.webdriver`, GPU/codec
-  differences) that make captcha providers escalate? Secondary sources disagree on the UA token and I found no
-  first-party statement. Relevant to B and to any `headless = true` switch. Test it against the real
-  providers the scripts hit.
+- **(Blocking for B.)** Does `--headless=new` still leak detectable signals (UA token, `navigator.webdriver`,
+  GPU/codec differences) that make captcha providers escalate? Secondary sources disagree on the UA token and I
+  found no first-party statement. With A dropped, every server-side prompt runs headless. Test it against the
+  real providers the scripts hit.
 - Who "owns" a `UserInteraction.Browser` when no Compose window exists (TUI, daemon)? It has to be a
   non-Compose handler, and the choice between A, B and C shapes it.
 - How does the remote human learn a prompt is waiting (notification, TUI, link in Discord)? And how long do we
   keep the browser alive before cancelling (checkout already uses 10 min)?
-- Multiple concurrent prompts: A needs one display per prompt or window management. B and C are naturally
-  per tab.
+- Multiple concurrent prompts: B and C are naturally per tab.
