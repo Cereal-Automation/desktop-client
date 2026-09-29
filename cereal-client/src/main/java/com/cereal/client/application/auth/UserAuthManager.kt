@@ -68,6 +68,8 @@ class UserAuthManager(
     }
 
     suspend fun deauthenticate() {
+        // Stop running tasks first: persisting their Idle status needs the session user.
+        taskManager.stopAllTasks()
         discordRepository.disconnect()
         taskManager.removeAllTasks()
         sessionRepository.setSessionUser(null)

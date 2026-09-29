@@ -15,9 +15,12 @@ import com.cereal.client.domain.repository.ScriptInstanceRepository
 import com.cereal.client.domain.repository.TasksRepository
 import com.cereal.client.presentation.tasks.script.overview.configuration.isValid
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.CoroutineStart
+import kotlinx.coroutines.DelicateCoroutinesApi
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
@@ -71,6 +74,16 @@ class TaskManager(
 
     suspend fun removeAllTasks() {
         tasksRepository.removeAllTasks()
+    }
+
+    /**
+     * Stops every running task through [stopTask] and waits until each job has persisted its final
+     * (`Idle`) status. Call this before the session is cleared, since persisting a status needs the user.
+     */
+    suspend fun stopAllTasks() {
+        val runningTasks = tasksRepository.getAllTasks().first().filter { it.status.isRunning() }
+        runningTasks.forEach { stopTask(it.id) }
+        runningTasks.forEach { tasksRepository.getTask(it.id)?.job?.join() }
     }
 
     suspend fun createTasks(scriptInstance: ScriptInstance): List<JobTask> {
@@ -152,8 +165,10 @@ class TaskManager(
 
             tasksRepository.createPersistedTask(freshTask.id)
             tasksRepository.addStatusHistory(freshTask.id, TaskStatus.Running("Starting script", Clock.System.now()))
+            // ATOMIC: a job cancelled before it is dispatched still runs, so the executor persists its Idle status.
+            @OptIn(DelicateCoroutinesApi::class)
             val job =
-                scope.launch(dispatcherProvider.io) {
+                scope.launch(dispatcherProvider.io, start = CoroutineStart.ATOMIC) {
                     val result = executor.run()
                     withContext(NonCancellable) {
                         tasksRepository.addStatusHistory(freshTask.id, result)
