@@ -270,6 +270,14 @@ is unavailable. The dependency is `compose-ui-test-junit4` (`ui-test-junit4`); u
 }
 ```
 
+### Headless-mode TUI tests
+
+The TUI (`presentation/headless/`) is tested through `testutil/HeadlessTestHarness.kt`:
+`runHeadlessTest(size, environment, seed) { ... }` boots the real interactor graph on the in-memory
+repository/provider modules, renders the real `runTui` adapter into Kotter's `InMemoryTerminal`, and
+lets the block `press(...)`/`type(...)`, `resize(w, h)` and `awaitText(...)`/`awaitScreen { }` on the
+rendered rows. These run everywhere (no native graphics). See `presentation/headless/HeadlessTuiTest.kt`.
+
 ---
 
 ## Secrets Management

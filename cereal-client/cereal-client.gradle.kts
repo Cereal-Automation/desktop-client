@@ -139,6 +139,8 @@ dependencies {
     implementation(libs.kamel)
     implementation(libs.ktor.client.okhttp)
     implementation(libs.kdriver)
+    // Headless mode TUI (Kotter on JLine)
+    implementation(libs.kotter)
     implementation(libs.markdown.renderer)
 
     // Jakarta Mail
@@ -160,6 +162,7 @@ dependencies {
     testImplementation(libs.okhttp.tls)
 
     testImplementation(libs.compose.ui.test.junit4)
+    testImplementation(libs.kotter.test.support)
 }
 
 tasks {
@@ -219,6 +222,8 @@ compose.desktop {
                 "proguard-rules/kdriver.pro",
                 "proguard-rules/commons-logging.pro",
                 "proguard-rules/jna.pro",
+                "proguard-rules/jline.pro",
+                "proguard-rules/kotter.pro",
             )
             obfuscate.set(true)
             joinOutputJars.set(true)

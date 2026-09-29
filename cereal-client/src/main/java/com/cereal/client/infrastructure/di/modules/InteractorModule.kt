@@ -88,6 +88,7 @@ import com.cereal.client.application.interactor.task.GetTaskGroupsInteractor
 import com.cereal.client.application.interactor.task.ObserveTasksInteractor
 import com.cereal.client.application.interactor.task.StartAllTasksInScriptPackageInstanceInteractor
 import com.cereal.client.application.interactor.task.StartTaskInteractor
+import com.cereal.client.application.interactor.task.StopAllRunningTasksInteractor
 import com.cereal.client.application.interactor.task.StopTaskInteractor
 import com.cereal.client.application.interactor.task.StopTasksInScriptPackageInstanceInteractor
 import com.cereal.client.application.interactor.task.UserInteractionDismissedInteractor
@@ -132,6 +133,7 @@ object InteractorModule {
             factory { ObserveTasksInteractor(get()) }
             factory { StartTaskInteractor(get()) }
             factory { StopTaskInteractor(get()) }
+            factory { StopAllRunningTasksInteractor(get()) }
             factory { StopTasksInScriptPackageInstanceInteractor(get(), get()) }
             factory { StartAllTasksInScriptPackageInstanceInteractor(get(), get()) }
             factory { UserInteractionDismissedInteractor(get()) }
