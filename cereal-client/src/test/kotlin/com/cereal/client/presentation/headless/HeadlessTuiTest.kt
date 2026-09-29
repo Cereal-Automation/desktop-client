@@ -14,12 +14,12 @@ class HeadlessTuiTest {
     @Test
     fun `renders the frame at 80x24 with tabs, footer and quit hint`() =
         runHeadlessTest {
-            val screen = awaitText("q quit")
+            val screen = awaitText("1-5 tabs")
 
-            assertEquals(24, screen.size)
-            assertTrue(screen.all { it.length <= 80 })
-            assertTrue(screen.first().contains("[1 Tasks]"))
-            assertTrue(screen.first().contains("5 Notifications"))
+            assertEquals(24, screen.size, screen.joinToString("\n") { "|$it|" })
+            assertTrue(screen.all { it.length <= 80 }, screen.joinToString("\n") { "|$it|" })
+            assertTrue(screen.first().contains("[1 Tasks]"), screen.joinToString("\n") { "|$it|" })
+            assertTrue(screen.first().contains("5 Notifications"), screen.joinToString("\n") { "|$it|" })
             assertEquals("1-5 tabs", screen[22])
             assertEquals("q quit", screen[23])
         }
@@ -85,7 +85,7 @@ class HeadlessTuiTest {
     @Test
     fun `resize repaints the whole frame at the new size, truncating instead of wrapping`() =
         runHeadlessTest {
-            awaitText("q quit")
+            awaitText("1-5 tabs")
 
             resize(40, 12)
 

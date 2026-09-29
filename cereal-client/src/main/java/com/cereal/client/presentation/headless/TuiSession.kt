@@ -41,8 +41,13 @@ fun runTui(
             rerender()
         }
         val extra = whileRunning?.let { block -> section.coroutineScope.async { runCatching { block() } } }
-        tui.awaitQuit()
-        tui.shutdown()
-        extra?.await()?.getOrThrow()
+        try {
+            tui.awaitQuit()
+            tui.shutdown()
+            extra?.await()?.getOrThrow()
+        } finally {
+            // Boot or sign-in may still report back after the session ends; the terminal is closed by then.
+            tui.onChanged = {}
+        }
     }
 }

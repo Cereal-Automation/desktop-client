@@ -1,6 +1,13 @@
 package com.cereal.client.presentation.headless
 
+import com.cereal.client.application.ApplicationConfig
 import com.cereal.client.application.Interactor
+import com.cereal.client.application.auth.UserAuthenticatingState
+import com.cereal.client.application.interactor.auth.AuthenticateInteractor
+import com.cereal.client.application.interactor.auth.GetAuthenticatedUserInteractor
+import com.cereal.client.application.interactor.bootstrap.BootstrapInteractor
+import com.cereal.client.application.interactor.bootstrap.BootstrapInteractor.BootstrapSequenceIdentifier
+import com.cereal.client.application.interactor.bootstrap.BootstrapState
 import com.cereal.client.application.interactor.task.ObserveTasksInteractor
 import com.cereal.client.application.interactor.task.StopAllRunningTasksInteractor
 import com.github.kittinunf.result.coroutines.SuspendableResult
@@ -8,6 +15,8 @@ import com.varabyte.kotter.foundation.input.CharKey
 import com.varabyte.kotter.foundation.input.Key
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.FlowPreview
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 
 /**
@@ -17,11 +26,16 @@ import kotlinx.coroutines.launch
  * ([frame]); [runTui] is the thin adapter that paints it and feeds keys in. Call [onChanged] after
  * any async state change so the adapter repaints.
  */
+@OptIn(FlowPreview::class)
 class HeadlessTui(
-    scope: CoroutineScope,
+    private val scope: CoroutineScope,
     private val detachHint: String?,
     observeTasksInteractor: ObserveTasksInteractor,
     private val stopAllRunningTasksInteractor: StopAllRunningTasksInteractor,
+    private val bootstrapInteractor: BootstrapInteractor,
+    private val getAuthenticatedUserInteractor: GetAuthenticatedUserInteractor,
+    private val authenticateInteractor: AuthenticateInteractor,
+    config: ApplicationConfig,
     val tabs: List<TuiPage> = defaultTabs(),
 ) {
     private enum class QuitState { NONE, CONFIRMING, STOPPING }
@@ -41,6 +55,12 @@ class HeadlessTui(
 
     private val quit = CompletableDeferred<Unit>()
 
+    private val loginPage = LoginPage(config.marketplaceRegisterUrl, config.marketplaceForgotPasswordUrl, ::signIn)
+
+    /** The pre-tab screen (boot status, login) in front of the tabs, or null once signed in. */
+    @Volatile
+    private var preTab: TuiPage? = StatusPage(STARTING)
+
     init {
         scope.launch {
             observeTasksInteractor(Interactor.None()).collect { result ->
@@ -50,17 +70,63 @@ class HeadlessTui(
                 }
             }
         }
+        scope.launch { boot() }
+    }
+
+    /** Runs the bootstrap (no update check, no tray); a stored session lands on the tabs, anything else on login. */
+    private suspend fun boot() {
+        var error: String? = null
+        bootstrapInteractor(BootstrapInteractor.Params(startAt = BootstrapSequenceIdentifier.BootingUp, headless = true))
+            .collect { result ->
+                when (result) {
+                    is SuspendableResult.Success -> show(StatusPage(result.value.state.statusLine()))
+                    is SuspendableResult.Failure -> error = result.error.message
+                }
+            }
+        val signedIn = (getAuthenticatedUserInteractor(Interactor.None()).first() as? SuspendableResult.Success)?.value != null
+        if (error == null && signedIn) {
+            show(null)
+        } else {
+            loginPage.showError(error)
+            show(loginPage)
+        }
+    }
+
+    private fun signIn(
+        email: String,
+        password: String,
+    ) {
+        scope.launch {
+            var error: String? = null
+            authenticateInteractor(AuthenticateInteractor.Params(email, password)).collect { result ->
+                when (result) {
+                    is SuspendableResult.Success -> loginPage.showStatus(result.value.statusLine())
+                    is SuspendableResult.Failure -> error = result.error.message
+                }
+                onChanged()
+            }
+            if (error == null) show(null) else loginPage.showError(error)
+            onChanged()
+        }
+    }
+
+    private fun show(page: TuiPage?) {
+        preTab = page
+        onChanged()
     }
 
     fun frame(
         width: Int,
         height: Int,
     ): List<String> {
-        val page = tabs[selectedTab]
-        val header = listOf(tabBar(), banner())
+        val preTab = preTab
+        val page = preTab ?: tabs[selectedTab]
+        val header = listOf(preTab?.title ?: tabBar(), banner())
         val footer =
             listOf(
-                listOf("1-${tabs.size} tabs", page.keys).filter { it.isNotBlank() }.joinToString(" · "),
+                listOfNotNull(if (preTab == null) "1-${tabs.size} tabs" else null, page.keys)
+                    .filter { it.isNotBlank() }
+                    .joinToString(" · "),
                 listOfNotNull("q quit", detachHint?.let { "detach: $it" }).joinToString(" · "),
             )
         val bodyHeight = (height - header.size - footer.size).coerceAtLeast(0)
@@ -81,9 +147,10 @@ class HeadlessTui(
             }
 
             QuitState.NONE -> {
-                if (tabs[selectedTab].onKey(key)) return onChanged()
+                val preTab = preTab
+                if ((preTab ?: tabs[selectedTab]).onKey(key)) return onChanged()
                 when (char) {
-                    in '1'..('0' + tabs.size) -> selectedTab = char!! - '1'
+                    in '1'..('0' + tabs.size) -> if (preTab == null) selectedTab = char!! - '1'
                     'q' -> requestQuit()
                 }
             }
@@ -142,6 +209,23 @@ class HeadlessTui(
         }
 
     companion object {
+        private const val STARTING = "Starting Cereal…"
+
+        private fun BootstrapState.statusLine(): String =
+            when (this) {
+                BootstrapState.MarketplaceUnreachable -> "Can't reach the marketplace, retrying…"
+                BootstrapState.SynchronizeScripts -> "Synchronising scripts…"
+                BootstrapState.RestoringTasks -> "Restoring tasks…"
+                else -> STARTING
+            }
+
+        private fun UserAuthenticatingState.statusLine(): String =
+            when (this) {
+                UserAuthenticatingState.InitializingDiscord -> "Signing in…"
+                is UserAuthenticatingState.SyncScripts -> "Synchronising scripts ($completed/$total)…"
+                UserAuthenticatingState.RestoreTasks -> "Restoring tasks…"
+            }
+
         fun defaultTabs(): List<TuiPage> = listOf("Tasks", "Waiting", "Proxies", "Settings", "Notifications").map { PlaceholderPage(it) }
 
         /** The multiplexer key that detaches without stopping anything, or null when there is none. */

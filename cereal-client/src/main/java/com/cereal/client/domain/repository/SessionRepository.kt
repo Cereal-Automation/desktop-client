@@ -12,6 +12,13 @@ import kotlinx.coroutines.flow.Flow
 interface SessionRepository {
     suspend fun setSessionUser(user: User?)
 
+    /**
+     * Returns the stored user once the marketplace accepts its token, or null when there is no
+     * stored token or the marketplace rejected it (a `401`, session lost).
+     *
+     * Throws `MarketplaceUnreachableException` (application layer) on a network failure or 5xx: the
+     * stored session may still be valid, so callers retry or fall back instead of showing login.
+     */
     suspend fun getStoredUser(): User?
 
     /**

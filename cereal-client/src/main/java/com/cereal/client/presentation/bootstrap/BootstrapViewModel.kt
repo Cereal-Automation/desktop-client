@@ -194,6 +194,7 @@ class BootstrapViewModel(
             BootstrapState.Finished -> "Bootstrap finished"
             BootstrapState.RestoringTasks -> "Restoring tasks"
             BootstrapState.RestoreUser -> "Checking authentication"
+            BootstrapState.MarketplaceUnreachable -> "Can't reach the marketplace, retrying…"
             BootstrapState.SynchronizeScripts -> "Updating scripts"
             BootstrapState.CheckingForUpdates -> "Checking for updates"
             is BootstrapState.Interrupted -> "Waiting user response..."

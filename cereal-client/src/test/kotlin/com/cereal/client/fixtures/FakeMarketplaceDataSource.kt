@@ -37,6 +37,9 @@ class FakeMarketplaceDataSource : MarketplaceDataSource {
     /** Canned user returned by [getAuthenticatedUser]. */
     var authenticatedUser: User = defaultUser
 
+    /** When set, [getAuthenticatedUser] throws it instead (a 401, a 5xx, a network failure). */
+    var authenticatedUserError: Exception? = null
+
     /** Canned subscriptions returned by [getMySubscriptions]. */
     var mySubscriptions: List<Subscription> = emptyList()
 
@@ -134,7 +137,7 @@ class FakeMarketplaceDataSource : MarketplaceDataSource {
         unsubscribedPackageIds.add(publicScriptId)
     }
 
-    override suspend fun getAuthenticatedUser(): User = authenticatedUser
+    override suspend fun getAuthenticatedUser(): User = authenticatedUserError?.let { throw it } ?: authenticatedUser
 
     override suspend fun forgotPassword(email: String) {
         forgotPasswordEmails.add(email)
