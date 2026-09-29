@@ -2,7 +2,9 @@ package com.cereal.client.presentation.headless
 
 import com.cereal.client.application.ApplicationConfig
 import com.cereal.client.application.Interactor
+import com.cereal.client.application.app.UpdateCheckResult
 import com.cereal.client.application.auth.UserAuthenticatingState
+import com.cereal.client.application.interactor.app.CheckForUpdatesInteractor
 import com.cereal.client.application.interactor.auth.AuthenticateInteractor
 import com.cereal.client.application.interactor.auth.GetAuthenticatedUserInteractor
 import com.cereal.client.application.interactor.bootstrap.BootstrapInteractor
@@ -36,6 +38,9 @@ class HeadlessTui(
     private val getAuthenticatedUserInteractor: GetAuthenticatedUserInteractor,
     private val authenticateInteractor: AuthenticateInteractor,
     config: ApplicationConfig,
+    private val checkForUpdatesInteractor: CheckForUpdatesInteractor,
+    /** The upgrade commands for this distribution, given the new version (see [UpdatePage.upgradeCommands]). */
+    private val upgradeCommands: (version: String) -> List<String>,
     val tabs: List<TuiPage> = defaultTabs(),
 ) {
     private enum class QuitState { NONE, CONFIRMING, STOPPING }
@@ -61,6 +66,14 @@ class HeadlessTui(
     @Volatile
     private var preTab: TuiPage? = StatusPage(STARTING)
 
+    /** The newer version the banner advertises, or null when up to date (or blocked by a required update). */
+    @Volatile
+    private var availableUpdate: String? = null
+
+    /** The `U` overlay with the upgrade commands, drawn over whatever screen is showing. */
+    @Volatile
+    private var upgradeOverlay: TuiPage? = null
+
     init {
         scope.launch {
             observeTasksInteractor(Interactor.None()).collect { result ->
@@ -73,8 +86,24 @@ class HeadlessTui(
         scope.launch { boot() }
     }
 
-    /** Runs the bootstrap (no update check, no tray); a stored session lands on the tabs, anything else on login. */
+    /**
+     * Checks for updates, then runs the bootstrap (no tray); a stored session lands on the tabs,
+     * anything else on login. A required update stops here: the bootstrap never runs, so no session
+     * is restored and no task starts, exactly as the desktop's interrupted bootstrap.
+     */
     private suspend fun boot() {
+        when (val update = checkForUpdates()) {
+            is UpdateCheckResult.UpdateRequired -> {
+                val version = update.version.version.toString()
+                return show(UpdatePage.required(version, upgradeCommands(version)))
+            }
+
+            is UpdateCheckResult.UpdateAvailable -> {
+                availableUpdate = update.version.version.toString()
+            }
+
+            else -> {}
+        }
         var error: String? = null
         bootstrapInteractor(BootstrapInteractor.Params(startAt = BootstrapSequenceIdentifier.BootingUp, headless = true))
             .collect { result ->
@@ -90,6 +119,13 @@ class HeadlessTui(
             loginPage.showError(error)
             show(loginPage)
         }
+    }
+
+    /** The desktop's check, never followed by a download or install; a failed check counts as up to date. */
+    private suspend fun checkForUpdates(): UpdateCheckResult? {
+        var update: UpdateCheckResult? = null
+        checkForUpdatesInteractor(Interactor.None()) { update = (it as? SuspendableResult.Success)?.value }
+        return update
     }
 
     private fun signIn(
@@ -119,7 +155,7 @@ class HeadlessTui(
         width: Int,
         height: Int,
     ): List<String> {
-        val preTab = preTab
+        val preTab = upgradeOverlay ?: preTab
         val page = preTab ?: tabs[selectedTab]
         val header = listOf(preTab?.title ?: tabBar(), banner())
         val footer =
@@ -147,10 +183,15 @@ class HeadlessTui(
             }
 
             QuitState.NONE -> {
+                if (upgradeOverlay != null && char != 'q') {
+                    upgradeOverlay = null
+                    return onChanged()
+                }
                 val preTab = preTab
                 if ((preTab ?: tabs[selectedTab]).onKey(key)) return onChanged()
                 when (char) {
                     in '1'..('0' + tabs.size) -> if (preTab == null) selectedTab = char!! - '1'
+                    'U', 'u' -> availableUpdate?.let { upgradeOverlay = UpdatePage.commands(it, upgradeCommands(it)) }
                     'q' -> requestQuit()
                 }
             }
@@ -192,10 +233,11 @@ class HeadlessTui(
         return labels.joinToString("  ") + status
     }
 
+    /** The single banner line. Priority: the quit prompt, then an available update, then (#37) no channel. */
     private fun banner(): String =
         when (quitState) {
             QuitState.NONE -> {
-                ""
+                availableUpdate?.let { "Update $it available. Press U for the upgrade commands." } ?: ""
             }
 
             QuitState.CONFIRMING -> {
