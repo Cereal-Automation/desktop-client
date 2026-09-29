@@ -2,6 +2,7 @@ package com.cereal.client.infrastructure.di.modules
 
 import com.cereal.client.domain.provider.AppUpdateProvider
 import com.cereal.client.domain.provider.AuthProvider
+import com.cereal.client.domain.provider.BrowserPromptProvider
 import com.cereal.client.domain.provider.CheckoutProvider
 import com.cereal.client.domain.provider.CrashReportingProvider
 import com.cereal.client.domain.provider.DatasetFileProvider
@@ -14,6 +15,7 @@ import com.cereal.client.domain.provider.ScriptInstallProvider
 import com.cereal.client.domain.provider.SystemProvider
 import com.cereal.client.infrastructure.provider.inmemory.InMemoryAppUpdateProvider
 import com.cereal.client.infrastructure.provider.inmemory.InMemoryAuthProvider
+import com.cereal.client.infrastructure.provider.inmemory.InMemoryBrowserPromptProvider
 import com.cereal.client.infrastructure.provider.inmemory.InMemoryCheckoutProvider
 import com.cereal.client.infrastructure.provider.inmemory.InMemoryCrashReportingProvider
 import com.cereal.client.infrastructure.provider.inmemory.InMemoryDatasetFileProvider
@@ -53,5 +55,6 @@ object InMemoryProviderModule {
                 InMemoryProxyConnectionProvider(connectorRepository = get(), proxyRepository = get())
             }
             single<CheckoutProvider> { InMemoryCheckoutProvider() }
+            single<BrowserPromptProvider> { InMemoryBrowserPromptProvider() }
         }
 }

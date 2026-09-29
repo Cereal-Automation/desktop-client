@@ -8,7 +8,6 @@ import com.cereal.client.domain.model.task.TaskId
 import com.cereal.client.domain.model.task.TaskStatus
 import com.cereal.client.domain.model.task.UserInteraction
 import com.cereal.client.domain.repository.TasksRepository
-import com.cereal.sdk.component.userinteraction.WebResourceRequest
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -16,7 +15,6 @@ import kotlinx.coroutines.flow.map
 import kotlin.coroutines.resume
 
 class InMemoryTasksRepository(
-    private val userInteractionContinuation: Map<TaskId, WebResourceRequest> = emptyMap(),
     private val textInputContinuation: Map<TaskId, String> = emptyMap(),
 ) : TasksRepository {
     private val tasks = mutableMapOf<String, JobTask>()
@@ -100,14 +98,6 @@ class InMemoryTasksRepository(
             val updatedTask = it.copy(userInteraction = userInteraction)
             tasks[taskId] = updatedTask
             notifyTasksFlow()
-
-            userInteractionContinuation[taskId]?.let { webResourceRequest ->
-                (userInteraction as? UserInteraction.Browser)?.let {
-                    if (userInteraction.shouldFinish(webResourceRequest)) {
-                        userInteraction.continuation.resume(webResourceRequest)
-                    }
-                }
-            }
 
             textInputContinuation[taskId]?.let { textInput ->
                 (userInteraction as? UserInteraction.TextInput)?.let {
