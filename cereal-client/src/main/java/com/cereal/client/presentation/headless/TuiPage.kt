@@ -22,6 +22,9 @@ interface TuiPage {
 
     /** Returns true when the page consumed [key]; unconsumed keys fall through to the frame. */
     fun onKey(key: Key): Boolean = false
+
+    /** Called when this page becomes (true) or stops being (false) the one on screen. */
+    fun onActiveChanged(active: Boolean) {}
 }
 
 /** Stand-in for a tab whose screen is not built yet. */

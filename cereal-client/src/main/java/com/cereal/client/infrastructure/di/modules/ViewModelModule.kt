@@ -13,6 +13,7 @@ import com.cereal.client.presentation.brand.BrandPaywallViewModel
 import com.cereal.client.presentation.customdataset.CustomDatasetViewModel
 import com.cereal.client.presentation.error.ErrorResolver
 import com.cereal.client.presentation.headless.HeadlessTui
+import com.cereal.client.presentation.headless.NotificationsPage
 import com.cereal.client.presentation.main.MainViewModel
 import com.cereal.client.presentation.marketplace.MarketplaceViewModel
 import com.cereal.client.presentation.marketplace.ScriptDetailViewModel
@@ -39,7 +40,10 @@ object ViewModelModule {
         module {
             single { MenuReselectionCoordinator() }
             factory { (scope: CoroutineScope, environment: Map<String, String>) ->
-                HeadlessTui(scope, HeadlessTui.detachHintFor(environment), get(), get(), get(), get(), get(), get())
+                var tui: HeadlessTui? = null
+                val notifications = NotificationsPage(scope, { tui?.onChanged?.invoke() }, get(), get(), get(), get(), get(), get())
+                val tabs = HeadlessTui.defaultTabs().dropLast(1) + notifications
+                HeadlessTui(scope, HeadlessTui.detachHintFor(environment), get(), get(), get(), get(), get(), get(), tabs).also { tui = it }
             }
             factory { MainViewModel(get(), get(), get(), get(), get(), get(), get(), get()) }
             factory { (scope: CoroutineScope, onStartNewInstance: Function1<String, Unit>) ->

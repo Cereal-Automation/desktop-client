@@ -37,7 +37,6 @@ class InMemoryNotificationHistoryRepository : NotificationHistoryRepository {
                 message = message,
                 timestamp = timestamp,
             )
-        notifications.value = notifications.value + history
         attemptsFlow(notificationId).value =
             attempts.map { attempt ->
                 NotificationHistoryAttempt(
@@ -50,6 +49,8 @@ class InMemoryNotificationHistoryRepository : NotificationHistoryRepository {
                     timestamp = timestamp,
                 )
             }
+        // After the attempts, as Room writes both in one transaction.
+        notifications.value = notifications.value + history
     }
 
     override fun observeByTaskId(taskId: String): Flow<List<NotificationHistory>> = notifications.map { all -> all.filter { it.taskId == taskId }.sortedByDescending { it.timestamp } }
