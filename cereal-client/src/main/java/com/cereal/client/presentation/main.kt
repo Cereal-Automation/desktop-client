@@ -12,6 +12,7 @@ import androidx.compose.ui.window.application
 import com.cereal.client.App
 import com.cereal.client.application.exception.CrashReporter
 import com.cereal.client.application.exception.ExceptionFilter
+import com.cereal.client.headless.HeadlessMode
 import com.cereal.client.presentation.bootstrap.BootstrapWindow
 import com.cereal.client.presentation.main.MainWindow
 import com.cereal.client.smoke.SmokeTest
@@ -38,7 +39,8 @@ import kotlin.system.exitProcess
 // We build from scratch (rather than takeFrom KamelConfig.Default) to avoid
 // KamelConfig.Core constructing an Apache-backed HttpClient via ServiceLoader,
 // which fails at runtime because commons-logging is stripped by ProGuard.
-private val kamelConfig =
+// Lazy so headless mode never builds it (and never starts logging) before its TTY check.
+private val kamelConfig by lazy {
     KamelConfig {
         imageBitmapCacheSize = DefaultCacheSize
         imageVectorCacheSize = DefaultCacheSize
@@ -59,9 +61,15 @@ private val kamelConfig =
         svgDecoder()
         animatedImageDecoder()
     }
+}
 
 @OptIn(ExperimentalComposeUiApi::class)
-fun main() {
+fun main(args: Array<String>) {
+    // Headless mode is only ever explicit (`--headless`); without the flag the desktop path below is unchanged.
+    if (HeadlessMode.isRequested(args)) {
+        exitProcess(HeadlessMode.run())
+    }
+
     ensureSafeWindowsTempDir()
 
     // Filter out unavailable assistive technologies to prevent AWTError on Windows when accessibility

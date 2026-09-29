@@ -41,7 +41,7 @@ A script's request to notify — title, message, and optional per-channel payloa
 _Avoid_: notification request, message, alert
 
 **NotificationHistory**:
-The persisted record of one `ScriptNotification` a task produced — title, message, timestamp, owning task. Recorded for *every* notification a script sends, regardless of whether any external channel was configured or delivery succeeded, so it is the complete in-app record of what tasks told the user. Each carries N `NotificationHistoryAttempt`s (one per channel tried, SUCCESS/FAILURE). CASCADE-deleted with its task.
+The persisted record of one `ScriptNotification` a task produced — title, message, timestamp, owning task. Recorded for *every* notification a script sends (and for the task-waiting **Client notification**, which is sent on the task's behalf), regardless of whether any external channel was configured or delivery succeeded, so it is the complete in-app record of what tasks told the user. Each carries N `NotificationHistoryAttempt`s (one per channel tried, SUCCESS/FAILURE). CASCADE-deleted with its task.
 _Avoid_: notification log, sent notification, message record
 
 **Notification center**:
@@ -93,3 +93,37 @@ _Avoid_: unwrap, get, value, plaintext, decrypt (nothing is decrypted here — t
 **Text → Secret migration**:
 A shipped script changing an item's return type from `String` to `Secret` while keeping its key name. The stored value is *coerced* to a secret on read and relabelled `SECRET` on the next save; no ciphertext is decrypted, re-encrypted, or moved. One-directional by design — a `SECRET` stored value against a text definition does **not** coerce back, because a downgrade would start printing a value the user was told is protected.
 _Avoid_: data migration (nothing is rewritten), conversion, upgrade
+
+## Headless mode
+
+**Headless mode**:
+The Cereal client running without a display, started explicitly with `--headless` (never auto-detected). Same process and bootstrap as the desktop, with the **TUI** as its only front end; detaching and reattaching is left to `docker attach` or tmux.
+_Avoid_: server mode, daemon, CLI
+
+**TUI**:
+Headless mode's interactive terminal front end (Kotter on the system terminal): tabs `1`–`5`, a banner line, the body and a two-line footer. Calls interactors directly and never reuses the Compose ViewModels.
+_Avoid_: console, CLI, terminal UI (spell it TUI)
+
+**Session lost**:
+The marketplace rejected the stored token (a `401`). Every running task is stopped (an **Explicit stop**), a **Client notification** is sent, and login is shown with the reason. Distinct from *marketplace unreachable* (network or 5xx), which is retried and never shows login.
+_Avoid_: logged out, token expired, signed out (signing out is the user's own action)
+
+**Pasted sign-in**:
+Google/Discord SSO finished by pasting the dead `127.0.0.1` redirect URL (or its query string) back into the TUI. Races the existing loopback listener; whichever delivers a `code` with a matching `state` first wins.
+_Avoid_: device code flow, manual OAuth
+
+**Task resume**:
+After a restart, headless mode starting again the main-script tasks whose last persisted status is `Running`, i.e. that ended other than through an **Explicit stop**. The script starts over from `onStart`; child-script tasks are relaunched by their parent, not resumed.
+_Avoid_: auto-restart, recovery, restore (restore is the desktop's reset-to-Idle step)
+
+**Explicit stop**:
+A task ending because the user stopped it, quit the TUI, or the session was lost. Recorded as `Idle`, so it is never resumed. A SIGTERM shutdown is not an explicit stop.
+_Avoid_: manual stop, cancel
+
+**Client notification**:
+A notification the client sends on its own behalf rather than a script's: task waiting for you, the restart report, and session lost.
+_Avoid_: system notification (the tray channel), app notification
+
+**Prompt page**:
+The password-protected web page headless mode serves (port 6080) on which the human finishes a script's browser prompt: a live screencast of the headless Chrome with input forwarded over CDP.
+_Avoid_: remote browser, VNC, captcha page
