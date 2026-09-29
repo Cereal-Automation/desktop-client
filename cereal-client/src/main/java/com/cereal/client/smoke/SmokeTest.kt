@@ -39,9 +39,12 @@ object SmokeTest {
      *
      * Catching [Throwable] is deliberate: obfuscation breakage surfaces as `LinkageError`/`Error`
      * (not `Exception`), and the whole point of the gate is to classify those rather than crash.
+     *
+     * [headless] adds the `headless` probe; [com.cereal.client.headless.HeadlessMode] passes it when
+     * the gate runs with `--headless` (the Docker image's entrypoint).
      */
     @Suppress("TooGenericExceptionCaught")
-    fun run(): Int {
+    fun run(headless: Boolean = false): Int {
         isolateHomeDirectory()
 
         val results = mutableListOf<SmokeResult>()
@@ -71,6 +74,9 @@ object SmokeTest {
         results.add(SmokeResult("network", SmokeProbes.exerciseNetwork(koin)))
         results.add(SmokeResult("serialization", SmokeProbes.exerciseSerialization()))
         results.add(SmokeResult("crypto", SmokeProbes.exerciseReleaseSignatureCrypto(koin)))
+        if (headless) {
+            results.add(SmokeResult("headless", SmokeProbes.exerciseHeadless(koin)))
+        }
 
         return finish(results)
     }
