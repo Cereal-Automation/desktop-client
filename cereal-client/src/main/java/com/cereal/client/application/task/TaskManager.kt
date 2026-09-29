@@ -8,14 +8,12 @@ import com.cereal.client.domain.model.script.ScriptPackageInstance
 import com.cereal.client.domain.model.script.getNumberOfConcurrentTasks
 import com.cereal.client.domain.model.task.JobTask
 import com.cereal.client.domain.model.task.TaskStatus
-import com.cereal.client.domain.model.task.UserInteraction
 import com.cereal.client.domain.model.task.filterIdleTasks
 import com.cereal.client.domain.model.task.filterRunningTasks
 import com.cereal.client.domain.repository.ArtifactRepository
 import com.cereal.client.domain.repository.ScriptInstanceRepository
 import com.cereal.client.domain.repository.TasksRepository
 import com.cereal.client.presentation.tasks.script.overview.configuration.isValid
-import com.cereal.sdk.component.userinteraction.UserInteractionCanceledException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.NonCancellable
@@ -177,27 +175,11 @@ class TaskManager(
         // Only proceed if the task is actually running
         if (!task.status.isRunning()) return
 
-        // Cancel any active user interaction first
-        task.userInteraction?.let { userInteraction ->
-            cancelUserInteraction(id, userInteraction)
-        }
+        // Clear any pending user interaction; cancelling the job cancels a browser prompt it owns.
+        if (task.userInteraction != null) tasksRepository.setUserInteraction(id, null)
 
         val message = "Task stopped by user"
         task.job?.cancel(CancellationException(message))
-    }
-
-    private suspend fun cancelUserInteraction(
-        id: String,
-        userInteraction: UserInteraction,
-    ) {
-        if (userInteraction is UserInteraction.Browser && !userInteraction.continuation.isCompleted) {
-            // Cancel the continuation to close the browser window
-            userInteraction.continuation.cancel(
-                UserInteractionCanceledException(),
-            )
-        }
-        // Clear the user interaction from the task
-        tasksRepository.setUserInteraction(id, null)
     }
 
     private suspend fun onTaskFinished(task: JobTask) {

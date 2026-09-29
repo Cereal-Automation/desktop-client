@@ -1,4 +1,4 @@
-package com.cereal.client.presentation.tasks
+package com.cereal.client.infrastructure.provider
 
 import com.cereal.client.application.exception.ChromeNotInstalledException
 import dev.kdriver.core.exceptions.BrowserExecutableNotFoundException

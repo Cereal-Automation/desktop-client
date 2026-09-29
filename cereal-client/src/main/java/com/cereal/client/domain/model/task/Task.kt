@@ -4,20 +4,14 @@ package com.cereal.client.domain.model.task
 
 import com.cereal.client.domain.model.script.ScriptConfigurationValues
 import com.cereal.client.domain.model.script.ScriptInstance
-import com.cereal.sdk.component.userinteraction.WebResourceRequest
 import kotlinx.coroutines.CancellableContinuation
 import kotlin.time.ExperimentalTime
 import kotlin.time.Instant
 
 sealed class UserInteraction {
+    /** A browser prompt is pending. The task owns it through `BrowserPromptProvider`; stop the task to cancel it. */
     data class Browser(
         val title: String,
-        val url: String? = null,
-        val html: String? = null,
-        val shouldFinish: (request: WebResourceRequest) -> Boolean,
-        val continuation: CancellableContinuation<WebResourceRequest>,
-        val headers: Map<String, String>? = null,
-        val onStatusUpdate: suspend (message: String) -> Unit = {},
     ) : UserInteraction()
 
     data class ContinueButton(

@@ -2,6 +2,7 @@ package com.cereal.client.infrastructure.di.modules
 
 import com.cereal.client.domain.provider.AppUpdateProvider
 import com.cereal.client.domain.provider.AuthProvider
+import com.cereal.client.domain.provider.BrowserPromptProvider
 import com.cereal.client.domain.provider.CheckoutProvider
 import com.cereal.client.domain.provider.CrashReportingProvider
 import com.cereal.client.domain.provider.DatasetFileProvider
@@ -15,6 +16,7 @@ import com.cereal.client.domain.provider.SystemProvider
 import com.cereal.client.infrastructure.bootstrap.BootstrapPreferences
 import com.cereal.client.infrastructure.provider.AppUpdateProviderImpl
 import com.cereal.client.infrastructure.provider.AuthProviderImpl
+import com.cereal.client.infrastructure.provider.BrowserPromptProviderImpl
 import com.cereal.client.infrastructure.provider.CheckoutProviderImpl
 import com.cereal.client.infrastructure.provider.CrashReportingProviderImpl
 import com.cereal.client.infrastructure.provider.DatasetFileProviderImpl
@@ -58,6 +60,7 @@ object ProviderModule {
             single<ScriptInstallProvider> { ScriptInstallProviderImpl(get(), get(), get(), get(), get()) }
             single<ProxyConnectionProvider> { ProxyConnectionProviderImpl(get(), get(), get(), get()) }
             single<CheckoutProvider> { CheckoutProviderImpl(get(), get()) }
+            single<BrowserPromptProvider> { BrowserPromptProviderImpl() }
             // BootstrapPreferences.default is resolved here rather than bound in Koin: it is a
             // path holder that deliberately re-resolves the application home on every access.
             single<CrashReportingProvider> { CrashReportingProviderImpl(BootstrapPreferences.default, get()) }
