@@ -74,6 +74,8 @@ class HeadlessTui(
     @Volatile
     private var upgradeOverlay: TuiPage? = null
 
+    private var activePage: TuiPage? = null
+
     init {
         scope.launch {
             observeTasksInteractor(Interactor.None()).collect { result ->
@@ -148,7 +150,18 @@ class HeadlessTui(
 
     private fun show(page: TuiPage?) {
         preTab = page
+        updateActivePage()
         onChanged()
+    }
+
+    /** Tells pages when they come on or go off screen (a tab is on screen only while no pre-tab page is). */
+    @Synchronized
+    private fun updateActivePage() {
+        val page = if (preTab == null) tabs[selectedTab] else null
+        if (page === activePage) return
+        activePage?.onActiveChanged(false)
+        activePage = page
+        page?.onActiveChanged(true)
     }
 
     fun frame(
@@ -190,9 +203,18 @@ class HeadlessTui(
                 val preTab = preTab
                 if ((preTab ?: tabs[selectedTab]).onKey(key)) return onChanged()
                 when (char) {
-                    in '1'..('0' + tabs.size) -> if (preTab == null) selectedTab = char!! - '1'
-                    'U', 'u' -> availableUpdate?.let { upgradeOverlay = UpdatePage.commands(it, upgradeCommands(it)) }
-                    'q' -> requestQuit()
+                    in '1'..('0' + tabs.size) -> {
+                        if (preTab == null) selectedTab = char!! - '1'
+                        updateActivePage()
+                    }
+
+                    'U', 'u' -> {
+                        availableUpdate?.let { upgradeOverlay = UpdatePage.commands(it, upgradeCommands(it)) }
+                    }
+
+                    'q' -> {
+                        requestQuit()
+                    }
                 }
             }
         }
