@@ -1,5 +1,6 @@
 package com.cereal.client.infrastructure.di.modules
 
+import com.cereal.client.application.ApplicationConfig
 import com.cereal.client.domain.model.datasets.DatasetType
 import com.cereal.client.domain.model.script.ScriptPackage
 import com.cereal.client.domain.model.script.ScriptPackageInstance
@@ -13,6 +14,7 @@ import com.cereal.client.presentation.brand.BrandPaywallViewModel
 import com.cereal.client.presentation.customdataset.CustomDatasetViewModel
 import com.cereal.client.presentation.error.ErrorResolver
 import com.cereal.client.presentation.headless.HeadlessTui
+import com.cereal.client.presentation.headless.UpdatePage
 import com.cereal.client.presentation.main.MainViewModel
 import com.cereal.client.presentation.marketplace.MarketplaceViewModel
 import com.cereal.client.presentation.marketplace.ScriptDetailViewModel
@@ -39,7 +41,19 @@ object ViewModelModule {
         module {
             single { MenuReselectionCoordinator() }
             factory { (scope: CoroutineScope, environment: Map<String, String>) ->
-                HeadlessTui(scope, HeadlessTui.detachHintFor(environment), get(), get(), get(), get(), get(), get())
+                val websiteUrl = get<ApplicationConfig>().websiteUrl
+                HeadlessTui(
+                    scope,
+                    HeadlessTui.detachHintFor(environment),
+                    get(),
+                    get(),
+                    get(),
+                    get(),
+                    get(),
+                    get(),
+                    checkForUpdatesInteractor = get(),
+                    upgradeCommands = { version -> UpdatePage.upgradeCommands(environment, websiteUrl, version) },
+                )
             }
             factory { MainViewModel(get(), get(), get(), get(), get(), get(), get(), get()) }
             factory { (scope: CoroutineScope, onStartNewInstance: Function1<String, Unit>) ->
