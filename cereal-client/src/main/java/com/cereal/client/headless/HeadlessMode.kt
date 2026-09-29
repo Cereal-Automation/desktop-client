@@ -5,6 +5,7 @@ import com.cereal.client.infrastructure.bootstrap.ApplicationHome
 import com.cereal.client.infrastructure.headless.HeadlessProcess
 import com.cereal.client.presentation.headless.HeadlessTui
 import com.cereal.client.presentation.headless.runTui
+import com.cereal.client.smoke.SmokeTest
 import com.varabyte.kotter.terminal.system.SystemTerminal
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -34,6 +35,9 @@ object HeadlessMode {
     fun run(): Int {
         // Before anything can touch AWT.
         System.setProperty("java.awt.headless", "true")
+
+        // Release gate inside the image: the same smoke run as the desktop build, plus the headless probe.
+        if (SmokeTest.isRequested()) return SmokeTest.run(headless = true)
 
         if (!HeadlessProcess.hasTty()) {
             System.err.println(NO_TTY_MESSAGE)

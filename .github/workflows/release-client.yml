@@ -22,6 +22,7 @@ on:
           - macos-arm64
           - macos-x64
           - windows-store
+          - docker
         default: 'all'
 
 env:
@@ -61,6 +62,8 @@ env:
   MIN_VERSION_MACOS_X64: ${{ vars.MIN_VERSION_MACOS_X64 }}
   MIN_VERSION_MACOS: ${{ vars.MIN_VERSION_MACOS }}
   MIN_VERSION_WINDOWS_STORE: ${{ vars.MIN_VERSION_WINDOWS_STORE }}
+  # Headless-mode image (multi-arch manifest), built by build-docker and published by publish-docker.
+  DOCKER_IMAGE: ghcr.io/cereal-automation/cereal
 
 # Every secret above is a `release` *environment* secret, not a repository one: a job sees them only
 # if it declares `environment: release`, and that environment requires a maintainer's approval and
@@ -414,6 +417,214 @@ jobs:
           space-region: ${{ env.DO_SPACE_REGION }}
           source: cereal-client/proguard.map
           out-dir: 'client/${{ steps.version.outputs.version }}/msix/'
+
+  # Headless mode as a Docker image, one job per arch on a native runner: jpackage can't cross-build,
+  # so there is no QEMU. Each job builds the same app-image as build-linux, builds the image from it,
+  # runs the smoke gate inside it and only then pushes it by digest; publish-docker tags the manifest.
+  build-docker:
+    name: Build Docker image (${{ matrix.arch }})
+    environment: release
+    runs-on: ${{ matrix.runner }}
+    if: github.event_name == 'push' || github.event.inputs.build_target == 'all' || github.event.inputs.build_target == 'docker'
+    permissions:
+      contents: read
+      packages: write
+    env:
+      # ENABLE WITH #43: set to 'true' once the prompt page exists (see "Smoke test prompt page index").
+      PROMPT_PAGE_SMOKE: 'false'
+    strategy:
+      matrix:
+        include:
+          - arch: amd64
+            runner: ubuntu-24.04
+          - arch: arm64
+            runner: ubuntu-24.04-arm
+
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: ./.github/actions/setup-build-environment
+
+      - name: Parse tag version
+        id: version
+        uses: ./.github/actions/parse-tag-version
+        with:
+          tag: ${{ github.event_name == 'workflow_dispatch' && format('cereal-client/{0}', github.event.inputs.version) || github.ref_name }}
+
+      - uses: ./.github/actions/setup-sekret
+        with:
+          sekret-properties: ${{ env.SEKRET_PROPERTIES }}
+
+      # Same flags as build-appimage, so the image carries the same release app-image as the AppImage.
+      - name: Build app-image (distributable)
+        shell: bash
+        run: |
+          ./gradlew cereal-client:createReleaseDistributable \
+            -Pversion='${{ steps.version.outputs.version-number }}' \
+            -Pdebug=false \
+            -Pflavor=prod \
+            -Pstore_build=false \
+            -Psentry_auth_token=${{ env.SENTRY_AUTH_TOKEN }} \
+            -Psentry_dsn=${{ env.SENTRY_DSN }} \
+            -Penvironment=production \
+            -Psekret_key=${{ env.SEKRET_KEY }}
+
+      - uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
+
+      # The build context is only the app-image directory (see cereal-client/docker/Dockerfile), and
+      # no build args are passed, so neither sekret.properties nor any token reaches a layer.
+      - name: Build image
+        uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
+        with:
+          context: cereal-client/build/compose/binaries/main-release/app
+          file: cereal-client/docker/Dockerfile
+          platforms: linux/${{ matrix.arch }}
+          provenance: false
+          load: true
+          tags: cereal:smoke
+
+      # Every release, not only RCs: this is the only run of the headless path and of Chrome's sandbox
+      # before the image reaches users.
+      - name: Smoke test inside the image
+        shell: bash
+        timeout-minutes: 5
+        env:
+          # The documented run options; seccomp.json is what lets Chrome build its sandbox.
+          RUN_OPTS: --shm-size=1g --security-opt seccomp=cereal-client/docker/seccomp.json
+        run: |
+          set -euo pipefail
+
+          echo "::group::Runs as uid 1000"
+          test "$(docker run --rm --entrypoint id cereal:smoke -u)" = 1000
+          echo "::endgroup::"
+
+          # No --no-sandbox: Chrome aborts ("Failed to move to new namespace") if it can't sandbox.
+          echo "::group::Chrome --headless=new with its sandbox"
+          # shellcheck disable=SC2086
+          docker run --rm $RUN_OPTS --entrypoint google-chrome-stable cereal:smoke \
+            --headless=new --dump-dom 'data:text/html,<p>cereal-smoke</p>' | grep cereal-smoke
+          echo "::endgroup::"
+
+          # The real entrypoint (tini + launcher --headless) with CEREAL_SMOKE_TEST=1: the desktop
+          # probes plus the headless probe, which needs the TTY that -t gives it.
+          # shellcheck disable=SC2086
+          docker run --rm -t $RUN_OPTS -e CEREAL_SMOKE_TEST=1 cereal:smoke
+
+      # Boots the image for real and fetches the prompt page index with and without the password.
+      - name: Smoke test prompt page index (#43)
+        if: env.PROMPT_PAGE_SMOKE == 'true'
+        shell: bash
+        timeout-minutes: 3
+        env:
+          RUN_OPTS: --shm-size=1g --security-opt seccomp=cereal-client/docker/seccomp.json
+        run: |
+          set -euo pipefail
+          # shellcheck disable=SC2086
+          docker run -d -t --name cereal-prompt-smoke $RUN_OPTS -p 127.0.0.1:6080:6080 \
+            -e CEREAL_PROMPT_PASSWORD=cereal-smoke cereal:smoke
+          trap 'docker logs cereal-prompt-smoke || true; docker rm -f cereal-prompt-smoke' EXIT
+          for _ in $(seq 60); do
+            curl -fsS -o /dev/null -u cereal:cereal-smoke http://127.0.0.1:6080/ && break
+            sleep 2
+          done
+          curl -fsS -o /dev/null -u cereal:cereal-smoke http://127.0.0.1:6080/
+          test "$(curl -s -o /dev/null -w '%{http_code}' http://127.0.0.1:6080/)" = 401
+
+      - uses: docker/login-action@dbcb813823bdd20940b903addbd779551569679f # v4.6.0
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      # Same inputs as "Build image", so this is a cache hit that only pushes. By digest only: tags go
+      # on the multi-arch manifest in publish-docker.
+      - name: Push image by digest
+        id: push
+        uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
+        with:
+          context: cereal-client/build/compose/binaries/main-release/app
+          file: cereal-client/docker/Dockerfile
+          platforms: linux/${{ matrix.arch }}
+          provenance: false
+          outputs: type=image,name=${{ env.DOCKER_IMAGE }},push-by-digest=true,name-canonical=true,push=true
+
+      - name: Export digest
+        shell: bash
+        env:
+          DIGEST: ${{ steps.push.outputs.digest }}
+        run: |
+          mkdir -p "$RUNNER_TEMP/digests"
+          touch "$RUNNER_TEMP/digests/${DIGEST#sha256:}"
+
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: docker-digest-${{ matrix.arch }}
+          path: ${{ runner.temp }}/digests/*
+          if-no-files-found: error
+          retention-days: 1
+
+  # Needs no environment secret, only GITHUB_TOKEN (like `release`).
+  publish-docker:
+    name: Publish Docker manifest
+    needs: build-docker
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+      id-token: write
+      attestations: write
+      artifact-metadata: write
+
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Parse tag version
+        id: version
+        uses: ./.github/actions/parse-tag-version
+        with:
+          tag: ${{ github.event_name == 'workflow_dispatch' && format('cereal-client/{0}', github.event.inputs.version) || github.ref_name }}
+
+      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          pattern: docker-digest-*
+          merge-multiple: true
+          path: ${{ runner.temp }}/digests
+
+      - uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
+
+      - uses: docker/login-action@dbcb813823bdd20940b903addbd779551569679f # v4.6.0
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      # The version tag on every release; `latest` only moves on a non-RC release.
+      - name: Create multi-arch manifest
+        id: manifest
+        shell: bash
+        working-directory: ${{ runner.temp }}/digests
+        env:
+          VERSION: ${{ steps.version.outputs.version }}
+          IS_RC: ${{ steps.version.outputs.is-rc }}
+        run: |
+          set -euo pipefail
+          tags=(-t "$DOCKER_IMAGE:$VERSION")
+          if [ "$IS_RC" = 'false' ]; then
+            tags+=(-t "$DOCKER_IMAGE:latest")
+          fi
+          sources=()
+          for digest in *; do
+            sources+=("$DOCKER_IMAGE@sha256:$digest")
+          done
+          docker buildx imagetools create "${tags[@]}" "${sources[@]}"
+          DIGEST=$(docker buildx imagetools inspect "$DOCKER_IMAGE:$VERSION" --format '{{json .Manifest}}' | jq -r .digest)
+          echo "digest=$DIGEST" >> "$GITHUB_OUTPUT"
+
+      # Verifiable with `gh attestation verify oci://ghcr.io/cereal-automation/cereal:<version> --owner Cereal-Automation`.
+      - uses: actions/attest@1e69f48acb82d1966a394da916b4c1698aa569d6 # v4.2.2
+        with:
+          subject-name: ${{ env.DOCKER_IMAGE }}
+          subject-digest: ${{ steps.manifest.outputs.digest }}
+          push-to-registry: true
 
   release:
     name: Create GitHub Release
