@@ -40,9 +40,12 @@ import com.cereal.client.application.interactor.notification.GetNotificationCent
 import com.cereal.client.application.interactor.notification.GlobalNotificationConfigReader
 import com.cereal.client.application.interactor.notification.HasNotificationChannelsConfiguredInteractor
 import com.cereal.client.application.interactor.notification.MarkNotificationsSeenInteractor
+import com.cereal.client.application.interactor.notification.NotifyTaskWaitingInteractor
 import com.cereal.client.application.interactor.notification.ObserveNotificationAttemptsInteractor
 import com.cereal.client.application.interactor.notification.ObserveNotificationCenterInteractor
 import com.cereal.client.application.interactor.notification.ObserveUnseenNotificationCountInteractor
+import com.cereal.client.application.interactor.notification.SendGlobalNotificationInteractor
+import com.cereal.client.application.interactor.notification.SendNotificationFromScriptInstanceInteractor
 import com.cereal.client.application.interactor.proxy.CheckProxiesInGroupInteractor
 import com.cereal.client.application.interactor.proxy.CheckProxyHealthInteractor
 import com.cereal.client.application.interactor.proxy.CreateProxyGroupInteractor
@@ -97,6 +100,7 @@ import com.cereal.client.application.interactor.task.StopTaskInteractor
 import com.cereal.client.application.interactor.task.StopTasksInScriptPackageInstanceInteractor
 import com.cereal.client.application.interactor.task.UserInteractionDismissedInteractor
 import com.cereal.client.application.script.GitHubIssueUrlBuilder
+import com.cereal.client.domain.model.notification.NotificationResolver
 import org.koin.dsl.module
 
 object InteractorModule {
@@ -174,6 +178,9 @@ object InteractorModule {
             factory { HasNotificationChannelsConfiguredInteractor(get()) }
             // Overridden by HeadlessModule, which has no desktop channel.
             single { GlobalNotificationConfigReader(get()) }
+            factory { SendGlobalNotificationInteractor(get(), get(), NotificationResolver()) }
+            factory { SendNotificationFromScriptInstanceInteractor(get(), get(), get(), NotificationResolver()) }
+            factory { NotifyTaskWaitingInteractor(get(), get(), get()) }
             // Notification center
             factory { ObserveNotificationCenterInteractor(get()) }
             factory { GetNotificationCenterLastSeenAtInteractor(get()) }
@@ -194,7 +201,7 @@ object InteractorModule {
             factory { RegisterInteractor(get()) }
             factory { GetAuthenticatedUserInteractor(get()) }
             factory { LogoutInteractor(get()) }
-            factory { HandleSessionLostInteractor(get(), get(), get()) }
+            factory { HandleSessionLostInteractor(get(), get(), get(), get(), get()) }
             factory { ForgotPasswordInteractor(get()) }
             // Files
             factory { ReadCustomDatasetFileInteractor(get()) }
