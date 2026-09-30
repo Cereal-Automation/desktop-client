@@ -2,6 +2,7 @@ package com.cereal.client.presentation.headless
 
 import com.cereal.client.domain.provider.AppUpdateProvider
 import com.cereal.client.domain.provider.SystemProvider
+import com.cereal.client.domain.repository.NotificationSettingsRepository
 import com.cereal.client.infrastructure.provider.inmemory.InMemoryAppUpdateProvider
 import com.cereal.client.infrastructure.provider.inmemory.InMemorySystemProvider
 import com.varabyte.kotter.foundation.input.CharKey
@@ -29,7 +30,8 @@ class HeadlessUpdateTest {
 
     @Test
     fun `no banner when up to date and U does nothing`() =
-        runHeadlessTest {
+        // A channel is set up, so the no-channel banner stays away too.
+        runHeadlessTest(seed = { get<NotificationSettingsRepository>().setTelegramEnabled(true) }) {
             val screen = awaitText("1-5 tabs")
             assertEquals("", screen[1])
 

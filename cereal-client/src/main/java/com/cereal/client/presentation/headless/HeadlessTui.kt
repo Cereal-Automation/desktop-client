@@ -49,6 +49,8 @@ class HeadlessTui(
     handleSessionLostInteractor: HandleSessionLostInteractor,
     /** The upgrade commands for this distribution, given the new version (see [UpdatePage.upgradeCommands]). */
     private val upgradeCommands: (version: String) -> List<String>,
+    /** The no-channel banner line, or null when a channel is set up (see [SettingsPage.noChannelBanner]). */
+    private val noChannelBanner: () -> String? = { null },
     val tabs: List<TuiPage> = defaultTabs(),
 ) {
     private enum class QuitState { NONE, CONFIRMING, STOPPING }
@@ -308,11 +310,11 @@ class HeadlessTui(
         return labels.joinToString("  ") + status
     }
 
-    /** The single banner line. Priority: the quit prompt, then an available update, then (#37) no channel. */
+    /** The single banner line. Priority: the quit prompt, then an available update, then no channel. */
     private fun banner(): String =
         when (quitState) {
             QuitState.NONE -> {
-                availableUpdate?.let { "Update $it available. Press U for the upgrade commands." } ?: ""
+                availableUpdate?.let { "Update $it available. Press U for the upgrade commands." } ?: noChannelBanner() ?: ""
             }
 
             QuitState.CONFIRMING -> {

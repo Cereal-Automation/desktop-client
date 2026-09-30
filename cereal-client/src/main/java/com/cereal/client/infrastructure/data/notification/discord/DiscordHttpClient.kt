@@ -1,10 +1,12 @@
 package com.cereal.client.infrastructure.data.notification.discord
 
+import com.cereal.client.application.exception.CerealException
 import com.cereal.client.infrastructure.data.datasource.discord.await
 import com.cereal.client.infrastructure.data.notification.discord.mapper.DiscordModelMapper
 import com.cereal.client.infrastructure.provider.DiscordProviderImpl
 import com.cereal.sdk.component.notification.discord.model.DiscordMessage
 import kotlinx.serialization.json.Json
+import okhttp3.HttpUrl.Companion.toHttpUrlOrNull
 import okhttp3.MediaType.Companion.toMediaTypeOrNull
 import okhttp3.OkHttpClient
 import okhttp3.Request
@@ -23,7 +25,6 @@ class DiscordHttpClient {
         discordMessage: DiscordMessage,
         maxAttempts: Int = 3,
     ) {
-        var retryAttempt = 0
         val serializableMessage =
             DiscordModelMapper.toSerializable(
                 discordMessage,
@@ -37,31 +38,26 @@ class DiscordHttpClient {
             Request
                 .Builder()
                 .post(requestBody)
-                .url(url)
+                // Parsed here: OkHttp's own parse error quotes the URL, and the webhook URL is a secret.
+                .url(url.toHttpUrlOrNull() ?: throw CerealException("The Discord webhook URL is not a valid web address."))
                 .build()
 
         logger.debug("Attempting to message with $discordMessage")
 
-        while (retryAttempt < maxAttempts) {
-            retryAttempt++
-
+        // Connection failures are retried; any HTTP response is final. A non-2xx one (a deleted
+        // webhook's 404, a rate limit's 429) is thrown so the send is recorded as failed.
+        var failure: IOException? = null
+        repeat(maxAttempts) {
             try {
-                val response = httpClient.newCall(request).await()
-                try {
-                    if (response.body
-                            .string()
-                            .contains("You are being rate limited")
-                    ) {
-                        logger.debug("You are being rate limited, retrying...")
-                    }
-                } finally {
-                    logger.debug("Submitted discord log record")
-                    response.close()
-                    break
+                httpClient.newCall(request).await().use { response ->
+                    if (response.isSuccessful) return
+                    throw CerealException("Discord rejected the webhook message (HTTP ${response.code}).")
                 }
             } catch (e: IOException) {
                 logger.warn("Unable to submit discord post.", e)
+                failure = e
             }
         }
+        throw failure ?: IOException("Discord could not be reached.")
     }
 }

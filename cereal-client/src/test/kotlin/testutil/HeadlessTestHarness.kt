@@ -1,6 +1,7 @@
 package testutil
 
 import com.cereal.client.infrastructure.di.Injector
+import com.cereal.client.infrastructure.di.modules.HeadlessModule
 import com.cereal.client.infrastructure.di.modules.InMemoryProviderModule
 import com.cereal.client.infrastructure.di.modules.InMemoryRepositoryModule
 import com.cereal.client.presentation.headless.HeadlessTui
@@ -53,7 +54,7 @@ fun runHeadlessTest(
     stopKoin()
     val koin =
         startKoin {
-            modules(Injector.appModules(InMemoryRepositoryModule.modules, InMemoryProviderModule.modules))
+            modules(Injector.appModules(InMemoryRepositoryModule.modules, InMemoryProviderModule.modules) + HeadlessModule.modules)
         }.koin
     val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
     try {

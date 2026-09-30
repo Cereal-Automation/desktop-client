@@ -1,5 +1,6 @@
 package com.cereal.client.infrastructure.provider
 
+import com.cereal.client.application.exception.CerealException
 import com.cereal.client.domain.model.notification.DiscordNotificationData
 import com.cereal.client.domain.model.notification.EmailNotificationData
 import com.cereal.client.domain.model.notification.SystemNotificationData
@@ -14,7 +15,9 @@ import io.mockk.mockk
 import kotlinx.coroutines.test.runTest
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
-import org.junit.jupiter.api.assertDoesNotThrow
+import java.io.IOException
+import kotlin.test.assertEquals
+import kotlin.test.assertFailsWith
 
 class NotificationProviderImplTest {
     private lateinit var systemStrategy: SystemNotificationStrategy
@@ -122,15 +125,14 @@ class NotificationProviderImplTest {
         }
 
     @Test
-    fun `sendNotification should not crash if strategy throws exception`() =
+    fun `sendNotification rethrows a send failure as a CerealException with its message`() =
         runTest {
             // Arrange
             val notification = SystemNotificationData(title = "Title", message = "Message")
-            coEvery { systemStrategy.send(any()) } throws RuntimeException("Strategy failed")
+            coEvery { systemStrategy.send(any()) } throws IOException("535 Authentication failed")
 
-            // Act & Assert
-            assertDoesNotThrow {
-                notificationRepository.sendNotification(notification)
-            }
+            // Act & Assert: callers record the failure (history) or report it (test message).
+            val error = assertFailsWith<CerealException> { notificationRepository.sendNotification(notification) }
+            assertEquals("535 Authentication failed", error.message)
         }
 }
