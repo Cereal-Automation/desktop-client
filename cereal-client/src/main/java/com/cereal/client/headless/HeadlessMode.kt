@@ -12,6 +12,7 @@ import com.varabyte.kotter.terminal.system.SystemTerminal
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import org.koin.core.parameter.parametersOf
 import java.io.File
@@ -70,6 +71,11 @@ object HeadlessMode {
             // SystemTerminal swaps System.err for a no-op stream; keep it going to Logs/stderr.log.
             System.setErr(errToFile)
             HeadlessProcess.onInterrupt { tui.onInterrupt() }
+            // Ctrl-C as a key, not a SIGINT that also reaches Chrome (same foreground process group). Kotter
+            // drops control bytes, so read it alongside.
+            if (HeadlessProcess.disableTerminalSignals()) {
+                scope.launch { terminal.read().collect { if (it == HeadlessProcess.CTRL_C) tui.onInterrupt() } }
+            }
 
             runTui(terminal, tui)
         } finally {

@@ -1,6 +1,7 @@
 package com.cereal.client.smoke
 
 import com.cereal.client.App
+import com.cereal.client.infrastructure.di.modules.HeadlessModule
 import kotlinx.coroutines.CancellationException
 import org.slf4j.LoggerFactory
 import java.nio.file.Files
@@ -55,7 +56,8 @@ object SmokeTest {
 
         val koin =
             try {
-                App.initialize()
+                // Headless boots with its overrides, so the probe exercises the graph the image really runs.
+                App.initialize(if (headless) listOf(HeadlessModule.modules) else emptyList())
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Throwable) {

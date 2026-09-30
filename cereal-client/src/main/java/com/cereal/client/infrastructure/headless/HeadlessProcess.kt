@@ -6,6 +6,7 @@ import org.slf4j.LoggerFactory
 import sun.misc.Signal
 import java.io.File
 import java.io.FileOutputStream
+import java.io.IOException
 import java.io.PrintStream
 import java.nio.channels.FileChannel
 import java.nio.channels.FileLock
@@ -74,4 +75,24 @@ object HeadlessProcess {
     fun onInterrupt(handler: () -> Unit) {
         Signal.handle(Signal("INT")) { handler() }
     }
+
+    /**
+     * Turns off the terminal's signal keys (`stty -isig`), so Ctrl-C arrives as the byte [CTRL_C] instead of
+     * a SIGINT to the whole foreground process group, which would also kill the tasks' Chrome. The terminal
+     * library restores the setting when it closes. Returns false when `stty` fails; SIGINT then still works.
+     */
+    fun disableTerminalSignals(): Boolean =
+        try {
+            ProcessBuilder("stty", "-isig")
+                .redirectInput(File("/dev/tty"))
+                .redirectOutput(ProcessBuilder.Redirect.DISCARD)
+                .redirectError(ProcessBuilder.Redirect.DISCARD)
+                .start()
+                .waitFor() == 0
+        } catch (e: IOException) {
+            LoggerFactory.getLogger(HeadlessProcess::class.java).warn("Could not turn off the terminal's signal keys", e)
+            false
+        }
+
+    const val CTRL_C = 3
 }
