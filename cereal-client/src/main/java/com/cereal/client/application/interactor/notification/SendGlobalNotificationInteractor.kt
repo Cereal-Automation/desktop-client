@@ -24,7 +24,7 @@ class SendGlobalNotificationInteractor(
     override suspend fun run(params: Params) {
         val resolutions =
             notificationResolver.resolve(
-                request = ScriptNotification(params.title, params.message),
+                request = ScriptNotification(params.title, params.message, plainText = true),
                 overrides = null,
                 config = globalNotificationConfigReader.read(),
             )

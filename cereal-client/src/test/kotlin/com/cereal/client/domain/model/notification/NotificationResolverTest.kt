@@ -120,15 +120,17 @@ class NotificationResolverTest {
     }
 
     @Test
-    fun `telegram escapes markdown in the plain title and message`() {
-        val resolutions =
-            resolver.resolve(
-                ScriptNotification(title = "my_bot", message = "Monitor_v2 on host_1 [x] *`"),
-                null,
-                config(telegramEnabled = true, telegramBotToken = "123:token", telegramChatId = "123"),
-            )
-        val data = resolved(resolutions, NotificationChannelType.TELEGRAM).data as TelegramNotificationData
-        assertEquals("*my\\_bot*\nMonitor\\_v2 on host\\_1 \\[x] \\*\\`", data.text)
+    fun `telegram escapes markdown only in a client's plain-text notification`() {
+        val telegram = config(telegramEnabled = true, telegramBotToken = "123:token", telegramChatId = "123")
+
+        fun text(notification: ScriptNotification) = (resolved(resolver.resolve(notification, null, telegram), NotificationChannelType.TELEGRAM).data as TelegramNotificationData).text
+
+        assertEquals(
+            "*my\\_bot*\nMonitor\\_v2 on host\\_1 \\[x] \\*\\`",
+            text(ScriptNotification(title = "my_bot", message = "Monitor_v2 on host_1 [x] *`", plainText = true)),
+        )
+        // A script's own notification keeps its Markdown.
+        assertEquals("*Title*\nMessage with _italic_", text(ScriptNotification(title = "Title", message = "Message with _italic_")))
     }
 
     @Test
