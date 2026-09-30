@@ -53,6 +53,7 @@ import com.cereal.client.infrastructure.data.datasource.os.WindowsNotificationDa
 import com.cereal.client.infrastructure.data.datasource.os.WindowsUpdateInstaller
 import com.cereal.client.infrastructure.data.notification.discord.DiscordHttpClient
 import com.cereal.client.infrastructure.data.notification.telegram.TelegramHttpClient
+import com.cereal.client.infrastructure.provider.SessionLostProviderImpl
 import com.cereal_automation.cereal_client.BuildConfig
 import okhttp3.OkHttpClient
 import org.koin.dsl.module
@@ -126,6 +127,7 @@ object DataSourceModule {
                         version = get<ApplicationConfig>().versionName,
                         enableLogging = BuildConfig.IS_DEBUG,
                         tokenDataSource = get<UserTokenDataSource>(),
+                        onSessionRejected = get<SessionLostProviderImpl>()::report,
                         sslPins = get<ApplicationConfig>().marketplaceApiSSLPins,
                         publicKey = get<ApplicationConfig>().marketplacePublicKey,
                     )
