@@ -1,6 +1,7 @@
 package com.cereal.client.infrastructure.provider
 
 import com.cereal.client.domain.model.auth.OAuthProvider
+import com.cereal.client.domain.model.auth.PastedSignIn
 import com.cereal.client.domain.model.script.Release
 import com.cereal.client.domain.model.script.ScriptCapacity
 import com.cereal.client.domain.model.script.ScriptEntitlement
@@ -51,7 +52,10 @@ class SandboxAuthProvider(
 
     override suspend fun authenticateGuest(): User = mockUser
 
-    override suspend fun authenticateWith(provider: OAuthProvider): User = mockUser
+    override suspend fun authenticateWith(
+        provider: OAuthProvider,
+        pastedSignIn: PastedSignIn?,
+    ): User = mockUser
 
     override suspend fun register(
         name: String,

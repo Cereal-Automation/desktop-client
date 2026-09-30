@@ -4,6 +4,7 @@ import com.cereal.client.application.script.ScriptSyncManager
 import com.cereal.client.application.script.SyncProgress
 import com.cereal.client.application.task.TaskManager
 import com.cereal.client.domain.model.auth.OAuthProvider
+import com.cereal.client.domain.model.auth.PastedSignIn
 import com.cereal.client.domain.model.discord.rpc.DiscordPresenceBuilder
 import com.cereal.client.domain.model.user.User
 import com.cereal.client.domain.provider.AuthProvider
@@ -45,8 +46,11 @@ class UserAuthManager(
         return onAuthenticated(authenticatedUser)
     }
 
-    suspend fun authenticateWith(provider: OAuthProvider): Flow<UserAuthenticatingState> {
-        val authenticatedUser = authProvider.authenticateWith(provider)
+    suspend fun authenticateWith(
+        provider: OAuthProvider,
+        pastedSignIn: PastedSignIn? = null,
+    ): Flow<UserAuthenticatingState> {
+        val authenticatedUser = authProvider.authenticateWith(provider, pastedSignIn)
 
         return onAuthenticated(authenticatedUser)
     }

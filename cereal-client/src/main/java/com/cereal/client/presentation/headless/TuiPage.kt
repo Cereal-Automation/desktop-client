@@ -36,3 +36,14 @@ class PlaceholderPage(
         height: Int,
     ) = listOf("", "  $title is not available yet.")
 }
+
+private const val LINK_MARKER = '\u0000'
+
+/**
+ * A body line holding only [url], printed whole for copying: the frame never truncates it, and
+ * [runTui] writes it past Kotter (which would hard-wrap it) so the terminal soft-wraps it instead.
+ */
+fun linkLine(url: String) = "$LINK_MARKER$url"
+
+/** The URL of a [linkLine], or null for an ordinary line. */
+fun linkUrl(line: String): String? = if (line.startsWith(LINK_MARKER)) line.drop(1) else null
