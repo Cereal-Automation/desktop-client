@@ -15,13 +15,12 @@ import com.cereal.client.domain.model.script.configuration.ApplicationScriptConf
 import com.cereal.client.domain.model.script.configuration.ConfigItemType
 import com.cereal.client.domain.model.script.configuration.ConfigValue
 import com.cereal.client.domain.model.script.configuration.ConfigurationItem
+import com.cereal.client.domain.model.script.configuration.ListRows
 import com.cereal.client.domain.model.script.configuration.ScriptConfigurationDefinition
 import com.cereal.client.domain.model.script.configuration.containsValidData
-import com.cereal.client.domain.model.script.configuration.describeRejection
 import com.cereal.client.domain.model.script.configuration.getScriptIdentifierValue
 import com.cereal.client.domain.model.script.configuration.isGroup
 import com.cereal.client.domain.model.script.configuration.isValidReturnType
-import com.cereal.client.domain.model.script.configuration.parseValue
 import com.cereal.client.domain.model.task.ScriptPackageGroup
 import com.cereal.client.presentation.tasks.script.overview.configuration.RawScriptConfigValues
 import com.cereal.client.presentation.tasks.script.overview.configuration.model.ConfigurationItemsForm
@@ -54,6 +53,7 @@ class ScriptConfigPages(
     private val hasChannels: HasNotificationChannelsConfiguredInteractor,
     private val startScript: StartScriptInteractor,
     private val startAll: StartAllTasksInScriptPackageInstanceInteractor,
+    private val pickers: ConfigPickers,
 ) {
     fun newTask(
         group: ScriptPackageGroup,
@@ -197,13 +197,16 @@ class ScriptConfigPages(
 
         @Volatile private var duplicate: TuiPage? = null
 
+        /** A picker, List rows or the notification overrides, opened with Enter on a field. */
+        @Volatile private var sub: TuiPage? = null
+
         @Volatile private var starting = false
 
         init {
             scope.launch {
                 getConfigDefinition(GetScriptConfigDefinitionInteractor.Params(script, source)) { result ->
                     when (result) {
-                        is SuspendableResult.Success -> config = ScriptConfigForm(script, result.value, source?.numberOfConcurrentTasks ?: 1, readOnly)
+                        is SuspendableResult.Success -> config = ScriptConfigForm(script, result.value, source, readOnly, ::open)
                         is SuspendableResult.Failure -> notice = result.error.message
                     }
                     changed()
@@ -216,6 +219,7 @@ class ScriptConfigPages(
         override val keys: String
             get() {
                 duplicate?.let { return it.keys }
+                sub?.let { return it.keys }
                 val form = config?.form
                 return when {
                     confirm != null -> "y confirm · any other key cancels"
@@ -231,6 +235,7 @@ class ScriptConfigPages(
             height: Int,
         ): List<String> {
             duplicate?.let { return it.body(width, height) }
+            sub?.let { return it.body(width, height) }
             val name = "${script.manifest.name} v${script.manifest.versionCode}"
             val head =
                 listOf(
@@ -252,6 +257,7 @@ class ScriptConfigPages(
 
         override fun onKey(key: Key): Boolean {
             duplicate?.let { return it.onKey(key) }
+            sub?.let { return it.onKey(key) }
             val config = config
             confirm?.let { (_, yes) ->
                 confirm = null
@@ -282,6 +288,38 @@ class ScriptConfigPages(
                 else -> return false
             }
             return true
+        }
+
+        /** Enter on a proxy, Task data, List or notification overrides row. */
+        private fun open(target: ScriptConfigForm.Target) {
+            val config = config ?: return
+            val close = { sub = null }
+            val set = { value: ConfigValue? -> config.set(target.key, value) }
+            val definition = target.item?.definition
+            val value = target.value
+            sub =
+                when (val type = definition?.type) {
+                    null -> {
+                        pickers.overrides(config.overrides, close)
+                    }
+
+                    ConfigItemType.ProxyConfigItem, ConfigItemType.ProxyGroupConfigItem -> {
+                        pickers.proxies(script.manifest, definition.isNullable, set, close)
+                    }
+
+                    is ConfigItemType.GroupedConfigItem -> {
+                        val visible = type.items.filter { it.stateModifier?.getVisibility(RawScriptConfigValues(target.section.values)) != Visibility.Hidden }
+                        pickers.datasets(script.manifest, visible, definition.isNullable, (value as? ConfigValue.CustomDatasetGroupValue)?.raw, set, close)
+                    }
+
+                    is ConfigItemType.ListConfigItem -> {
+                        pickers.list(definition.name, type.items, (value as? ConfigValue.ListValue)?.raw ?: ListRows.EMPTY, set, close)
+                    }
+
+                    else -> {
+                        null
+                    }
+                }
         }
 
         private fun openCopy() {
@@ -316,7 +354,7 @@ class ScriptConfigPages(
             }
             starting = true
             scope.launch {
-                hasChannels(HasNotificationChannelsConfiguredInteractor.Params(source?.notificationOverrides)) { result ->
+                hasChannels(HasNotificationChannelsConfiguredInteractor.Params(config.overrides.overrides())) { result ->
                     when (result) {
                         is SuspendableResult.Failure -> {
                             fail(result.error.message)
@@ -347,8 +385,7 @@ class ScriptConfigPages(
                     childConfigurations = config.childValues(),
                     numberOfConcurrentTasks = config.concurrentTasks,
                     ignoreConcurrencyConflicts = ignoreConflicts,
-                    // ponytail: duplicates keep the source's overrides; the overrides sub-form is #34.
-                    notificationOverrides = source?.notificationOverrides,
+                    notificationOverrides = config.overrides.overrides(),
                 )
             startScript(params) { result ->
                 when (result) {
@@ -417,9 +454,18 @@ class ScriptConfigPages(
 private class ScriptConfigForm(
     script: ScriptPackage,
     result: GetScriptConfigDefinitionInteractor.Result,
-    initialConcurrentTasks: Int,
+    source: ScriptPackageInstance?,
     readOnly: Boolean,
+    private val open: (Target) -> Unit,
 ) {
+    /** What Enter opened: an item's picker or rows, or (no [item]) the notification overrides. */
+    class Target(
+        val key: String,
+        val section: Section,
+        val item: ConfigurationItem?,
+        val value: ConfigValue?,
+    )
+
     class Section(
         val id: String,
         val title: String,
@@ -437,8 +483,10 @@ private class ScriptConfigForm(
 
     private val showConcurrentTasks = sections.any { section -> section.items.any { it.definition.type.isGroup } }
 
-    @Volatile var concurrentTasks: Int = initialConcurrentTasks
+    @Volatile var concurrentTasks: Int = source?.numberOfConcurrentTasks ?: 1
         private set
+
+    val overrides = NotificationOverridesForm(source?.notificationOverrides, readOnly)
 
     @Volatile private var validated = false
 
@@ -461,28 +509,41 @@ private class ScriptConfigForm(
                             key = key,
                             label = item.definition.name,
                             value = section.values[item.storageKey()],
-                            editor = editor(item),
+                            editor = editor(section, item),
                             required = item.definition.isRequired(cfg),
                             problem = problems[key],
                             description = item.definition.description,
                             display = display(item, section.values[item.storageKey()]),
                         )
                     } +
-                if (section.id == MAIN && showConcurrentTasks) {
-                    listOf(
-                        FieldForm.Field(
-                            CONCURRENT,
-                            "Concurrent tasks",
-                            ConfigValue.IntValue(concurrentTasks),
-                            FieldForm.Editor.Line("whole number, 1-${ConfigurationItemsForm.MAX_CONCURRENT_TASKS}", ::parseConcurrentTasks),
-                            required = true,
-                        ),
-                    )
-                } else {
-                    emptyList()
-                }
+                if (section.id == MAIN) mainRows(section, problems) else emptyList()
         }
     }
+
+    /** The main section's own rows: "Concurrent tasks" (with a group item) and "Notification overrides". */
+    private fun mainRows(
+        section: Section,
+        problems: Map<String, String>,
+    ): List<FieldForm.Row> =
+        listOfNotNull(
+            FieldForm
+                .Field(
+                    CONCURRENT,
+                    "Concurrent tasks",
+                    ConfigValue.IntValue(concurrentTasks),
+                    FieldForm.Editor.Line("whole number, 1-${ConfigurationItemsForm.MAX_CONCURRENT_TASKS}", ::parseConcurrentTasks),
+                    required = true,
+                ).takeIf { showConcurrentTasks },
+            FieldForm.Field(
+                OVERRIDES,
+                "Notification overrides",
+                null,
+                FieldForm.Editor.Open { open(Target(OVERRIDES, section, null, null)) },
+                problem = problems[OVERRIDES],
+                description = "Send this script's notifications to other Discord, Telegram or Email settings instead.",
+                display = overrides.summary(),
+            ),
+        )
 
     /** Marks every problem and moves the cursor to the first; returns the number of problems. */
     fun validate(): Int {
@@ -508,7 +569,7 @@ private class ScriptConfigForm(
         concurrentTasks = source.numberOfConcurrentTasks
     }
 
-    private fun set(
+    fun set(
         key: String,
         value: ConfigValue?,
     ) {
@@ -544,27 +605,21 @@ private class ScriptConfigForm(
                             }
                         problem?.let { fieldKey(section, item) to it }
                     }
-            }.toMap()
+            }.toMap() + if (overrides.incomplete) mapOf(OVERRIDES to "incomplete") else emptyMap()
 
-    private fun editor(item: ConfigurationItem): FieldForm.Editor {
-        val definition = item.definition
-        return when (definition.type) {
-            ConfigItemType.BooleanConfigItem -> FieldForm.Editor.Toggle
+    private fun editor(
+        section: Section,
+        item: ConfigurationItem,
+    ): FieldForm.Editor =
+        when (item.definition.type) {
+            ConfigItemType.ProxyConfigItem, ConfigItemType.ProxyGroupConfigItem, is ConfigItemType.GroupedConfigItem, is ConfigItemType.ListConfigItem -> {
+                FieldForm.Editor.Open { open(Target(fieldKey(section, item), section, item, section.values[item.storageKey()])) }
+            }
 
-            ConfigItemType.SecretConfigItem -> FieldForm.Editor.Secret
-
-            ConfigItemType.StringConfigItem -> FieldForm.Editor.Line("text") { ConfigValue.StringValue(it) }
-
-            ConfigItemType.IntConfigItem -> FieldForm.Editor.Line("whole number") { parseNumber(item, it) }
-
-            ConfigItemType.FloatConfigItem, ConfigItemType.DoubleConfigItem -> FieldForm.Editor.Line("number") { parseNumber(item, it) }
-
-            is ConfigItemType.EnumConfigItem -> FieldForm.Editor.Cycle(item.options, definition.isNullable)
-
-            // ponytail: pickers and List rows are #34; until then these only show their value.
-            else -> FieldForm.Editor.None
+            else -> {
+                valueEditor(item.definition, item.options)
+            }
         }
-    }
 
     private fun display(
         item: ConfigurationItem,
@@ -591,6 +646,7 @@ private class ScriptConfigForm(
     companion object {
         private const val MAIN = "main"
         private const val CONCURRENT = "cereal/concurrent"
+        private const val OVERRIDES = "cereal/overrides"
         private val GROUPED_KEY = ApplicationScriptConfigurationKeys.KEY_CUSTOM_DATASET.key
 
         private fun fieldKey(
@@ -608,17 +664,6 @@ private class ScriptConfigForm(
                     val value = item.value ?: ConfigValue.BooleanValue(false).takeIf { item.definition.type == ConfigItemType.BooleanConfigItem }
                     value?.let { item.storageKey() to it }
                 }.toMap(mutableMapOf())
-
-        /** The existing parsing, with its rejection sentence ("'2,5' is not a number."). */
-        private fun parseNumber(
-            item: ConfigurationItem,
-            text: String,
-        ): ConfigValue? =
-            try {
-                item.definition.parseValue(text)
-            } catch (_: IllegalArgumentException) {
-                throw IllegalArgumentException(item.definition.type.describeRejection(text))
-            }
 
         private fun parseConcurrentTasks(text: String): ConfigValue {
             IntStringFieldValidator(minValue = 1, maxValue = ConfigurationItemsForm.MAX_CONCURRENT_TASKS).validate(text.trim())?.let {

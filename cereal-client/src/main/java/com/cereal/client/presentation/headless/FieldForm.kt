@@ -27,7 +27,7 @@ import com.varabyte.kotter.foundation.input.Keys
  * [Editor.Line] (Enter opens an inline input line; `parse` throws [IllegalArgumentException] with
  * the reason to reject, which keeps the line open; empty submits null), [Editor.Secret] (typed
  * masked, shown as `•••••• set`, never revealed; re-editing starts empty and an empty submit keeps the
- * value), and [Editor.None] (display only). With [readOnly] nothing can be edited.
+ * value), [Editor.Open] (Enter opens the owner's picker or sub-screen) and [Editor.None] (display only). With [readOnly] nothing can be edited.
  */
 class FieldForm(
     private val readOnly: Boolean = false,
@@ -73,6 +73,11 @@ class FieldForm(
         ) : Editor
 
         data object Secret : Editor
+
+        /** Enter calls [open] (a picker or sub-screen); show the value through [Field.display]. */
+        class Open(
+            val open: () -> Unit,
+        ) : Editor
 
         data object None : Editor
     }
@@ -144,6 +149,10 @@ class FieldForm(
 
             editor is Editor.Secret && key == Keys.Enter -> {
                 input = Input(field, "")
+            }
+
+            editor is Editor.Open && key == Keys.Enter -> {
+                editor.open()
             }
 
             else -> {
