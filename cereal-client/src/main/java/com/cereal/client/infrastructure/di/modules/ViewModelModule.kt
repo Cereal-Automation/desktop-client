@@ -16,6 +16,7 @@ import com.cereal.client.presentation.error.ErrorResolver
 import com.cereal.client.presentation.headless.ConfigPickers
 import com.cereal.client.presentation.headless.HeadlessTui
 import com.cereal.client.presentation.headless.NotificationsPage
+import com.cereal.client.presentation.headless.ProxiesPage
 import com.cereal.client.presentation.headless.ScriptConfigPages
 import com.cereal.client.presentation.headless.SettingsPage
 import com.cereal.client.presentation.headless.TasksPage
@@ -87,6 +88,7 @@ object ViewModelModule {
                         tasks.openTask(taskId)
                         tui?.select(tasks)
                     }
+                val proxies = ProxiesPage(scope, repaint, get<ApplicationConfig>().homeDirectory, get(), get(), get(), get(), get(), get(), get())
                 val notifications = NotificationsPage(scope, repaint, get(), get(), get(), get(), get(), get())
                 val settings = SettingsPage(scope, repaint, get(), get(), get(), get(), get(), get(), get(), get(), get(), get(), get())
                 HeadlessTui(
@@ -104,7 +106,7 @@ object ViewModelModule {
                     notifyTaskWaitingInteractor = get(),
                     upgradeCommands = { version -> UpdatePage.upgradeCommands(environment, websiteUrl, version) },
                     noChannelBanner = settings::noChannelBanner,
-                    tabs = listOf(tasks, waiting) + HeadlessTui.defaultTabs()[2] + settings + notifications,
+                    tabs = listOf(tasks, waiting) + proxies + settings + notifications,
                 ).also { tui = it }
             }
             factory { MainViewModel(get(), get(), get(), get(), get(), get(), get(), get()) }
