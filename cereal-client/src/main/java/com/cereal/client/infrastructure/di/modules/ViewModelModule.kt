@@ -104,6 +104,7 @@ object ViewModelModule {
                     checkForUpdatesInteractor = get(),
                     handleSessionLostInteractor = get(),
                     notifyTaskWaitingInteractor = get(),
+                    sendRestartReportInteractor = get(),
                     upgradeCommands = { version -> UpdatePage.upgradeCommands(environment, websiteUrl, version) },
                     noChannelBanner = settings::noChannelBanner,
                     tabs = listOf(tasks, waiting) + proxies + settings + notifications,

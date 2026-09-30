@@ -46,6 +46,7 @@ import com.cereal.client.application.interactor.notification.ObserveNotification
 import com.cereal.client.application.interactor.notification.ObserveUnseenNotificationCountInteractor
 import com.cereal.client.application.interactor.notification.SendGlobalNotificationInteractor
 import com.cereal.client.application.interactor.notification.SendNotificationFromScriptInstanceInteractor
+import com.cereal.client.application.interactor.notification.SendRestartReportInteractor
 import com.cereal.client.application.interactor.proxy.CheckProxiesInGroupInteractor
 import com.cereal.client.application.interactor.proxy.CheckProxyHealthInteractor
 import com.cereal.client.application.interactor.proxy.CreateProxyGroupInteractor
@@ -179,6 +180,7 @@ object InteractorModule {
             // Overridden by HeadlessModule, which has no desktop channel.
             single { GlobalNotificationConfigReader(get()) }
             factory { SendGlobalNotificationInteractor(get(), get(), NotificationResolver()) }
+            factory { SendRestartReportInteractor(get(), get(), get()) }
             factory { SendNotificationFromScriptInstanceInteractor(get(), get(), get(), NotificationResolver()) }
             factory { NotifyTaskWaitingInteractor(get(), get(), get()) }
             // Notification center

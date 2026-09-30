@@ -104,7 +104,7 @@ class HeadlessSettingsTest {
 
             press(CharKey('T'))
             awaitText("✓ Test message sent on Discord.")
-            assertEquals("https://discord.com/api/webhooks/1/abc", (provider.sent.single() as DiscordNotificationData).webhookUrl)
+            assertEquals("https://discord.com/api/webhooks/1/abc", (sentNotifications().single() as DiscordNotificationData).webhookUrl)
 
             provider.failure = { CerealException("Discord rejected the webhook message (HTTP 404).") }
             press(CharKey('T'))
@@ -114,7 +114,7 @@ class HeadlessSettingsTest {
             focus("SMTP host")
             press(CharKey('T'))
             awaitText("✓ Test message sent on Email.")
-            assertEquals("smtp.example.com", (provider.sent.last() as EmailNotificationData).smtpHost)
+            assertEquals("smtp.example.com", (sentNotifications().last() as EmailNotificationData).smtpHost)
         }
 
     @Test
