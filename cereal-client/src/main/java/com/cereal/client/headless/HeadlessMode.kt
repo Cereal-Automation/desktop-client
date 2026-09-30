@@ -2,6 +2,7 @@ package com.cereal.client.headless
 
 import com.cereal.client.App
 import com.cereal.client.infrastructure.bootstrap.ApplicationHome
+import com.cereal.client.infrastructure.di.modules.HeadlessModule
 import com.cereal.client.infrastructure.headless.HeadlessProcess
 import com.cereal.client.presentation.headless.HeadlessTui
 import com.cereal.client.presentation.headless.runTui
@@ -54,7 +55,7 @@ object HeadlessMode {
         val originalErr = HeadlessProcess.redirectStderr(File(File(home, "Logs"), "stderr.log"))
         val errToFile = System.err
         try {
-            val koin = App.initialize()
+            val koin = App.initialize(listOf(HeadlessModule.modules))
             val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
             val tui = koin.get<HeadlessTui> { parametersOf(scope, System.getenv()) }
 

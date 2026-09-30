@@ -14,6 +14,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.launch
 import org.koin.core.Koin
+import org.koin.core.module.Module
 import org.koin.java.KoinJavaComponent.get
 import org.slf4j.LoggerFactory
 import java.io.File
@@ -26,7 +27,7 @@ object App {
 
     private val logger = LoggerFactory.getLogger(App::class.java)
 
-    fun initialize(): Koin {
+    fun initialize(extraModules: List<Module> = emptyList()): Koin {
         // The sandboxed `mock` flavor runs against in-memory repositories and a Sekret-free
         // ApplicationConfig, so the native secrets library is neither available nor needed.
         if (BuildConfig.FLAVOR != "mock") {
@@ -45,7 +46,7 @@ object App {
         // all — which is why the opt-out it consults lives in the pre-DI bootstrap store.
         CrashReportingClient.startIfEnabled()
 
-        val koin = Injector.initialize()
+        val koin = Injector.initialize(extraModules)
         val applicationConfig = get<ApplicationConfig>(ApplicationConfig::class.java)
 
         assertCertificatePinningEnabled(applicationConfig)

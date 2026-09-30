@@ -37,6 +37,7 @@ import com.cereal.client.application.interactor.marketplace.InstallMarketplaceSc
 import com.cereal.client.application.interactor.marketplace.IsScriptInstalledInteractor
 import com.cereal.client.application.interactor.marketplace.RemoveMarketplaceScriptInteractor
 import com.cereal.client.application.interactor.notification.GetNotificationCenterLastSeenAtInteractor
+import com.cereal.client.application.interactor.notification.GlobalNotificationConfigReader
 import com.cereal.client.application.interactor.notification.HasNotificationChannelsConfiguredInteractor
 import com.cereal.client.application.interactor.notification.MarkNotificationsSeenInteractor
 import com.cereal.client.application.interactor.notification.ObserveNotificationAttemptsInteractor
@@ -171,6 +172,8 @@ object InteractorModule {
             factory { SendNotificationTestMessageInteractor(get(), get()) }
             factory { SaveAllNotificationSettingsInteractor(get()) }
             factory { HasNotificationChannelsConfiguredInteractor(get()) }
+            // Overridden by HeadlessModule, which has no desktop channel.
+            single { GlobalNotificationConfigReader(get()) }
             // Notification center
             factory { ObserveNotificationCenterInteractor(get()) }
             factory { GetNotificationCenterLastSeenAtInteractor(get()) }

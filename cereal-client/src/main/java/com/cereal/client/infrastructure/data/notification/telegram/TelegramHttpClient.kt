@@ -1,5 +1,6 @@
 package com.cereal.client.infrastructure.data.notification.telegram
 
+import com.cereal.client.application.exception.CerealException
 import com.cereal.client.infrastructure.data.notification.telegram.mapper.TelegramModelMapper
 import com.cereal.sdk.component.notification.telegram.model.TelegramMessage
 import kotlinx.coroutines.Dispatchers
@@ -48,10 +49,11 @@ class TelegramHttpClient(
         repeat(maxAttempts) {
             when (sendOnce(request)) {
                 SendResult.Success -> return
-                SendResult.PermanentFailure -> return
                 SendResult.Retryable -> delay(RETRY_DELAY_MS)
             }
         }
+        // Generic on purpose: the request URL carries the bot token.
+        throw CerealException("Telegram could not be reached after $maxAttempts attempts.")
     }
 
     private suspend fun sendOnce(request: Request): SendResult =
@@ -72,7 +74,7 @@ class TelegramHttpClient(
 
                         else -> {
                             logger.warn("Failed to send Telegram message: statusCode={}, body redacted", response.code)
-                            SendResult.PermanentFailure
+                            throw CerealException("Telegram rejected the message (HTTP ${response.code}).")
                         }
                     }
                 }
@@ -82,7 +84,7 @@ class TelegramHttpClient(
             SendResult.Retryable
         }
 
-    private enum class SendResult { Success, Retryable, PermanentFailure }
+    private enum class SendResult { Success, Retryable }
 
     private companion object {
         private const val RETRY_DELAY_MS = 1000L

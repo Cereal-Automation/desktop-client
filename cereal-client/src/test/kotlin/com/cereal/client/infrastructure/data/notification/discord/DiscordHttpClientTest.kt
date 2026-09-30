@@ -1,5 +1,6 @@
 package com.cereal.client.infrastructure.data.notification.discord
 
+import com.cereal.client.application.exception.CerealException
 import com.cereal.client.infrastructure.data.notification.discord.serializable.SerializableDiscordMessage
 import com.cereal.sdk.component.notification.discord.model.DiscordMessage
 import kotlinx.coroutines.test.runTest
@@ -10,7 +11,10 @@ import okhttp3.mockwebserver.SocketPolicy
 import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
+import java.io.IOException
 import kotlin.test.assertEquals
+import kotlin.test.assertFailsWith
+import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 
 /**
@@ -80,31 +84,40 @@ class DiscordHttpClientTest {
                 server.enqueue(MockResponse().setSocketPolicy(SocketPolicy.DISCONNECT_AFTER_REQUEST))
             }
 
-            // Must complete normally: delivery failures are logged and retried, never thrown.
-            client.message(
-                url = webhookUrl(),
-                discordMessage = DiscordMessage(content = "hi"),
-                maxAttempts = 3,
-            )
+            // Retried, then thrown so the send is recorded as failed.
+            assertFailsWith<IOException> {
+                client.message(
+                    url = webhookUrl(),
+                    discordMessage = DiscordMessage(content = "hi"),
+                    maxAttempts = 3,
+                )
+            }
 
             assertEquals(3, server.requestCount)
         }
 
     @Test
-    fun `message completes without throwing when discord reports a rate limit`() =
+    fun `message throws with the status code when discord rejects the webhook`() =
         runTest {
-            server.enqueue(
-                MockResponse()
-                    .setResponseCode(429)
-                    .setBody("""{"message":"You are being rate limited","retry_after":1}"""),
-            )
+            server.enqueue(MockResponse().setResponseCode(404).setBody("""{"message":"Unknown Webhook"}"""))
 
-            // Should complete normally; a rate-limit response is observed, not propagated as an error.
-            client.message(
-                url = webhookUrl(),
-                discordMessage = DiscordMessage(content = "hi"),
-            )
+            val error =
+                assertFailsWith<CerealException> {
+                    client.message(url = webhookUrl(), discordMessage = DiscordMessage(content = "hi"))
+                }
 
+            assertEquals("Discord rejected the webhook message (HTTP 404).", error.message)
             assertEquals(1, server.requestCount)
+        }
+
+    @Test
+    fun `message throws without quoting the url when the webhook url is malformed`() =
+        runTest {
+            val error =
+                assertFailsWith<CerealException> {
+                    client.message(url = "not-a-url/secret-token", discordMessage = DiscordMessage(content = "hi"))
+                }
+
+            assertFalse(error.message!!.contains("secret-token"))
         }
 }

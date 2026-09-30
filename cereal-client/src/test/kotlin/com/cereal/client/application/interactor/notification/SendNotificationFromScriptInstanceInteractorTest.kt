@@ -42,7 +42,7 @@ class SendNotificationFromScriptInstanceInteractorTest {
         interactor =
             SendNotificationFromScriptInstanceInteractor(
                 notificationRepository,
-                applicationPreferenceRepository,
+                GlobalNotificationConfigReader(applicationPreferenceRepository),
                 notificationHistoryRepository,
                 NotificationResolver(),
             )
@@ -212,6 +212,43 @@ class SendNotificationFromScriptInstanceInteractorTest {
                         it.status == NotificationDeliveryStatus.SUCCESS
                 },
             )
+        }
+
+    @Test
+    fun `run records a failed send as FAILURE with its error and still sends later channels`() =
+        runTest {
+            configureDefaults()
+            applicationPreferenceRepository.setDiscordWebhookEnabled(true)
+            applicationPreferenceRepository.setEmailEnabled(true)
+            notificationRepository.failure = { if (it is DiscordNotificationData) Exception("HTTP 404") else null }
+
+            interactor.run(params(ScriptNotification(title = "Title", message = "Message")))
+
+            val attempts = attemptsFor("test-task-id").associateBy { it.channel }
+            assertEquals(NotificationDeliveryStatus.FAILURE, attempts.getValue(NotificationChannelType.DISCORD).status)
+            assertEquals("HTTP 404", attempts.getValue(NotificationChannelType.DISCORD).errorMessage)
+            assertEquals(NotificationDeliveryStatus.SUCCESS, attempts.getValue(NotificationChannelType.EMAIL).status)
+        }
+
+    @Test
+    fun `run leaves the system channel out without a desktop channel and keeps the stored flag`() =
+        runTest {
+            configureDefaults()
+            applicationPreferenceRepository.setDesktopNotificationsEnabled(true)
+            applicationPreferenceRepository.setEmailEnabled(true)
+            val headless =
+                SendNotificationFromScriptInstanceInteractor(
+                    notificationRepository,
+                    GlobalNotificationConfigReader(applicationPreferenceRepository, desktopChannelAvailable = false),
+                    notificationHistoryRepository,
+                    NotificationResolver(),
+                )
+
+            headless.run(params(ScriptNotification(title = "Title", message = "Message")))
+
+            assertTrue(notificationRepository.sent.none { it is SystemNotificationData })
+            assertTrue(attemptsFor("test-task-id").none { it.channel == NotificationChannelType.SYSTEM })
+            assertTrue(applicationPreferenceRepository.isDesktopNotificationsEnabled().first())
         }
 
     @Test
