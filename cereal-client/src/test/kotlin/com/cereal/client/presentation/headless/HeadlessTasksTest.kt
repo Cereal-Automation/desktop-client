@@ -17,15 +17,20 @@ import com.cereal.client.domain.repository.LogEventRepository
 import com.cereal.client.domain.repository.ScriptInstanceRepository
 import com.cereal.client.domain.repository.TasksRepository
 import com.cereal.client.infrastructure.data.repository.inmemory.InMemoryLogEventRepository
+import com.cereal.client.infrastructure.sdkcomponent.UserInteractionComponentImpl
 import com.cereal.sdk.ExecutionResult
 import com.cereal.sdk.Script
 import com.cereal.sdk.ScriptConfiguration
 import com.cereal.sdk.component.ComponentProvider
 import com.varabyte.kotter.foundation.input.CharKey
 import com.varabyte.kotter.foundation.input.Keys
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitCancellation
 import kotlinx.coroutines.flow.first
 import org.junit.jupiter.api.Assertions.assertEquals
+import org.junit.jupiter.api.Assertions.assertNotNull
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
 import testutil.HeadlessTestScope
@@ -282,5 +287,83 @@ class HeadlessTasksTest {
             press(CharKey('y'))
             awaitScreen { lines -> lines.none { "Monitor" in it } }
             assertEquals(null, get<TasksRepository>().getTask("t1"))
+        }
+
+    /** A script asking through the real SDK component, off the test's thread. */
+    private fun HeadlessTestScope.ask(
+        taskId: String,
+        request: suspend UserInteractionComponentImpl.() -> Unit,
+    ) = CoroutineScope(Dispatchers.Default).async { UserInteractionComponentImpl(get(), taskId, get(), get()).request() }
+
+    private suspend fun HeadlessTestScope.awaitTabBar(label: String) = awaitScreen { it.first().contains(label) }
+
+    @Test
+    fun `Waiting lists every kind of pending interaction and counts them on the tab label`() =
+        tasksTest(
+            task("t1", t0, interaction = UserInteraction.Browser("Captcha")),
+            task("t2", t0 + 1.seconds),
+            task("t3", t0 + 2.seconds),
+        ) {
+            ask("t2") { requestInput("SMS code", "Enter the code we texted you") }
+            val continued = ask("t3") { showContinueButton() }
+            awaitTabBar("2 Waiting 3!")
+            press(CharKey('2'))
+            val screen = awaitText("Monitor #3  CONTINUE")
+            val body = screen.joinToString("\n")
+            assertTrue(screen.any { it.startsWith("› Monitor #1  BROWSER  Captcha") }, body)
+            assertTrue(screen.any { it.startsWith("  Monitor #2  INPUT  SMS code") }, body)
+            assertTrue(screen.any { it.startsWith("  Monitor #3  CONTINUE") }, body)
+
+            press(Keys.Down)
+            awaitText("› Monitor #2")
+            press(Keys.Down)
+            awaitText("› Monitor #3")
+            press(CharKey('c'))
+            continued.await()
+            awaitTabBar("2 Waiting 2!")
+            awaitScreen { lines -> lines.none { "CONTINUE" in it } }
+        }
+
+    @Test
+    fun `Enter on a waiting text input opens the task with the answer line, and Esc leaves it waiting`() =
+        tasksTest(task("t1", t0)) {
+            val answer = ask("t1") { assertEquals("1234", requestInput("SMS code", "Enter the code we texted you")) }
+            awaitTabBar("2 Waiting 1!")
+            press(CharKey('2'))
+            awaitText("› Monitor #1  INPUT")
+            press(Keys.Enter)
+            awaitText("  > _")
+            val screen = awaitText("[1 Tasks]")
+            assertTrue(screen.any { it == "  SMS code" } && screen.any { it == "  Enter the code we texted you" }, screen.joinToString("\n"))
+
+            type("12")
+            awaitText("> 12_")
+            press(Keys.Escape)
+            awaitText("(i to answer)")
+            assertTrue(answer.isActive)
+            assertNotNull(get<TasksRepository>().getTask("t1")!!.userInteraction)
+            awaitTabBar("2 Waiting 1!")
+
+            press(CharKey('i'))
+            awaitText("  > _")
+            type("1234")
+            awaitText("> 1234_")
+            press(Keys.Enter)
+            answer.await()
+            awaitTabBar("2 Waiting  3")
+            assertEquals(null, get<TasksRepository>().getTask("t1")!!.userInteraction)
+        }
+
+    @Test
+    fun `c in task detail continues a waiting task`() =
+        tasksTest(task("t1", t0)) {
+            val continued = ask("t1") { showContinueButton() }
+            awaitText("[! CONTINUE]")
+            selectRow(2)
+            press(Keys.Enter)
+            awaitText("Waiting for you to continue (c)")
+            press(CharKey('c'))
+            continued.await()
+            awaitScreen { lines -> lines.none { "continue" in it } }
         }
 }
