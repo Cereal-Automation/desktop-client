@@ -10,6 +10,7 @@ import com.cereal.client.domain.model.task.UserInteraction
 import com.cereal.client.domain.repository.TasksRepository
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.map
 import kotlin.coroutines.resume
@@ -20,7 +21,9 @@ class InMemoryTasksRepository(
     private val tasks = mutableMapOf<String, JobTask>()
     private val taskGroups = mutableMapOf<String, ScriptPackageGroup>()
     private val tasksFlow = MutableStateFlow<List<JobTask>>(emptyList())
-    private val taskGroupsFlow = MutableStateFlow<List<ScriptPackageGroup>>(emptyList())
+
+    // Not a StateFlow: ScriptPackageGroup equality is by id, so a StateFlow would swallow a rename.
+    private val taskGroupsFlow = MutableSharedFlow<List<ScriptPackageGroup>>(replay = 1).apply { tryEmit(emptyList()) }
 
     override suspend fun createScriptInstanceGroup(scriptPackageGroup: ScriptPackageGroup): ScriptPackageGroup {
         taskGroups[scriptPackageGroup.id] = scriptPackageGroup
@@ -41,7 +44,7 @@ class InMemoryTasksRepository(
     override suspend fun getTaskGroups(): Flow<List<ScriptPackageGroup>> = taskGroupsFlow
 
     private fun notifyTaskGroupsFlow() {
-        taskGroupsFlow.value = taskGroups.values.toList()
+        taskGroupsFlow.tryEmit(taskGroups.values.toList())
     }
 
     override suspend fun addTask(task: JobTask) {

@@ -15,6 +15,7 @@ import com.cereal.client.presentation.customdataset.CustomDatasetViewModel
 import com.cereal.client.presentation.error.ErrorResolver
 import com.cereal.client.presentation.headless.HeadlessTui
 import com.cereal.client.presentation.headless.NotificationsPage
+import com.cereal.client.presentation.headless.TasksPage
 import com.cereal.client.presentation.headless.UpdatePage
 import com.cereal.client.presentation.main.MainViewModel
 import com.cereal.client.presentation.marketplace.MarketplaceViewModel
@@ -44,7 +45,27 @@ object ViewModelModule {
             factory { (scope: CoroutineScope, environment: Map<String, String>) ->
                 val websiteUrl = get<ApplicationConfig>().websiteUrl
                 var tui: HeadlessTui? = null
-                val notifications = NotificationsPage(scope, { tui?.onChanged?.invoke() }, get(), get(), get(), get(), get(), get())
+                val repaint = { tui?.onChanged?.invoke() ?: Unit }
+                val tasks =
+                    TasksPage(
+                        scope,
+                        repaint,
+                        get(),
+                        get(),
+                        get(),
+                        get(),
+                        get(),
+                        get(),
+                        get(),
+                        get(),
+                        get(),
+                        get(),
+                        get(),
+                        get(),
+                        get(),
+                        get(),
+                    )
+                val notifications = NotificationsPage(scope, repaint, get(), get(), get(), get(), get(), get())
                 HeadlessTui(
                     scope,
                     HeadlessTui.detachHintFor(environment),
@@ -57,7 +78,7 @@ object ViewModelModule {
                     authenticateWithOAuthInteractor = get(),
                     checkForUpdatesInteractor = get(),
                     upgradeCommands = { version -> UpdatePage.upgradeCommands(environment, websiteUrl, version) },
-                    tabs = HeadlessTui.defaultTabs().dropLast(1) + notifications,
+                    tabs = listOf(tasks) + HeadlessTui.defaultTabs().drop(1).dropLast(1) + notifications,
                 ).also { tui = it }
             }
             factory { MainViewModel(get(), get(), get(), get(), get(), get(), get(), get()) }

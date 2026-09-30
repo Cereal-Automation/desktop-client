@@ -25,6 +25,9 @@ interface TuiPage {
 
     /** Called when this page becomes (true) or stops being (false) the one on screen. */
     fun onActiveChanged(active: Boolean) {}
+
+    /** Called each time the tabs come up after a sign-in: (re)start observing user data here. */
+    fun onSignedIn() {}
 }
 
 /** Stand-in for a tab whose screen is not built yet. */
