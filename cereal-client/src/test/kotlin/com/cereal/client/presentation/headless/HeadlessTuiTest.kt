@@ -101,4 +101,20 @@ class HeadlessTuiTest {
         assertEquals(listOf("line 1", "line 2", "…", "line 9", "line 10"), HeadlessTui.clip(lines, 5))
         assertEquals(lines, HeadlessTui.clip(lines, 10))
     }
+
+    @Test
+    fun `clip keeps a link line and its reserved rows together`() {
+        // At width 10 the link wraps onto 2 extra rows, so it needs 3.
+        val link = linkLine("https://x.test/abcdefghij")
+        val lines = listOf(link) + (1..10).map { "line $it" }
+
+        // A 2-row head can't hold it: it goes whole rather than leaving its URL to wrap over the rows below.
+        assertEquals(listOf("…", "line 7", "line 8", "line 9", "line 10"), HeadlessTui.clip(lines, 5, width = 10))
+        assertEquals(listOf(link, "", "", "…", "line 8", "line 9", "line 10"), HeadlessTui.clip(lines, 7, width = 10))
+    }
+
+    @Test
+    fun `truncate shows control characters as spaces`() {
+        assertEquals("a b c", HeadlessTui.truncate("a\nb\u001Bc", 10))
+    }
 }

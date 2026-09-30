@@ -60,6 +60,8 @@ class LoginPage(
                 else -> "Tab next field · Enter sign in · Esc back"
             }
 
+    override val capturesKeys: Boolean get() = step != Step.METHODS || status != null
+
     fun showStatus(line: String) {
         status = line
     }

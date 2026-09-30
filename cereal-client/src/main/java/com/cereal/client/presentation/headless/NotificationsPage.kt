@@ -60,11 +60,14 @@ class NotificationsPage(
     @Volatile
     private var active = false
 
-    @Volatile
-    private var selectedId: String? = null
+    private val list = RowList<Row>()
 
     @Volatile
     private var expandedId: String? = null
+
+    /** The width rows were last laid out at; list rows arriving between renders use it. */
+    @Volatile
+    private var lastWidth = 80
 
     override val title get() = if (unseen > 0) "$TITLE ($unseen)" else TITLE
 
@@ -78,6 +81,7 @@ class NotificationsPage(
                 .distinctUntilChanged()
                 .collectLatest { signedIn ->
                     rows = emptyList()
+                    layOut(lastWidth)
                     unseen = 0
                     repaint()
                     if (signedIn) observe()
@@ -109,6 +113,7 @@ class NotificationsPage(
                                 .valueOrEmpty()
                     }
                     rows = history.map { Row(it, taskLabel(tasks, it.taskId), attempts[it.id].orEmpty()) }
+                    layOut(lastWidth)
                     if (active) markNewestSeen()
                     repaint()
                 }
@@ -128,51 +133,48 @@ class NotificationsPage(
         width: Int,
         height: Int,
     ): List<String> {
-        val rows = rows
         if (rows.isEmpty()) return listOf("", "  No notifications yet.")
-        val selected = selectedIndex(rows)
-        val now = System.currentTimeMillis()
-        val lines = mutableListOf<String>()
-        var selectedEnd = 0
-        rows.forEachIndexed { i, row ->
-            lines += rowLine(row, i == selected, width, now)
-            if (row.history.id == expandedId) {
-                val failed = row.attempts.filter { it.status == NotificationDeliveryStatus.FAILURE }
-                lines +=
-                    if (failed.isEmpty()) {
-                        listOf("      All channels delivered.")
-                    } else {
-                        failed.map { "      ${it.channel.label()}: ${it.errorMessage ?: "failed"}" }
-                    }
-            }
-            if (i == selected) selectedEnd = lines.size
-        }
-        // Scroll just far enough to keep the selected row (and its expansion) on screen.
-        return lines.drop((selectedEnd - height).coerceAtLeast(0)).take(height)
+        lastWidth = width
+        layOut(width)
+        return list.render(width, height)
     }
 
     override fun onKey(key: Key): Boolean {
-        val rows = rows
         if (rows.isEmpty()) return false
-        val selected = selectedIndex(rows)
-        when (key) {
-            Keys.Up -> selectedId = rows[(selected - 1).coerceAtLeast(0)].history.id
-            Keys.Down -> selectedId = rows[(selected + 1).coerceAtMost(rows.lastIndex)].history.id
-            Keys.Enter -> rows[selected].history.id.let { expandedId = if (expandedId == it) null else it }
-            else -> return false
-        }
+        if (list.onKey(key)) return true
+        if (key != Keys.Enter) return false
+        list.selected
+            ?.history
+            ?.id
+            ?.let { expandedId = if (expandedId == it) null else it }
+        layOut(lastWidth)
         return true
     }
 
-    private fun selectedIndex(rows: List<Row>) = rows.indexOfFirst { it.history.id == selectedId }.coerceAtLeast(0)
+    /** Feeds [rows] to the list, laid out for [width] (after the list's cursor column), the expanded one with its errors. */
+    private fun layOut(width: Int) {
+        val now = System.currentTimeMillis()
+        list.rows =
+            rows.map { row ->
+                val detail =
+                    if (row.history.id != expandedId) {
+                        emptyList()
+                    } else {
+                        row.attempts
+                            .filter { it.status == NotificationDeliveryStatus.FAILURE }
+                            .map { "      ${it.channel.label()}: ${it.errorMessage ?: "failed"}" }
+                            .ifEmpty { listOf("      All channels delivered.") }
+                    }
+                RowList.Row(row.history.id, rowLine(row, width - CURSOR_WIDTH, now), row, detail)
+            }
+    }
 
     private fun rowLine(
         row: Row,
-        selected: Boolean,
         width: Int,
         now: Long,
     ): String {
-        val head = "${if (selected) ">" else " "} ${formatRelativeTime(row.history.timestamp, now).padEnd(9)} ${row.task.fit(18)} "
+        val head = "${formatRelativeTime(row.history.timestamp, now).padEnd(9)} ${row.task.fit(18)} "
         val marks = " " + marks(row.attempts)
         val text = listOfNotNull(row.history.title?.takeIf { it.isNotBlank() }, row.history.message).joinToString(": ")
         return head + text.fit((width - head.length - marks.length).coerceAtLeast(1)) + marks
@@ -194,6 +196,7 @@ class NotificationsPage(
 
     private companion object {
         const val TITLE = "Notifications"
+        const val CURSOR_WIDTH = 2
         val MARKED_CHANNELS = listOf(NotificationChannelType.DISCORD, NotificationChannelType.TELEGRAM, NotificationChannelType.EMAIL)
 
         /** Script name and task number, numbered 1..n per script package instance by creation, as on the desktop. */

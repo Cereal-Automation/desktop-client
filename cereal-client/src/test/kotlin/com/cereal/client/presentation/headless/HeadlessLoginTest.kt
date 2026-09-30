@@ -61,6 +61,8 @@ class HeadlessLoginTest {
             val screen = awaitText("Password  ******_")
             assertTrue(screen.none { "s3cret" in it })
             assertTrue(screen.any { "Email     alice@example.com" in it })
+            // q types into the field, so the footer offers Ctrl-C instead.
+            assertTrue(screen.last().startsWith("Ctrl-C quit"), screen.last())
 
             press(Keys.Enter)
             awaitText("[1 Tasks]")

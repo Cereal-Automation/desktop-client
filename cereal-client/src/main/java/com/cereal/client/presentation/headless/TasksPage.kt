@@ -226,9 +226,9 @@ class TasksPage(
                 is Overlay.Confirm -> "  ${overlay.question} [y/N]"
                 else -> notice?.let { "  ! $it" }
             }
-        val mainHeight = if (bottom == null) height else height - 1
+        val mainHeight = (if (bottom == null) height else height - 1).coerceAtLeast(0)
         val main = detail?.let { detailBody(it, width, mainHeight) } ?: treeBody(width, mainHeight)
-        return main + List(mainHeight - main.size) { "" } + listOfNotNull(bottom)
+        return main + List((mainHeight - main.size).coerceAtLeast(0)) { "" } + listOfNotNull(bottom)
     }
 
     override fun onKey(key: Key): Boolean {
@@ -539,7 +539,12 @@ class TasksPage(
         return (head + log.takeLast(room)).take(height).map { HeadlessTui.truncate(it, width) }
     }
 
-    private fun numberOf(task: Task): Int = numbered(tasks.filter { it.scriptInstance.getScriptPackageInstance().id == task.scriptInstance.getScriptPackageInstance().id }).first { it.first.id == task.id }.second
+    /** [task]'s number among its package's tasks; counted with [task] itself, which a fresh [tasks] may no longer hold. */
+    private fun numberOf(task: Task): Int {
+        val pkgId = task.scriptInstance.getScriptPackageInstance().id
+        val siblings = tasks.filter { it.id != task.id && it.scriptInstance.getScriptPackageInstance().id == pkgId }
+        return numbered(siblings + task).first { it.first.id == task.id }.second
+    }
 
     private fun Node.pkg(): ScriptPackageInstance? =
         when (this) {

@@ -42,7 +42,7 @@ class HeadlessNotificationsTest {
             val screen = awaitText("Order placed")
             val rows = screen.filter { "Test #1" in it }
             assertEquals(2, rows.size, screen.joinToString("\n"))
-            assertTrue(rows[0].startsWith(">") && "Just now" in rows[0] && rows[0].endsWith("D- T- E✓"), rows[0])
+            assertTrue(rows[0].startsWith("›") && "Just now" in rows[0] && rows[0].endsWith("D- T- E✓"), rows[0])
             assertTrue("5m ago" in rows[1] && "Checkout: Order placed" in rows[1] && rows[1].endsWith("D✓ T✗ E-"), rows[1])
 
             press(Keys.Down, Keys.Enter)
@@ -74,6 +74,7 @@ class HeadlessNotificationsTest {
             awaitText("[5 Notifications]")
 
             press(CharKey('1'))
+            awaitText("[1 Tasks]")
             koin.record("Fourth", now + 1_000)
             awaitText("5 Notifications (1)")
             assertEquals(now, get<NotificationSettingsRepository>().getNotificationCenterLastSeenAt().first())
