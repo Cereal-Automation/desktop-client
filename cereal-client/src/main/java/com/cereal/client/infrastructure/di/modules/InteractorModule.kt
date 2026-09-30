@@ -78,6 +78,7 @@ import com.cereal.client.application.interactor.settings.privacy.GetCrashReporti
 import com.cereal.client.application.interactor.settings.privacy.SetCrashReportingEnabledInteractor
 import com.cereal.client.application.interactor.settings.proxy.ObserveProxyHealthCheckIntervalInteractor
 import com.cereal.client.application.interactor.settings.proxy.SetProxyHealthCheckIntervalInteractor
+import com.cereal.client.application.interactor.task.AnswerUserInteractionInteractor
 import com.cereal.client.application.interactor.task.ChangeScriptPackageInstanceGroupInteractor
 import com.cereal.client.application.interactor.task.CreateScriptInstanceGroupInteractor
 import com.cereal.client.application.interactor.task.DeleteScriptInstanceInteractor
@@ -139,6 +140,7 @@ object InteractorModule {
             factory { StopTasksInScriptPackageInstanceInteractor(get(), get()) }
             factory { StartAllTasksInScriptPackageInstanceInteractor(get(), get()) }
             factory { UserInteractionDismissedInteractor(get()) }
+            factory { AnswerUserInteractionInteractor(get()) }
             // Proxies
             factory { GetProxyGroupsInteractor(get()) }
             factory { CreateProxyGroupInteractor(get()) }

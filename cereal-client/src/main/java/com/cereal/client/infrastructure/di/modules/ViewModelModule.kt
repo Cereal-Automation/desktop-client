@@ -17,6 +17,7 @@ import com.cereal.client.presentation.headless.HeadlessTui
 import com.cereal.client.presentation.headless.NotificationsPage
 import com.cereal.client.presentation.headless.TasksPage
 import com.cereal.client.presentation.headless.UpdatePage
+import com.cereal.client.presentation.headless.WaitingPage
 import com.cereal.client.presentation.main.MainViewModel
 import com.cereal.client.presentation.marketplace.MarketplaceViewModel
 import com.cereal.client.presentation.marketplace.ScriptDetailViewModel
@@ -64,7 +65,13 @@ object ViewModelModule {
                         get(),
                         get(),
                         get(),
+                        get(),
                     )
+                val waiting =
+                    WaitingPage(scope, repaint, get(), get()) { taskId ->
+                        tasks.openTask(taskId)
+                        tui?.select(tasks)
+                    }
                 val notifications = NotificationsPage(scope, repaint, get(), get(), get(), get(), get(), get())
                 HeadlessTui(
                     scope,
@@ -78,7 +85,7 @@ object ViewModelModule {
                     authenticateWithOAuthInteractor = get(),
                     checkForUpdatesInteractor = get(),
                     upgradeCommands = { version -> UpdatePage.upgradeCommands(environment, websiteUrl, version) },
-                    tabs = listOf(tasks) + HeadlessTui.defaultTabs().drop(1).dropLast(1) + notifications,
+                    tabs = listOf(tasks, waiting) + HeadlessTui.defaultTabs().drop(2).dropLast(1) + notifications,
                 ).also { tui = it }
             }
             factory { MainViewModel(get(), get(), get(), get(), get(), get(), get(), get()) }

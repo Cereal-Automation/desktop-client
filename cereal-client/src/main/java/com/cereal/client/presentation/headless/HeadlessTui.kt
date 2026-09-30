@@ -257,6 +257,13 @@ class HeadlessTui(
         onChanged()
     }
 
+    /** Switches to [page]'s tab, as its number key would. */
+    fun select(page: TuiPage) {
+        selectedTab = tabs.indexOf(page).coerceAtLeast(0)
+        updateActivePage()
+        onChanged()
+    }
+
     /** Ctrl-C: same as `q`. */
     fun onInterrupt() {
         if (quitState == QuitState.NONE) requestQuit()

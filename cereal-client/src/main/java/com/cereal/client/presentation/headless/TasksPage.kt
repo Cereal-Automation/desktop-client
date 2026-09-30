@@ -3,6 +3,7 @@ package com.cereal.client.presentation.headless
 import com.cereal.client.application.Interactor
 import com.cereal.client.application.interactor.script.GetScriptsInGroupInteractor
 import com.cereal.client.application.interactor.script.ScriptInstanceInGroup
+import com.cereal.client.application.interactor.task.AnswerUserInteractionInteractor
 import com.cereal.client.application.interactor.task.ChangeScriptPackageInstanceGroupInteractor
 import com.cereal.client.application.interactor.task.CreateScriptInstanceGroupInteractor
 import com.cereal.client.application.interactor.task.DeleteScriptInstanceInteractor
@@ -43,7 +44,8 @@ import java.text.SimpleDateFormat
 
 /**
  * Tab `1`: the desktop's group > script > task tree on a [RowList], with start/stop, task detail
- * (logs merged with status history), and an action menu for groups and scripts.
+ * (logs merged with status history, and the pending interaction: `i` answers a text input in an
+ * inline line, `c` continues), and an action menu for groups and scripts.
  *
  * [changed] asks the frame to repaint after an async update.
  */
@@ -66,6 +68,7 @@ class TasksPage(
     private val deleteGroup: DeleteTaskGroupInteractor,
     private val moveScript: ChangeScriptPackageInstanceGroupInteractor,
     private val deleteScript: DeleteScriptInstanceInteractor,
+    private val answerInteraction: AnswerUserInteractionInteractor,
 ) : TuiPage {
     private data class GroupNode(
         val group: ScriptPackageGroup,
@@ -105,6 +108,9 @@ class TasksPage(
         @Volatile var stackExpanded = false
 
         @Volatile var log: List<LoggingEvent> = emptyList()
+
+        /** The inline answer line for a pending text input, or null while it is closed. */
+        @Volatile var answer: String? = null
     }
 
     /** Modal state drawn over the tree or the detail. */
@@ -149,8 +155,27 @@ class TasksPage(
                 is Overlay.Choice -> "↑↓ move · Enter choose · Esc cancel"
                 is Overlay.Input -> "Enter save · Esc cancel"
                 is Overlay.Confirm -> "y confirm · any other key cancels"
-                null -> if (detail != null) DETAIL_KEYS else TREE_KEYS
+                null -> detail?.let { detailKeys(it) } ?: TREE_KEYS
             }
+
+    private fun detailKeys(detail: Detail): String {
+        if (detail.answer != null) return "Enter send · Esc close"
+        val answer =
+            when (tasks.find { it.id == detail.taskId }?.userInteraction) {
+                is UserInteraction.TextInput -> "i answer · "
+                is UserInteraction.ContinueButton -> "c continue · "
+                else -> ""
+            }
+        return answer + DETAIL_KEYS
+    }
+
+    /** Opens [taskId]'s detail, with the answer line open when it waits for text (Waiting's `Enter`). */
+    fun openTask(taskId: String) {
+        closeDetail()
+        overlay = null
+        openDetail(taskId)
+        if (tasks.find { it.id == taskId }?.userInteraction is UserInteraction.TextInput) detail?.answer = ""
+    }
 
     /** (Re)starts observing the signed-in user's groups and tasks. */
     override fun onSignedIn() {
@@ -207,7 +232,11 @@ class TasksPage(
         val char = (key as? CharKey)?.char
         if (detail != null) {
             val task = tasks.find { it.id == detail.taskId }
+            val interaction = task?.userInteraction
+            if (detail.answer != null) return onAnswerKey(detail, key)
             when {
+                char == 'i' && interaction is UserInteraction.TextInput -> detail.answer = ""
+                char == 'c' && interaction is UserInteraction.ContinueButton -> run(answerInteraction, AnswerUserInteractionInteractor.Params.Continue(detail.taskId))
                 key == Keys.Escape -> closeDetail()
                 char == 'f' -> detail.filter = LogFilter.entries[(detail.filter.ordinal + 1) % LogFilter.entries.size]
                 char == 't' -> detail.stackExpanded = !detail.stackExpanded
@@ -228,6 +257,33 @@ class TasksPage(
             char == 'X' && pkg != null -> run(stopScript, StopTasksInScriptPackageInstanceInteractor.Params(pkg))
             char == 'm' -> this.overlay = actionMenu(node)
             else -> return false
+        }
+        return true
+    }
+
+    /** The inline answer line: Esc closes it and the task keeps waiting. */
+    private fun onAnswerKey(
+        detail: Detail,
+        key: Key,
+    ): Boolean {
+        val text = detail.answer ?: return false
+        when (key) {
+            Keys.Escape -> {
+                detail.answer = null
+            }
+
+            Keys.Backspace -> {
+                detail.answer = text.dropLast(1)
+            }
+
+            Keys.Enter -> {
+                detail.answer = null
+                run(answerInteraction, AnswerUserInteractionInteractor.Params.Text(detail.taskId, text))
+            }
+
+            is CharKey -> {
+                detail.answer = text + key.char
+            }
         }
         return true
     }
@@ -417,6 +473,28 @@ class TasksPage(
                 val flag = task.userInteraction?.let { "  [! ${it.kind()}]" }.orEmpty()
                 add("  ${task.scriptInstance.getScriptPackageInstance().label()} · task #${numberOf(task)} · ${status.name()}$flag")
                 status.message?.let { add("  $it") }
+                when (val interaction = task.userInteraction) {
+                    is UserInteraction.TextInput -> {
+                        add("")
+                        add("  ${interaction.title}")
+                        if (interaction.description.isNotBlank()) add("  ${interaction.description}")
+                        add(detail.answer?.let { "  > ${it}_" } ?: "  (i to answer)")
+                    }
+
+                    is UserInteraction.ContinueButton -> {
+                        add("")
+                        add("  Waiting for you to continue (c)")
+                    }
+
+                    is UserInteraction.Browser -> {
+                        add("")
+                        add("  Browser prompt: ${interaction.title}")
+                    }
+
+                    null -> {
+                        detail.answer = null
+                    }
+                }
                 if (status is TaskStatus.Error && status.stackTrace != null) {
                     if (detail.stackExpanded) status.stackTrace.lines().forEach { add("    $it") } else add("  (t shows the stack trace)")
                 }
@@ -451,7 +529,7 @@ class TasksPage(
         /** Task numbers as on the desktop: a package's tasks by creation order, from 1. */
         fun numbered(tasks: List<Task>): List<Pair<Task, Int>> = tasks.sortedBy { it.createdAt }.mapIndexed { i, task -> task to i + 1 }
 
-        private fun ScriptPackageInstance.label(): String {
+        fun ScriptPackageInstance.label(): String {
             val identifier = definition.mainScript.configuration.getScriptIdentifierValue(mainConfiguration)
             return definition.manifest.name + (identifier?.let { " ($it)" } ?: "")
         }
@@ -472,7 +550,7 @@ class TasksPage(
                 is TaskStatus.Error -> "✗"
             }
 
-        private fun UserInteraction.kind() =
+        fun UserInteraction.kind() =
             when (this) {
                 is UserInteraction.Browser -> "BROWSER"
                 is UserInteraction.TextInput -> "INPUT"
