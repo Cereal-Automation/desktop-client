@@ -73,7 +73,7 @@ class HeadlessClientNotificationsTest {
         createdAt: Instant,
     ) = JobTask(id, script, emptyMap(), listOf(TaskStatus.Idle(timestamp = createdAt)), null, createdAt)
 
-    private val HeadlessTestScope.sent get() = (get<NotificationProvider>() as InMemoryNotificationProvider).sent
+    private val HeadlessTestScope.sent get() = sentNotifications()
 
     private suspend fun HeadlessTestScope.awaitSent(count: Int) {
         val deadline = System.currentTimeMillis() + 2.seconds.inWholeMilliseconds

@@ -1,9 +1,13 @@
 package testutil
 
+import com.cereal.client.application.interactor.notification.SendRestartReportInteractor
+import com.cereal.client.domain.model.notification.Notification
+import com.cereal.client.domain.provider.NotificationProvider
 import com.cereal.client.infrastructure.di.Injector
 import com.cereal.client.infrastructure.di.modules.HeadlessModule
 import com.cereal.client.infrastructure.di.modules.InMemoryProviderModule
 import com.cereal.client.infrastructure.di.modules.InMemoryRepositoryModule
+import com.cereal.client.infrastructure.provider.inmemory.InMemoryNotificationProvider
 import com.cereal.client.presentation.headless.HeadlessTui
 import com.cereal.client.presentation.headless.runTui
 import com.varabyte.kotter.foundation.input.Key
@@ -83,6 +87,12 @@ class HeadlessTestScope(
     private val runScope: RunScope,
 ) {
     inline fun <reified T : Any> get(): T = koin.get()
+
+    /** The notifications sent so far, leaving out the restart report every signed-in boot sends. */
+    fun sentNotifications(): List<Notification> =
+        (koin.get<NotificationProvider>() as InMemoryNotificationProvider).sent.toList().filterNot {
+            SendRestartReportInteractor.TITLE in it.toString()
+        }
 
     suspend fun press(vararg keys: Key) = terminal.press(*keys)
 

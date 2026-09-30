@@ -13,6 +13,7 @@ import com.cereal.client.application.interactor.bootstrap.BootstrapInteractor
 import com.cereal.client.application.interactor.bootstrap.BootstrapInteractor.BootstrapSequenceIdentifier
 import com.cereal.client.application.interactor.bootstrap.BootstrapState
 import com.cereal.client.application.interactor.notification.NotifyTaskWaitingInteractor
+import com.cereal.client.application.interactor.notification.SendRestartReportInteractor
 import com.cereal.client.application.interactor.task.ObserveTasksInteractor
 import com.cereal.client.application.interactor.task.StopAllRunningTasksInteractor
 import com.cereal.client.domain.model.auth.OAuthProvider
@@ -49,6 +50,7 @@ class HeadlessTui(
     private val checkForUpdatesInteractor: CheckForUpdatesInteractor,
     handleSessionLostInteractor: HandleSessionLostInteractor,
     notifyTaskWaitingInteractor: NotifyTaskWaitingInteractor,
+    private val sendRestartReportInteractor: SendRestartReportInteractor,
     /** The upgrade commands for this distribution, given the new version (see [UpdatePage.upgradeCommands]). */
     private val upgradeCommands: (version: String) -> List<String>,
     /** The no-channel banner line, or null when a channel is set up (see [SettingsPage.noChannelBanner]). */
@@ -198,7 +200,11 @@ class HeadlessTui(
         }
 
     private fun show(page: TuiPage?) {
-        if (page == null && preTab != null) tabs.forEach { it.onSignedIn() }
+        if (page == null && preTab != null) {
+            tabs.forEach { it.onSignedIn() }
+            // Signed in, so the user-scoped notification settings are readable; sends once per boot.
+            scope.launch { sendRestartReportInteractor(Interactor.None()) }
+        }
         preTab = page
         updateActivePage()
         onChanged()

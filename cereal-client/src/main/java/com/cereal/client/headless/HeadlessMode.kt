@@ -1,6 +1,7 @@
 package com.cereal.client.headless
 
 import com.cereal.client.App
+import com.cereal.client.application.task.TaskManager
 import com.cereal.client.infrastructure.bootstrap.ApplicationHome
 import com.cereal.client.infrastructure.di.modules.HeadlessModule
 import com.cereal.client.infrastructure.headless.HeadlessProcess
@@ -11,6 +12,7 @@ import com.varabyte.kotter.terminal.system.SystemTerminal
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.runBlocking
 import org.koin.core.parameter.parametersOf
 import java.io.File
 
@@ -58,6 +60,10 @@ object HeadlessMode {
             val koin = App.initialize(listOf(HeadlessModule.modules))
             val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
             val tui = koin.get<HeadlessTui> { parametersOf(scope, System.getenv()) }
+            // SIGTERM (`docker stop`, reboot): end the jobs without persisting `Idle`, so the tasks resume on the next boot.
+            // A TUI quit has already stopped them explicitly by then, so this finds nothing to do.
+            val taskManager = koin.get<TaskManager>()
+            Runtime.getRuntime().addShutdownHook(Thread { runBlocking { taskManager.shutdown() } })
 
             // Explicitly SystemTerminal: Kotter's default provider list falls back to a Swing window.
             val terminal = SystemTerminal()

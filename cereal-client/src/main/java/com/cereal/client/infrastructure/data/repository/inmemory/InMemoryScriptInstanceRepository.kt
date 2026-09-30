@@ -21,6 +21,7 @@ class InMemoryScriptInstanceRepository : ScriptInstanceRepository {
         val packageInstance: ScriptPackageInstance,
         val groupId: String? = null,
         val mainScriptInstance: MainScriptInstance? = null,
+        val childScriptInstances: List<ChildScriptInstance> = emptyList(),
     )
 
     private val entries = MutableStateFlow<List<Entry>>(emptyList())
@@ -33,7 +34,12 @@ class InMemoryScriptInstanceRepository : ScriptInstanceRepository {
         parentInstance: ScriptInstance,
         name: String,
         scriptInstance: ChildScriptInstance,
-    ) = Unit
+    ) {
+        entries.value =
+            entries.value.map {
+                if (it.packageInstance.id == scriptInstance.packageInstance.id) it.copy(childScriptInstances = it.childScriptInstances + scriptInstance) else it
+            }
+    }
 
     override suspend fun deleteScriptPackageInstance(scriptPackageInstance: ScriptPackageInstance) {
         entries.value = entries.value.filterNot { it.packageInstance.id == scriptPackageInstance.id }
@@ -64,7 +70,7 @@ class InMemoryScriptInstanceRepository : ScriptInstanceRepository {
 
     override suspend fun getScriptPackageInstance(id: String): ScriptPackageInstance = getScriptPackageInstances().first { it.id == id }
 
-    override suspend fun getScriptInstances(scriptPackageInstance: ScriptPackageInstance): List<ScriptInstance> = entries.value.filter { it.packageInstance.id == scriptPackageInstance.id }.mapNotNull { it.mainScriptInstance }
+    override suspend fun getScriptInstances(scriptPackageInstance: ScriptPackageInstance): List<ScriptInstance> = entries.value.filter { it.packageInstance.id == scriptPackageInstance.id }.flatMap { listOfNotNull(it.mainScriptInstance) + it.childScriptInstances }
 
     private fun List<Entry>.inGroup(groupId: String) = filter { it.groupId == null || it.groupId == groupId }.map { it.packageInstance }
 }
