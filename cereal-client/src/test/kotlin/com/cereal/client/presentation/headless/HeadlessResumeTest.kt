@@ -24,9 +24,13 @@ import com.cereal.client.domain.repository.ScriptInstanceRepository
 import com.cereal.client.domain.repository.TasksRepository
 import com.cereal.client.infrastructure.provider.inmemory.InMemoryAppUpdateProvider
 import com.cereal.client.infrastructure.provider.inmemory.InMemoryNotificationProvider
+import com.cereal.sdk.ExecutionResult
+import com.cereal.sdk.Script
 import com.cereal.sdk.ScriptConfiguration
+import com.cereal.sdk.component.ComponentProvider
 import kotlinx.coroutines.delay
 import org.junit.jupiter.api.Assertions.assertEquals
+import org.junit.jupiter.api.Assertions.assertFalse
 import org.junit.jupiter.api.Assertions.assertNull
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
@@ -35,9 +39,11 @@ import testutil.HeadlessTestScope
 import testutil.runHeadlessTest
 import java.io.File
 import kotlin.time.Clock
+import kotlin.time.Duration.Companion.milliseconds
 import kotlin.time.Duration.Companion.seconds
 import kotlin.time.ExperimentalTime
 import kotlin.time.Instant
+import kotlin.time.measureTime
 
 @OptIn(ExperimentalTime::class)
 class HeadlessResumeTest {
@@ -197,4 +203,82 @@ class HeadlessResumeTest {
             assertNull(get<TasksRepository>().getTask("t1")!!.job)
             assertEquals(emptyList<String>(), reports)
         }
+
+    @Test
+    fun `stopping all tasks gives up waiting on a script that ignores cancellation`() {
+        StubbornScript.released = false
+        val stubbornPkg =
+            ScriptPackageInstance(
+                "pkg-stubborn",
+                emptyMap(),
+                emptyMap(),
+                ScriptPackage(
+                    source = File("."),
+                    manifest = Manifest(packageName = "com.example.stubborn", name = "Stubborn", versionCode = 1),
+                    mainScript = MainScript(StubbornScript::class, scriptDefinition),
+                    childScripts = emptyMap(),
+                ),
+                Clock.System.now(),
+                numberOfConcurrentTasks = 1,
+            )
+        val stubborn = MainScriptInstance("script-stubborn", stubbornPkg.definition.mainScript, emptyMap(), stubbornPkg.createdAt, stubbornPkg)
+        val t1 = task("t1", TaskStatus.Idle(timestamp = t0), stubborn)
+        runHeadlessTest(
+            seed = {
+                get<TasksRepository>().createScriptInstanceGroup(group)
+                val linker = get<ScopeLinker>()
+                linker.linkScriptInstanceToPackage(stubborn)
+                get<ScriptInstanceRepository>().addScriptPackageInstance(group.id, stubbornPkg, stubborn)
+                linker.linkTaskToScriptInstance(t1)
+                get<TasksRepository>().addTask(t1)
+            },
+        ) {
+            awaitText("1-5 tabs")
+            get<TaskManager>().startTask("t1")
+            awaitText("1 running")
+            val job = get<TasksRepository>().getTask("t1")!!.job!!
+
+            val waited = measureTime { get<TaskManager>().stopAllTasks(timeout = 300.milliseconds) }
+
+            try {
+                assertTrue(waited < 5.seconds, waited.toString())
+                assertFalse(job.isCompleted)
+            } finally {
+                StubbornScript.released = true
+                job.join()
+            }
+        }
+    }
+
+    /** Swallows the interrupt a cancellation sends, so it runs until [released]. */
+    class StubbornScript : Script<ScriptConfiguration> {
+        override suspend fun onStart(
+            configuration: ScriptConfiguration,
+            provider: ComponentProvider,
+        ) = true
+
+        override suspend fun execute(
+            configuration: ScriptConfiguration,
+            provider: ComponentProvider,
+            statusUpdate: suspend (message: String) -> Unit,
+        ): ExecutionResult {
+            while (!released) {
+                try {
+                    Thread.sleep(10)
+                } catch (_: InterruptedException) {
+                }
+            }
+            return ExecutionResult.Success("done")
+        }
+
+        override suspend fun onFinish(
+            configuration: ScriptConfiguration,
+            provider: ComponentProvider,
+        ) = Unit
+
+        companion object {
+            @Volatile
+            var released = false
+        }
+    }
 }

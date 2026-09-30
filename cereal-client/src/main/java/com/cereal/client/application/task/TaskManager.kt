@@ -19,6 +19,7 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.DelicateCoroutinesApi
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.first
@@ -54,6 +55,9 @@ class TaskManager(
     /** Set by [shutdown]: jobs ending from here on don't persist their `Idle`, so their tasks stay `Running`. */
     @Volatile
     private var shuttingDown = false
+
+    /** Non-zero while [stopAllTasks] runs: no task starts (a finished task's refill included), so nothing outlives it. */
+    private val stoppingAll = AtomicInteger()
 
     private val resumed = AtomicInteger()
     private val resumeFailures = Collections.synchronizedList(mutableListOf<String>())
@@ -133,13 +137,26 @@ class TaskManager(
     }
 
     /**
-     * Stops every running task through [stopTask] and waits until each job has persisted its final
-     * (`Idle`) status. Call this before the session is cleared, since persisting a status needs the user.
+     * Stops every running task and waits up to [timeout] until each job has persisted its final (`Idle`) status.
+     * Call this before the session is cleared, since persisting a status needs the user.
      */
-    suspend fun stopAllTasks() {
-        val runningTasks = tasksRepository.getAllTasks().first().filter { it.status.isRunning() }
-        runningTasks.forEach { stopTask(it.id) }
-        runningTasks.forEach { tasksRepository.getTask(it.id)?.job?.join() }
+    suspend fun stopAllTasks(timeout: Duration = 20.seconds) {
+        stoppingAll.incrementAndGet()
+        try {
+            // Under the start lock, so a start in flight has set its job. A job still active past its final status
+            // (a finished task refilling the concurrency limit) is cancelled too.
+            val jobs =
+                startTaskMutex.withLock {
+                    tasksRepository
+                        .getAllTasks()
+                        .first()
+                        .filter { it.status.isRunning() || it.job?.isActive == true }
+                        .mapNotNull { cancel(it) }
+                }
+            withTimeoutOrNull(timeout) { jobs.joinAll() }
+        } finally {
+            stoppingAll.decrementAndGet()
+        }
     }
 
     suspend fun createTasks(scriptInstance: ScriptInstance): List<JobTask> {
@@ -200,6 +217,7 @@ class TaskManager(
         task: JobTask,
         firstStatus: String = "Starting script",
     ) = startTaskMutex.withLock {
+        if (stoppingAll.get() > 0) return@withLock
         // Re-fetch the task from the repository to ensure we check the latest state,
         // avoiding a race condition where a stale task object (with a null job) passes
         // the pre-start check after another coroutine has already started the same task.
@@ -229,8 +247,9 @@ class TaskManager(
         val job =
             scope.launch(dispatcherProvider.io, start = CoroutineStart.ATOMIC) {
                 val result = executor.run()
-                // Ended by process shutdown: keep the persisted `Running` so the task resumes on the next boot.
-                if (shuttingDown && result is TaskStatus.Idle) return@launch
+                // Ended by process shutdown: keep the persisted `Running` so the task resumes on the next boot. Any
+                // result counts: Chrome gets the same SIGTERM, so a browser task may end in an error.
+                if (shuttingDown) return@launch
                 withContext(NonCancellable) {
                     tasksRepository.addStatusHistory(freshTask.id, result)
                 }
@@ -247,15 +266,18 @@ class TaskManager(
      * Cancels a running task. When the task isn't running this method won't do anything.
      */
     suspend fun stopTask(id: String) {
-        val task = tasksRepository.getTask(id) ?: return
-        // Only proceed if the task is actually running
-        if (!task.status.isRunning()) return
+        // Under the start lock, so a task mid-start (persisted `Running`, job not yet set) is stopped too.
+        startTaskMutex.withLock {
+            val task = tasksRepository.getTask(id) ?: return
+            // Only proceed if the task is actually running
+            if (task.status.isRunning()) cancel(task)
+        }
+    }
 
+    private suspend fun cancel(task: JobTask): Job? {
         // Clear any pending user interaction; cancelling the job cancels a browser prompt it owns.
-        if (task.userInteraction != null) tasksRepository.setUserInteraction(id, null)
-
-        val message = "Task stopped by user"
-        task.job?.cancel(CancellationException(message))
+        if (task.userInteraction != null) tasksRepository.setUserInteraction(task.id, null)
+        return task.job?.also { it.cancel(CancellationException("Task stopped by user")) }
     }
 
     private suspend fun onTaskFinished(task: JobTask) {
