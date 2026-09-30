@@ -371,9 +371,13 @@ class TasksPage(
         } ?: groups.firstOrNull()?.group
     }
 
+    /** Back from a config form; a [created] script (new or duplicated) starts here, its failure shown as the notice. */
     private fun closeConfig(created: ScriptPackageInstance?) {
         configPage = null
-        created?.let { list.select("s:${it.id}") }
+        created?.let {
+            list.select("s:${it.id}")
+            run(startScript, StartAllTasksInScriptPackageInstanceInteractor.Params(it))
+        }
         changed()
     }
 

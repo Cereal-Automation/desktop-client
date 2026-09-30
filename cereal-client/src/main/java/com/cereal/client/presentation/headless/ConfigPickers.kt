@@ -160,7 +160,15 @@ class ConfigPickers(
     ) : TuiPage {
         private val list = RowList<Any>()
 
+        /** Setting it refreshes the list, so a key handled before the next render sees the same rows. */
         @Volatile private var loaded: List<G>? = null
+            set(value) {
+                field = value
+                list.rows =
+                    (if (nullable) listOf(RowList.Row<Any>(NONE, "(none)", NONE)) else emptyList()) +
+                    value.orEmpty().map { RowList.Row<Any>(key(it), label(it), it) } +
+                    listOf(RowList.Row<Any>(PASTE, "+ new from pasted $noun", PASTE), RowList.Row<Any>(FILE, "+ new from a file in the volume", FILE))
+            }
 
         @Volatile private var notice: String? = null
 
@@ -195,10 +203,6 @@ class ConfigPickers(
         ): List<String> {
             input?.let { return listOf(" $heading: new from ${if (list.selected == PASTE) "a paste" else "a file in the volume"}", "") + it.render(width, height - 2) }
             val groups = loaded
-            list.rows =
-                (if (nullable) listOf(RowList.Row<Any>(NONE, "(none)", NONE)) else emptyList()) +
-                groups.orEmpty().map { RowList.Row<Any>(key(it), label(it), it) } +
-                listOf(RowList.Row<Any>(PASTE, "+ new from pasted $noun", PASTE), RowList.Row<Any>(FILE, "+ new from a file in the volume", FILE))
             val head = listOf(" $heading", "")
             val bottom =
                 confirm?.let { listOf("", "  Delete ${label(it)}? It can't be undone. [y/N]") }
@@ -279,9 +283,18 @@ class ConfigPickers(
         private val set: (ConfigValue?) -> Unit,
         private val close: () -> Unit,
     ) : TuiPage {
-        @Volatile private var rows: List<ListRow> = initial.rows
-
         private val list = RowList<Int>()
+
+        /** Setting it refreshes the list, so a key handled before the next render sees the same rows. */
+        @Volatile private var rows: List<ListRow> = initial.rows
+            set(value) {
+                field = value
+                list.rows = value.mapIndexed { i, row -> RowList.Row(i.toString(), "${i + 1}. ${describe(row)}", i) }
+            }
+
+        init {
+            rows = initial.rows
+        }
 
         @Volatile private var editing: RowEditor? = null
 
@@ -307,7 +320,6 @@ class ConfigPickers(
         ): List<String> {
             editing?.let { return it.body(width, height) }
             input?.let { return listOf(" $title0: import rows (replaces the list)", "") + it.render(width, height - 2) }
-            list.rows = rows.mapIndexed { i, row -> RowList.Row(i.toString(), "${i + 1}. ${describe(row)}", i) }
             val head = listOf(" $title0: ${rows.size} row(s)", "")
             val bottom =
                 replace?.let { listOf("", "  Replace the ${rows.size} existing row(s) with ${it.rows.size} imported? [y/N]") }
@@ -335,7 +347,7 @@ class ConfigPickers(
             when {
                 key == Keys.Escape -> close()
                 char == 'a' -> editing = RowEditor(null, ListRow(emptyMap()))
-                key == Keys.Enter && at != null -> editing = RowEditor(at, rows[at])
+                key == Keys.Enter && at != null -> rows.getOrNull(at)?.let { editing = RowEditor(at, it) }
                 char == 'd' && at != null -> update(rows.filterIndexed { i, _ -> i != at })
                 char == 'i' || char == 'f' -> input = ImportInput(char == 'i', csvPrompt(definitions), ::runImport) { input = null }
                 else -> return false
@@ -499,15 +511,22 @@ class NotificationOverridesForm(
     /** "none", or the overridden channels; with a problem while an enabled channel is missing a value. */
     fun summary(): String = listOf(DISCORD to "Discord", TELEGRAM to "Telegram", EMAIL to "Email").filter { on(it.first) }.joinToString(", ") { it.second }.ifEmpty { "none" }
 
-    val incomplete: Boolean get() = fields().any { it.required && it.value == null }
+    val incomplete: Boolean get() = fields().any { problem(it) != null }
 
     fun rows(): List<FieldForm.Row> =
         fields().flatMap { field ->
             listOfNotNull(
                 HEADERS[field.key]?.let { FieldForm.Header("h:${field.key}", it) },
-                if (field.required && field.value == null) field.copy(problem = "required") else field,
+                field.copy(problem = problem(field)),
             )
         }
+
+    /** "required" when missing, else the desktop settings' check of the value, if it has one. */
+    private fun problem(field: FieldForm.Field): String? {
+        if (field.required && field.value == null) return "required"
+        val value = field.value?.raw?.let { (it as? Secret)?.reveal() ?: it.toString() } ?: return null
+        return CHECKS[field.key]?.problem(value)
+    }
 
     fun overrides(): ScriptNotificationOverrides? {
         val discord = if (on(DISCORD)) DiscordOverrides(text("discord.url")) else null
@@ -582,6 +601,14 @@ class NotificationOverridesForm(
         const val TELEGRAM = "telegram"
         const val EMAIL = "email"
         const val DEFAULT_SMTP_PORT = 587
+        val CHECKS =
+            mapOf(
+                "discord.url" to NotificationField.DISCORD_WEBHOOK_URL,
+                "telegram.token" to NotificationField.TELEGRAM_BOT_TOKEN,
+                "telegram.chat" to NotificationField.TELEGRAM_CHAT_ID,
+                "email.from" to NotificationField.FROM,
+                "email.to" to NotificationField.TO,
+            )
         const val MAX_PORT = 65535
         val HEADERS = mapOf(DISCORD to "Discord", TELEGRAM to "Telegram", EMAIL to "Email")
 

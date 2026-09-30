@@ -8,7 +8,6 @@ import com.cereal.client.application.interactor.script.GetScriptsInteractor
 import com.cereal.client.application.interactor.script.NumberOfConcurrentTasksConflictException
 import com.cereal.client.application.interactor.script.StartScriptInteractor
 import com.cereal.client.application.interactor.script.SyncScriptsOnScriptSelectionInteractor
-import com.cereal.client.application.interactor.task.StartAllTasksInScriptPackageInstanceInteractor
 import com.cereal.client.domain.model.script.ScriptPackage
 import com.cereal.client.domain.model.script.ScriptPackageInstance
 import com.cereal.client.domain.model.script.configuration.ApplicationScriptConfigurationKeys
@@ -52,7 +51,6 @@ class ScriptConfigPages(
     private val getInstances: GetScriptPackageInstancesByPackageNameInteractor,
     private val hasChannels: HasNotificationChannelsConfiguredInteractor,
     private val startScript: StartScriptInteractor,
-    private val startAll: StartAllTasksInScriptPackageInstanceInteractor,
     private val pickers: ConfigPickers,
 ) {
     fun newTask(
@@ -390,9 +388,7 @@ class ScriptConfigPages(
             startScript(params) { result ->
                 when (result) {
                     is SuspendableResult.Success -> {
-                        startAll(StartAllTasksInScriptPackageInstanceInteractor.Params(result.value)) { started ->
-                            if (started is SuspendableResult.Failure) fail(started.error.message)
-                        }
+                        // The Tasks page starts it, so a start failure shows there, not on this closed form.
                         close(result.value)
                     }
 

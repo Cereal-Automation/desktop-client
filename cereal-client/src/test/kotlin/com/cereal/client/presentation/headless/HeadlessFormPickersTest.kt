@@ -345,13 +345,13 @@ class HeadlessFormPickersTest {
             awaitText("Override Discord")
             moveTo("Webhook URL")
             press(Keys.Enter)
-            type("https://discord.test/hook")
+            type("https://discord.com/api/webhooks/1/hook")
             press(Keys.Enter)
-            awaitScreen { row("Webhook URL").endsWith("https://discord.test/hook") }
+            awaitScreen { "https://discord.com/api/web" in row("Webhook URL") && "!" !in row("Webhook URL") }
             press(Keys.Escape)
             awaitScreen { row("Notification overrides").endsWith("Discord") }
             val overrides = start().notificationOverrides
-            assertEquals("https://discord.test/hook", overrides?.discordOverrides?.webhookUrl)
+            assertEquals("https://discord.com/api/webhooks/1/hook", overrides?.discordOverrides?.webhookUrl)
         }
 
     private companion object {

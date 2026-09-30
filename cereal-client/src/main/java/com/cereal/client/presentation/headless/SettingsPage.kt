@@ -19,6 +19,16 @@ import com.cereal.client.domain.model.settings.ProxyHealthCheckInterval
 import com.cereal.client.presentation.headless.FieldForm.Editor
 import com.cereal.client.presentation.headless.FieldForm.Field
 import com.cereal.client.presentation.headless.FieldForm.Header
+import com.cereal.client.presentation.settings.state.DiscordWebhookUrlState
+import com.cereal.client.presentation.settings.state.EmailFromState
+import com.cereal.client.presentation.settings.state.EmailPasswordState
+import com.cereal.client.presentation.settings.state.EmailSmtpHostState
+import com.cereal.client.presentation.settings.state.EmailSmtpPortState
+import com.cereal.client.presentation.settings.state.EmailToState
+import com.cereal.client.presentation.settings.state.EmailUsernameState
+import com.cereal.client.presentation.settings.state.TelegramBotTokenState
+import com.cereal.client.presentation.settings.state.TelegramChatIdState
+import com.cereal.client.presentation.view.fields.state.StringTextFieldState
 import com.github.kittinunf.result.coroutines.SuspendableResult
 import com.varabyte.kotter.foundation.input.CharKey
 import com.varabyte.kotter.foundation.input.Key
@@ -164,7 +174,7 @@ class SettingsPage(
             add(toggle("email", "Email", s.emailEnabled, "Email notifications via SMTP. T sends a test."))
             if (s.emailEnabled) {
                 add(text("emailSmtpHost", "  SMTP host", s.emailSmtpHost))
-                add(Field("emailSmtpPort", "  SMTP port", ConfigValue.IntValue(s.emailSmtpPort), Editor.Line("port", ::parsePort)))
+                add(Field("emailSmtpPort", "  SMTP port", ConfigValue.IntValue(s.emailSmtpPort), Editor.Line("port", ::parsePort)).checked())
                 add(text("emailUsername", "  Username", s.emailUsername))
                 add(secret("emailPassword", "  Password", s.emailPassword))
                 add(text("emailFrom", "  From", s.emailFrom))
@@ -207,6 +217,11 @@ class SettingsPage(
         val on = (value as? ConfigValue.BooleanValue)?.raw == true
         val text = value?.raw?.let { (it as? Secret)?.reveal() ?: it.toString() }.orEmpty()
         val label = field.label.trim()
+        // The desktop's checks: an invalid value isn't saved.
+        CHECKS[field.key]?.problem(text)?.let {
+            flash = "! $label not saved: $it"
+            return
+        }
         val params =
             when (field.key) {
                 "discord" -> SaveAllNotificationSettingsInteractor.Params(discordEnabled = on)
@@ -216,7 +231,7 @@ class SettingsPage(
                 "telegramChatId" -> SaveAllNotificationSettingsInteractor.Params(telegramChatId = text)
                 "email" -> SaveAllNotificationSettingsInteractor.Params(emailEnabled = on)
                 "emailSmtpHost" -> SaveAllNotificationSettingsInteractor.Params(emailSmtpHost = text)
-                "emailSmtpPort" -> SaveAllNotificationSettingsInteractor.Params(emailSmtpPort = (value as? ConfigValue.IntValue)?.raw ?: DEFAULT_SMTP_PORT)
+                "emailSmtpPort" -> SaveAllNotificationSettingsInteractor.Params(emailSmtpPort = (value as ConfigValue.IntValue).raw)
                 "emailUsername" -> SaveAllNotificationSettingsInteractor.Params(emailUsername = text)
                 "emailPassword" -> SaveAllNotificationSettingsInteractor.Params(emailPassword = text)
                 "emailFrom" -> SaveAllNotificationSettingsInteractor.Params(emailFrom = text)
@@ -313,8 +328,28 @@ class SettingsPage(
 
     private companion object {
         const val NO_CHANNEL = "No notification channel set up. Add Discord, Telegram or email on tab 4."
-        const val DEFAULT_SMTP_PORT = 587
         const val MAX_PORT = 65535
+
+        /** Settings fields checked as on the desktop; each is required. */
+        val CHECKS =
+            mapOf(
+                "discordWebhookUrl" to NotificationField.DISCORD_WEBHOOK_URL,
+                "telegramBotToken" to NotificationField.TELEGRAM_BOT_TOKEN,
+                "telegramChatId" to NotificationField.TELEGRAM_CHAT_ID,
+                "emailSmtpHost" to NotificationField.SMTP_HOST,
+                "emailSmtpPort" to NotificationField.SMTP_PORT,
+                "emailUsername" to NotificationField.USERNAME,
+                "emailPassword" to NotificationField.PASSWORD,
+                "emailFrom" to NotificationField.FROM,
+                "emailTo" to NotificationField.TO,
+            )
+
+        /** Marks a [CHECKS] field required, with the stored value's problem, if any. */
+        fun Field.checked(): Field {
+            val check = CHECKS[key] ?: return this
+            val stored = value?.raw?.let { (it as? Secret)?.reveal() ?: it.toString() }
+            return copy(required = true, problem = check.problem(stored))
+        }
 
         fun toggle(
             key: String,
@@ -327,13 +362,13 @@ class SettingsPage(
             key: String,
             label: String,
             value: String?,
-        ) = Field(key, label, value?.takeIf { it.isNotEmpty() }?.let { ConfigValue.StringValue(it) }, Editor.Line("text") { ConfigValue.StringValue(it) })
+        ) = Field(key, label, value?.takeIf { it.isNotEmpty() }?.let { ConfigValue.StringValue(it) }, Editor.Line("text") { ConfigValue.StringValue(it) }).checked()
 
         fun secret(
             key: String,
             label: String,
             value: String?,
-        ) = Field(key, label, value?.takeIf { it.isNotEmpty() }?.let { ConfigValue.SecretValue(Secret(it)) }, Editor.Secret)
+        ) = Field(key, label, value?.takeIf { it.isNotEmpty() }?.let { ConfigValue.SecretValue(Secret(it)) }, Editor.Secret).checked()
 
         fun parsePort(text: String): ConfigValue =
             text
@@ -350,4 +385,30 @@ class SettingsPage(
                 ProxyHealthCheckInterval.EVERY_24_HOURS -> "Every 24h"
             }
     }
+}
+
+/**
+ * A notification field checked with the desktop settings' own validators (`presentation/settings/state`), so
+ * the Settings tab and the notification overrides accept exactly what the desktop does.
+ */
+internal enum class NotificationField(
+    private val state: () -> StringTextFieldState,
+) {
+    DISCORD_WEBHOOK_URL(::DiscordWebhookUrlState),
+    TELEGRAM_BOT_TOKEN(::TelegramBotTokenState),
+    TELEGRAM_CHAT_ID(::TelegramChatIdState),
+    SMTP_HOST(::EmailSmtpHostState),
+    SMTP_PORT(::EmailSmtpPortState),
+    USERNAME(::EmailUsernameState),
+    PASSWORD(::EmailPasswordState),
+    FROM(::EmailFromState),
+    TO(::EmailToState),
+    ;
+
+    /** The problem with [value] (null or empty counts as missing), or null when it passes. */
+    fun problem(value: String?): String? =
+        state().run {
+            text = value.orEmpty()
+            if (validate()) null else error
+        }
 }

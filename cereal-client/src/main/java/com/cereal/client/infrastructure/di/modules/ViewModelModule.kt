@@ -79,7 +79,6 @@ object ViewModelModule {
                             get(),
                             get(),
                             get(),
-                            get(),
                             ConfigPickers(scope, repaint, get<ApplicationConfig>().homeDirectory, get(), get(), get(), get(), get(), get()),
                         ),
                     )

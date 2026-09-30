@@ -82,6 +82,20 @@ class HeadlessSettingsTest {
             type("2525")
             press(Keys.Enter)
             awaitFlag { settings.getEmailSmtpPort().first() == 2525 }
+
+            // The desktop's validators: an invalid address or an emptied port isn't saved.
+            press(Keys.Enter)
+            awaitText("A value is required.")
+            press(*List(4) { Keys.Backspace }.toTypedArray())
+            press(Keys.Enter)
+            awaitText("! SMTP port not saved: A value is required")
+            focus("To")
+            press(Keys.Enter)
+            type("not-an-address")
+            press(Keys.Enter)
+            awaitText("! To not saved: Invalid email address format")
+            assertEquals(2525, settings.getEmailSmtpPort().first())
+            assertFalse(settings.getEmailTo().first() == "not-an-address")
         }
 
     @Test

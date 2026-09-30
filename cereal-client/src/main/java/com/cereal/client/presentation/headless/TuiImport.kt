@@ -6,6 +6,7 @@ import com.varabyte.kotter.foundation.input.CharKey
 import com.varabyte.kotter.foundation.input.Key
 import com.varabyte.kotter.foundation.input.Keys
 import java.io.File
+import java.nio.file.Files
 
 /** Where a TUI import reads from: text pasted into the terminal, or a file path in the data volume. */
 sealed interface ImportSource {
@@ -36,7 +37,9 @@ suspend fun <T : Any, P> ImportSource.import(
 ): Result<T> {
     val file =
         when (this) {
-            is ImportSource.Pasted -> File.createTempFile("cereal-paste-", ".txt")
+            // Owner-only (0600 on POSIX): a paste may hold proxy passwords.
+            is ImportSource.Pasted -> Files.createTempFile("cereal-paste-", ".txt").toFile()
+
             is ImportSource.VolumePath -> volume.toPath().resolve(path.trim()).toFile()
         }
     try {
