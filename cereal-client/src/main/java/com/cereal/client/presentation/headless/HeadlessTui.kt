@@ -232,11 +232,10 @@ class HeadlessTui(
                 listOfNotNull(if (preTab == null) "1-${tabs.size} tabs" else null, page.keys)
                     .filter { it.isNotBlank() }
                     .joinToString(" · "),
-                listOfNotNull("q quit", detachHint?.let { "detach: $it" }).joinToString(" · "),
+                listOfNotNull(if (page.capturesKeys) "Ctrl-C quit" else "q quit", detachHint?.let { "detach: $it" }).joinToString(" · "),
             )
         val bodyHeight = (height - header.size - footer.size).coerceAtLeast(0)
-        // A link line soft-wraps, so the blank rows it will cover are reserved right below it.
-        val body = clip(page.body(width, bodyHeight).flatMap { listOf(it) + List(wrapRows(it, width)) { "" } }, bodyHeight)
+        val body = clip(page.body(width, bodyHeight), bodyHeight, width)
         val padding = List(bodyHeight - body.size) { "" }
         return (header + body + padding + footer).take(height).map { if (linkUrl(it) != null) it else truncate(it, width) }
     }
@@ -366,11 +365,19 @@ class HeadlessTui(
                 else -> null
             }
 
-        /** Truncates to [width] (never wraps), marking the cut with an ellipsis. */
+        /**
+         * Truncates to [width] (never wraps), marking the cut with an ellipsis. Control characters (a newline or an
+         * escape in script or notification text) would break the frame, so they show as spaces.
+         */
         fun truncate(
             line: String,
             width: Int,
-        ): String = if (line.length <= width) line else line.take((width - 1).coerceAtLeast(0)) + "…"
+        ): String {
+            val clean = line.replace(CONTROL_CHARACTER, " ")
+            return if (clean.length <= width) clean else clean.take((width - 1).coerceAtLeast(0)) + "…"
+        }
+
+        private val CONTROL_CHARACTER = Regex("\\p{Cntrl}")
 
         /** The extra terminal rows a [linkLine] soft-wraps onto; 0 for ordinary lines. */
         private fun wrapRows(
@@ -378,16 +385,30 @@ class HeadlessTui(
             width: Int,
         ): Int = linkUrl(line)?.let { (it.length - 1).coerceAtLeast(0) / width.coerceAtLeast(1) } ?: 0
 
-        /** Clips to [height] lines, keeping the head and the tail around a `…` marker. */
+        /**
+         * Clips to [height] rows, keeping the head and the tail around a `…` marker. A link line soft-wraps at
+         * [width], so the blank rows it will cover are reserved right below it, and the two are kept or dropped whole.
+         */
         fun clip(
             lines: List<String>,
             height: Int,
+            width: Int = Int.MAX_VALUE,
         ): List<String> {
-            if (lines.size <= height) return lines
-            if (height < 3) return lines.take(height)
-            val head = (height - 1) / 2
-            val tail = height - 1 - head
-            return lines.take(head) + "…" + lines.takeLast(tail)
+            val units = lines.map { listOf(it) + List(wrapRows(it, width)) { "" } }
+            if (units.sumOf { it.size } <= height) return units.flatten()
+            if (height < 3) return leading(units, height).flatten()
+            val head = leading(units, (height - 1) / 2).flatten()
+            val tail = leading(units.asReversed(), height - 1 - head.size).asReversed().flatten()
+            return head + "…" + tail
+        }
+
+        /** The leading [units] that fit in [rows] together. */
+        private fun leading(
+            units: List<List<String>>,
+            rows: Int,
+        ): List<List<String>> {
+            var left = rows
+            return units.takeWhile { unit -> (unit.size <= left).also { if (it) left -= unit.size } }
         }
     }
 }

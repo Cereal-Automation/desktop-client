@@ -31,7 +31,10 @@ fun runTui(
 ) = session(terminal, clearTerminal = true, sectionExceptionHandler = onRenderError) {
     var links = emptyList<Pair<Int, String>>()
     section {
-        val lines = tui.frame(width, height)
+        // The terminal's live size, not the section's width/height: those update on their own collector of the
+        // resize event, so the repaint below could otherwise paint the old size right after clearing.
+        val size = terminal.size
+        val lines = tui.frame(size.width, size.height)
         links = lines.mapIndexedNotNull { i, line -> linkUrl(line)?.let { i to it } }
         // No newline after the last line: a trailing one would scroll the frame off the top.
         lines.forEachIndexed { i, line ->

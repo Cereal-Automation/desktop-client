@@ -58,6 +58,7 @@ class NotifyTaskWaitingInteractor(
                     ScriptNotification(
                         title = TITLE,
                         message = "${pkg.definition.manifest.name} #$number on ${systemProvider.hostname()} is waiting for you ($kind).",
+                        plainText = true,
                     ),
                 taskId = task.id,
                 scriptPackageInstance = pkg,

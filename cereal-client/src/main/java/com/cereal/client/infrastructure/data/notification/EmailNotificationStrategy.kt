@@ -36,6 +36,10 @@ class EmailNotificationStrategy : NotificationStrategy<EmailNotificationData> {
                         put("mail.smtp.host", smtpHost)
                         put("mail.smtp.port", smtpPort.toString())
                         put("mail.smtp.auth", "true")
+                        // Bounded, so an unresponsive server can't block every later notification.
+                        put("mail.smtp.connectiontimeout", SMTP_TIMEOUT_MS)
+                        put("mail.smtp.timeout", SMTP_TIMEOUT_MS)
+                        put("mail.smtp.writetimeout", SMTP_TIMEOUT_MS)
                         if (useTls) {
                             put("mail.smtp.starttls.enable", "true")
                         }
@@ -64,5 +68,9 @@ class EmailNotificationStrategy : NotificationStrategy<EmailNotificationData> {
             logger.error("Failed to send email notification", e)
             throw e
         }
+    }
+
+    private companion object {
+        const val SMTP_TIMEOUT_MS = "30000"
     }
 }

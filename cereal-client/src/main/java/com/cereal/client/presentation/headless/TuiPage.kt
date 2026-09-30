@@ -15,6 +15,9 @@ interface TuiPage {
     /** This page's keys, shown on the first footer line. Empty when it has none. */
     val keys: String get() = ""
 
+    /** True while the page takes every key (a focused text field), so `q` won't quit; the footer shows Ctrl-C instead. */
+    val capturesKeys: Boolean get() = false
+
     fun body(
         width: Int,
         height: Int,

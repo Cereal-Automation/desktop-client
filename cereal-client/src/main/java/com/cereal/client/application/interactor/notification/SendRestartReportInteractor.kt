@@ -19,7 +19,10 @@ class SendRestartReportInteractor(
             if (report.failures.isEmpty()) {
                 ""
             } else {
-                " Couldn't resume ${report.failures.size} task(s): ${report.failures.joinToString("; ")}."
+                // Capped, so the message stays under Discord's 2000 characters however many tasks failed.
+                val listed = report.failures.take(MAX_LISTED_FAILURES).joinToString("; ") { it.take(MAX_FAILURE_LENGTH) }
+                val more = (report.failures.size - MAX_LISTED_FAILURES).takeIf { it > 0 }?.let { " and $it more" }.orEmpty()
+                " Couldn't resume ${report.failures.size} task(s): $listed$more."
             }
         sendGlobalNotificationInteractor.run(
             SendGlobalNotificationInteractor.Params(
@@ -31,5 +34,7 @@ class SendRestartReportInteractor(
 
     companion object {
         const val TITLE = "Headless mode restarted"
+        private const val MAX_LISTED_FAILURES = 5
+        private const val MAX_FAILURE_LENGTH = 200
     }
 }

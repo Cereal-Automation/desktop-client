@@ -178,7 +178,11 @@ class FieldForm(
                     "  ${field.label} ($type)${if (field.required) " *" else ""}",
                     "  > ${if (secret) "*".repeat(input.text.length) else input.text}_",
                     input.error?.let { "  ! $it" },
-                    if (secret) "  Typed as *. Enter with nothing typed keeps the current value." else "  Empty clears the value.",
+                    when {
+                        secret -> "  Typed as *. Enter with nothing typed keeps the current value."
+                        field.required -> "  A value is required."
+                        else -> "  Empty clears the value."
+                    },
                 )
             } else {
                 selected

@@ -73,10 +73,14 @@ class UserAuthManager(
 
     suspend fun deauthenticate() {
         // Stop running tasks first: persisting their Idle status needs the session user.
-        taskManager.stopAllTasks()
-        discordRepository.disconnect()
-        taskManager.removeAllTasks()
-        sessionRepository.setSessionUser(null)
+        try {
+            taskManager.stopAllTasks()
+            discordRepository.disconnect()
+        } finally {
+            // Always signed out, even when stopping or disconnecting fails.
+            taskManager.removeAllTasks()
+            sessionRepository.setSessionUser(null)
+        }
     }
 
     suspend fun getAuthenticatedUserFlow(): Flow<User?> = sessionRepository.getAuthenticatedUserFlow()

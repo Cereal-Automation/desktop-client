@@ -85,6 +85,29 @@ class AuthorizationInterceptorTest {
     }
 
     @Test
+    fun `a 401 for a token replaced while the request was in flight is not a rejected session`() {
+        var token = "old-token"
+        val client =
+            OkHttpClient
+                .Builder()
+                .addInterceptor(
+                    AuthorizationInterceptor(
+                        object : AuthorizationInterceptor.TokenDataSource {
+                            override fun getToken(): String? = token
+                        },
+                    ) { sessionRejections++ },
+                ).addNetworkInterceptor { chain ->
+                    // A fresh sign-in lands while the old request is on the wire.
+                    chain.proceed(chain.request()).also { token = "new-token" }
+                }.build()
+        mockWebServer.enqueue(MockResponse().setResponseCode(401))
+
+        client.newCall(Request.Builder().url(mockWebServer.url("/")).build()).execute().use { }
+
+        assertEquals(0, sessionRejections)
+    }
+
+    @Test
     fun `a 401 without a token, a server error or a network failure is not a rejected session`() {
         call(null, 401)
         call("my-token", 500)
