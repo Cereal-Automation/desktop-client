@@ -15,6 +15,7 @@ import com.cereal.client.presentation.customdataset.CustomDatasetViewModel
 import com.cereal.client.presentation.error.ErrorResolver
 import com.cereal.client.presentation.headless.HeadlessTui
 import com.cereal.client.presentation.headless.NotificationsPage
+import com.cereal.client.presentation.headless.ScriptConfigPages
 import com.cereal.client.presentation.headless.TasksPage
 import com.cereal.client.presentation.headless.UpdatePage
 import com.cereal.client.presentation.main.MainViewModel
@@ -64,6 +65,7 @@ object ViewModelModule {
                         get(),
                         get(),
                         get(),
+                        ScriptConfigPages(scope, repaint, get(), get(), get(), get(), get(), get(), get()),
                     )
                 val notifications = NotificationsPage(scope, repaint, get(), get(), get(), get(), get(), get())
                 HeadlessTui(
