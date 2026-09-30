@@ -4,18 +4,23 @@ import com.cereal.client.application.ApplicationConfig
 import com.cereal.client.application.Interactor
 import com.cereal.client.application.auth.UserAuthenticatingState
 import com.cereal.client.application.interactor.auth.AuthenticateInteractor
+import com.cereal.client.application.interactor.auth.AuthenticateWithOAuthInteractor
 import com.cereal.client.application.interactor.auth.GetAuthenticatedUserInteractor
 import com.cereal.client.application.interactor.bootstrap.BootstrapInteractor
 import com.cereal.client.application.interactor.bootstrap.BootstrapInteractor.BootstrapSequenceIdentifier
 import com.cereal.client.application.interactor.bootstrap.BootstrapState
 import com.cereal.client.application.interactor.task.ObserveTasksInteractor
 import com.cereal.client.application.interactor.task.StopAllRunningTasksInteractor
+import com.cereal.client.domain.model.auth.OAuthProvider
+import com.cereal.client.domain.model.auth.PastedSignIn
 import com.github.kittinunf.result.coroutines.SuspendableResult
 import com.varabyte.kotter.foundation.input.CharKey
 import com.varabyte.kotter.foundation.input.Key
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.FlowPreview
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 
@@ -36,6 +41,7 @@ class HeadlessTui(
     private val getAuthenticatedUserInteractor: GetAuthenticatedUserInteractor,
     private val authenticateInteractor: AuthenticateInteractor,
     config: ApplicationConfig,
+    private val authenticateWithOAuthInteractor: AuthenticateWithOAuthInteractor,
     val tabs: List<TuiPage> = defaultTabs(),
 ) {
     private enum class QuitState { NONE, CONFIRMING, STOPPING }
@@ -55,7 +61,21 @@ class HeadlessTui(
 
     private val quit = CompletableDeferred<Unit>()
 
-    private val loginPage = LoginPage(config.marketplaceRegisterUrl, config.marketplaceForgotPasswordUrl, ::signIn)
+    private val loginPage =
+        LoginPage(
+            config.marketplaceRegisterUrl,
+            config.marketplaceForgotPasswordUrl,
+            onSubmit = ::signIn,
+            onSso = ::signInWith,
+            onPaste = { pastedSignIn?.paste(it) },
+            onCancelSso = { ssoJob?.cancel() },
+        )
+
+    @Volatile
+    private var pastedSignIn: PastedSignIn? = null
+
+    @Volatile
+    private var ssoJob: Job? = null
 
     /** The pre-tab screen (boot status, login) in front of the tabs, or null once signed in. */
     @Volatile
@@ -96,9 +116,24 @@ class HeadlessTui(
         email: String,
         password: String,
     ) {
+        authenticate { authenticateInteractor(AuthenticateInteractor.Params(email, password)) }
+    }
+
+    /** Pasted sign-in: the link lands on the login page, and pastes are forwarded to the racing flow. */
+    private fun signInWith(provider: OAuthProvider) {
+        val pasted =
+            PastedSignIn { url ->
+                loginPage.showSignInUrl(url)
+                onChanged()
+            }
+        pastedSignIn = pasted
+        ssoJob = authenticate { authenticateWithOAuthInteractor(AuthenticateWithOAuthInteractor.Params(provider, pasted)) }
+    }
+
+    private fun authenticate(signIn: suspend () -> Flow<SuspendableResult<UserAuthenticatingState, Exception>>): Job =
         scope.launch {
             var error: String? = null
-            authenticateInteractor(AuthenticateInteractor.Params(email, password)).collect { result ->
+            signIn().collect { result ->
                 when (result) {
                     is SuspendableResult.Success -> loginPage.showStatus(result.value.statusLine())
                     is SuspendableResult.Failure -> error = result.error.message
@@ -108,7 +143,6 @@ class HeadlessTui(
             if (error == null) show(null) else loginPage.showError(error)
             onChanged()
         }
-    }
 
     private fun show(page: TuiPage?) {
         preTab = page
@@ -130,9 +164,10 @@ class HeadlessTui(
                 listOfNotNull("q quit", detachHint?.let { "detach: $it" }).joinToString(" · "),
             )
         val bodyHeight = (height - header.size - footer.size).coerceAtLeast(0)
-        val body = clip(page.body(width, bodyHeight), bodyHeight)
+        // A link line soft-wraps, so the blank rows it will cover are reserved right below it.
+        val body = clip(page.body(width, bodyHeight).flatMap { listOf(it) + List(wrapRows(it, width)) { "" } }, bodyHeight)
         val padding = List(bodyHeight - body.size) { "" }
-        return (header + body + padding + footer).take(height).map { truncate(it, width) }
+        return (header + body + padding + footer).take(height).map { if (linkUrl(it) != null) it else truncate(it, width) }
     }
 
     fun onKey(key: Key) {
@@ -242,6 +277,12 @@ class HeadlessTui(
             line: String,
             width: Int,
         ): String = if (line.length <= width) line else line.take((width - 1).coerceAtLeast(0)) + "…"
+
+        /** The extra terminal rows a [linkLine] soft-wraps onto; 0 for ordinary lines. */
+        private fun wrapRows(
+            line: String,
+            width: Int,
+        ): Int = linkUrl(line)?.let { (it.length - 1).coerceAtLeast(0) / width.coerceAtLeast(1) } ?: 0
 
         /** Clips to [height] lines, keeping the head and the tail around a `…` marker. */
         fun clip(

@@ -127,13 +127,15 @@ private const val ESC = '\u001B'
 /**
  * Replays Kotter's output onto a virtual screen. Handles exactly what Kotter's section renderer
  * emits: text, `\r`, `\n`, erase-to-line-end (`CSI 0K`) and move-to-previous-line (`CSI 1F`, clamped
- * at the top row, as a real terminal does after a clear). Other escape sequences are formatting and
- * are dropped.
+ * at the top row, as a real terminal does after a clear), plus the cursor save/move/restore (`ESC 7`,
+ * `CSI row;1H`, `ESC 8`) that link lines are written with. Other escape sequences are formatting and
+ * are dropped. Nothing wraps: a line longer than the terminal stays one row.
  */
 private fun resolveScreen(output: String): List<String> {
     val rows = mutableListOf(StringBuilder())
     var row = 0
     var col = 0
+    var saved = 0 to 0
     var i = 0
     val text = output
     while (i < text.length) {
@@ -152,8 +154,27 @@ private fun resolveScreen(output: String): List<String> {
                         row = (row - (params.toIntOrNull() ?: 1)).coerceAtLeast(0)
                         col = 0
                     }
+
+                    'H' -> {
+                        row = (params.substringBefore(';').toIntOrNull() ?: 1) - 1
+                        col = (params.substringAfter(';', "").toIntOrNull() ?: 1) - 1
+                        while (rows.size <= row) rows += StringBuilder()
+                    }
                 }
                 i = end + 1
+                continue
+            }
+
+            c == ESC && text.getOrNull(i + 1) == '7' -> {
+                saved = row to col
+                i += 2
+                continue
+            }
+
+            c == ESC && text.getOrNull(i + 1) == '8' -> {
+                row = saved.first
+                col = saved.second
+                i += 2
                 continue
             }
 

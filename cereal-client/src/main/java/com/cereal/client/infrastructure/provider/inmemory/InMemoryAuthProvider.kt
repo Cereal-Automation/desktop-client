@@ -3,6 +3,7 @@ package com.cereal.client.infrastructure.provider.inmemory
 import com.cereal.client.application.exception.InvalidLoginCredentialsException
 import com.cereal.client.application.exception.LoginValidationException
 import com.cereal.client.domain.model.auth.OAuthProvider
+import com.cereal.client.domain.model.auth.PastedSignIn
 import com.cereal.client.domain.model.script.ScriptEntitlement
 import com.cereal.client.domain.model.user.Subscription
 import com.cereal.client.domain.model.user.User
@@ -41,7 +42,10 @@ class InMemoryAuthProvider(
 
     override suspend fun authenticateGuest(): User = user
 
-    override suspend fun authenticateWith(provider: OAuthProvider): User = user
+    override suspend fun authenticateWith(
+        provider: OAuthProvider,
+        pastedSignIn: PastedSignIn?,
+    ): User = user
 
     override suspend fun getSubscriptions(ignoreCache: Boolean): List<Subscription> = subscriptions
 

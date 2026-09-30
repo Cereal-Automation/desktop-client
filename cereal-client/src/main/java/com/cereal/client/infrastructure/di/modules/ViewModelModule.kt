@@ -39,7 +39,7 @@ object ViewModelModule {
         module {
             single { MenuReselectionCoordinator() }
             factory { (scope: CoroutineScope, environment: Map<String, String>) ->
-                HeadlessTui(scope, HeadlessTui.detachHintFor(environment), get(), get(), get(), get(), get(), get())
+                HeadlessTui(scope, HeadlessTui.detachHintFor(environment), get(), get(), get(), get(), get(), get(), get())
             }
             factory { MainViewModel(get(), get(), get(), get(), get(), get(), get(), get()) }
             factory { (scope: CoroutineScope, onStartNewInstance: Function1<String, Unit>) ->

@@ -5,6 +5,7 @@ import com.cereal.client.application.exception.LoginValidationException
 import com.cereal.client.application.exception.OAuthAuthenticationException
 import com.cereal.client.application.exception.RegistrationValidationException
 import com.cereal.client.domain.model.auth.OAuthProvider
+import com.cereal.client.domain.model.auth.PastedSignIn
 import com.cereal.client.domain.model.script.Release
 import com.cereal.client.domain.model.script.ScriptCapacity
 import com.cereal.client.domain.model.script.ScriptEntitlement
@@ -63,14 +64,17 @@ class AuthProviderImpl(
         return loginResponse.user.toDomain(loginResponse.token)
     }
 
-    override suspend fun authenticateWith(provider: OAuthProvider): User {
-        val code = oauthDataSource.obtainOneTimeCode(provider)
+    override suspend fun authenticateWith(
+        provider: OAuthProvider,
+        pastedSignIn: PastedSignIn?,
+    ): User {
+        val code = oauthDataSource.obtainOneTimeCode(provider, pastedSignIn)
         try {
             val loginResponse = marketplaceDataSource.exchangeOAuthCode(provider, OAuthExchangeRequestBody(code, systemName()))
             return loginResponse.user.toDomain(loginResponse.token)
         } catch (_: AuthenticationException) {
             // An invalid/expired one-time code — surface as a domain error like the password path does.
-            throw OAuthAuthenticationException("Sign-in could not be completed. Please try again.")
+            throw OAuthAuthenticationException(EXPIRED_CODE_MESSAGE)
         }
     }
 
@@ -142,4 +146,8 @@ class AuthProviderImpl(
     private fun com.cereal.client.infrastructure.data.datasource.network.marketplace.responses.model.User.toDomain(
         accessToken: String,
     ): User = User(this.id, this.name, this.email, this.key, accessToken, this.isGuest)
+
+    companion object {
+        const val EXPIRED_CODE_MESSAGE = "Sign-in code expired or already used (codes last 60 s). Start again."
+    }
 }
