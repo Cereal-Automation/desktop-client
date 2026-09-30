@@ -12,6 +12,7 @@ import com.cereal.client.application.interactor.auth.HandleSessionLostInteractor
 import com.cereal.client.application.interactor.bootstrap.BootstrapInteractor
 import com.cereal.client.application.interactor.bootstrap.BootstrapInteractor.BootstrapSequenceIdentifier
 import com.cereal.client.application.interactor.bootstrap.BootstrapState
+import com.cereal.client.application.interactor.notification.NotifyTaskWaitingInteractor
 import com.cereal.client.application.interactor.task.ObserveTasksInteractor
 import com.cereal.client.application.interactor.task.StopAllRunningTasksInteractor
 import com.cereal.client.domain.model.auth.OAuthProvider
@@ -47,6 +48,7 @@ class HeadlessTui(
     private val authenticateWithOAuthInteractor: AuthenticateWithOAuthInteractor,
     private val checkForUpdatesInteractor: CheckForUpdatesInteractor,
     handleSessionLostInteractor: HandleSessionLostInteractor,
+    notifyTaskWaitingInteractor: NotifyTaskWaitingInteractor,
     /** The upgrade commands for this distribution, given the new version (see [UpdatePage.upgradeCommands]). */
     private val upgradeCommands: (version: String) -> List<String>,
     /** The no-channel banner line, or null when a channel is set up (see [SettingsPage.noChannelBanner]). */
@@ -117,6 +119,7 @@ class HeadlessTui(
                 }
             }
         }
+        scope.launch { notifyTaskWaitingInteractor(Interactor.None()).collect {} }
         scope.launch { boot() }
     }
 

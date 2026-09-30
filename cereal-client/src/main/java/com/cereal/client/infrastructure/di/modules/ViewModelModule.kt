@@ -89,6 +89,7 @@ object ViewModelModule {
                     authenticateWithOAuthInteractor = get(),
                     checkForUpdatesInteractor = get(),
                     handleSessionLostInteractor = get(),
+                    notifyTaskWaitingInteractor = get(),
                     upgradeCommands = { version -> UpdatePage.upgradeCommands(environment, websiteUrl, version) },
                     noChannelBanner = settings::noChannelBanner,
                     tabs = listOf(tasks, waiting) + HeadlessTui.defaultTabs()[2] + settings + notifications,
