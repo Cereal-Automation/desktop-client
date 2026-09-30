@@ -77,6 +77,7 @@ object ViewModelModule {
                     get(),
                     authenticateWithOAuthInteractor = get(),
                     checkForUpdatesInteractor = get(),
+                    handleSessionLostInteractor = get(),
                     upgradeCommands = { version -> UpdatePage.upgradeCommands(environment, websiteUrl, version) },
                     tabs = listOf(tasks) + HeadlessTui.defaultTabs().drop(1).dropLast(1) + notifications,
                 ).also { tui = it }

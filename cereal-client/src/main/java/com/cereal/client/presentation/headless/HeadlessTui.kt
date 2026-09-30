@@ -8,6 +8,7 @@ import com.cereal.client.application.interactor.app.CheckForUpdatesInteractor
 import com.cereal.client.application.interactor.auth.AuthenticateInteractor
 import com.cereal.client.application.interactor.auth.AuthenticateWithOAuthInteractor
 import com.cereal.client.application.interactor.auth.GetAuthenticatedUserInteractor
+import com.cereal.client.application.interactor.auth.HandleSessionLostInteractor
 import com.cereal.client.application.interactor.bootstrap.BootstrapInteractor
 import com.cereal.client.application.interactor.bootstrap.BootstrapInteractor.BootstrapSequenceIdentifier
 import com.cereal.client.application.interactor.bootstrap.BootstrapState
@@ -45,6 +46,7 @@ class HeadlessTui(
     config: ApplicationConfig,
     private val authenticateWithOAuthInteractor: AuthenticateWithOAuthInteractor,
     private val checkForUpdatesInteractor: CheckForUpdatesInteractor,
+    handleSessionLostInteractor: HandleSessionLostInteractor,
     /** The upgrade commands for this distribution, given the new version (see [UpdatePage.upgradeCommands]). */
     private val upgradeCommands: (version: String) -> List<String>,
     val tabs: List<TuiPage> = defaultTabs(),
@@ -102,6 +104,14 @@ class HeadlessTui(
                 if (result is SuspendableResult.Success) {
                     runningTasks = result.value.count { it.status.isRunning() }
                     onChanged()
+                }
+            }
+        }
+        scope.launch {
+            handleSessionLostInteractor(Interactor.None()).collect { result ->
+                if (result is SuspendableResult.Success) {
+                    loginPage.showError(SESSION_LOST)
+                    show(loginPage)
                 }
             }
         }
@@ -310,6 +320,7 @@ class HeadlessTui(
 
     companion object {
         private const val STARTING = "Starting Cereal…"
+        const val SESSION_LOST = "Session lost: the account may have signed in elsewhere."
 
         private fun BootstrapState.statusLine(): String =
             when (this) {

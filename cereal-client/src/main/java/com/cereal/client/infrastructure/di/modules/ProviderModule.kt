@@ -12,6 +12,7 @@ import com.cereal.client.domain.provider.MarketplaceProvider
 import com.cereal.client.domain.provider.NotificationProvider
 import com.cereal.client.domain.provider.ProxyConnectionProvider
 import com.cereal.client.domain.provider.ScriptInstallProvider
+import com.cereal.client.domain.provider.SessionLostProvider
 import com.cereal.client.domain.provider.SystemProvider
 import com.cereal.client.infrastructure.bootstrap.BootstrapPreferences
 import com.cereal.client.infrastructure.provider.AppUpdateProviderImpl
@@ -26,8 +27,10 @@ import com.cereal.client.infrastructure.provider.MarketplaceProviderImpl
 import com.cereal.client.infrastructure.provider.NotificationProviderImpl
 import com.cereal.client.infrastructure.provider.ProxyConnectionProviderImpl
 import com.cereal.client.infrastructure.provider.ScriptInstallProviderImpl
+import com.cereal.client.infrastructure.provider.SessionLostProviderImpl
 import com.cereal.client.infrastructure.provider.SystemProviderImpl
 import org.koin.core.module.Module
+import org.koin.dsl.bind
 import org.koin.dsl.module
 
 /**
@@ -61,6 +64,7 @@ object ProviderModule {
             single<ProxyConnectionProvider> { ProxyConnectionProviderImpl(get(), get(), get(), get()) }
             single<CheckoutProvider> { CheckoutProviderImpl(get(), get()) }
             single<BrowserPromptProvider> { BrowserPromptProviderImpl() }
+            single { SessionLostProviderImpl() } bind SessionLostProvider::class
             // BootstrapPreferences.default is resolved here rather than bound in Koin: it is a
             // path holder that deliberately re-resolves the application home on every access.
             single<CrashReportingProvider> { CrashReportingProviderImpl(BootstrapPreferences.default, get()) }

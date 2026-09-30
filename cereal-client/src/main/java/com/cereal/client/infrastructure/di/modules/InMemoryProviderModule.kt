@@ -12,7 +12,9 @@ import com.cereal.client.domain.provider.MarketplaceProvider
 import com.cereal.client.domain.provider.NotificationProvider
 import com.cereal.client.domain.provider.ProxyConnectionProvider
 import com.cereal.client.domain.provider.ScriptInstallProvider
+import com.cereal.client.domain.provider.SessionLostProvider
 import com.cereal.client.domain.provider.SystemProvider
+import com.cereal.client.infrastructure.provider.SessionLostProviderImpl
 import com.cereal.client.infrastructure.provider.inmemory.InMemoryAppUpdateProvider
 import com.cereal.client.infrastructure.provider.inmemory.InMemoryAuthProvider
 import com.cereal.client.infrastructure.provider.inmemory.InMemoryBrowserPromptProvider
@@ -27,6 +29,7 @@ import com.cereal.client.infrastructure.provider.inmemory.InMemoryProxyConnectio
 import com.cereal.client.infrastructure.provider.inmemory.InMemoryScriptInstallProvider
 import com.cereal.client.infrastructure.provider.inmemory.InMemorySystemProvider
 import org.koin.core.module.Module
+import org.koin.dsl.bind
 import org.koin.dsl.module
 
 /**
@@ -56,5 +59,6 @@ object InMemoryProviderModule {
             }
             single<CheckoutProvider> { InMemoryCheckoutProvider() }
             single<BrowserPromptProvider> { InMemoryBrowserPromptProvider() }
+            single { SessionLostProviderImpl() } bind SessionLostProvider::class
         }
 }

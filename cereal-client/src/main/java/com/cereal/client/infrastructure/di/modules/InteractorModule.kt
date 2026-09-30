@@ -11,6 +11,7 @@ import com.cereal.client.application.interactor.auth.AuthenticateInteractor
 import com.cereal.client.application.interactor.auth.AuthenticateWithOAuthInteractor
 import com.cereal.client.application.interactor.auth.ForgotPasswordInteractor
 import com.cereal.client.application.interactor.auth.GetAuthenticatedUserInteractor
+import com.cereal.client.application.interactor.auth.HandleSessionLostInteractor
 import com.cereal.client.application.interactor.auth.LogoutInteractor
 import com.cereal.client.application.interactor.auth.RegisterInteractor
 import com.cereal.client.application.interactor.bootstrap.BootstrapInteractor
@@ -188,6 +189,7 @@ object InteractorModule {
             factory { RegisterInteractor(get()) }
             factory { GetAuthenticatedUserInteractor(get()) }
             factory { LogoutInteractor(get()) }
+            factory { HandleSessionLostInteractor(get(), get(), get()) }
             factory { ForgotPasswordInteractor(get()) }
             // Files
             factory { ReadCustomDatasetFileInteractor(get()) }
