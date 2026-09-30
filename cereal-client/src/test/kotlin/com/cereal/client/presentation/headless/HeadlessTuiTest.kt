@@ -33,7 +33,7 @@ class HeadlessTuiTest {
 
             val screen = awaitText("[3 Proxies]")
             assertFalse(screen.first().contains("[1 Tasks]"))
-            assertTrue(screen.any { "Proxies is not available yet." in it })
+            awaitText("Proxy groups")
         }
 
     @Test
