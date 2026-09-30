@@ -111,6 +111,7 @@ class HeadlessTui(
     }
 
     private fun show(page: TuiPage?) {
+        if (page == null && preTab != null) tabs.forEach { it.onSignedIn() }
         preTab = page
         onChanged()
     }

@@ -22,6 +22,9 @@ interface TuiPage {
 
     /** Returns true when the page consumed [key]; unconsumed keys fall through to the frame. */
     fun onKey(key: Key): Boolean = false
+
+    /** Called each time the tabs come up after a sign-in: (re)start observing user data here. */
+    fun onSignedIn() {}
 }
 
 /** Stand-in for a tab whose screen is not built yet. */

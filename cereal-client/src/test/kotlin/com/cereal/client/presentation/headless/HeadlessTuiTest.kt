@@ -20,7 +20,7 @@ class HeadlessTuiTest {
             assertTrue(screen.all { it.length <= 80 }, screen.joinToString("\n") { "|$it|" })
             assertTrue(screen.first().contains("[1 Tasks]"), screen.joinToString("\n") { "|$it|" })
             assertTrue(screen.first().contains("5 Notifications"), screen.joinToString("\n") { "|$it|" })
-            assertEquals("1-5 tabs", screen[22])
+            assertTrue(screen[22].startsWith("1-5 tabs · "), screen[22])
             assertEquals("q quit", screen[23])
         }
 

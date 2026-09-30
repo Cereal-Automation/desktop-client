@@ -10,6 +10,7 @@ import com.cereal.client.application.interactor.script.ReportScriptIssueInteract
 import com.cereal.client.application.interactor.settings.OpenUrlInteractor
 import com.cereal.client.application.interactor.settings.developers.ObserveShowDebugLogsInteractor
 import com.cereal.client.application.interactor.task.GetOrCreateDefaultTaskGroupInteractor
+import com.cereal.client.application.interactor.task.mergeLogEventsWithStatusHistory
 import com.cereal.client.domain.model.artifact.Artifact
 import com.cereal.client.domain.model.logging.LoggingEvent
 import com.cereal.client.domain.model.logging.LoggingPriority
@@ -35,7 +36,6 @@ import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.io.File
-import java.util.Date
 import kotlin.time.ExperimentalTime
 
 // Coordinates the tasks screen, so it exposes more than the default function threshold and takes
@@ -496,31 +496,6 @@ class TasksViewModel(
                         }
                     }
             }
-    }
-
-    @OptIn(ExperimentalTime::class)
-    private fun mergeLogEventsWithStatusHistory(
-        logEvents: List<LoggingEvent>,
-        statusHistory: List<TaskStatus>,
-        taskId: String,
-    ): List<LoggingEvent> {
-        val statusEntries =
-            statusHistory
-                .filter { it.message != null }
-                .map { status ->
-                    LoggingEvent(
-                        priority =
-                            when (status) {
-                                is TaskStatus.Error -> LoggingPriority.ERROR
-                                is TaskStatus.Running, is TaskStatus.Success -> LoggingPriority.INFO
-                                is TaskStatus.Idle -> LoggingPriority.DEBUG
-                            },
-                        tag = taskId,
-                        message = status.message!!,
-                        timestamp = Date(status.timestamp.toEpochMilliseconds()),
-                    )
-                }
-        return (logEvents + statusEntries).sortedBy { it.timestamp }
     }
 
     companion object {
