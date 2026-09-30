@@ -120,6 +120,18 @@ class NotificationResolverTest {
     }
 
     @Test
+    fun `telegram escapes markdown in the plain title and message`() {
+        val resolutions =
+            resolver.resolve(
+                ScriptNotification(title = "my_bot", message = "Monitor_v2 on host_1 [x] *`"),
+                null,
+                config(telegramEnabled = true, telegramBotToken = "123:token", telegramChatId = "123"),
+            )
+        val data = resolved(resolutions, NotificationChannelType.TELEGRAM).data as TelegramNotificationData
+        assertEquals("*my\\_bot*\nMonitor\\_v2 on host\\_1 \\[x] \\*\\`", data.text)
+    }
+
+    @Test
     fun `email subject defaults to the title`() {
         val resolutions =
             resolver.resolve(

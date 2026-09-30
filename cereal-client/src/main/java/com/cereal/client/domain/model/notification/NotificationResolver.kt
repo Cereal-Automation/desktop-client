@@ -185,11 +185,15 @@ class NotificationResolver {
             content = if (title.isNullOrBlank()) message else "**$title**\n$message",
         )
 
+    /** The plain title and message are text, not Markdown: escaped, so a `_` in a name can't make Telegram reject it. */
     private fun ScriptNotification.toTelegram(): ScriptTelegramNotification =
         ScriptTelegramNotification(
-            text = if (title.isNullOrBlank()) message else "*$title*\n$message",
+            text = if (title.isNullOrBlank()) escapeMarkdown(message) else "*${escapeMarkdown(title)}*\n${escapeMarkdown(message)}",
             parseMode = TelegramParseMode.MARKDOWN,
         )
+
+    /** Telegram's legacy Markdown escapes its four entity characters with a backslash. */
+    private fun escapeMarkdown(text: String): String = text.replace(Regex("[_*`\\[]")) { "\\${it.value}" }
 
     private fun ScriptNotification.toEmail(): ScriptEmailNotification =
         ScriptEmailNotification(
