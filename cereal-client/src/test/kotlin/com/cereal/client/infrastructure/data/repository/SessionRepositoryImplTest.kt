@@ -11,6 +11,7 @@ import com.cereal.client.infrastructure.data.datasource.network.exception.Authen
 import io.mockk.coVerify
 import io.mockk.mockk
 import kotlinx.coroutines.test.runTest
+import kotlinx.serialization.SerializationException
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import java.io.IOException
@@ -67,11 +68,18 @@ class SessionRepositoryImplTest {
         }
 
     @Test
-    fun `getStoredUser throws unreachable on a network failure or a 5xx`() =
+    fun `getStoredUser throws unreachable on a network failure, a 5xx, a 429 or a non-JSON page`() =
         runTest {
             repository.setSessionUser(User("u", "n", "e", "k", "stored-token", false))
 
-            for (error in listOf(IOException("timeout"), ApiException("Bad gateway", httpStatus = 502))) {
+            val errors =
+                listOf(
+                    IOException("timeout"),
+                    ApiException("Bad gateway", httpStatus = 502),
+                    ApiException("Too many requests", httpStatus = 429),
+                    SerializationException("Unexpected JSON token"),
+                )
+            for (error in errors) {
                 marketplaceDataSource.authenticatedUserError = error
                 assertFailsWith<MarketplaceUnreachableException> { repository.getStoredUser() }
             }
