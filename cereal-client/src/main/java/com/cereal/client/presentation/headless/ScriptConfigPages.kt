@@ -127,6 +127,8 @@ class ScriptConfigPages(
             return head + rows + listOfNotNull("", notice?.let { "  $it" })
         }
 
+        // Key dispatch: one branch per key binding; splitting it would scatter the bindings.
+        @Suppress("ReturnCount")
         override fun onKey(key: Key): Boolean {
             form?.let { return it.onKey(key) }
             if (instructions != null) {
@@ -228,6 +230,8 @@ class ScriptConfigPages(
                 }
             }
 
+        // Each overlay/state renders its own screen and returns early; nesting them would obscure the layout.
+        @Suppress("ReturnCount")
         override fun body(
             width: Int,
             height: Int,
@@ -253,6 +257,8 @@ class ScriptConfigPages(
             return head + config.form.render(width, height - head.size - bottom.size) + bottom
         }
 
+        // Key dispatch: one branch per key binding; splitting it would scatter the bindings.
+        @Suppress("CyclomaticComplexMethod", "ReturnCount")
         override fun onKey(key: Key): Boolean {
             duplicate?.let { return it.onKey(key) }
             sub?.let { return it.onKey(key) }

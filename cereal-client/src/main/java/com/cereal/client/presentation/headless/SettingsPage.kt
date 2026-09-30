@@ -137,6 +137,8 @@ class SettingsPage(
         return form.render(width, (height - flash.size).coerceAtLeast(0)) + flash
     }
 
+    // Key dispatch: one branch per key binding; splitting it would scatter the bindings.
+    @Suppress("ReturnCount")
     override fun onKey(key: Key): Boolean {
         if (settings == null) return false
         if (!form.editing) flash = null
@@ -210,6 +212,8 @@ class SettingsPage(
             add(toggle("debugLogs", "Debug logs", s.showDebugLogs, "Show DEBUG-level entries in the task log."))
         }
 
+    // Exhaustive when over every settings field; splitting would obscure the mapping.
+    @Suppress("CyclomaticComplexMethod")
     private fun onChange(
         field: Field,
         value: ConfigValue?,

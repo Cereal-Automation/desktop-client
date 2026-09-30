@@ -141,7 +141,10 @@ private const val ESC = '\u001B'
  * at the top row, as a real terminal does after a clear), plus the cursor save/move/restore (`ESC 7`,
  * `CSI row;1H`, `ESC 8`) that link lines are written with. Other escape sequences are formatting and
  * are dropped. Nothing wraps: a line longer than the terminal stays one row.
+ *
+ * A terminal emulator is one dispatch over escape sequences; splitting it would scatter the cursor state.
  */
+@Suppress("CyclomaticComplexMethod")
 private fun resolveScreen(output: String): List<String> {
     val rows = mutableListOf(StringBuilder())
     var row = 0
@@ -151,70 +154,72 @@ private fun resolveScreen(output: String): List<String> {
     val text = output
     while (i < text.length) {
         val c = text[i]
-        when {
-            c == ESC && i + 1 < text.length && text[i + 1] == '[' -> {
-                var end = i + 2
-                while (end < text.length && text[end] !in '@'..'~') end++
-                val params = text.substring(i + 2, end)
-                when (text.getOrNull(end)) {
-                    'K' -> {
-                        if (params == "" || params == "0") rows[row].setLength(minOf(col, rows[row].length))
-                    }
+        i =
+            when {
+                c == ESC && i + 1 < text.length && text[i + 1] == '[' -> {
+                    var end = i + 2
+                    while (end < text.length && text[end] !in '@'..'~') end++
+                    val params = text.substring(i + 2, end)
+                    when (text.getOrNull(end)) {
+                        'K' -> {
+                            if (params == "" || params == "0") rows[row].setLength(minOf(col, rows[row].length))
+                        }
 
-                    'F' -> {
-                        row = (row - (params.toIntOrNull() ?: 1)).coerceAtLeast(0)
-                        col = 0
-                    }
+                        'F' -> {
+                            row = (row - (params.toIntOrNull() ?: 1)).coerceAtLeast(0)
+                            col = 0
+                        }
 
-                    'H' -> {
-                        row = (params.substringBefore(';').toIntOrNull() ?: 1) - 1
-                        col = (params.substringAfter(';', "").toIntOrNull() ?: 1) - 1
-                        while (rows.size <= row) rows += StringBuilder()
+                        'H' -> {
+                            row = (params.substringBefore(';').toIntOrNull() ?: 1) - 1
+                            col = (params.substringAfter(';', "").toIntOrNull() ?: 1) - 1
+                            while (rows.size <= row) rows += StringBuilder()
+                        }
                     }
+                    end + 1
                 }
-                i = end + 1
-                continue
-            }
 
-            c == ESC && text.getOrNull(i + 1) == '7' -> {
-                saved = row to col
-                i += 2
-                continue
-            }
+                c == ESC && text.getOrNull(i + 1) == '7' -> {
+                    saved = row to col
+                    i + 2
+                }
 
-            c == ESC && text.getOrNull(i + 1) == '8' -> {
-                row = saved.first
-                col = saved.second
-                i += 2
-                continue
-            }
+                c == ESC && text.getOrNull(i + 1) == '8' -> {
+                    row = saved.first
+                    col = saved.second
+                    i + 2
+                }
 
-            c == ESC -> {
-                // OSC or other: skip to the string terminator (ESC \) or BEL.
-                var end = i + 1
-                while (end < text.length && text[end] != '\u0007' && !(text[end] == ESC && text.getOrNull(end + 1) == '\\')) end++
-                i = if (text.getOrNull(end) == ESC) end + 2 else end + 1
-                continue
-            }
+                c == ESC -> {
+                    // OSC or other: skip to the string terminator (ESC \) or BEL.
+                    var end = i + 1
+                    while (end < text.length && !text.isStringTerminatorAt(end)) end++
+                    if (text.getOrNull(end) == ESC) end + 2 else end + 1
+                }
 
-            c == '\r' -> {
-                col = 0
-            }
+                c == '\r' -> {
+                    col = 0
+                    i + 1
+                }
 
-            c == '\n' -> {
-                row++
-                col = 0
-                if (row == rows.size) rows += StringBuilder()
-            }
+                c == '\n' -> {
+                    row++
+                    col = 0
+                    if (row == rows.size) rows += StringBuilder()
+                    i + 1
+                }
 
-            else -> {
-                val line = rows[row]
-                while (line.length < col) line.append(' ')
-                if (col < line.length) line.setCharAt(col, c) else line.append(c)
-                col++
+                else -> {
+                    val line = rows[row]
+                    while (line.length < col) line.append(' ')
+                    if (col < line.length) line.setCharAt(col, c) else line.append(c)
+                    col++
+                    i + 1
+                }
             }
-        }
-        i++
     }
     return rows.map { it.toString() }
 }
+
+/** BEL, or ESC followed by a backslash, at [index]: the end of an OSC string. */
+private fun String.isStringTerminatorAt(index: Int): Boolean = this[index] == '\u0007' || (this[index] == ESC && getOrNull(index + 1) == '\\')

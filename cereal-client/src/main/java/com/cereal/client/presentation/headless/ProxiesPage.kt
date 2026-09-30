@@ -123,6 +123,8 @@ class ProxiesPage(
             }
     }
 
+    // Each overlay/state renders its own screen and returns early; nesting them would obscure the layout.
+    @Suppress("ReturnCount")
     override fun body(
         width: Int,
         height: Int,
@@ -151,6 +153,8 @@ class ProxiesPage(
         return head + list + bottomLines
     }
 
+    // Key dispatch: one branch per key binding; splitting it would scatter the bindings.
+    @Suppress("CyclomaticComplexMethod", "ReturnCount")
     override fun onKey(key: Key): Boolean {
         input?.let { return it.onKey(key) }
         name?.let { return onNameKey(it, key) }
@@ -297,6 +301,8 @@ class ProxiesPage(
     }
 
     private companion object {
+        const val ADDRESS_WIDTH = 36
+
         fun describe(proxy: Proxy): String {
             val address = "${proxy.address}:${proxy.port}${proxy.username?.let { "  $it" }.orEmpty()}"
             val health = proxy.health
@@ -306,7 +312,7 @@ class ProxiesPage(
                     ProxyHealthStatus.HEALTHY -> "ok${health.latencyMs?.let { " $it ms" }.orEmpty()}"
                     ProxyHealthStatus.FAILED -> "FAILED${health.lastError?.let { ": $it" }.orEmpty()}"
                 }
-            return "${address.padEnd(36)} $status"
+            return "${address.padEnd(ADDRESS_WIDTH)} $status"
         }
 
         suspend fun <T : Any, P> Interactor<T, P>.result(params: P): Result<T> {

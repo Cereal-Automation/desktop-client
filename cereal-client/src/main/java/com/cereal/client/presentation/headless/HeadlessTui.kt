@@ -35,7 +35,10 @@ import kotlinx.coroutines.launch
  * Kotter-free apart from the [Key] type, so the whole layout is a pure function of this state
  * ([frame]); [runTui] is the thin adapter that paints it and feeds keys in. Call [onChanged] after
  * any async state change so the adapter repaints.
+ *
+ * Constructor-injected by Koin; every dependency is a distinct interactor the frame drives directly.
  */
+@Suppress("LongParameterList")
 @OptIn(FlowPreview::class)
 class HeadlessTui(
     private val scope: CoroutineScope,
@@ -337,6 +340,9 @@ class HeadlessTui(
 
     companion object {
         private const val STARTING = "Starting Cereal…"
+
+        /** Fewest rows [clip] needs to keep a head, the `…` marker and a tail. */
+        private const val MIN_SPLIT_HEIGHT = 3
         const val SESSION_LOST = "Session lost: the account may have signed in elsewhere."
 
         private fun BootstrapState.statusLine(): String =
@@ -396,7 +402,7 @@ class HeadlessTui(
         ): List<String> {
             val units = lines.map { listOf(it) + List(wrapRows(it, width)) { "" } }
             if (units.sumOf { it.size } <= height) return units.flatten()
-            if (height < 3) return leading(units, height).flatten()
+            if (height < MIN_SPLIT_HEIGHT) return leading(units, height).flatten()
             val head = leading(units, (height - 1) / 2).flatten()
             val tail = leading(units.asReversed(), height - 1 - head.size).asReversed().flatten()
             return head + "…" + tail

@@ -231,6 +231,8 @@ class TasksPage(
         return main + List((mainHeight - main.size).coerceAtLeast(0)) { "" } + listOfNotNull(bottom)
     }
 
+    // Key dispatch: one branch per key binding; splitting it would scatter the bindings.
+    @Suppress("CyclomaticComplexMethod", "ReturnCount")
     override fun onKey(key: Key): Boolean {
         configPage?.let { return it.onKey(key) }
         overlay?.let { return onOverlayKey(it, key) }

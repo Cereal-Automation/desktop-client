@@ -103,7 +103,7 @@ class HeadlessFormPickersTest {
                 definitions.toDatasetItems(CsvReader().readRawRows(file))
             } catch (e: com.cereal.client.domain.model.datasets.InvalidDatasetFileException) {
                 throw com.cereal.client.application.datasets
-                    .InvalidFileException(e.message ?: "")
+                    .InvalidFileException(e.message ?: "", e)
             }
         }
     }

@@ -215,6 +215,8 @@ class ConfigPickers(
             return head + list.render(width, height - head.size - bottom.size) + bottom
         }
 
+        // Key dispatch: one branch per key binding; splitting it would scatter the bindings.
+        @Suppress("CyclomaticComplexMethod", "ReturnCount")
         override fun onKey(key: Key): Boolean {
             input?.let { return it.onKey(key) }
             confirm?.let { group ->
@@ -332,6 +334,8 @@ class ConfigPickers(
             return head + body + bottom
         }
 
+        // Key dispatch: one branch per key binding; splitting it would scatter the bindings.
+        @Suppress("ReturnCount")
         override fun onKey(key: Key): Boolean {
             editing?.let { return it.onKey(key) }
             input?.let { return it.onKey(key) }

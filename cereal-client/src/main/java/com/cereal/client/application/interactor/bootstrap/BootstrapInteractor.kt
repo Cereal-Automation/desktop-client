@@ -59,17 +59,17 @@ class BootstrapInteractor(
                 },
             BootstrapSequenceIdentifier.BootingUp to
                 flow {
-                    emit(BootstrapProgress(BootstrapState.BootingUp, 0.05f))
+                    emit(BootstrapProgress(BootstrapState.BootingUp, PROGRESS_BOOTING_UP))
                     startup(params.headless)
                 },
             BootstrapSequenceIdentifier.CheckingAppFiles to
                 flow {
-                    emit(BootstrapProgress(BootstrapState.CheckingApplicationFiles, 0.1f))
+                    emit(BootstrapProgress(BootstrapState.CheckingApplicationFiles, PROGRESS_CHECKING_APP_FILES))
                     createApplicationHomeFolder()
                 },
             BootstrapSequenceIdentifier.CheckingForUpdates to
                 flow {
-                    emit(BootstrapProgress(BootstrapState.CheckingForUpdates, 0.2f))
+                    emit(BootstrapProgress(BootstrapState.CheckingForUpdates, PROGRESS_RESTORING_USER))
                     restoreUser(params.headless)
                         ?.map {
                             when (it) {
@@ -100,7 +100,7 @@ class BootstrapInteractor(
                 },
             BootstrapSequenceIdentifier.Finishing to
                 flow {
-                    emit(BootstrapProgress(BootstrapState.Finishing, 0.99f))
+                    emit(BootstrapProgress(BootstrapState.Finishing, PROGRESS_FINISHING))
                     finalize()
                     emit(BootstrapProgress(BootstrapState.Finished, 1.0f))
                 },
@@ -160,7 +160,7 @@ class BootstrapInteractor(
                     return null
                 }
                 logger.warn("Marketplace unreachable while restoring the stored session, retrying.", e)
-                emit(BootstrapProgress(BootstrapState.MarketplaceUnreachable, 0.2f))
+                emit(BootstrapProgress(BootstrapState.MarketplaceUnreachable, PROGRESS_RESTORING_USER))
                 delay(RESTORE_RETRY_BASE_MILLIS shl minOf(attempt++, RESTORE_RETRY_MAX_SHIFT))
             }
         }
@@ -202,6 +202,10 @@ class BootstrapInteractor(
 
     companion object {
         private const val FINISH_STATE_VISIBILITY_DELAY_MILLIS = 250L
+        private const val PROGRESS_BOOTING_UP = 0.05f
+        private const val PROGRESS_CHECKING_APP_FILES = 0.1f
+        private const val PROGRESS_RESTORING_USER = 0.2f
+        private const val PROGRESS_FINISHING = 0.99f
 
         /** Restore retries wait 1 s, 2 s, 4 s … capped at 64 s. */
         private const val RESTORE_RETRY_BASE_MILLIS = 1000L

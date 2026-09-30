@@ -174,7 +174,7 @@ class NotificationsPage(
         width: Int,
         now: Long,
     ): String {
-        val head = "${formatRelativeTime(row.history.timestamp, now).padEnd(9)} ${row.task.fit(18)} "
+        val head = "${formatRelativeTime(row.history.timestamp, now).padEnd(TIME_WIDTH)} ${row.task.fit(TASK_WIDTH)} "
         val marks = " " + marks(row.attempts)
         val text = listOfNotNull(row.history.title?.takeIf { it.isNotBlank() }, row.history.message).joinToString(": ")
         return head + text.fit((width - head.length - marks.length).coerceAtLeast(1)) + marks
@@ -197,6 +197,8 @@ class NotificationsPage(
     private companion object {
         const val TITLE = "Notifications"
         const val CURSOR_WIDTH = 2
+        const val TIME_WIDTH = 9
+        const val TASK_WIDTH = 18
         val MARKED_CHANNELS = listOf(NotificationChannelType.DISCORD, NotificationChannelType.TELEGRAM, NotificationChannelType.EMAIL)
 
         /** Script name and task number, numbered 1..n per script package instance by creation, as on the desktop. */

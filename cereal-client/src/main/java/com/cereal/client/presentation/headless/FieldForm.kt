@@ -114,6 +114,8 @@ class FieldForm(
 
     fun focus(key: String) = list.select(key)
 
+    // Key dispatch: one branch per key binding; splitting it would scatter the bindings.
+    @Suppress("CyclomaticComplexMethod", "ReturnCount")
     fun onKey(key: Key): Boolean {
         input?.let { return onInputKey(it, key) }
         val nav = if (key == Keys.Tab) Keys.Down else key
