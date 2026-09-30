@@ -52,6 +52,7 @@ object TaskScopeModule {
                         get(),
                         getSource<Task>()?.id ?: throw RuntimeException("Task is required"),
                         get(),
+                        get(),
                     )
                 }
                 scoped<ArtifactComponent> {

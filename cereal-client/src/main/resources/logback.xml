@@ -9,17 +9,16 @@
     <appender name="FILE" class="ch.qos.logback.core.rolling.RollingFileAppender">
         <file>${user.home}/Cereal${CEREAL_HOME_SUFFIX}/Logs/session.log</file>
 
-        <rollingPolicy class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy">
-            <!-- daily rollover -->
+        <!-- daily rollover, and a new file whenever the current one passes 10MB -->
+        <rollingPolicy class="ch.qos.logback.core.rolling.SizeAndTimeBasedRollingPolicy">
             <fileNamePattern>${user.home}/Cereal${CEREAL_HOME_SUFFIX}/Logs/session%d{yyyy-MM-dd}.%i.log</fileNamePattern>
-
-            <!-- when file size is larger than defined, roll to new file -->
-            <timeBasedFileNamingAndTriggeringPolicy class="ch.qos.logback.core.rolling.SizeAndTimeBasedFNATP">
-                <maxFileSize>10MB</maxFileSize>
-            </timeBasedFileNamingAndTriggeringPolicy>
+            <maxFileSize>10MB</maxFileSize>
 
             <!-- keep 30 days' worth of history -->
             <maxHistory>30</maxHistory>
+
+            <!-- cap all archived logs so trace logging around the clock (headless mode) can't fill the disk -->
+            <totalSizeCap>1GB</totalSizeCap>
         </rollingPolicy>
 
         <encoder>

@@ -7,6 +7,7 @@ import com.cereal.client.application.app.VersionCheckService
 import com.cereal.client.application.auth.UserAuthManager
 import com.cereal.client.application.auth.UserAuthenticatingState
 import com.cereal.client.application.exception.CrashReporter
+import com.cereal.client.application.exception.MarketplaceUnreachableException
 import com.cereal.client.application.proxy.ProxyHealthSweepScheduler
 import com.cereal.client.application.script.PeriodicScriptSyncer
 import com.cereal.client.domain.provider.SystemProvider
@@ -15,6 +16,7 @@ import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.FlowCollector
 import kotlinx.coroutines.flow.emitAll
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.map
@@ -41,7 +43,7 @@ class BootstrapInteractor(
         Finishing,
     }
 
-    private val bootstrapSequence =
+    private fun bootstrapSequence(params: Params) =
         mapOf(
             BootstrapSequenceIdentifier.CheckUpdate to
                 flow {
@@ -57,18 +59,18 @@ class BootstrapInteractor(
                 },
             BootstrapSequenceIdentifier.BootingUp to
                 flow {
-                    emit(BootstrapProgress(BootstrapState.BootingUp, 0.05f))
-                    startup()
+                    emit(BootstrapProgress(BootstrapState.BootingUp, PROGRESS_BOOTING_UP))
+                    startup(params.headless)
                 },
             BootstrapSequenceIdentifier.CheckingAppFiles to
                 flow {
-                    emit(BootstrapProgress(BootstrapState.CheckingApplicationFiles, 0.1f))
+                    emit(BootstrapProgress(BootstrapState.CheckingApplicationFiles, PROGRESS_CHECKING_APP_FILES))
                     createApplicationHomeFolder()
                 },
             BootstrapSequenceIdentifier.CheckingForUpdates to
                 flow {
-                    emit(BootstrapProgress(BootstrapState.CheckingForUpdates, 0.2f))
-                    restoreUser()
+                    emit(BootstrapProgress(BootstrapState.CheckingForUpdates, PROGRESS_RESTORING_USER))
+                    restoreUser(params.headless)
                         ?.map {
                             when (it) {
                                 UserAuthenticatingState.InitializingDiscord -> {
@@ -98,7 +100,7 @@ class BootstrapInteractor(
                 },
             BootstrapSequenceIdentifier.Finishing to
                 flow {
-                    emit(BootstrapProgress(BootstrapState.Finishing, 0.99f))
+                    emit(BootstrapProgress(BootstrapState.Finishing, PROGRESS_FINISHING))
                     finalize()
                     emit(BootstrapProgress(BootstrapState.Finished, 1.0f))
                 },
@@ -106,7 +108,7 @@ class BootstrapInteractor(
 
     override suspend fun run(params: Params): Flow<BootstrapProgress> =
         flow {
-            bootstrapSequence
+            bootstrapSequence(params)
                 .asIterable()
                 .dropWhile { params.startAt != null && params.startAt != it.key }
                 .forEach { step ->
@@ -121,14 +123,18 @@ class BootstrapInteractor(
      * @param startAt if provided will start/continue the bootstrap process after the given [BootstrapSequenceIdentifier].
      * This is useful when somewhere in the process the users interaction is required to be able to continue the
      * bootstrap.
+     * @param headless headless mode: no tray icon, and an unreachable marketplace while restoring the stored
+     * session is retried with backoff (emitting [BootstrapState.MarketplaceUnreachable]) instead of falling
+     * through to login as the desktop does.
      */
     data class Params(
         val startAt: BootstrapSequenceIdentifier? = null,
+        val headless: Boolean = false,
     )
 
-    private suspend fun startup() {
+    private suspend fun startup(headless: Boolean) {
         logger.info("Booting up application.")
-        systemRepository.createTrayIcon()
+        if (!headless) systemRepository.createTrayIcon()
         periodicScriptSyncer.start()
         proxyHealthSweepScheduler.start()
     }
@@ -142,7 +148,23 @@ class BootstrapInteractor(
         }
     }
 
-    private suspend fun restoreUser(): Flow<UserAuthenticatingState>? = userAuthManager.initialize()
+    private suspend fun FlowCollector<BootstrapProgress>.restoreUser(retryWhileUnreachable: Boolean): Flow<UserAuthenticatingState>? {
+        var attempt = 0
+        while (true) {
+            try {
+                return userAuthManager.initialize()
+            } catch (e: MarketplaceUnreachableException) {
+                if (!retryWhileUnreachable) {
+                    // Desktop: an offline start lands on login, as it always has.
+                    logger.warn("Marketplace unreachable while restoring the stored session.", e)
+                    return null
+                }
+                logger.warn("Marketplace unreachable while restoring the stored session, retrying.", e)
+                emit(BootstrapProgress(BootstrapState.MarketplaceUnreachable, PROGRESS_RESTORING_USER))
+                delay(RESTORE_RETRY_BASE_MILLIS shl minOf(attempt++, RESTORE_RETRY_MAX_SHIFT))
+            }
+        }
+    }
 
     private suspend fun checkForClientUpdates(): UserAction? =
         try {
@@ -180,6 +202,14 @@ class BootstrapInteractor(
 
     companion object {
         private const val FINISH_STATE_VISIBILITY_DELAY_MILLIS = 250L
+        private const val PROGRESS_BOOTING_UP = 0.05f
+        private const val PROGRESS_CHECKING_APP_FILES = 0.1f
+        private const val PROGRESS_RESTORING_USER = 0.2f
+        private const val PROGRESS_FINISHING = 0.99f
+
+        /** Restore retries wait 1 s, 2 s, 4 s … capped at 64 s. */
+        private const val RESTORE_RETRY_BASE_MILLIS = 1000L
+        private const val RESTORE_RETRY_MAX_SHIFT = 6
         private const val NOTIFICATION_HISTORY_RETENTION_MILLIS = 30L * 24 * 60 * 60 * 1000
     }
 }

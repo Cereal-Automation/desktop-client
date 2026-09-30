@@ -9,18 +9,31 @@ import net.swiftzer.semver.SemVer
 
 /**
  * In-memory app-update provider used in the `mock` flavor so version-check logic works without a
- * live object-storage endpoint. Reports no available update so the update banner is never shown
- * during local development.
+ * live object-storage endpoint. Reports no available update by default (the installed version is
+ * 1.0.0) so the update banner is never shown during local development. Tests set [latestVersion]
+ * to simulate an available or required update and read [downloads] to check nothing was fetched.
  */
 class InMemoryAppUpdateProvider : AppUpdateProvider {
-    private val installedVersion = SemVer(1, 0, 0)
+    @Volatile
+    var latestVersion: Version = version("1.0.0")
 
-    override suspend fun getLatestAvailableAppVersion(): Version =
-        Version(
-            version = installedVersion,
-            minRequiredVersion = installedVersion,
+    val downloads = mutableListOf<Version>()
+
+    override suspend fun getLatestAvailableAppVersion(): Version = latestVersion
+
+    override suspend fun downloadVersion(version: Version): Flow<DownloadStatus> {
+        downloads += version
+        return emptyFlow()
+    }
+
+    companion object {
+        fun version(
+            latest: String,
+            minRequired: String = "1.0.0",
+        ) = Version(
+            version = SemVer.parse(latest),
+            minRequiredVersion = SemVer.parse(minRequired),
             downloadUrl = "https://example.com/app",
         )
-
-    override suspend fun downloadVersion(version: Version): Flow<DownloadStatus> = emptyFlow()
+    }
 }

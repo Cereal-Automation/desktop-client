@@ -47,6 +47,8 @@ class InstallUpdateInteractorTest {
                 object : SystemProvider {
                     override suspend fun createTrayIcon() = Unit
 
+                    override fun hostname() = "test-host"
+
                     override suspend fun browser(url: String) = Unit
 
                     override suspend fun open(directory: File): OpenFileResult = OpenFileResult.Opened

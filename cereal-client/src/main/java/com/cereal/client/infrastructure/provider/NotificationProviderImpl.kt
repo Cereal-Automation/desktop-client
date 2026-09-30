@@ -1,5 +1,6 @@
 package com.cereal.client.infrastructure.provider
 
+import com.cereal.client.application.exception.CerealException
 import com.cereal.client.application.exception.CrashReporter
 import com.cereal.client.domain.model.notification.DiscordNotificationData
 import com.cereal.client.domain.model.notification.EmailNotificationData
@@ -38,9 +39,26 @@ class NotificationProviderImpl(
             }
         } catch (ce: CancellationException) {
             throw ce
-        } catch (e: Exception) {
-            logger.error("Failed to send notification: $notification", e)
+        } catch (e: CerealException) {
+            throw failed(notification, e)
+        } catch (e: RuntimeException) {
             CrashReporter.report(e)
+            throw failed(notification, e)
+        } catch (e: Exception) {
+            throw failed(notification, e)
         }
+    }
+
+    /**
+     * Logs [e] and returns it as a [CerealException] to rethrow, so callers see the failure: history records it
+     * per channel and a test message reports it. A broken webhook or SMTP login is the user's setup, not a bug
+     * for Sentry. Only the channel is logged: the notification carries the webhook URL, bot token or SMTP password.
+     */
+    private fun failed(
+        notification: Notification,
+        e: Exception,
+    ): CerealException {
+        logger.warn("Failed to send {} notification", notification::class.simpleName, e)
+        return e as? CerealException ?: CerealException(e.message ?: "The notification could not be sent.", e)
     }
 }

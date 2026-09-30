@@ -50,6 +50,8 @@ class MarketplaceApiClient(
     version: String,
     publicKey: String = "",
     private val tokenDataSource: AuthorizationInterceptor.TokenDataSource,
+    // Called on a 401 to a request that carried the session token (session lost).
+    onSessionRejected: () -> Unit = {},
     // SPKI pins (`sha256/<base64>`) applied to the API host. Pin the intermediate CA and/or
     // root rather than the leaf so Cloudflare/Google cert rotations don't brick the client;
     // ship a backup pin alongside the active one so the set can be rotated by release. An
@@ -91,7 +93,7 @@ class MarketplaceApiClient(
                 .connectTimeout(DEFAULT_TIMEOUT_SECONDS, TimeUnit.SECONDS)
                 .readTimeout(DEFAULT_TIMEOUT_SECONDS, TimeUnit.SECONDS)
                 .writeTimeout(DEFAULT_TIMEOUT_SECONDS, TimeUnit.SECONDS)
-                .addInterceptor(AuthorizationInterceptor(tokenDataSource))
+                .addInterceptor(AuthorizationInterceptor(tokenDataSource, onSessionRejected))
                 .addInterceptor(JsonHeadersInterceptor())
                 .addInterceptor(ClientVersionInterceptor(version))
                 .addInterceptor(logging)

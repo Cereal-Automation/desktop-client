@@ -1,6 +1,7 @@
 package com.cereal.client.domain.provider
 
 import com.cereal.client.domain.model.auth.OAuthProvider
+import com.cereal.client.domain.model.auth.PastedSignIn
 import com.cereal.client.domain.model.script.ScriptEntitlement
 import com.cereal.client.domain.model.user.Subscription
 import com.cereal.client.domain.model.user.User
@@ -29,8 +30,12 @@ interface AuthProvider {
      * Signs in with an external [OAuthProvider] (Google, Discord, …). The concrete implementation
      * brokers the OAuth flow through the marketplace backend (system browser + loopback), never
      * talking to the provider directly, and returns the authenticated [User] just like [authenticate].
+     * With [pastedSignIn] the URL is handed over instead of opened, and pasted redirects race the loopback.
      */
-    suspend fun authenticateWith(provider: OAuthProvider): User
+    suspend fun authenticateWith(
+        provider: OAuthProvider,
+        pastedSignIn: PastedSignIn? = null,
+    ): User
 
     suspend fun getSubscriptions(ignoreCache: Boolean = false): List<Subscription>
 

@@ -20,6 +20,9 @@ sealed class BootstrapState {
 
     object RestoreUser : BootstrapState()
 
+    /** Headless only: restoring the stored session failed on the network or a 5xx and is being retried. */
+    object MarketplaceUnreachable : BootstrapState()
+
     object SynchronizeScripts : BootstrapState()
 
     object ValidatingDirectories : BootstrapState()

@@ -7,6 +7,9 @@ import java.io.File
 interface SystemProvider {
     suspend fun createTrayIcon()
 
+    /** This machine's host name (the container's in Docker), or "unknown host". */
+    fun hostname(): String
+
     suspend fun browser(url: String)
 
     /**

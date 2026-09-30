@@ -1,6 +1,9 @@
 package com.cereal.client.infrastructure.provider.inmemory
 
+import com.cereal.client.application.exception.InvalidLoginCredentialsException
+import com.cereal.client.application.exception.LoginValidationException
 import com.cereal.client.domain.model.auth.OAuthProvider
+import com.cereal.client.domain.model.auth.PastedSignIn
 import com.cereal.client.domain.model.script.ScriptEntitlement
 import com.cereal.client.domain.model.user.Subscription
 import com.cereal.client.domain.model.user.User
@@ -19,10 +22,17 @@ class InMemoryAuthProvider(
     /** Emails that [forgotPassword] was called with, so tests can assert on real state. */
     val forgotPasswordEmails = mutableListOf<String>()
 
+    /** When set, [authenticate] rejects any other password the way the marketplace does. Null accepts all. */
+    var acceptedPassword: String? = null
+
     override suspend fun authenticate(
         email: String,
         password: String,
-    ): User = user
+    ): User {
+        if (email.isBlank()) throw LoginValidationException("The email field is required.")
+        if (acceptedPassword != null && password != acceptedPassword) throw InvalidLoginCredentialsException()
+        return user
+    }
 
     override suspend fun register(
         name: String,
@@ -32,7 +42,10 @@ class InMemoryAuthProvider(
 
     override suspend fun authenticateGuest(): User = user
 
-    override suspend fun authenticateWith(provider: OAuthProvider): User = user
+    override suspend fun authenticateWith(
+        provider: OAuthProvider,
+        pastedSignIn: PastedSignIn?,
+    ): User = user
 
     override suspend fun getSubscriptions(ignoreCache: Boolean): List<Subscription> = subscriptions
 

@@ -34,6 +34,7 @@ kotlin-csv = "1.10.0"
 kamel = "1.0.9"
 ktor = "3.5.1"
 kdriver = "0.5.11"
+kotter = "1.4.0"
 # markdown-renderer 0.42+ is built against Kotlin 2.4 and pulls kotlin-stdlib 2.4.0 into the
 # runtime classpath, which ProGuard 7.8.2/7.9.1 cannot process. Bump together with Kotlin 2.4.
 markdown-renderer = "0.41.0"
@@ -113,6 +114,8 @@ kotlin-csv = { module = "com.github.doyaaaaaken:kotlin-csv-jvm", version.ref = "
 kamel ={ module = "media.kamel:kamel-image-default", version.ref = "kamel" }
 ktor-client-okhttp = { module = "io.ktor:ktor-client-okhttp", version.ref = "ktor" }
 kdriver = { module = "dev.kdriver:core", version.ref = "kdriver" }
+kotter = { module = "com.varabyte.kotter:kotter-jvm", version.ref = "kotter" }
+kotter-test-support = { module = "com.varabyte.kotterx:kotter-test-support-jvm", version.ref = "kotter" }
 markdown-renderer = { module = "com.mikepenz:multiplatform-markdown-renderer-m3", version.ref = "markdown-renderer" }
 sekret = { module = "dev.datlag.sekret:sekret", version.ref = "sekret-lib" }
 cereal-sdk = { module = "com.cereal-automation:cereal-sdk", version.ref = "cereal-sdk" }

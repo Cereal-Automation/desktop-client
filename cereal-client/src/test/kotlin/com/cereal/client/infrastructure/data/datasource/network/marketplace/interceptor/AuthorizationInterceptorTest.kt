@@ -4,11 +4,14 @@ import okhttp3.OkHttpClient
 import okhttp3.Request
 import okhttp3.mockwebserver.MockResponse
 import okhttp3.mockwebserver.MockWebServer
+import okhttp3.mockwebserver.SocketPolicy
 import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertNull
+import org.junit.jupiter.api.Assertions.assertThrows
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
+import java.io.IOException
 
 class AuthorizationInterceptorTest {
     private lateinit var mockWebServer: MockWebServer
@@ -24,6 +27,8 @@ class AuthorizationInterceptorTest {
         mockWebServer.shutdown()
     }
 
+    private var sessionRejections = 0
+
     private fun clientWithToken(token: String?): OkHttpClient {
         val tokenDataSource =
             object : AuthorizationInterceptor.TokenDataSource {
@@ -31,7 +36,7 @@ class AuthorizationInterceptorTest {
             }
         return OkHttpClient
             .Builder()
-            .addInterceptor(AuthorizationInterceptor(tokenDataSource))
+            .addInterceptor(AuthorizationInterceptor(tokenDataSource) { sessionRejections++ })
             .build()
     }
 
@@ -59,5 +64,59 @@ class AuthorizationInterceptorTest {
 
         val recorded = mockWebServer.takeRequest()
         assertNull(recorded.getHeader("Authorization"))
+    }
+
+    private fun call(
+        token: String?,
+        code: Int,
+    ) {
+        mockWebServer.enqueue(MockResponse().setResponseCode(code))
+        clientWithToken(token)
+            .newCall(Request.Builder().url(mockWebServer.url("/")).build())
+            .execute()
+            .use { }
+    }
+
+    @Test
+    fun `a 401 to a request carrying the token reports the session rejected`() {
+        call("my-token", 401)
+
+        assertEquals(1, sessionRejections)
+    }
+
+    @Test
+    fun `a 401 for a token replaced while the request was in flight is not a rejected session`() {
+        var token = "old-token"
+        val client =
+            OkHttpClient
+                .Builder()
+                .addInterceptor(
+                    AuthorizationInterceptor(
+                        object : AuthorizationInterceptor.TokenDataSource {
+                            override fun getToken(): String? = token
+                        },
+                    ) { sessionRejections++ },
+                ).addNetworkInterceptor { chain ->
+                    // A fresh sign-in lands while the old request is on the wire.
+                    chain.proceed(chain.request()).also { token = "new-token" }
+                }.build()
+        mockWebServer.enqueue(MockResponse().setResponseCode(401))
+
+        client.newCall(Request.Builder().url(mockWebServer.url("/")).build()).execute().use { }
+
+        assertEquals(0, sessionRejections)
+    }
+
+    @Test
+    fun `a 401 without a token, a server error or a network failure is not a rejected session`() {
+        call(null, 401)
+        call("my-token", 500)
+        call("my-token", 403)
+        mockWebServer.enqueue(MockResponse().setSocketPolicy(SocketPolicy.DISCONNECT_AT_START))
+        assertThrows(IOException::class.java) {
+            clientWithToken("my-token").newCall(Request.Builder().url(mockWebServer.url("/")).build()).execute()
+        }
+
+        assertEquals(0, sessionRejections)
     }
 }

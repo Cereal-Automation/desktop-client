@@ -15,6 +15,7 @@ import com.cereal.client.infrastructure.data.datasource.os.WindowsUpdateInstalle
 import com.cereal.client.presentation.util.ImageUtil
 import org.slf4j.LoggerFactory
 import java.io.File
+import java.net.InetAddress
 
 class SystemProviderImpl(
     private val applicationConfig: ApplicationConfig,
@@ -29,6 +30,13 @@ class SystemProviderImpl(
     private val isMacOs = applicationConfig.operatingSystem == OperatingSystemType.MacOS
     private val isWindows = applicationConfig.operatingSystem == OperatingSystemType.Windows
     private val shouldAttemptXdg = isLinux
+
+    override fun hostname(): String =
+        try {
+            InetAddress.getLocalHost().hostName
+        } catch (_: Exception) {
+            "unknown host"
+        }
 
     override suspend fun createTrayIcon() {
         ImageUtil.loadImageResource(SystemProviderImpl::class.java, "/${applicationConfig.appIcon}")?.let { icon ->

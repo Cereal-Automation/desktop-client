@@ -45,7 +45,8 @@ object Injector {
             UserScopeModule.modules,
         )
 
-    fun initialize(): Koin =
+    /** @param extraModules loaded last, overriding app definitions (e.g. [HeadlessModule]). */
+    fun initialize(extraModules: List<Module> = emptyList()): Koin =
         startKoin {
             slf4jLogger(level = Level.ERROR)
 
@@ -60,6 +61,6 @@ object Injector {
                     appModules(RepositoryModule.modules, ProviderModule.modules)
                 }
 
-            modules(koinModules)
+            modules(koinModules + extraModules)
         }.koin
 }

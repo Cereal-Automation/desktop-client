@@ -24,7 +24,11 @@ class InMemorySystemProvider : SystemProvider {
     /** Result returned by [open]; override to exercise the reveal/failure fallbacks. */
     var openResult: OpenFileResult = OpenFileResult.Opened
 
+    var hostname = "test-host"
+
     override suspend fun createTrayIcon() = Unit
+
+    override fun hostname() = hostname
 
     override suspend fun browser(url: String) {
         browsedUrls += url

@@ -1,16 +1,22 @@
 package com.cereal.client.infrastructure.data.repository
 
+import com.cereal.client.application.exception.MarketplaceUnreachableException
 import com.cereal.client.domain.model.user.User
 import com.cereal.client.fixtures.FakeMarketplaceDataSource
 import com.cereal.client.fixtures.InMemoryKeyValueDataSource
 import com.cereal.client.infrastructure.data.datasource.auth.UserSession
 import com.cereal.client.infrastructure.data.datasource.auth.UserTokenDataSource
+import com.cereal.client.infrastructure.data.datasource.network.exception.ApiException
+import com.cereal.client.infrastructure.data.datasource.network.exception.AuthenticationException
 import io.mockk.coVerify
 import io.mockk.mockk
 import kotlinx.coroutines.test.runTest
+import kotlinx.serialization.SerializationException
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
+import java.io.IOException
 import kotlin.test.assertEquals
+import kotlin.test.assertFailsWith
 import kotlin.test.assertNull
 import com.cereal.client.infrastructure.data.datasource.network.marketplace.responses.model.User as ApiUser
 
@@ -50,6 +56,33 @@ class SessionRepositoryImplTest {
 
             assertEquals("u-9", result?.id)
             assertEquals("stored-token", result?.accessToken)
+        }
+
+    @Test
+    fun `getStoredUser returns null when the marketplace rejects the token with a 401`() =
+        runTest {
+            repository.setSessionUser(User("u", "n", "e", "k", "stored-token", false))
+            marketplaceDataSource.authenticatedUserError = AuthenticationException()
+
+            assertNull(repository.getStoredUser())
+        }
+
+    @Test
+    fun `getStoredUser throws unreachable on a network failure, a 5xx, a 429 or a non-JSON page`() =
+        runTest {
+            repository.setSessionUser(User("u", "n", "e", "k", "stored-token", false))
+
+            val errors =
+                listOf(
+                    IOException("timeout"),
+                    ApiException("Bad gateway", httpStatus = 502),
+                    ApiException("Too many requests", httpStatus = 429),
+                    SerializationException("Unexpected JSON token"),
+                )
+            for (error in errors) {
+                marketplaceDataSource.authenticatedUserError = error
+                assertFailsWith<MarketplaceUnreachableException> { repository.getStoredUser() }
+            }
         }
 
     @Test

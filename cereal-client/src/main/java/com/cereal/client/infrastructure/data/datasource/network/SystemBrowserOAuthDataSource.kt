@@ -3,10 +3,13 @@ package com.cereal.client.infrastructure.data.datasource.network
 import com.cereal.client.application.ApplicationConfig
 import com.cereal.client.application.exception.OAuthAuthenticationException
 import com.cereal.client.domain.model.auth.OAuthProvider
+import com.cereal.client.domain.model.auth.PastedSignIn
 import com.sun.net.httpserver.HttpExchange
 import com.sun.net.httpserver.HttpServer
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.TimeoutCancellationException
+import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.withTimeout
 import org.slf4j.LoggerFactory
 import java.net.InetAddress
@@ -39,7 +42,10 @@ class SystemBrowserOAuthDataSource(
 ) : OAuthDataSource {
     private val logger = LoggerFactory.getLogger(SystemBrowserOAuthDataSource::class.java)
 
-    override suspend fun obtainOneTimeCode(provider: OAuthProvider): String {
+    override suspend fun obtainOneTimeCode(
+        provider: OAuthProvider,
+        pastedSignIn: PastedSignIn?,
+    ): String {
         val state = generateState()
         val server = HttpServer.create(InetSocketAddress(InetAddress.getByName(LOOPBACK_HOST), 0), 0)
         val result = CompletableDeferred<String>()
@@ -49,11 +55,23 @@ class SystemBrowserOAuthDataSource(
             server.start()
 
             val redirectUri = "$LOOPBACK_SCHEME://$LOOPBACK_HOST:${server.address.port}"
-            if (!openBrowser(buildAuthorizeUrl(provider, state, redirectUri))) {
+            val authorizeUrl = buildAuthorizeUrl(provider, state, redirectUri)
+            if (pastedSignIn != null) {
+                pastedSignIn.showUrl(authorizeUrl)
+            } else if (!openBrowser(authorizeUrl)) {
                 throw OAuthAuthenticationException("Could not open the browser for sign-in.")
             }
 
-            return withTimeout(timeout) { result.await() }
+            return withTimeout(timeout) {
+                coroutineScope {
+                    val pastes = pastedSignIn?.let { launch { while (true) handlePaste(it.awaitPaste(), state, result) } }
+                    try {
+                        result.await()
+                    } finally {
+                        pastes?.cancel()
+                    }
+                }
+            }
         } catch (e: TimeoutCancellationException) {
             // Only the timeout is translated; genuine outer cancellation propagates untouched.
             throw OAuthAuthenticationException("Sign-in timed out. Please try again.", e)
@@ -80,31 +98,58 @@ class SystemBrowserOAuthDataSource(
                 return
             }
 
-            val code = params["code"]
-            when {
-                params["error"] != null -> {
-                    respond(exchange, FAILURE_HTML)
-                    result.completeExceptionally(OAuthAuthenticationException("Sign-in was cancelled."))
-                }
-
-                code.isNullOrEmpty() -> {
-                    respond(exchange, FAILURE_HTML)
-                    result.completeExceptionally(
-                        OAuthAuthenticationException("Sign-in did not return an authorization code."),
-                    )
-                }
-
-                else -> {
-                    // Write the response BEFORE completing: completing can immediately resume the
-                    // coroutine and hit `server.stop(0)` in the finally, closing this exchange.
-                    respond(exchange, SUCCESS_HTML)
-                    result.complete(code)
-                }
-            }
+            val outcome = outcome(params)
+            // Write the response BEFORE completing: completing can immediately resume the
+            // coroutine and hit `server.stop(0)` in the finally, closing this exchange.
+            respond(exchange, if (outcome.isSuccess) SUCCESS_HTML else FAILURE_HTML)
+            result.settle(outcome)
         } catch (e: Exception) {
             logger.warn("Failed to handle OAuth loopback callback", e)
             result.completeExceptionally(OAuthAuthenticationException(cause = e))
         }
+    }
+
+    /**
+     * A pasted redirect: the full `http://127.0.0.1:<port>/?code=…&state=…` URL or just its query
+     * string. Unlike a loopback hit, a wrong or missing `state` fails the attempt: the user pasted it,
+     * so they need to hear it came from another attempt.
+     */
+    private fun handlePaste(
+        text: String,
+        expectedState: String,
+        result: CompletableDeferred<String>,
+    ) {
+        val params = parseQuery(text.trim().substringAfter('?').substringBefore('#'))
+        val state = params["state"]
+        result.settle(
+            when {
+                state == null -> Result.failure(OAuthAuthenticationException(NOT_A_REDIRECT_MESSAGE))
+                !constantTimeEquals(state, expectedState) -> Result.failure(OAuthAuthenticationException(STATE_MISMATCH_MESSAGE))
+                else -> outcome(params)
+            },
+        )
+    }
+
+    /** The code, or the failure the backend redirected with (`error=cancelled|unverified|conflict`). */
+    private fun outcome(params: Map<String, String>): Result<String> {
+        val error = params["error"]
+        val code = params["code"]
+        return when {
+            error != null -> Result.failure(OAuthAuthenticationException(errorMessage(error)))
+            code.isNullOrEmpty() -> Result.failure(OAuthAuthenticationException("Sign-in did not return an authorization code."))
+            else -> Result.success(code)
+        }
+    }
+
+    private fun errorMessage(error: String): String =
+        when (error) {
+            "unverified" -> "Your email isn't verified with that provider. Verify it, then try again."
+            "conflict" -> "That email already has a Cereal account. Sign in the way you used before."
+            else -> "Sign-in was cancelled."
+        }
+
+    private fun CompletableDeferred<String>.settle(outcome: Result<String>) {
+        outcome.fold(::complete, ::completeExceptionally)
     }
 
     private fun buildAuthorizeUrl(
@@ -166,6 +211,11 @@ class SystemBrowserOAuthDataSource(
         const val STATE_BYTES = 32
         const val HTTP_OK = 200
         val DEFAULT_TIMEOUT: Duration = 5.minutes
+
+        const val NOT_A_REDIRECT_MESSAGE =
+            "That isn't the sign-in address. Start again and paste the whole address."
+        const val STATE_MISMATCH_MESSAGE =
+            "That address is from another sign-in attempt. Start again."
 
         val SUCCESS_HTML =
             """

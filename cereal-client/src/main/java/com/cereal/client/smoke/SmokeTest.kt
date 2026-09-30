@@ -1,6 +1,7 @@
 package com.cereal.client.smoke
 
 import com.cereal.client.App
+import com.cereal.client.infrastructure.di.modules.HeadlessModule
 import kotlinx.coroutines.CancellationException
 import org.slf4j.LoggerFactory
 import java.nio.file.Files
@@ -39,9 +40,12 @@ object SmokeTest {
      *
      * Catching [Throwable] is deliberate: obfuscation breakage surfaces as `LinkageError`/`Error`
      * (not `Exception`), and the whole point of the gate is to classify those rather than crash.
+     *
+     * [headless] adds the `headless` probe; [com.cereal.client.headless.HeadlessMode] passes it when
+     * the gate runs with `--headless` (the Docker image's entrypoint).
      */
     @Suppress("TooGenericExceptionCaught")
-    fun run(): Int {
+    fun run(headless: Boolean = false): Int {
         isolateHomeDirectory()
 
         val results = mutableListOf<SmokeResult>()
@@ -52,7 +56,8 @@ object SmokeTest {
 
         val koin =
             try {
-                App.initialize()
+                // Headless boots with its overrides, so the probe exercises the graph the image really runs.
+                App.initialize(if (headless) listOf(HeadlessModule.modules) else emptyList())
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Throwable) {
@@ -71,6 +76,9 @@ object SmokeTest {
         results.add(SmokeResult("network", SmokeProbes.exerciseNetwork(koin)))
         results.add(SmokeResult("serialization", SmokeProbes.exerciseSerialization()))
         results.add(SmokeResult("crypto", SmokeProbes.exerciseReleaseSignatureCrypto(koin)))
+        if (headless) {
+            results.add(SmokeResult("headless", SmokeProbes.exerciseHeadless(koin)))
+        }
 
         return finish(results)
     }

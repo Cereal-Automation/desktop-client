@@ -1,5 +1,6 @@
 package com.cereal.client.infrastructure.di.modules
 
+import com.cereal.client.application.ApplicationConfig
 import com.cereal.client.domain.model.datasets.DatasetType
 import com.cereal.client.domain.model.script.ScriptPackage
 import com.cereal.client.domain.model.script.ScriptPackageInstance
@@ -12,6 +13,15 @@ import com.cereal.client.presentation.bootstrap.BootstrapViewModel
 import com.cereal.client.presentation.brand.BrandPaywallViewModel
 import com.cereal.client.presentation.customdataset.CustomDatasetViewModel
 import com.cereal.client.presentation.error.ErrorResolver
+import com.cereal.client.presentation.headless.ConfigPickers
+import com.cereal.client.presentation.headless.HeadlessTui
+import com.cereal.client.presentation.headless.NotificationsPage
+import com.cereal.client.presentation.headless.ProxiesPage
+import com.cereal.client.presentation.headless.ScriptConfigPages
+import com.cereal.client.presentation.headless.SettingsPage
+import com.cereal.client.presentation.headless.TasksPage
+import com.cereal.client.presentation.headless.UpdatePage
+import com.cereal.client.presentation.headless.WaitingPage
 import com.cereal.client.presentation.main.MainViewModel
 import com.cereal.client.presentation.marketplace.MarketplaceViewModel
 import com.cereal.client.presentation.marketplace.ScriptDetailViewModel
@@ -37,6 +47,68 @@ object ViewModelModule {
     val modules =
         module {
             single { MenuReselectionCoordinator() }
+            factory { (scope: CoroutineScope, environment: Map<String, String>) ->
+                val websiteUrl = get<ApplicationConfig>().websiteUrl
+                var tui: HeadlessTui? = null
+                val repaint = { tui?.onChanged?.invoke() ?: Unit }
+                val tasks =
+                    TasksPage(
+                        scope,
+                        repaint,
+                        get(),
+                        get(),
+                        get(),
+                        get(),
+                        get(),
+                        get(),
+                        get(),
+                        get(),
+                        get(),
+                        get(),
+                        get(),
+                        get(),
+                        get(),
+                        get(),
+                        get(),
+                        ScriptConfigPages(
+                            scope,
+                            repaint,
+                            get(),
+                            get(),
+                            get(),
+                            get(),
+                            get(),
+                            get(),
+                            ConfigPickers(scope, repaint, get<ApplicationConfig>().homeDirectory, get(), get(), get(), get(), get(), get()),
+                        ),
+                    )
+                val waiting =
+                    WaitingPage(scope, repaint, get(), get()) { taskId ->
+                        tasks.openTask(taskId)
+                        tui?.select(tasks)
+                    }
+                val proxies = ProxiesPage(scope, repaint, get<ApplicationConfig>().homeDirectory, get(), get(), get(), get(), get(), get(), get())
+                val notifications = NotificationsPage(scope, repaint, get(), get(), get(), get(), get(), get())
+                val settings = SettingsPage(scope, repaint, get(), get(), get(), get(), get(), get(), get(), get(), get(), get(), get())
+                HeadlessTui(
+                    scope,
+                    HeadlessTui.detachHintFor(environment),
+                    get(),
+                    get(),
+                    get(),
+                    get(),
+                    get(),
+                    get(),
+                    authenticateWithOAuthInteractor = get(),
+                    checkForUpdatesInteractor = get(),
+                    handleSessionLostInteractor = get(),
+                    notifyTaskWaitingInteractor = get(),
+                    sendRestartReportInteractor = get(),
+                    upgradeCommands = { version -> UpdatePage.upgradeCommands(environment, websiteUrl, version) },
+                    noChannelBanner = settings::noChannelBanner,
+                    tabs = listOf(tasks, waiting) + proxies + settings + notifications,
+                ).also { tui = it }
+            }
             factory { MainViewModel(get(), get(), get(), get(), get(), get(), get(), get()) }
             factory { (scope: CoroutineScope, onStartNewInstance: Function1<String, Unit>) ->
                 MarketplaceViewModel(scope, get(), get(), get(), onStartNewInstance)

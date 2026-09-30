@@ -1,6 +1,7 @@
 package com.cereal.client.smoke
 
 import com.cereal.client.application.ApplicationConfig
+import com.cereal.client.infrastructure.bootstrap.ApplicationHome
 import com.cereal.client.infrastructure.bootstrap.BootstrapPreferenceKey
 import com.cereal.client.infrastructure.bootstrap.BootstrapPreferences
 import com.cereal.client.infrastructure.data.datasource.database.KeyValueDataSource
@@ -8,7 +9,14 @@ import com.cereal.client.infrastructure.data.datasource.network.marketplace.resp
 import com.cereal.client.infrastructure.data.datasource.network.models.LatestAppVersionJsonResponse
 import com.cereal.client.infrastructure.data.datasource.network.security.CertificatePinnerFactory
 import com.cereal.client.infrastructure.data.datasource.network.security.ReleaseMetadataVerifier
+import com.cereal.client.infrastructure.headless.HeadlessProcess
+import com.cereal.client.presentation.headless.HeadlessTui
+import com.varabyte.kotter.terminal.system.SystemTerminal
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.cancel
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
 import kotlinx.serialization.json.Json
@@ -16,6 +24,7 @@ import okhttp3.OkHttpClient
 import okhttp3.Request
 import org.koin.core.Koin
 import org.koin.core.annotation.KoinInternalApi
+import org.koin.core.parameter.parametersOf
 import java.security.KeyFactory
 import java.security.PublicKey
 import java.security.spec.X509EncodedKeySpec
@@ -33,6 +42,8 @@ object SmokeProbes {
     private const val NETWORK_TIMEOUT_SECONDS = 15L
     private const val RSA_2048_SIGNATURE_BYTES = 256
     private const val SHA256_HEX_LENGTH = 64
+    private const val TUI_WIDTH = 80
+    private const val TUI_HEIGHT = 24
 
     // Bindings whose construction is heavy or side-effectful (launch Chrome, open native bridges).
     // The auto-enumerating DI probe skips them so the smoke run stays fast and truly headless; their
@@ -201,6 +212,39 @@ object SmokeProbes {
             } else {
                 ProbeOutcome.Pass("parsed the release public key and ran the real signature verifier")
             }
+        }
+
+    /**
+     * Boots the `--headless` path as far as it goes without an operator: the TTY check, the
+     * data-directory lock, the TUI resolved from the DI graph with one frame rendered, and Kotter's
+     * [SystemTerminal] over JLine opened and closed. Needs a TTY, so the image gate runs `docker run -t`.
+     */
+    fun exerciseHeadless(koin: Koin): ProbeOutcome =
+        runProbe {
+            if (!HeadlessProcess.hasTty()) {
+                return@runProbe ProbeOutcome.Failed("no TTY (run the image smoke with `docker run -t`)")
+            }
+            if (!HeadlessProcess.lockDataDirectory(ApplicationHome.directory)) {
+                return@runProbe ProbeOutcome.Failed("could not lock the data directory")
+            }
+            val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
+            val rows =
+                try {
+                    koin.get<HeadlessTui> { parametersOf(scope, System.getenv()) }.frame(TUI_WIDTH, TUI_HEIGHT)
+                } finally {
+                    scope.cancel()
+                }
+            if (rows.size != TUI_HEIGHT) {
+                return@runProbe ProbeOutcome.Failed("TUI rendered ${rows.size} rows, expected $TUI_HEIGHT")
+            }
+            // SystemTerminal swaps System.err for a no-op stream; put it back so the report stays visible.
+            val err = System.err
+            try {
+                SystemTerminal().close()
+            } finally {
+                System.setErr(err)
+            }
+            ProbeOutcome.Pass("TTY, data-directory lock, TUI frame and SystemTerminal")
         }
 
     private fun parseRsaPublicKey(pem: String): PublicKey {

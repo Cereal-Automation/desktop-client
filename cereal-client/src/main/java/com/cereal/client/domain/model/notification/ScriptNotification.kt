@@ -11,6 +11,12 @@ data class ScriptNotification(
     val discordMessage: ScriptDiscordNotification? = null,
     val telegramMessage: ScriptTelegramNotification? = null,
     val emailMessage: ScriptEmailNotification? = null,
+    /**
+     * True for the client's own notifications (session lost, restart report, task waiting): their title and
+     * message interpolate names and error text, so they are plain text, escaped for Telegram's Markdown. A
+     * script's notification keeps its Markdown.
+     */
+    val plainText: Boolean = false,
 )
 
 data class ScriptDiscordNotification(

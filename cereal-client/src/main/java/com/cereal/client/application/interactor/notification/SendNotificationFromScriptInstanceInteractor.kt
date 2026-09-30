@@ -3,7 +3,6 @@ package com.cereal.client.application.interactor.notification
 import com.cereal.client.application.Interactor
 import com.cereal.client.domain.model.notification.ChannelAttempt
 import com.cereal.client.domain.model.notification.ChannelResolution
-import com.cereal.client.domain.model.notification.GlobalNotificationConfig
 import com.cereal.client.domain.model.notification.NotificationChannelType
 import com.cereal.client.domain.model.notification.NotificationDeliveryStatus
 import com.cereal.client.domain.model.notification.NotificationResolver
@@ -11,8 +10,6 @@ import com.cereal.client.domain.model.notification.ScriptNotification
 import com.cereal.client.domain.model.script.ScriptPackageInstance
 import com.cereal.client.domain.provider.NotificationProvider
 import com.cereal.client.domain.repository.NotificationHistoryRepository
-import com.cereal.client.domain.repository.NotificationSettingsRepository
-import kotlinx.coroutines.flow.first
 import kotlin.coroutines.cancellation.CancellationException
 
 /**
@@ -23,7 +20,7 @@ import kotlin.coroutines.cancellation.CancellationException
  */
 class SendNotificationFromScriptInstanceInteractor(
     private val notificationRepository: NotificationProvider,
-    private val notificationSettingsRepository: NotificationSettingsRepository,
+    private val globalNotificationConfigReader: GlobalNotificationConfigReader,
     private val notificationHistoryRepository: NotificationHistoryRepository,
     private val notificationResolver: NotificationResolver,
 ) : Interactor<Unit, SendNotificationFromScriptInstanceInteractor.Params>() {
@@ -32,7 +29,7 @@ class SendNotificationFromScriptInstanceInteractor(
             notificationResolver.resolve(
                 request = params.notification,
                 overrides = params.scriptPackageInstance?.notificationOverrides,
-                config = readGlobalConfig(),
+                config = globalNotificationConfigReader.read(),
             )
 
         val attempts = mutableListOf<ChannelAttempt>()
@@ -70,33 +67,6 @@ class SendNotificationFromScriptInstanceInteractor(
             )
         }
     }
-
-    private suspend fun readGlobalConfig(): GlobalNotificationConfig =
-        GlobalNotificationConfig(
-            discord =
-                GlobalNotificationConfig.Discord(
-                    enabled = notificationSettingsRepository.isDiscordWebhookEnabled().first(),
-                    webhookUrl = notificationSettingsRepository.getDiscordWebhookUrl().first().ifEmpty { null },
-                ),
-            telegram =
-                GlobalNotificationConfig.Telegram(
-                    enabled = notificationSettingsRepository.isTelegramEnabled().first(),
-                    botToken = notificationSettingsRepository.getTelegramBotToken().first().ifEmpty { null },
-                    chatId = notificationSettingsRepository.getTelegramChatId().first().ifEmpty { null },
-                ),
-            email =
-                GlobalNotificationConfig.Email(
-                    enabled = notificationSettingsRepository.isEmailEnabled().first(),
-                    smtpHost = notificationSettingsRepository.getEmailSmtpHost().first().ifEmpty { null },
-                    smtpPort = notificationSettingsRepository.getEmailSmtpPort().first().takeIf { it > 0 },
-                    username = notificationSettingsRepository.getEmailUsername().first().ifEmpty { null },
-                    password = notificationSettingsRepository.getEmailPassword().first().ifEmpty { null },
-                    from = notificationSettingsRepository.getEmailFrom().first().ifEmpty { null },
-                    to = notificationSettingsRepository.getEmailTo().first().ifEmpty { null },
-                    useTls = notificationSettingsRepository.getEmailUseTls().first(),
-                ),
-            desktopEnabled = notificationSettingsRepository.isDesktopNotificationsEnabled().first(),
-        )
 
     /**
      * Sends one resolved channel and captures the outcome as a [ChannelAttempt]. [block] performs

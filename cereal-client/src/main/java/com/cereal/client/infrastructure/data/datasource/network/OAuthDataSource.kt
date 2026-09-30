@@ -1,6 +1,7 @@
 package com.cereal.client.infrastructure.data.datasource.network
 
 import com.cereal.client.domain.model.auth.OAuthProvider
+import com.cereal.client.domain.model.auth.PastedSignIn
 
 /**
  * Drives the browser side of the brokered SSO sign-in (RFC 8252 native-app pattern): opens the
@@ -17,6 +18,11 @@ interface OAuthDataSource {
      * @return the one-time code to exchange for a session token.
      * @throws com.cereal.client.application.exception.OAuthAuthenticationException on cancel/denial,
      * a `state` mismatch, a browser-open failure, or timeout.
+     * With [pastedSignIn] the URL goes to [PastedSignIn.showUrl] instead of a browser, and a pasted
+     * redirect races the loopback: whichever brings a matching `state` first wins.
      */
-    suspend fun obtainOneTimeCode(provider: OAuthProvider): String
+    suspend fun obtainOneTimeCode(
+        provider: OAuthProvider,
+        pastedSignIn: PastedSignIn? = null,
+    ): String
 }
