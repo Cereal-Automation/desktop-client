@@ -13,6 +13,7 @@ import com.cereal.client.presentation.bootstrap.BootstrapViewModel
 import com.cereal.client.presentation.brand.BrandPaywallViewModel
 import com.cereal.client.presentation.customdataset.CustomDatasetViewModel
 import com.cereal.client.presentation.error.ErrorResolver
+import com.cereal.client.presentation.headless.ConfigPickers
 import com.cereal.client.presentation.headless.HeadlessTui
 import com.cereal.client.presentation.headless.NotificationsPage
 import com.cereal.client.presentation.headless.ScriptConfigPages
@@ -68,7 +69,18 @@ object ViewModelModule {
                         get(),
                         get(),
                         get(),
-                        ScriptConfigPages(scope, repaint, get(), get(), get(), get(), get(), get(), get()),
+                        ScriptConfigPages(
+                            scope,
+                            repaint,
+                            get(),
+                            get(),
+                            get(),
+                            get(),
+                            get(),
+                            get(),
+                            get(),
+                            ConfigPickers(scope, repaint, get<ApplicationConfig>().homeDirectory, get(), get(), get(), get(), get(), get()),
+                        ),
                     )
                 val waiting =
                     WaitingPage(scope, repaint, get(), get()) { taskId ->
