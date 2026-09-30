@@ -69,6 +69,7 @@ class TasksPage(
     private val moveScript: ChangeScriptPackageInstanceGroupInteractor,
     private val deleteScript: DeleteScriptInstanceInteractor,
     private val answerInteraction: AnswerUserInteractionInteractor,
+    private val configPages: ScriptConfigPages,
 ) : TuiPage {
     private data class GroupNode(
         val group: ScriptPackageGroup,
@@ -146,12 +147,15 @@ class TasksPage(
 
     @Volatile private var notice: String? = null
 
+    /** A configuration screen (new task, view, duplicate) shown in place of the tree. */
+    @Volatile private var configPage: TuiPage? = null
+
     private var observation: Job? = null
     private var logObservation: Job? = null
 
     override val keys: String
         get() =
-            when (overlay) {
+            configPage?.keys ?: when (overlay) {
                 is Overlay.Choice -> "↑↓ move · Enter choose · Esc cancel"
                 is Overlay.Input -> "Enter save · Esc cancel"
                 is Overlay.Confirm -> "y confirm · any other key cancels"
@@ -173,6 +177,7 @@ class TasksPage(
     fun openTask(taskId: String) {
         closeDetail()
         overlay = null
+        configPage = null
         openDetail(taskId)
         if (tasks.find { it.id == taskId }?.userInteraction is UserInteraction.TextInput) detail?.answer = ""
     }
@@ -212,6 +217,7 @@ class TasksPage(
         width: Int,
         height: Int,
     ): List<String> {
+        configPage?.let { return it.body(width, height) }
         val overlay = overlay
         if (overlay is Overlay.Choice) return listOf("  ${overlay.title}") + overlay.list.render(width, height - 1)
         val bottom =
@@ -226,6 +232,7 @@ class TasksPage(
     }
 
     override fun onKey(key: Key): Boolean {
+        configPage?.let { return it.onKey(key) }
         overlay?.let { return onOverlayKey(it, key) }
         notice = null
         val detail = detail
@@ -256,6 +263,9 @@ class TasksPage(
             char == 'S' && pkg != null -> run(startScript, StartAllTasksInScriptPackageInstanceInteractor.Params(pkg))
             char == 'X' && pkg != null -> run(stopScript, StopTasksInScriptPackageInstanceInteractor.Params(pkg))
             char == 'm' -> this.overlay = actionMenu(node)
+            char == 'n' -> groupOf(node)?.let { configPage = configPages.newTask(it, ::closeConfig) }
+            char == 'v' && pkg != null -> groupOf(node)?.let { configPage = configPages.view(it, pkg, ::closeConfig) }
+            char == 'D' && pkg != null -> groupOf(node)?.let { configPage = configPages.duplicate(it, pkg, ::closeConfig) }
             else -> return false
         }
         return true
@@ -349,6 +359,22 @@ class TasksPage(
         } else {
             go()
         }
+    }
+
+    /** The group under the cursor (a script's or task's own group), else the first one. */
+    private fun groupOf(node: Node?): ScriptPackageGroup? {
+        val pkg = node?.pkg()
+        return when {
+            node is Node.Group -> node.group
+            pkg != null -> groups.firstOrNull { g -> g.scripts.any { it.scriptPackageInstance.id == pkg.id } }?.group
+            else -> null
+        } ?: groups.firstOrNull()?.group
+    }
+
+    private fun closeConfig(created: ScriptPackageInstance?) {
+        configPage = null
+        created?.let { list.select("s:${it.id}") }
+        changed()
     }
 
     private fun actionMenu(node: Node?): Overlay.Choice {
@@ -523,7 +549,7 @@ class TasksPage(
         }
 
     companion object {
-        private const val TREE_KEYS = "↑↓ move · s/x start/stop · S/X script · Enter detail · m menu"
+        private const val TREE_KEYS = "s/x start/stop · S/X all · Enter open · n new · v/D view/dup · m menu"
         private const val DETAIL_KEYS = "f filter · t stack trace · s/x start/stop · Esc back"
 
         /** Task numbers as on the desktop: a package's tasks by creation order, from 1. */
