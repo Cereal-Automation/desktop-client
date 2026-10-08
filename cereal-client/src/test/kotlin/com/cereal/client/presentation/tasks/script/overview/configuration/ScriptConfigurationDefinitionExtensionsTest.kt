@@ -1,5 +1,7 @@
 package com.cereal.client.presentation.tasks.script.overview.configuration
 
+import com.cereal.client.domain.model.datasets.CustomDatasetItem
+import com.cereal.client.domain.model.script.configuration.ApplicationScriptConfigurationKeys
 import com.cereal.client.domain.model.script.configuration.ConfigItemType
 import com.cereal.client.domain.model.script.configuration.ConfigValue
 import com.cereal.client.domain.model.script.configuration.ScriptConfigurationDefinition
@@ -9,6 +11,7 @@ import com.cereal.sdk.statemodifier.DefaultStateModifier
 import org.junit.jupiter.api.Assertions.assertFalse
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
+import java.util.UUID
 
 class ScriptConfigurationDefinitionExtensionsTest {
     @Test
@@ -90,6 +93,25 @@ class ScriptConfigurationDefinitionExtensionsTest {
         val values = emptyMap<String, ConfigValue>()
 
         assertFalse(definition.isValid(values))
+    }
+
+    @Test
+    fun `validate ignores a stale custom dataset value when the definition has no per-task fields`() {
+        // The script was updated and dropped every per-task field, but the saved task config still holds its dataset row.
+        val definition =
+            createDefinition(
+                isNullable = true,
+                defaultValue = null,
+            )
+        val values =
+            mapOf(
+                ApplicationScriptConfigurationKeys.KEY_CUSTOM_DATASET.key to
+                    ConfigValue.CustomDatasetItemValue(
+                        CustomDatasetItem(UUID.randomUUID(), mapOf("removedKey" to ConfigValue.StringValue("value"))),
+                    ),
+            )
+
+        assertTrue(definition.validate(values, isTaskConfiguration = true).isEmpty())
     }
 
     private fun createDefinition(

@@ -50,10 +50,14 @@ fun ScriptConfigurationDefinition.validate(
         }
     }
 
+    // A saved custom dataset value outlives a script update that drops every per-task field; the script
+    // no longer reads it, so it has nothing to validate against.
+    val groupedConfigItems =
+        (this.groupedConfigurationDefinition()?.type as? ConfigItemType.GroupedConfigItem)?.items
+            ?: return invalidItems
+
     // Extra validation if a custom dataset group is provided.
     (values[ApplicationScriptConfigurationKeys.KEY_CUSTOM_DATASET.key] as? ConfigValue.CustomDatasetGroupValue)?.raw?.let {
-        val groupedConfigItems =
-            (this.groupedConfigurationDefinition()!!.type as ConfigItemType.GroupedConfigItem).items
         // Check custom dataset items against the required definition.
         invalidItems.addAll(groupedConfigItems.compareTo(it.itemDefinitions))
 
@@ -63,8 +67,6 @@ fun ScriptConfigurationDefinition.validate(
 
     // Extra validation if a custom dataset item is provided.
     (values[ApplicationScriptConfigurationKeys.KEY_CUSTOM_DATASET.key] as? ConfigValue.CustomDatasetItemValue)?.raw?.let {
-        val groupedConfigItems =
-            (this.groupedConfigurationDefinition()!!.type as ConfigItemType.GroupedConfigItem).items
         // Check custom dataset items against the actual values.
         invalidItems.addAll(
             groupedConfigItems.containsValidData(
