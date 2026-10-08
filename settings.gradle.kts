@@ -13,6 +13,7 @@ include("cereal-client")
 include("cereal-client:sekret")
 include("cereal-script-sample")
 include("cereal-licensing")
+include("agent-spike") // PROTOTYPE, spike branch only
 
 for (project in rootProject.children) {
     project.apply {
