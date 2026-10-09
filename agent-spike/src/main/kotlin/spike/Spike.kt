@@ -27,7 +27,7 @@ import kotlinx.serialization.json.putJsonArray
 import kotlinx.serialization.json.putJsonObject
 import java.io.File
 
-data class Goal(val name: String, val text: String, val startUrl: String, val secrets: Map<String, String> = emptyMap())
+data class Goal(val name: String, val text: String, val startUrl: String, val secrets: Map<String, String> = emptyMap(), val repeat: Boolean = false)
 
 private const val MAX_STEPS = 40
 private const val MAX_USD = 3.0
@@ -166,7 +166,11 @@ class Agent(private val page: Page, private val llm: Llm, private val goal: Goal
     suspend fun run() {
         page.navigate(goal.startUrl)
         val secretNote = if (goal.secrets.isEmpty()) "" else "\nStored secrets you can type with type_secret: ${goal.secrets.keys.joinToString()}."
-        val first = "Goal: ${goal.text}\nStart page: ${goal.startUrl}$secretNote\n\n${snapshotResult("Current page:")}"
+        // Repeat run mode (#54): the script, not the site, does the watching and notifying; the model reports state + a Check.
+        val modeNote = if (!goal.repeat) "" else "\nRun mode: Repeat. This script re-checks the page on a schedule and notifies the user itself " +
+            "once the condition holds; do not look for a notification feature on the site. Your job now: find out whether the condition " +
+            "currently holds, then call finish with goal_met and a check that a script can re-evaluate later to detect the condition."
+        val first = "Goal: ${goal.text}$modeNote\nStart page: ${goal.startUrl}$secretNote\n\n${snapshotResult("Current page:")}"
         val defs = tools(goal.secrets.keys)
         while (true) {
             if (m.steps >= MAX_STEPS) { m.outcome = "step cap"; return }
@@ -214,17 +218,19 @@ fun main(args: Array<String>): Unit = runBlocking {
     val out = File(System.getProperty("spike.out", "build/spike")).apply { mkdirs() }
     if (args.firstOrNull() == "snap") { // no-LLM check: print the snapshot the model would see
         coroutineScope {
-            val page = Page.launch(this, File(out, "profile-snap").absolutePath)
+            val page = Page.launch(this, File(out, System.getProperty("spike.profile", "profile-snap")).absolutePath)
             page.navigate(args[1]); val s = page.snapshot()
-            println(s.text); println("refs=${s.refs.size} chars=${s.text.length} url=${page.url()}")
+            println(s.text)
+            println("---- innerText:\n" + page.tab.rawEvaluate("document.body.innerText"))
+            println("refs=${s.refs.size} chars=${s.text.length} url=${page.url()}")
             kotlin.system.exitProcess(0)
         }
     }
     val key = File(System.getProperty("user.home"), ".cereal-spike-key").takeIf { it.isFile }?.readText()?.trim()
     val goal = when (args.firstOrNull()) {
-        "monitor" -> Goal("monitor", "Notify me when Long Nose Pliers is back in stock.", args[1])
+        "monitor" -> Goal("monitor", "Notify me when Long Nose Pliers is back in stock.", args[1], repeat = true)
         "login" -> Goal(
-            "login", "Log in and tell me the status of my most recent order.", "https://practicesoftwaretesting.com/",
+            "login", System.getProperty("spike.loginGoal", "Log in and tell me the invoice number, date and total of my most recent order."), "https://practicesoftwaretesting.com/",
             mapOf("email" to "customer@practicesoftwaretesting.com", "password" to "welcome01"),
         )
         else -> error("usage: monitor <productUrl> | login")

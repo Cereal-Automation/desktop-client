@@ -52,6 +52,16 @@ private val JSON = "application/json".toMediaType()
 
 private suspend fun post(url: String, headers: Map<String, String>, body: String, capture: File): Pair<Int, JsonObject> {
     capture.appendText(body + "\n")
+    repeat(3) { // rate limits: wait what the server asks (Gemini RetryInfo "retryDelay": "2s"), then retry
+        val r = send(url, headers, body)
+        if (r.first != 429) return r
+        val wait = Regex("retryDelay\\W+(\\d+)").find(r.second.toString())?.groupValues?.get(1)?.toLong() ?: 10
+        System.err.println("429, retrying in ${wait + 1}s"); kotlinx.coroutines.delay((wait + 1) * 1000)
+    }
+    return send(url, headers, body)
+}
+
+private suspend fun send(url: String, headers: Map<String, String>, body: String): Pair<Int, JsonObject> {
     val req = Request.Builder().url(url).apply { headers.forEach { (k, v) -> header(k, v) } }.post(body.toRequestBody(JSON)).build()
     return withContext(Dispatchers.IO) {
         http.newCall(req).execute().use { r ->
