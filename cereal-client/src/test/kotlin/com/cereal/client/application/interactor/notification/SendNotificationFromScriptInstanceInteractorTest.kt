@@ -14,7 +14,6 @@ import com.cereal.client.domain.model.notification.ScriptNotificationOverrides
 import com.cereal.client.domain.model.notification.SystemNotificationData
 import com.cereal.client.domain.model.notification.TelegramNotificationData
 import com.cereal.client.domain.model.notification.TelegramOverrides
-import com.cereal.client.domain.model.notification.TelegramParseMode
 import com.cereal.client.domain.model.script.ScriptPackageInstance
 import com.cereal.client.infrastructure.data.repository.inmemory.InMemoryNotificationHistoryRepository
 import com.cereal.client.infrastructure.data.repository.inmemory.InMemoryNotificationSettingsRepository
@@ -24,6 +23,7 @@ import io.mockk.mockk
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.test.runTest
 import org.junit.jupiter.api.Assertions.assertEquals
+import org.junit.jupiter.api.Assertions.assertNull
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
@@ -147,8 +147,8 @@ class SendNotificationFromScriptInstanceInteractorTest {
             interactor.run(params(notification))
 
             val sent = notificationRepository.sent.single() as TelegramNotificationData
-            assertEquals("*Title*\nMessage", sent.text)
-            assertEquals(TelegramParseMode.MARKDOWN, sent.parseMode)
+            assertEquals("Title\nMessage", sent.text)
+            assertNull(sent.parseMode)
         }
 
     @Test
