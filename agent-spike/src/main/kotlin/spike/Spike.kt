@@ -8,6 +8,8 @@ import com.cereal.sdk.ScriptConfiguration
 import com.cereal.sdk.component.ComponentProvider
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.runBlocking
+import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.intOrNull
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject
@@ -52,11 +54,9 @@ private fun obj(vararg props: Pair<String, JsonObject>) = buildJsonObject {
 }
 private fun t(type: String, desc: String = "") = buildJsonObject { put("type", type); if (desc.isNotEmpty()) put("description", desc) }
 private fun enum(vararg v: String) = buildJsonObject { put("type", "string"); putJsonArray("enum") { v.forEach { add(JsonPrimitive(it)) } } }
-private fun tool(name: String, desc: String, schema: JsonObject) = buildJsonObject {
-    put("name", name); put("description", desc); put("input_schema", schema); put("strict", true)
-}
+private fun tool(name: String, desc: String, schema: JsonObject) = ToolDef(name, desc, schema)
 
-private fun tools(secretFields: Set<String>) = buildJsonArray {
+private fun tools(secretFields: Set<String>) = buildList {
     add(tool("read_page", "Re-read the current page as an accessibility snapshot with [ref]s.", obj()))
     add(tool("click", "Click the element with this ref.", obj("ref" to t("integer"), "irreversible" to t("boolean"))))
     add(tool("type", "Clear the field with this ref and type text into it.", obj("ref" to t("integer"), "text" to t("string"), "irreversible" to t("boolean"))))
@@ -89,9 +89,10 @@ class Metrics {
     var inTok = 0L; var outTok = 0L; var cacheRead = 0L; var cacheWrite = 0L
     val events = mutableListOf<String>()
     var outcome = "unfinished"
+    var invalidArgs = 0
 }
 
-class Agent(private val page: Page, private val llm: Claude, private val goal: Goal, private val log: (String) -> Unit) {
+class Agent(private val page: Page, private val llm: Llm, private val goal: Goal, private val log: (String) -> Unit) {
     private val revealed = mutableMapOf<String, String>() // field -> value, for scrubbing
     val m = Metrics()
 
@@ -143,70 +144,68 @@ class Agent(private val page: Page, private val llm: Claude, private val goal: G
         }
     }
 
+    // #56: tool args are validated on our side for every provider; a bad call is an error result and counts as a step.
+    private fun validate(def: ToolDef?, argsJson: String): JsonObject {
+        requireNotNull(def) { "unknown tool" }
+        val a = Json.parseToJsonElement(argsJson).jsonObject
+        val props = def.schema["properties"]!!.jsonObject
+        a.keys.firstOrNull { it !in props }?.let { error("unexpected argument '$it'") }
+        for (req in def.schema["required"]!!.jsonArray.map { it.jsonPrimitive.content }) {
+            val v = a[req] as? JsonPrimitive ?: error("missing or non-scalar argument '$req'")
+            val p = props[req]!!.jsonObject
+            val ok = when (p["type"]?.jsonPrimitive?.content) {
+                "integer" -> v.contentOrNull?.toIntOrNull() != null && !v.isString
+                "boolean" -> v.booleanOrNull != null && !v.isString
+                else -> v.isString && (p["enum"]?.jsonArray?.any { it.jsonPrimitive.content == v.content } ?: true)
+            }
+            require(ok) { "argument '$req' has the wrong type or value: $v" }
+        }
+        return a
+    }
+
     suspend fun run() {
         page.navigate(goal.startUrl)
         val secretNote = if (goal.secrets.isEmpty()) "" else "\nStored secrets you can type with type_secret: ${goal.secrets.keys.joinToString()}."
-        val messages = mutableListOf<JsonElement>(
-            buildJsonObject {
-                put("role", "user")
-                put("content", "Goal: ${goal.text}\nStart page: ${goal.startUrl}$secretNote\n\n${snapshotResult("Current page:")}")
-            },
-        )
-        val toolDefs = tools(goal.secrets.keys)
+        val first = "Goal: ${goal.text}\nStart page: ${goal.startUrl}$secretNote\n\n${snapshotResult("Current page:")}"
+        val defs = tools(goal.secrets.keys)
         while (true) {
             if (m.steps >= MAX_STEPS) { m.outcome = "step cap"; return }
             if (m.usd >= MAX_USD) { m.outcome = "cost cap"; return }
             m.steps++
             val t0 = System.currentTimeMillis()
-            val reply = llm.call(SYSTEM, toolDefs, messages)
-            val body = reply.body
-            if (reply.status != 200) {
-                m.events += "step ${m.steps}: HTTP ${reply.status} ${body["error"]}"
-                log("HTTP ${reply.status} (request ${reply.requestId}): $body"); m.outcome = "http ${reply.status}"; return
+            val turn = llm.next(SYSTEM, defs, first)
+            if (turn.status != 200) {
+                m.events += "step ${m.steps}: HTTP ${turn.status} ${turn.error}"
+                log("HTTP ${turn.status}: ${turn.error}"); m.outcome = "http ${turn.status}"; return
             }
-            val usage = body["usage"]?.jsonObject
-            val cost = costUsd(usage)
-            m.usd += cost
-            fun u(k: String) = usage?.get(k)?.jsonPrimitive?.contentOrNull?.toLongOrNull() ?: 0
-            m.inTok += u("input_tokens"); m.outTok += u("output_tokens"); m.cacheRead += u("cache_read_input_tokens"); m.cacheWrite += u("cache_creation_input_tokens")
-            val stop = body["stop_reason"]?.jsonPrimitive?.contentOrNull
-            val content = body["content"]!!.jsonArray
-            val calls = content.filter { it.jsonObject["type"]?.jsonPrimitive?.content == "tool_use" }.map { it.jsonObject }
-            val edits = body["context_management"]?.toString()
-            val transforms = body["input_transformations"]?.toString()
-            val model = body["model"]?.jsonPrimitive?.contentOrNull
+            m.usd += turn.usd
+            m.inTok += turn.inTok; m.outTok += turn.outTok; m.cacheRead += turn.cacheRead; m.cacheWrite += turn.cacheWrite
             log(
-                "step ${m.steps} [${System.currentTimeMillis() - t0}ms] stop=$stop model=$model in=${u("input_tokens")} cw=${u("cache_creation_input_tokens")} " +
-                    "cr=${u("cache_read_input_tokens")} out=${u("output_tokens")} \$${"%.4f".format(cost)} total \$${"%.3f".format(m.usd)} " +
-                    "calls=${calls.joinToString { it["name"]!!.jsonPrimitive.content + it["input"] }}",
+                "step ${m.steps} [${System.currentTimeMillis() - t0}ms] stop=${turn.stop} model=${turn.model} in=${turn.inTok} cw=${turn.cacheWrite} " +
+                    "cr=${turn.cacheRead} out=${turn.outTok} \$${"%.4f".format(turn.usd)} total \$${"%.3f".format(m.usd)} " +
+                    "calls=${turn.calls.joinToString { it.name + it.argsJson }}",
             )
-            if (edits != null && edits != "null" && !edits.contains("\"applied_edits\":[]")) { log("   context_management: $edits"); m.events += "step ${m.steps}: $edits" }
-            if (transforms != null && transforms != "[]") { log("   input_transformations: $transforms"); m.events += "step ${m.steps}: transforms $transforms" }
-            if (model != null && model != "claude-opus-5-5") m.events += "step ${m.steps}: fallback fired → $model"
-            // Append-only: the assistant content goes back exactly as received (thinking blocks included).
-            messages += buildJsonObject { put("role", "assistant"); put("content", content) }
-            if (stop == "refusal") { m.outcome = "refusal ${body["stop_details"]}"; return }
-            if (calls.isEmpty()) { m.outcome = "ended without finish: ${content.lastOrNull()}"; return }
-            val results = buildJsonArray {
-                for (c in calls) {
-                    val name = c["name"]!!.jsonPrimitive.content
-                    val input = c["input"]!!.jsonObject
-                    if (name == "finish" || name == "fail") {
-                        m.outcome = "$name: $input"
-                        val check = page.last.names[input["check_ref"]?.jsonPrimitive?.int ?: -1]
-                        log("== $name ${input}\n   check element = $check")
-                        return
-                    }
-                    val (text, isErr) = try { execute(name, input) } catch (e: Exception) {
-                        if (m.outcome == "declined") return
-                        "error: ${e.message}" to true
-                    }
-                    add(buildJsonObject {
-                        put("type", "tool_result"); put("tool_use_id", c["id"]!!); put("content", text); if (isErr) put("is_error", true)
-                    })
+            turn.notes.forEach { log("   note: $it"); m.events += "step ${m.steps}: $it" }
+            if (turn.stop == "refusal") { m.outcome = "refusal"; return }
+            if (turn.calls.isEmpty()) { m.outcome = "ended without finish: ${turn.text}"; return }
+            val outputs = mutableListOf<ToolOutput>()
+            for (c in turn.calls) {
+                val input = try { validate(defs.firstOrNull { it.name == c.name }, c.argsJson) } catch (e: Exception) {
+                    m.invalidArgs++; log("   invalid args for ${c.name}: ${e.message}")
+                    outputs += ToolOutput(c, "invalid arguments: ${e.message}", true); continue
                 }
+                if (c.name == "finish" || c.name == "fail") {
+                    m.outcome = "${c.name}: $input"
+                    log("== ${c.name} $input\n   check element = ${page.last.names[input["check_ref"]?.jsonPrimitive?.intOrNull ?: -1]}")
+                    return
+                }
+                val (text, isErr) = try { execute(c.name, input) } catch (e: Exception) {
+                    if (m.outcome == "declined") return
+                    "error: ${e.message}" to true
+                }
+                outputs += ToolOutput(c, text, isErr)
             }
-            messages += buildJsonObject { put("role", "user"); put("content", results) }
+            llm.addResults(outputs)
         }
     }
 }
@@ -236,10 +235,26 @@ fun main(args: Array<String>): Unit = runBlocking {
     val trigger = System.getProperty("spike.clearTrigger", "12000").toInt()
     coroutineScope {
         val page = Page.launch(this, File(out, "profile-${goal.name}").absolutePath)
-        val agent = Agent(page, Claude(key, System.getProperty("spike.antProfile", "cereal-spike"), "claude-opus-5-5", capture, trigger), goal, log)
+        val home = System.getProperty("user.home")
+        val llm: Llm = when (System.getProperty("spike.provider", "gemini")) {
+            // Gemini 3.5 Flash-Lite paid tier: $0.30 in, $2.50 out (incl. thinking), $0.03 cached input per MTok (ai.google.dev pricing, 2026-10-09).
+            "gemini" -> OpenAiCompatLlm(
+                "https://generativelanguage.googleapis.com/v1beta/openai", File(home, ".cereal-spike-gemini-key").readText().trim(),
+                System.getProperty("spike.model", "gemini-3.5-flash-lite"), capture, Triple(0.30, 2.50, 0.03),
+            )
+            else -> {
+                val profile = System.getProperty("spike.antProfile", "cereal-spike")
+                AnthropicLlm(
+                    { if (key != null) "x-api-key" to key else "Authorization" to "Bearer ${antToken(profile)}" }, key == null,
+                    "claude-opus-5-5", capture, trigger,
+                )
+            }
+        }
+        log("provider: ${llm.name}")
+        val agent = Agent(page, llm, goal, log)
         try { agent.run() } finally {
             val m = agent.m
-            log("\n== RESULT ${goal.name}: ${m.outcome}\nsteps=${m.steps} cost=\$${"%.3f".format(m.usd)} in=${m.inTok} cacheWrite=${m.cacheWrite} cacheRead=${m.cacheRead} out=${m.outTok}")
+            log("\n== RESULT ${goal.name}: ${m.outcome}\ninvalidArgs=${m.invalidArgs} steps=${m.steps} cost=\$${"%.3f".format(m.usd)} in=${m.inTok} cacheWrite=${m.cacheWrite} cacheRead=${m.cacheRead} out=${m.outTok}")
             m.events.forEach { log("   event: $it") }
             goal.secrets["password"]?.let { pw -> log("password in captured model traffic: ${capture.readText().contains(pw)}") }
         }
@@ -257,4 +272,12 @@ class SpikeScript : Script<SpikeConfiguration> {
         return ExecutionResult.Success("done")
     }
     override suspend fun onFinish(configuration: SpikeConfiguration, provider: ComponentProvider) {}
+}
+
+// print-credentials refreshes the short-lived token when needed, so fetch it per request.
+private fun antToken(profile: String): String {
+    val p = ProcessBuilder("ant", "--profile", profile, "auth", "print-credentials", "--access-token").start()
+    val token = p.inputStream.bufferedReader().readText().trim()
+    check(p.waitFor() == 0 && token.isNotEmpty()) { "ant token failed: ${p.errorStream.bufferedReader().readText()}" }
+    return token
 }
