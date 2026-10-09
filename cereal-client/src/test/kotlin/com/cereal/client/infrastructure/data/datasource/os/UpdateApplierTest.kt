@@ -56,17 +56,42 @@ class UpdateApplierTest {
     }
 
     @Test
-    fun `apply does not relaunch when the installer exits non-zero`(
+    fun `apply treats msiexec reboot-required as success`(
         @TempDir tmp: Path,
     ) {
-        val fixture = Fixture(tmp, installerExit = 1)
+        val fixture = Fixture(tmp, installerExit = 3010)
+
+        val result = fixture.applier().apply(UpdaterArguments(PARENT_PID, fixture.installer, fixture.app, expectedSha256 = null))
+
+        assertTrue(result)
+        assertEquals(listOf("await:$PARENT_PID", "install", "relaunch"), fixture.events)
+    }
+
+    @Test
+    fun `apply opens the installer interactively instead of relaunching when the silent install fails`(
+        @TempDir tmp: Path,
+    ) {
+        // 1639 = ERROR_INVALID_COMMAND_LINE, what msiexec returned for the old NSIS-style /S flag.
+        val fixture = Fixture(tmp, installerExit = 1639)
         val applier = fixture.applier()
 
         val result = applier.apply(UpdaterArguments(PARENT_PID, fixture.installer, fixture.app, expectedSha256 = null))
 
         assertFalse(result)
-        assertEquals(listOf("await:$PARENT_PID", "install"), fixture.events)
+        assertEquals(listOf("await:$PARENT_PID", "install", "interactive"), fixture.events)
         assertTrue(fixture.relaunched.isEmpty())
+    }
+
+    @Test
+    fun `silentArgs are msiexec flags pinned to the running install directory`(
+        @TempDir tmp: Path,
+    ) {
+        val fixture = Fixture(tmp)
+
+        val args = UpdateApplier.silentArgs(fixture.installer, fixture.app)
+
+        assertEquals(listOf("/qn", "/norestart", "/l*v"), args.take(3))
+        assertEquals("INSTALLDIR=${tmp.toFile().absolutePath}", args.last())
     }
 
     private class Fixture(
@@ -81,10 +106,11 @@ class UpdateApplierTest {
         fun applier(): UpdateApplier =
             UpdateApplier(
                 awaitProcessExit = { pid -> events += "await:$pid" },
-                runInstaller = {
+                runInstaller = { _, _ ->
                     events += "install"
                     installerExit
                 },
+                openInteractively = { events += "interactive" },
                 relaunch = { app ->
                     events += "relaunch"
                     relaunched += app

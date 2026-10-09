@@ -37,9 +37,12 @@ class WindowsUpdateInstallerTest {
 
         assertTrue(result)
         val command = fixture.launched.single()
-        assertEquals(fixture.javaw.absolutePath, command[0])
+        // The helper runs from a staged copy, never from the install directory the installer overwrites.
+        assertEquals(File(fixture.stage, "runtime/bin/javaw.exe").absolutePath, command[0])
+        assertEquals("JAVAW", File(command[0]).readText())
         assertEquals("-cp", command[1])
-        assertEquals("test-classpath.jar", command[2])
+        assertEquals(File(fixture.stage, "app/cereal.jar").absolutePath, command[2])
+        assertEquals("JAR", File(command[2]).readText())
         assertEquals(WindowsUpdateInstaller.UPDATER_MAIN_CLASS, command[3])
         assertEquals(PID.toString(), command[4])
         assertEquals(fixture.installerFile.absolutePath, command[5])
@@ -92,6 +95,18 @@ class WindowsUpdateInstallerTest {
     }
 
     @Test
+    fun `spawnUpdater replaces a stale stage from a previous update`(
+        @TempDir tmp: Path,
+    ) {
+        val fixture = Fixture(tmp)
+        val stale = File(fixture.stage, "app/old.jar").apply { parentFile.mkdirs() }.apply { writeText("OLD") }
+
+        assertTrue(fixture.installer().spawnUpdater(fixture.installerFile, fixture.app, expectedSha256 = null))
+
+        assertFalse(stale.exists())
+    }
+
+    @Test
     fun `spawnUpdater returns false when the bundled javaw is missing`(
         @TempDir tmp: Path,
     ) {
@@ -118,6 +133,8 @@ class WindowsUpdateInstallerTest {
                     writeText("JAVAW")
                 }
             }
+        private val jar = File(installDir, "app/cereal.jar").apply { parentFile.mkdirs() }.apply { writeText("JAR") }
+        val stage = File(tmp.toFile(), "stage")
         val launched = mutableListOf<List<String>>()
 
         fun installer(writable: (File) -> Boolean = { true }): WindowsUpdateInstaller =
@@ -125,8 +142,9 @@ class WindowsUpdateInstallerTest {
                 appPathProvider = { app.absolutePath },
                 currentPidProvider = { PID },
                 javawResolver = { javaw },
-                classpathProvider = { "test-classpath.jar" },
+                classpathProvider = { jar.absolutePath },
                 writable = writable,
+                stageDir = { stage },
                 helperLauncher = { command -> launched += command },
             )
     }
