@@ -20,12 +20,21 @@ import java.io.File
 import java.util.concurrent.TimeUnit
 
 class Claude(
-    private val apiKey: String,
+    private val apiKey: String?, // null = OAuth token from the `ant` profile below
+    private val antProfile: String,
     private val model: String,
     private val capture: File, // every request body, one per line, for the password grep + prefix diff
     private val clearTrigger: Int,
 ) {
     private val http = OkHttpClient.Builder().readTimeout(10, TimeUnit.MINUTES).build()
+
+    // print-credentials refreshes the short-lived token when needed, so fetch it per request.
+    private fun antToken(): String {
+        val p = ProcessBuilder("ant", "--profile", antProfile, "auth", "print-credentials", "--access-token").start()
+        val token = p.inputStream.bufferedReader().readText().trim()
+        check(p.waitFor() == 0 && token.isNotEmpty()) { "ant token failed: ${p.errorStream.bufferedReader().readText()}" }
+        return token
+    }
 
     class Reply(val status: Int, val body: JsonObject, val requestId: String?)
 
@@ -61,11 +70,11 @@ class Claude(
         capture.appendText(text + "\n")
         val req = Request.Builder()
             .url("https://api.anthropic.com/v1/messages")
-            .header("x-api-key", apiKey)
+            .apply { if (apiKey != null) header("x-api-key", apiKey) else header("Authorization", "Bearer ${antToken()}") }
             .header("anthropic-version", "2023-06-01")
             .header(
                 "anthropic-beta",
-                "context-management-2025-06-27,server-side-fallback-2026-07-01,thinking-binding-controls-2026-08-01",
+                (if (apiKey == null) "oauth-2025-04-20," else "") + "context-management-2025-06-27,server-side-fallback-2026-07-01,thinking-binding-controls-2026-08-01",
             )
             .post(text.toRequestBody("application/json".toMediaType()))
             .build()

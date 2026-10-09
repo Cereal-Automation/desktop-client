@@ -221,7 +221,7 @@ fun main(args: Array<String>): Unit = runBlocking {
             kotlin.system.exitProcess(0)
         }
     }
-    val key = File(System.getProperty("user.home"), ".cereal-spike-key").readText().trim()
+    val key = File(System.getProperty("user.home"), ".cereal-spike-key").takeIf { it.isFile }?.readText()?.trim()
     val goal = when (args.firstOrNull()) {
         "monitor" -> Goal("monitor", "Notify me when Long Nose Pliers is back in stock.", args[1])
         "login" -> Goal(
@@ -236,7 +236,7 @@ fun main(args: Array<String>): Unit = runBlocking {
     val trigger = System.getProperty("spike.clearTrigger", "12000").toInt()
     coroutineScope {
         val page = Page.launch(this, File(out, "profile-${goal.name}").absolutePath)
-        val agent = Agent(page, Claude(key, "claude-opus-5-5", capture, trigger), goal, log)
+        val agent = Agent(page, Claude(key, System.getProperty("spike.antProfile", "cereal-spike"), "claude-opus-5-5", capture, trigger), goal, log)
         try { agent.run() } finally {
             val m = agent.m
             log("\n== RESULT ${goal.name}: ${m.outcome}\nsteps=${m.steps} cost=\$${"%.3f".format(m.usd)} in=${m.inTok} cacheWrite=${m.cacheWrite} cacheRead=${m.cacheRead} out=${m.outTok}")
