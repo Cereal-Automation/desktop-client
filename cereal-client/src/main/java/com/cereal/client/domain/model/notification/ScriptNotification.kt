@@ -41,5 +41,5 @@ data class ScriptEmailNotification(
     val smtpPort: Int? = null,
     val username: String? = null,
     val password: String? = null,
-    val useTls: Boolean? = true,
+    val useTls: Boolean? = null,
 )

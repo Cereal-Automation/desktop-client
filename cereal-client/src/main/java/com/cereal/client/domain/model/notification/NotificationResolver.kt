@@ -187,13 +187,14 @@ class NotificationResolver {
 
     private fun ScriptNotification.toTelegram(): ScriptTelegramNotification =
         ScriptTelegramNotification(
-            text = if (title.isNullOrBlank()) message else "*$title*\n$message",
-            parseMode = TelegramParseMode.MARKDOWN,
+            // Plain text: the script's title and message are not Markdown, and an unpaired `_` or `*`
+            // in them (URLs, SKUs) makes Telegram reject a Markdown message outright.
+            text = if (title.isNullOrBlank()) message else "$title\n$message",
         )
 
     private fun ScriptNotification.toEmail(): ScriptEmailNotification =
         ScriptEmailNotification(
-            subject = title ?: "Notification",
+            subject = title?.takeIf { it.isNotBlank() } ?: "Notification",
             body = message,
         )
 }
