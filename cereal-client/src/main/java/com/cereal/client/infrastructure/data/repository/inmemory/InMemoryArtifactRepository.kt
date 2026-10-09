@@ -4,9 +4,11 @@ import com.cereal.client.domain.model.artifact.Artifact
 import com.cereal.client.domain.repository.ArtifactRepository
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.getAndUpdate
 import kotlinx.coroutines.flow.update
 import java.io.File
 import java.util.UUID
+import java.util.concurrent.ConcurrentHashMap
 import kotlin.time.Clock
 import kotlin.time.ExperimentalTime
 
@@ -15,8 +17,8 @@ import kotlin.time.ExperimentalTime
  * written verbatim to the destination on [writeToFile].
  */
 class InMemoryArtifactRepository : ArtifactRepository {
-    private val artifacts = mutableMapOf<String, MutableStateFlow<List<Artifact>>>()
-    private val bytesById = mutableMapOf<String, ByteArray>()
+    private val artifacts = ConcurrentHashMap<String, MutableStateFlow<List<Artifact>>>()
+    private val bytesById = ConcurrentHashMap<String, ByteArray>()
 
     @OptIn(ExperimentalTime::class)
     override suspend fun emit(
@@ -51,9 +53,8 @@ class InMemoryArtifactRepository : ArtifactRepository {
     }
 
     override suspend fun deleteForTask(taskId: String) {
-        val removed = flowFor(taskId).value
+        val removed = flowFor(taskId).getAndUpdate { emptyList() }
         removed.forEach { bytesById.remove(it.id) }
-        flowFor(taskId).value = emptyList()
     }
 
     private fun flowFor(taskId: String) = artifacts.getOrPut(taskId) { MutableStateFlow(emptyList()) }

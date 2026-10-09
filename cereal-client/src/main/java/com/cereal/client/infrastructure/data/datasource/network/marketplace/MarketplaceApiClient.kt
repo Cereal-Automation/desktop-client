@@ -224,17 +224,18 @@ class MarketplaceApiClient(
                 .post(requestJson.toRequestBody())
                 .build()
 
-        val response = apiClient.newCall(request).await()
-        if (!response.isSuccessful) {
-            val errorResponse =
-                response.body.string().let { body ->
-                    try {
-                        json.decodeFromString<ErrorResponse>(body)
-                    } catch (_: Exception) {
-                        null
+        apiClient.newCall(request).await().use { response ->
+            if (!response.isSuccessful) {
+                val errorResponse =
+                    response.body.string().let { body ->
+                        try {
+                            json.decodeFromString<ErrorResponse>(body)
+                        } catch (_: Exception) {
+                            null
+                        }
                     }
-                }
-            throw apiException(response, errorResponse?.message)
+                throw apiException(response, errorResponse?.message)
+            }
         }
     }
 

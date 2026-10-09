@@ -75,6 +75,7 @@ class TasksRepositoryImpl(
 
     override suspend fun removeAllTasks() =
         tasksMutex.withLock {
+            tasks.keys.forEach { getKoin().getScopeOrNull(it)?.close() }
             tasks.clear()
             notify()
         }

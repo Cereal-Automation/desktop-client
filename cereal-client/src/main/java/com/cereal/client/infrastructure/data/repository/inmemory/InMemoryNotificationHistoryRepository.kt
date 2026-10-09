@@ -7,7 +7,9 @@ import com.cereal.client.domain.repository.NotificationHistoryRepository
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.update
 import java.util.UUID
+import java.util.concurrent.ConcurrentHashMap
 
 /**
  * In-memory [NotificationHistoryRepository] for UI tests and the sandboxed (`mock`) flavor.
@@ -18,7 +20,7 @@ import java.util.UUID
  */
 class InMemoryNotificationHistoryRepository : NotificationHistoryRepository {
     private val notifications = MutableStateFlow<List<NotificationHistory>>(emptyList())
-    private val attemptsByNotification = mutableMapOf<String, MutableStateFlow<List<NotificationHistoryAttempt>>>()
+    private val attemptsByNotification = ConcurrentHashMap<String, MutableStateFlow<List<NotificationHistoryAttempt>>>()
 
     override suspend fun record(
         taskId: String,
@@ -37,7 +39,7 @@ class InMemoryNotificationHistoryRepository : NotificationHistoryRepository {
                 message = message,
                 timestamp = timestamp,
             )
-        notifications.value = notifications.value + history
+        notifications.update { it + history }
         attemptsFlow(notificationId).value =
             attempts.map { attempt ->
                 NotificationHistoryAttempt(
@@ -59,8 +61,12 @@ class InMemoryNotificationHistoryRepository : NotificationHistoryRepository {
     override fun observeAttempts(notificationId: String): Flow<List<NotificationHistoryAttempt>> = attemptsFlow(notificationId)
 
     override suspend fun pruneOlderThan(cutoffMillis: Long) {
-        val (kept, removed) = notifications.value.partition { it.timestamp >= cutoffMillis }
-        notifications.value = kept
+        var removed = emptyList<NotificationHistory>()
+        notifications.update { all ->
+            val (kept, dropped) = all.partition { it.timestamp >= cutoffMillis }
+            removed = dropped
+            kept
+        }
         removed.forEach { attemptsByNotification.remove(it.id) }
     }
 

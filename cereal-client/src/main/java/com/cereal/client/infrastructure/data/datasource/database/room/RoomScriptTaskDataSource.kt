@@ -34,7 +34,15 @@ class RoomScriptTaskDataSource(
 
             // Create finished task entity
             val taskEntity = scriptInstanceMapper.createTaskEntity(task, scriptId)
-            dao.insertTask(taskEntity)
+            if (dao.getTaskById(taskEntity.id) != null) {
+                // Re-persisting a restarted task: update in place. Deleting (or REPLACE-inserting) the task row
+                // would cascade-delete its artifacts, which must survive a restart.
+                dao.updateTask(taskEntity)
+                dao.deleteTaskConfigurationsByTaskId(taskEntity.id)
+                dao.deleteTaskStatusesByTaskId(taskEntity.id)
+            } else {
+                dao.insertTask(taskEntity)
+            }
 
             // Create configuration entities
             val configurationEntities =

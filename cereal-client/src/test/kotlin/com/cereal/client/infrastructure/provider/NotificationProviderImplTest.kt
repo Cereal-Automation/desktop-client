@@ -14,7 +14,7 @@ import io.mockk.mockk
 import kotlinx.coroutines.test.runTest
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
-import org.junit.jupiter.api.assertDoesNotThrow
+import kotlin.test.assertFailsWith
 
 class NotificationProviderImplTest {
     private lateinit var systemStrategy: SystemNotificationStrategy
@@ -122,14 +122,12 @@ class NotificationProviderImplTest {
         }
 
     @Test
-    fun `sendNotification should not crash if strategy throws exception`() =
+    fun `sendNotification propagates strategy failures so callers can record them`() =
         runTest {
-            // Arrange
             val notification = SystemNotificationData(title = "Title", message = "Message")
             coEvery { systemStrategy.send(any()) } throws RuntimeException("Strategy failed")
 
-            // Act & Assert
-            assertDoesNotThrow {
+            assertFailsWith<RuntimeException> {
                 notificationRepository.sendNotification(notification)
             }
         }

@@ -1,5 +1,6 @@
 package com.cereal.client.infrastructure.data.notification.discord
 
+import com.cereal.client.application.exception.CerealException
 import com.cereal.client.infrastructure.data.datasource.discord.await
 import com.cereal.client.infrastructure.data.notification.discord.mapper.DiscordModelMapper
 import com.cereal.client.infrastructure.provider.DiscordProviderImpl
@@ -12,6 +13,7 @@ import okhttp3.Request
 import okhttp3.RequestBody.Companion.toRequestBody
 import org.slf4j.LoggerFactory
 import java.io.IOException
+import kotlin.time.Duration.Companion.seconds
 
 class DiscordHttpClient {
     private val logger = LoggerFactory.getLogger(DiscordProviderImpl::class.java)
@@ -24,7 +26,6 @@ class DiscordHttpClient {
         discordMessage: DiscordMessage,
         maxAttempts: Int = 3,
     ) {
-        var retryAttempt = 0
         val serializableMessage =
             DiscordModelMapper.toSerializable(
                 discordMessage,
@@ -43,44 +44,47 @@ class DiscordHttpClient {
 
         logger.debug("Attempting to message with $discordMessage")
 
-        while (retryAttempt < maxAttempts) {
-            retryAttempt++
-
-            try {
-                val rateLimited =
+        var lastFailure: Exception? = null
+        repeat(maxAttempts) { attempt ->
+            val retryAfterMs =
+                try {
                     httpClient.newCall(request).await().use { response ->
                         when {
-                            response.code == HTTP_TOO_MANY_REQUESTS -> {
-                                true
+                            response.isSuccessful -> {
+                                logger.debug("Submitted discord log record")
+                                return
                             }
 
-                            response.isSuccessful -> {
-                                false
+                            response.code == HTTP_TOO_MANY_REQUESTS -> {
+                                logger.warn("Discord rate limited the webhook, retrying...")
+                                lastFailure = CerealException("Discord rate limited the webhook (HTTP 429).")
+                                retryAfterMillis(response.header("Retry-After"))
                             }
 
                             else -> {
-                                // Permanent failure (bad payload, deleted webhook): retrying won't help.
-                                logger.warn("Discord webhook rejected the message: statusCode={}", response.code)
-                                false
+                                throw CerealException("Discord webhook rejected the message (HTTP ${response.code}).")
                             }
                         }
                     }
-                if (!rateLimited) {
-                    logger.debug("Submitted discord log record")
-                    break
+                } catch (e: IOException) {
+                    logger.warn("Unable to submit discord post.", e)
+                    lastFailure = e
+                    0L
                 }
-                logger.debug("You are being rate limited, retrying...")
-                if (retryAttempt < maxAttempts) delay(RATE_LIMIT_RETRY_DELAY_MS)
-            } catch (e: IOException) {
-                logger.warn("Unable to submit discord post.", e)
-            }
+            if (attempt < maxAttempts - 1) delay(retryAfterMs)
         }
+        throw CerealException("Unable to deliver Discord message after $maxAttempts attempts.", lastFailure)
     }
+
+    private fun retryAfterMillis(header: String?): Long =
+        header
+            ?.toDoubleOrNull()
+            ?.let { it.seconds.inWholeMilliseconds.coerceIn(0L, MAX_RETRY_AFTER_MS) }
+            ?: DEFAULT_RETRY_AFTER_MS
 
     private companion object {
         const val HTTP_TOO_MANY_REQUESTS = 429
-
-        // Fixed back-off; switch to the retry_after Discord returns if 1s proves too short.
-        const val RATE_LIMIT_RETRY_DELAY_MS = 1000L
+        const val DEFAULT_RETRY_AFTER_MS = 1000L
+        const val MAX_RETRY_AFTER_MS = 30_000L
     }
 }

@@ -53,7 +53,7 @@ object DiscordModelMapper {
         )
 
     /** Discord wants an integer color; scripts may pass `#RRGGBB`, `0xRRGGBB` or a decimal string. */
-    private fun parseColor(color: String?): Int? {
+    internal fun parseColor(color: String?): Int? {
         val value = color?.trim() ?: return null
         return when {
             value.startsWith("#") -> value.drop(1).toIntOrNull(HEX_RADIX)

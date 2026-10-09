@@ -33,6 +33,7 @@ import com.cereal.client.infrastructure.data.datasource.database.room.RoomScript
 import com.cereal.client.infrastructure.data.datasource.database.room.RoomScriptPackageInstanceDataSource
 import com.cereal.client.infrastructure.data.datasource.database.room.RoomScriptTaskDataSource
 import com.cereal.client.infrastructure.data.datasource.database.room.UserRoomDatabase
+import com.cereal.client.infrastructure.data.datasource.database.room.entity.ArtifactEntity
 import com.cereal.client.infrastructure.data.datasource.database.room.mapper.KeyValueRoomMapper
 import com.cereal.client.infrastructure.data.datasource.database.room.mapper.ScriptInstanceMapper
 import com.cereal.client.infrastructure.data.datasource.database.room.mapper.ScriptNotificationOverrideMapper
@@ -1038,6 +1039,62 @@ class ScriptInstanceDataSourceIntegrationTest {
                 assertEquals("Run 2 step A", (restoredTask.statusHistory[0] as TaskStatus.Running).message)
                 assertEquals("Run 2 step B", (restoredTask.statusHistory[1] as TaskStatus.Running).message)
                 assertEquals("Run 2 done", (restoredTask.statusHistory[2] as TaskStatus.Success).message)
+            } finally {
+                tearDownForImplementation(implementation)
+            }
+        }
+
+    @OptIn(ExperimentalTime::class)
+    @ParameterizedTest(name = "test re-persisting a restarted task keeps its artifacts - {0}")
+    @EnumSource(value = DatabaseImplementation::class, names = ["ROOM"])
+    fun `test re-persisting a restarted task keeps its artifacts`(implementation: DatabaseImplementation) =
+        runTest {
+            setupForImplementation(implementation)
+            try {
+                val scriptPackageGroup = createTestScriptPackageGroup()
+                scriptInstanceDataSource.createScriptInstanceGroup(testUser, scriptPackageGroup)
+                val scriptPackageInstance = createTestScriptPackageInstance()
+                val mainScriptInstance = createTestMainScriptInstance(scriptPackageInstance)
+                scriptInstanceDataSource.addScriptPackageInstance(
+                    testUser,
+                    scriptPackageInstance,
+                    mainScriptInstance,
+                    scriptPackageGroup.id,
+                )
+                val taskId = UUID.randomUUID().toString()
+
+                fun runTask(message: String) =
+                    JobTask(
+                        id = taskId,
+                        scriptInstance = mainScriptInstance,
+                        configuration = emptyMap(),
+                        statusHistory = listOf(TaskStatus.Success(message = message, timestamp = Clock.System.now())),
+                        userInteraction = null,
+                        createdAt = Clock.System.now(),
+                        job = null,
+                    )
+
+                scriptInstanceDataSource.addTask(testUser, runTask("Run 1 done"))
+                val artifactDao = roomDatabases.getUserDatabase(testUser).artifactDao()
+                artifactDao.insert(
+                    ArtifactEntity(
+                        id = UUID.randomUUID().toString(),
+                        taskId = taskId,
+                        name = "report.csv",
+                        mimeType = "text/csv",
+                        sizeBytes = 3,
+                        relativePath = "report.csv",
+                        createdAt = Clock.System.now(),
+                    ),
+                )
+
+                // Restart: TaskManager re-persists the same task id.
+                scriptInstanceDataSource.addTask(testUser, runTask("Run 2 done"))
+
+                assertEquals(1, artifactDao.observeByTaskId(taskId).first().size, "Restart must not cascade-delete artifacts")
+                val restored = scriptInstanceDataSource.getJobTasksFromHistory(testUser, mainScriptInstance)
+                assertEquals(1, restored.size)
+                assertEquals(listOf("Run 2 done"), restored.first().statusHistory.map { it.message })
             } finally {
                 tearDownForImplementation(implementation)
             }

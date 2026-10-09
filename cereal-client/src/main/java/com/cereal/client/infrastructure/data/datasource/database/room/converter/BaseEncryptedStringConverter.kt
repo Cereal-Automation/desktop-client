@@ -77,7 +77,8 @@ abstract class BaseEncryptedStringConverter {
 
     protected fun convertToEncryptedString(encryptedText: String?): EncryptedString? =
         encryptedText?.let { encrypted ->
-            val decrypted = decryptString(encrypted, getEncryptionKey()) ?: return null
-            EncryptedString(decrypted)
+            // Wrap a failed decryption as EncryptedString(null) rather than returning null: Room rejects a null
+            // from the converter on NOT NULL columns, which would fail the whole query for one bad row.
+            EncryptedString(decryptString(encrypted, getEncryptionKey()))
         }
 }

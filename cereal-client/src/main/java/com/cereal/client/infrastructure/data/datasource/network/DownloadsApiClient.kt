@@ -26,6 +26,9 @@ class DownloadsApiClient(
     // Brand's feed path for a white-label build, so a branded app only ever sees its own releases
     // and is never offered the stock installer (see docs/adr/0003).
     private val feedPath: String = "client",
+    // Store builds update through the OS store and get unsigned metadata. Decided by the build, never by the
+    // payload: a tampered direct-build feed must not be able to opt out of verification.
+    private val requireSignedMetadata: Boolean = !BuildConfig.IS_STORE_BUILD,
 ) {
     private val logger = LoggerFactory.getLogger(DownloadsApiClient::class.java)
     private val logging = HttpLoggingInterceptor { message -> logger.debug(message) }
@@ -93,10 +96,9 @@ class DownloadsApiClient(
         val response = client.newCall(request).await()
         val versionInfo = handleResponse<LatestAppVersionJsonResponse>(response)
 
-        // Reject unsigned or tampered release metadata before the client downloads and launches an
-        // installer from it (#484). Store builds carry no installer to verify — they update through
-        // the OS store — so verification only applies when a direct download URL is present.
-        if (versionInfo.downloadUrl.isNotBlank() && !releaseMetadataVerifier.verify(versionInfo)) {
+        // Reject unsigned or tampered release metadata before the client acts on it (#484), including
+        // min_version, which can force an update.
+        if (requireSignedMetadata && !releaseMetadataVerifier.verify(versionInfo)) {
             throw NetworkException("Release metadata signature verification failed.")
         }
 

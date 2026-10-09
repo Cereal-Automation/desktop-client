@@ -1,5 +1,6 @@
 package com.cereal.client.infrastructure.data.notification.discord
 
+import com.cereal.client.application.exception.CerealException
 import com.cereal.client.infrastructure.data.notification.discord.serializable.SerializableDiscordMessage
 import com.cereal.sdk.component.notification.discord.model.DiscordMessage
 import kotlinx.coroutines.test.runTest
@@ -11,6 +12,7 @@ import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFailsWith
 import kotlin.test.assertTrue
 
 /**
@@ -74,28 +76,30 @@ class DiscordHttpClientTest {
         }
 
     @Test
-    fun `message retries up to maxAttempts when the connection keeps failing`() =
+    fun `message retries up to maxAttempts then throws when the connection keeps failing`() =
         runTest {
             repeat(3) {
                 server.enqueue(MockResponse().setSocketPolicy(SocketPolicy.DISCONNECT_AFTER_REQUEST))
             }
 
-            // Must complete normally: delivery failures are logged and retried, never thrown.
-            client.message(
-                url = webhookUrl(),
-                discordMessage = DiscordMessage(content = "hi"),
-                maxAttempts = 3,
-            )
+            assertFailsWith<CerealException> {
+                client.message(
+                    url = webhookUrl(),
+                    discordMessage = DiscordMessage(content = "hi"),
+                    maxAttempts = 3,
+                )
+            }
 
             assertEquals(3, server.requestCount)
         }
 
     @Test
-    fun `message retries after discord reports a rate limit`() =
+    fun `message retries after a rate limit and succeeds`() =
         runTest {
             server.enqueue(
                 MockResponse()
                     .setResponseCode(429)
+                    .setHeader("Retry-After", "1")
                     .setBody("""{"message":"You are being rate limited","retry_after":1}"""),
             )
             server.enqueue(MockResponse().setResponseCode(204))
@@ -109,15 +113,16 @@ class DiscordHttpClientTest {
         }
 
     @Test
-    fun `message does not retry a permanent failure`() =
+    fun `message throws without retrying when discord rejects the webhook`() =
         runTest {
             server.enqueue(MockResponse().setResponseCode(404))
 
-            // Completes normally: a rejected webhook is logged, not thrown, and not retried.
-            client.message(
-                url = webhookUrl(),
-                discordMessage = DiscordMessage(content = "hi"),
-            )
+            assertFailsWith<CerealException> {
+                client.message(
+                    url = webhookUrl(),
+                    discordMessage = DiscordMessage(content = "hi"),
+                )
+            }
 
             assertEquals(1, server.requestCount)
         }

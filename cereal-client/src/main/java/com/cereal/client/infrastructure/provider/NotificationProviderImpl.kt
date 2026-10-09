@@ -1,6 +1,5 @@
 package com.cereal.client.infrastructure.provider
 
-import com.cereal.client.application.exception.CrashReporter
 import com.cereal.client.domain.model.notification.DiscordNotificationData
 import com.cereal.client.domain.model.notification.EmailNotificationData
 import com.cereal.client.domain.model.notification.Notification
@@ -11,8 +10,6 @@ import com.cereal.client.infrastructure.data.notification.DiscordNotificationStr
 import com.cereal.client.infrastructure.data.notification.EmailNotificationStrategy
 import com.cereal.client.infrastructure.data.notification.SystemNotificationStrategy
 import com.cereal.client.infrastructure.data.notification.TelegramNotificationStrategy
-import kotlinx.coroutines.CancellationException
-import org.slf4j.LoggerFactory
 
 /**
  * Implementation of NotificationProvider that manages multiple notification channels.
@@ -24,24 +21,15 @@ class NotificationProviderImpl(
     private val telegramStrategy: TelegramNotificationStrategy,
     private val emailStrategy: EmailNotificationStrategy,
 ) : NotificationProvider {
-    private val logger = LoggerFactory.getLogger(NotificationProviderImpl::class.java)
-
     override suspend fun sendNotification(
         notification: Notification,
     ) {
-        try {
-            when (notification) {
-                is SystemNotificationData -> systemStrategy.send(notification)
-                is DiscordNotificationData -> discordStrategy.send(notification)
-                is TelegramNotificationData -> telegramStrategy.send(notification)
-                is EmailNotificationData -> emailStrategy.send(notification)
-            }
-        } catch (ce: CancellationException) {
-            throw ce
-        } catch (e: Exception) {
-            // Only the type: toString() carries credentials (SMTP password, bot token, webhook URL).
-            logger.error("Failed to send ${notification::class.simpleName} notification", e)
-            CrashReporter.report(e)
+        // Delivery failures propagate: callers record them (notification history) or surface them (send test).
+        when (notification) {
+            is SystemNotificationData -> systemStrategy.send(notification)
+            is DiscordNotificationData -> discordStrategy.send(notification)
+            is TelegramNotificationData -> telegramStrategy.send(notification)
+            is EmailNotificationData -> emailStrategy.send(notification)
         }
     }
 }

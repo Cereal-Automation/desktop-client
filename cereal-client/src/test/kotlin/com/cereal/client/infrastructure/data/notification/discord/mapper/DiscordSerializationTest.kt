@@ -162,4 +162,12 @@ class DiscordSerializationTest {
         assertTrue(!jsonString.contains("\"embeds\"") || jsonString.contains("\"embeds\":null"))
         assertTrue(!jsonString.contains("\"webhook_url\"") || jsonString.contains("\"webhook_url\":null"))
     }
+
+    @Test
+    fun `embed color accepts decimal and hex strings and drops garbage`() {
+        assertEquals(16711680, DiscordModelMapper.parseColor("16711680"))
+        assertEquals(0xFF0000, DiscordModelMapper.parseColor("#FF0000"))
+        assertEquals(0x64EB34, DiscordModelMapper.parseColor("0x64eb34"))
+        assertEquals(null, DiscordModelMapper.parseColor("red"))
+    }
 }

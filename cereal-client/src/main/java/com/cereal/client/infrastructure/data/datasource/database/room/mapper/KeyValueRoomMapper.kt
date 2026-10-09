@@ -149,15 +149,15 @@ class KeyValueRoomMapper(
             }
 
             ValueType.PROXY -> {
-                proxyDataSource.getProxy(user, stringValue!!)
+                stringValue?.let { proxyDataSource.getProxy(user, it) }
             }
 
             ValueType.PROXY_GROUP -> {
-                proxyDataSource.getProxyGroup(user, stringValue!!)
+                stringValue?.let { proxyDataSource.getProxyGroup(user, it) }
             }
 
             ValueType.FILE -> {
-                File(stringValue!!)
+                stringValue?.let { File(it) }
             }
 
             ValueType.ENUM -> {
@@ -167,14 +167,16 @@ class KeyValueRoomMapper(
 
             ValueType.CUSTOM_DATASET_GROUP -> {
                 // A deleted dataset leaves a stale reference; resolve it to null like a deleted proxy.
-                (datasetDataSource ?: throw MissingPropertyException("Missing dataset datasource"))
-                    .getDatasetGroup(user, stringValue!!)
+                stringValue?.let {
+                    (datasetDataSource ?: throw MissingPropertyException("Missing dataset datasource")).getDatasetGroup(user, it)
+                }
             }
 
             ValueType.CUSTOM_DATASET -> {
                 // A deleted dataset leaves a stale reference; resolve it to null like a deleted proxy.
-                (datasetDataSource ?: throw MissingPropertyException("Missing dataset datasource"))
-                    .getDataset(user, stringValue!!)
+                stringValue?.let {
+                    (datasetDataSource ?: throw MissingPropertyException("Missing dataset datasource")).getDataset(user, it)
+                }
             }
 
             ValueType.UNKNOWN -> {
@@ -232,15 +234,15 @@ class KeyValueRoomMapper(
             }
 
             ValueType.PROXY -> {
-                proxyDataSource.getProxy(user, stringValue!!)
+                stringValue?.let { proxyDataSource.getProxy(user, it) }
             }
 
             ValueType.PROXY_GROUP -> {
-                proxyDataSource.getProxyGroup(user, stringValue!!)
+                stringValue?.let { proxyDataSource.getProxyGroup(user, it) }
             }
 
             ValueType.FILE -> {
-                File(stringValue!!)
+                stringValue?.let { File(it) }
             }
 
             ValueType.ENUM -> {
@@ -250,14 +252,16 @@ class KeyValueRoomMapper(
 
             ValueType.CUSTOM_DATASET_GROUP -> {
                 // A deleted dataset leaves a stale reference; resolve it to null like a deleted proxy.
-                (datasetDataSource ?: throw MissingPropertyException("Missing dataset datasource"))
-                    .getDatasetGroup(user, stringValue!!)
+                stringValue?.let {
+                    (datasetDataSource ?: throw MissingPropertyException("Missing dataset datasource")).getDatasetGroup(user, it)
+                }
             }
 
             ValueType.CUSTOM_DATASET -> {
                 // A deleted dataset leaves a stale reference; resolve it to null like a deleted proxy.
-                (datasetDataSource ?: throw MissingPropertyException("Missing dataset datasource"))
-                    .getDataset(user, stringValue!!)
+                stringValue?.let {
+                    (datasetDataSource ?: throw MissingPropertyException("Missing dataset datasource")).getDataset(user, it)
+                }
             }
 
             ValueType.UNKNOWN -> {
@@ -330,15 +334,15 @@ class KeyValueRoomMapper(
             }
 
             ValueType.PROXY -> {
-                proxyDataSource.getProxy(user, stringValue!!)
+                stringValue?.let { proxyDataSource.getProxy(user, it) }
             }
 
             ValueType.PROXY_GROUP -> {
-                proxyDataSource.getProxyGroup(user, stringValue!!)
+                stringValue?.let { proxyDataSource.getProxyGroup(user, it) }
             }
 
             ValueType.FILE -> {
-                File(stringValue!!)
+                stringValue?.let { File(it) }
             }
 
             ValueType.ENUM -> {
@@ -348,14 +352,16 @@ class KeyValueRoomMapper(
 
             ValueType.CUSTOM_DATASET_GROUP -> {
                 // A deleted dataset leaves a stale reference; resolve it to null like a deleted proxy.
-                (datasetDataSource ?: throw MissingPropertyException("Missing dataset datasource"))
-                    .getDatasetGroup(user, stringValue!!)
+                stringValue?.let {
+                    (datasetDataSource ?: throw MissingPropertyException("Missing dataset datasource")).getDatasetGroup(user, it)
+                }
             }
 
             ValueType.CUSTOM_DATASET -> {
                 // A deleted dataset leaves a stale reference; resolve it to null like a deleted proxy.
-                (datasetDataSource ?: throw MissingPropertyException("Missing dataset datasource"))
-                    .getDataset(user, stringValue!!)
+                stringValue?.let {
+                    (datasetDataSource ?: throw MissingPropertyException("Missing dataset datasource")).getDataset(user, it)
+                }
             }
 
             ValueType.UNKNOWN -> {
