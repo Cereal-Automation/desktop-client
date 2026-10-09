@@ -13,6 +13,7 @@ import okhttp3.Request
 import okhttp3.RequestBody.Companion.toRequestBody
 import org.slf4j.LoggerFactory
 import java.io.IOException
+import kotlin.time.Duration.Companion.seconds
 
 class DiscordHttpClient {
     private val logger = LoggerFactory.getLogger(DiscordProviderImpl::class.java)
@@ -78,7 +79,7 @@ class DiscordHttpClient {
     private fun retryAfterMillis(header: String?): Long =
         header
             ?.toDoubleOrNull()
-            ?.let { (it * 1000).toLong().coerceIn(0L, MAX_RETRY_AFTER_MS) }
+            ?.let { it.seconds.inWholeMilliseconds.coerceIn(0L, MAX_RETRY_AFTER_MS) }
             ?: DEFAULT_RETRY_AFTER_MS
 
     private companion object {

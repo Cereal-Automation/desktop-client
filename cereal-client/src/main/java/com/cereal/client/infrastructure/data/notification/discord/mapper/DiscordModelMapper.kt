@@ -106,8 +106,10 @@ object DiscordModelMapper {
         val trimmed = color.trim()
         val hex = trimmed.removePrefix("#").removePrefix("0x").removePrefix("0X")
         return when {
-            hex != trimmed -> hex.toIntOrNull(16)
+            hex != trimmed -> hex.toIntOrNull(HEX_RADIX)
             else -> trimmed.toIntOrNull()
         }
     }
+
+    private const val HEX_RADIX = 16
 }

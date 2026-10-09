@@ -16,6 +16,7 @@ import okhttp3.Request
 import okhttp3.RequestBody.Companion.toRequestBody
 import org.slf4j.LoggerFactory
 import java.io.IOException
+import kotlin.time.Duration.Companion.seconds
 
 class TelegramHttpClient(
     private val baseUrl: String = "https://api.telegram.org",
@@ -97,7 +98,7 @@ class TelegramHttpClient(
                 ?.jsonPrimitive
                 ?.longOrNull
         }.getOrNull()
-            ?.let { (it * 1000).coerceIn(0L, MAX_RETRY_AFTER_MS) }
+            ?.let { it.seconds.inWholeMilliseconds.coerceIn(0L, MAX_RETRY_AFTER_MS) }
             ?: RETRY_DELAY_MS
 
     private sealed interface SendResult {

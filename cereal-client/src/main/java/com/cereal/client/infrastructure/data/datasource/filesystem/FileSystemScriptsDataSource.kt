@@ -86,14 +86,15 @@ class FileSystemScriptsDataSource(
                 }
             }
             // Create FileOutputStream after directory creation
+            var written = false
             try {
                 FileOutputStream(file).use { outputStream ->
                     encryption.writeJar(inputStream, outputStream, getFileEncryptionKey(user))
                 }
-            } catch (e: Exception) {
+                written = true
+            } finally {
                 // Don't leave a truncated JAR behind for the next startup scan to trip over.
-                file.delete()
-                throw e
+                if (!written) file.delete()
             }
         }
 
