@@ -14,21 +14,19 @@ import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.assertThrows
 
 class EditScriptInstanceGroupInteractorTest {
-    // The repository exposes groups only through a conflating StateFlow, and ScriptPackageGroup
-    // equality is id-only — so a rename (same id) is never re-emitted and cannot be observed
-    // through the flow. The forwarded group is therefore captured at the repository seam.
     @Test
     fun `run should rename an existing group keeping its id`() =
         runTest {
-            val tasksRepository = mockk<TasksRepository>(relaxed = true)
-            val captured = slot<ScriptPackageGroup>()
-            coEvery { tasksRepository.updateScriptInstanceGroup(capture(captured)) } returns Unit
+            val tasksRepository = InMemoryTasksRepository()
+            tasksRepository.createScriptInstanceGroup(ScriptPackageGroup("group-1", "Original"))
             val interactor = EditScriptInstanceGroupInteractor(tasksRepository)
 
             interactor.run(EditScriptInstanceGroupInteractor.Params(groupId = "group-1", name = "New Name"))
 
-            assertEquals("group-1", captured.captured.id)
-            assertEquals("New Name", captured.captured.name)
+            // ScriptPackageGroup equality is id-only, so this only passes if the rename is re-emitted.
+            val group = tasksRepository.getTaskGroups().first().single()
+            assertEquals("group-1", group.id)
+            assertEquals("New Name", group.name)
         }
 
     @Test

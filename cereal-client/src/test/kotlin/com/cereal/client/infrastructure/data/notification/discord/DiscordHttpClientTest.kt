@@ -91,15 +91,29 @@ class DiscordHttpClientTest {
         }
 
     @Test
-    fun `message completes without throwing when discord reports a rate limit`() =
+    fun `message retries after discord reports a rate limit`() =
         runTest {
             server.enqueue(
                 MockResponse()
                     .setResponseCode(429)
                     .setBody("""{"message":"You are being rate limited","retry_after":1}"""),
             )
+            server.enqueue(MockResponse().setResponseCode(204))
 
-            // Should complete normally; a rate-limit response is observed, not propagated as an error.
+            client.message(
+                url = webhookUrl(),
+                discordMessage = DiscordMessage(content = "hi"),
+            )
+
+            assertEquals(2, server.requestCount)
+        }
+
+    @Test
+    fun `message does not retry a permanent failure`() =
+        runTest {
+            server.enqueue(MockResponse().setResponseCode(404))
+
+            // Completes normally: a rejected webhook is logged, not thrown, and not retried.
             client.message(
                 url = webhookUrl(),
                 discordMessage = DiscordMessage(content = "hi"),

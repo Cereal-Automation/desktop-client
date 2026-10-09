@@ -49,7 +49,7 @@ class InMemoryScriptInstanceRepository : ScriptInstanceRepository {
 
     override suspend fun getScriptPackageInstances(): List<ScriptPackageInstance> = instances.value
 
-    override suspend fun getScriptPackageInstances(packageName: String): List<ScriptPackageInstance> = instances.value
+    override suspend fun getScriptPackageInstances(packageName: String): List<ScriptPackageInstance> = instances.value.filter { it.definition.manifest.packageName == packageName }
 
     override suspend fun getScriptPackageInstance(id: String): ScriptPackageInstance = instances.value.first { it.id == id }
 

@@ -6,6 +6,7 @@ import com.cereal.client.domain.model.user.User
 import com.cereal.client.infrastructure.data.datasource.database.DatasetDataSource
 import com.cereal.client.infrastructure.data.datasource.database.room.mapper.DatasetMapper
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.map
 import java.util.UUID
 import kotlin.time.Clock
@@ -23,7 +24,9 @@ class RoomDatasetDataSource(
         val database = roomDatabases.getUserDatabase(user)
         val dao = database.datasetDao()
 
-        return dao.getAllDatasetGroupsFlow().map { groupEntities ->
+        // Also observe the dataset table: Room only re-emits for tables in the Flow's own query, and
+        // dataset/item writes never touch dataset_group, so group counts would otherwise go stale.
+        return combine(dao.getAllDatasetGroupsFlow(), dao.getAllDatasetsFlow()) { groupEntities, _ -> groupEntities }.map { groupEntities ->
             val allDatasets = dao.getAllDatasets().groupBy { it.groupId }
 
             val allDatasetIds = allDatasets.values.flatten().map { it.id }

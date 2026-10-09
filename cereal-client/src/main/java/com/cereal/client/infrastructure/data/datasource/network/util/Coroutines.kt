@@ -28,7 +28,7 @@ private class ContinuationCallback(
         call: Call,
         response: Response,
     ) {
-        continuation.resumeWith(Result.success(response))
+        continuation.resume(response) { _, value, _ -> value.close() }
     }
 
     override fun onFailure(

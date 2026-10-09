@@ -5,7 +5,6 @@ import okhttp3.Call
 import okhttp3.Callback
 import okhttp3.Response
 import java.io.IOException
-import kotlin.coroutines.resume
 import kotlin.coroutines.resumeWithException
 
 // Cancellation cleanup must not let any failure from cancel() escape; catching Throwable is intentional.
@@ -18,7 +17,7 @@ suspend fun Call.await(): Response {
                     call: Call,
                     response: Response,
                 ) {
-                    continuation.resume(response)
+                    continuation.resume(response) { _, value, _ -> value.close() }
                 }
 
                 override fun onFailure(

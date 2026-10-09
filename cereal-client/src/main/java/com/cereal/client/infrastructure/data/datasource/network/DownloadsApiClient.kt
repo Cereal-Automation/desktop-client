@@ -104,15 +104,11 @@ class DownloadsApiClient(
     }
 
     @Throws(ApiException::class)
-    private inline fun <reified T> handleResponse(response: Response): T {
-        if (response.isSuccessful) {
-            response.body.string().let { responseBody ->
-                return json.decodeFromString<T>(responseBody)
-            }
-        } else {
-            throw NetworkException()
+    private inline fun <reified T> handleResponse(response: Response): T =
+        response.use {
+            if (!it.isSuccessful) throw NetworkException()
+            json.decodeFromString<T>(it.body.string())
         }
-    }
 
     private companion object {
         const val DEFAULT_TIMEOUT_SECONDS = 30L

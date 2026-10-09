@@ -103,7 +103,7 @@ class DiscordSerializationTest {
         assertTrue(jsonString.contains("\"content\":\"Message with embed\""))
         assertTrue(jsonString.contains("\"title\":\"Test Embed\""))
         assertTrue(jsonString.contains("\"description\":\"This is a test embed\""))
-        assertTrue(jsonString.contains("\"color\":\"16711680\""))
+        assertTrue(jsonString.contains("\"color\":16711680"))
         assertTrue(jsonString.contains("\"icon_url\":\"https://example.com/footer.png\""))
         assertTrue(jsonString.contains("\"proxy_icon_url\":\"https://proxy.example.com/footer.png\""))
         assertTrue(jsonString.contains("\"proxy_url\":\"https://proxy.example.com/image.png\""))

@@ -53,9 +53,17 @@ class FileSystemScriptsDataSource(
         user: User,
         installedSdkVersion: SemVer,
     ): ScriptPackageDefinition {
-        deleteScript(scriptPackage, user)
+        // Store and validate the new jar first: a failed download, load or SDK check must leave the
+        // installed version in place rather than leaving the user without the script.
+        val updated = storeScript(scriptPackage.manifest.packageName, release, inputStream, user, installedSdkVersion)
 
-        return storeScript(scriptPackage.manifest.packageName, release, inputStream, user, installedSdkVersion)
+        if (scriptPackage.source.canonicalPath != updated.source.canonicalPath) {
+            scriptPackage.source.delete()
+        }
+        getOrCreateScriptsFlow(user).update { definitions ->
+            definitions.filterNot { it.manifest.packageName == scriptPackage.manifest.packageName && it !== updated }
+        }
+        return updated
     }
 
     suspend fun storeScript(

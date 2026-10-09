@@ -13,8 +13,11 @@ import dev.kdriver.core.tab.Tab
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.NonCancellable
+import kotlinx.coroutines.TimeoutCancellationException
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeout
 import org.slf4j.LoggerFactory
 
@@ -62,10 +65,15 @@ class CheckoutProviderImpl(
                     throw CheckoutCancelledException()
                 }
             } finally {
-                browser.stop()
+                // stop() suspends; without NonCancellable a cancelled caller would skip killing Chrome.
+                withContext(NonCancellable) { browser.stop() }
             }
         } catch (e: CheckoutCancelledException) {
             throw e
+        } catch (_: TimeoutCancellationException) {
+            // Must precede the CancellationException catch: an abandoned checkout is a cancelled
+            // checkout, not a cancelled caller, or the UI never leaves its awaiting state.
+            throw CheckoutCancelledException()
         } catch (ce: CancellationException) {
             throw ce
         } catch (e: Exception) {

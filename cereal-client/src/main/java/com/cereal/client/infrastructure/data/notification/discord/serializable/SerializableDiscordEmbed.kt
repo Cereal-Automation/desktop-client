@@ -13,7 +13,7 @@ data class SerializableDiscordEmbed(
     val description: String?,
     val url: String?,
     val timestamp: String?,
-    val color: String?,
+    val color: Int?,
     val footer: SerializableFooterEmbed?,
     val image: SerializableImageEmbed?,
     val thumbnail: SerializableThumbnailEmbed?,

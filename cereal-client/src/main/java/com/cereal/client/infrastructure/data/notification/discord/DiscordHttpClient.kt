@@ -4,6 +4,7 @@ import com.cereal.client.infrastructure.data.datasource.discord.await
 import com.cereal.client.infrastructure.data.notification.discord.mapper.DiscordModelMapper
 import com.cereal.client.infrastructure.provider.DiscordProviderImpl
 import com.cereal.sdk.component.notification.discord.model.DiscordMessage
+import kotlinx.coroutines.delay
 import kotlinx.serialization.json.Json
 import okhttp3.MediaType.Companion.toMediaTypeOrNull
 import okhttp3.OkHttpClient
@@ -46,22 +47,40 @@ class DiscordHttpClient {
             retryAttempt++
 
             try {
-                val response = httpClient.newCall(request).await()
-                try {
-                    if (response.body
-                            .string()
-                            .contains("You are being rate limited")
-                    ) {
-                        logger.debug("You are being rate limited, retrying...")
+                val rateLimited =
+                    httpClient.newCall(request).await().use { response ->
+                        when {
+                            response.code == HTTP_TOO_MANY_REQUESTS -> {
+                                true
+                            }
+
+                            response.isSuccessful -> {
+                                false
+                            }
+
+                            else -> {
+                                // Permanent failure (bad payload, deleted webhook): retrying won't help.
+                                logger.warn("Discord webhook rejected the message: statusCode={}", response.code)
+                                false
+                            }
+                        }
                     }
-                } finally {
+                if (!rateLimited) {
                     logger.debug("Submitted discord log record")
-                    response.close()
                     break
                 }
+                logger.debug("You are being rate limited, retrying...")
+                if (retryAttempt < maxAttempts) delay(RATE_LIMIT_RETRY_DELAY_MS)
             } catch (e: IOException) {
                 logger.warn("Unable to submit discord post.", e)
             }
         }
+    }
+
+    private companion object {
+        const val HTTP_TOO_MANY_REQUESTS = 429
+
+        // Fixed back-off; switch to the retry_after Discord returns if 1s proves too short.
+        const val RATE_LIMIT_RETRY_DELAY_MS = 1000L
     }
 }

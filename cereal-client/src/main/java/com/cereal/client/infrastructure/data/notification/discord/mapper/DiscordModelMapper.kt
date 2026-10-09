@@ -40,7 +40,7 @@ object DiscordModelMapper {
             description = embed.description,
             url = embed.url,
             timestamp = embed.timestamp,
-            color = embed.color,
+            color = parseColor(embed.color),
             footer = embed.footer?.let { toSerializable(it) },
             image = embed.image?.let { toSerializable(it) },
             thumbnail = embed.thumbnail?.let { toSerializable(it) },
@@ -49,6 +49,16 @@ object DiscordModelMapper {
             author = embed.author?.let { toSerializable(it) },
             fields = embed.fields?.map { toSerializable(it) },
         )
+
+    /** Discord wants an integer color; scripts may pass `#RRGGBB`, `0xRRGGBB` or a decimal string. */
+    private fun parseColor(color: String?): Int? {
+        val value = color?.trim() ?: return null
+        return when {
+            value.startsWith("#") -> value.drop(1).toIntOrNull(16)
+            value.startsWith("0x", ignoreCase = true) -> value.drop(2).toIntOrNull(16)
+            else -> value.toIntOrNull()
+        }
+    }
 
     private fun toSerializable(author: AuthorEmbed): SerializableAuthorEmbed =
         SerializableAuthorEmbed(
