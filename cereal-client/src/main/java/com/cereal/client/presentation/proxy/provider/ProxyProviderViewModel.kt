@@ -11,6 +11,7 @@ import com.cereal.client.presentation.error.ErrorResolver
 import com.cereal.client.presentation.util.InteractorRunner
 import com.github.kittinunf.result.coroutines.SuspendableResult
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -72,7 +73,11 @@ class ProxyProviderViewModel(
         }
     }
 
+    // In-flight token validation; cancelled whenever the wizard leaves the CONNECT step.
+    private var connectJob: Job? = null
+
     fun onConnectClicked() {
+        connectJob?.cancel()
         _wizardState.value =
             ConnectWizardState.Open(
                 step = ConnectWizardStep.PROVIDER,
@@ -86,6 +91,7 @@ class ProxyProviderViewModel(
     }
 
     fun onManageClicked() {
+        connectJob?.cancel()
         val provider = (_connectorState.value as? ConnectorState.Connected)?.card?.provider ?: DEFAULT_PROVIDER
         _wizardState.value =
             ConnectWizardState.Open(
@@ -109,6 +115,7 @@ class ProxyProviderViewModel(
     }
 
     fun onBackToProvider() {
+        connectJob?.cancel()
         updateWizard { it.copy(step = ConnectWizardStep.PROVIDER, tokenStatus = ConnectTokenStatus.IDLE, errorMessage = null) }
     }
 
@@ -133,32 +140,35 @@ class ProxyProviderViewModel(
 
         updateWizard { it.copy(tokenStatus = ConnectTokenStatus.VALIDATING, errorMessage = null) }
 
-        scope.launch(dispatcherProvider.io) {
-            connectProxyProviderInteractor(
-                ConnectProxyProviderInteractor.Params(current.selectedProvider, current.token.trim()),
-            ) { result ->
-                withContext(dispatcherProvider.main) {
-                    when (result) {
-                        is SuspendableResult.Success -> {
-                            // The connector flow refreshes the section; just close the modal.
-                            _wizardState.value = ConnectWizardState.Closed
-                        }
+        connectJob?.cancel()
+        connectJob =
+            scope.launch(dispatcherProvider.io) {
+                connectProxyProviderInteractor(
+                    ConnectProxyProviderInteractor.Params(current.selectedProvider, current.token.trim()),
+                ) { result ->
+                    withContext(dispatcherProvider.main) {
+                        when (result) {
+                            is SuspendableResult.Success -> {
+                                // The connector flow refreshes the section; just close the modal.
+                                _wizardState.value = ConnectWizardState.Closed
+                            }
 
-                        is SuspendableResult.Failure -> {
-                            updateWizard {
-                                it.copy(
-                                    tokenStatus = ConnectTokenStatus.ERROR,
-                                    errorMessage = result.error.localizedMessage,
-                                )
+                            is SuspendableResult.Failure -> {
+                                updateWizard {
+                                    it.copy(
+                                        tokenStatus = ConnectTokenStatus.ERROR,
+                                        errorMessage = result.error.localizedMessage,
+                                    )
+                                }
                             }
                         }
                     }
                 }
             }
-        }
     }
 
     fun onCloseWizard() {
+        connectJob?.cancel()
         _wizardState.value = ConnectWizardState.Closed
     }
 

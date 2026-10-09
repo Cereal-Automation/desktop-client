@@ -55,6 +55,7 @@ class MarketplaceViewModel(
     val communityFilter = mutableStateOf(CommunityFilter.ALL)
 
     private var searchJob: Job? = null
+    private var loadJob: Job? = null
 
     init {
         resetAndLoad()
@@ -77,7 +78,7 @@ class MarketplaceViewModel(
         searchQuery.value = query
         searchJob?.cancel()
         searchJob =
-            scope.launch(dispatcherProvider.io) {
+            scope.launch(dispatcherProvider.main) {
                 delay(SEARCH_DEBOUNCE_MILLIS)
                 resetAndLoad()
             }
@@ -104,6 +105,10 @@ class MarketplaceViewModel(
     }
 
     private fun resetAndLoad() {
+        // Drop any in-flight load so its stale result can't overwrite the new query's.
+        loadJob?.cancel()
+        isLoading = false
+        isLoadingMore.value = false
         currentPage = 1
         lastPage = 1
         scripts.value = emptyList()
@@ -117,66 +122,67 @@ class MarketplaceViewModel(
         if (isLoading) return
         isLoading = true
 
-        scope.launch(dispatcherProvider.io) {
-            withContext(dispatcherProvider.main) {
-                if (append) {
-                    isLoadingMore.value = true
-                } else {
-                    loadState.value = LoadState.Loading()
-                }
-            }
-
-            val isFreeParam =
-                when (priceFilter.value) {
-                    PriceFilter.ALL -> null
-                    PriceFilter.FREE -> true
-                    PriceFilter.PAID -> false
-                }
-
-            val communityParam =
-                when (communityFilter.value) {
-                    CommunityFilter.ALL -> null
-                    CommunityFilter.COMMUNITY -> true
-                }
-
-            val params =
-                GetMarketplaceScriptsInteractor.Params(
-                    search = searchQuery.value.ifBlank { null },
-                    sort = MarketplaceSort.RATING,
-                    direction = MarketplaceDirection.DESC,
-                    isFree = isFreeParam,
-                    community = communityParam,
-                    page = page,
-                    perPage = PAGE_SIZE,
-                )
-
-            getMarketplaceScriptsInteractor(params) { result ->
+        loadJob =
+            scope.launch(dispatcherProvider.io) {
                 withContext(dispatcherProvider.main) {
-                    isLoading = false
-                    isLoadingMore.value = false
-                    when (result) {
-                        is SuspendableResult.Failure -> {
-                            val message =
-                                result.error.localizedMessage
-                                    ?: "An unexpected error occurred."
-                            loadState.value = LoadState.Error(message)
-                        }
+                    if (append) {
+                        isLoadingMore.value = true
+                    } else {
+                        loadState.value = LoadState.Loading()
+                    }
+                }
 
-                        is SuspendableResult.Success -> {
-                            val paginated = result.value
-                            currentPage = paginated.currentPage
-                            lastPage = paginated.lastPage
-                            scripts.value =
-                                if (append) {
-                                    scripts.value + paginated.items
-                                } else {
-                                    paginated.items
-                                }
-                            loadState.value = LoadState.NotLoading(success = true)
+                val isFreeParam =
+                    when (priceFilter.value) {
+                        PriceFilter.ALL -> null
+                        PriceFilter.FREE -> true
+                        PriceFilter.PAID -> false
+                    }
+
+                val communityParam =
+                    when (communityFilter.value) {
+                        CommunityFilter.ALL -> null
+                        CommunityFilter.COMMUNITY -> true
+                    }
+
+                val params =
+                    GetMarketplaceScriptsInteractor.Params(
+                        search = searchQuery.value.ifBlank { null },
+                        sort = MarketplaceSort.RATING,
+                        direction = MarketplaceDirection.DESC,
+                        isFree = isFreeParam,
+                        community = communityParam,
+                        page = page,
+                        perPage = PAGE_SIZE,
+                    )
+
+                getMarketplaceScriptsInteractor(params) { result ->
+                    withContext(dispatcherProvider.main) {
+                        isLoading = false
+                        isLoadingMore.value = false
+                        when (result) {
+                            is SuspendableResult.Failure -> {
+                                val message =
+                                    result.error.localizedMessage
+                                        ?: "An unexpected error occurred."
+                                loadState.value = LoadState.Error(message)
+                            }
+
+                            is SuspendableResult.Success -> {
+                                val paginated = result.value
+                                currentPage = paginated.currentPage
+                                lastPage = paginated.lastPage
+                                scripts.value =
+                                    if (append) {
+                                        (scripts.value + paginated.items).distinctBy { it.id }
+                                    } else {
+                                        paginated.items
+                                    }
+                                loadState.value = LoadState.NotLoading(success = true)
+                            }
                         }
                     }
                 }
             }
-        }
     }
 }

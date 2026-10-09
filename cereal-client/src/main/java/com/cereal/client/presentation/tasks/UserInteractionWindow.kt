@@ -255,8 +255,10 @@ private fun TextInputWindow(
 
     Window(
         onCloseRequest = {
-            userInteraction.continuation.resumeWithException(UserInteractionCanceledException())
-            closeWindow()
+            if (!userInteraction.continuation.isCompleted) {
+                userInteraction.continuation.resumeWithException(UserInteractionCanceledException())
+                closeWindow()
+            }
         },
         title =
             taskNumber?.let { stringResource(Res.string.task_title_with_number, it, userInteraction.title) }
@@ -282,8 +284,10 @@ private fun TextInputWindow(
                     )
                     CerealButton(
                         onClick = {
-                            userInteraction.continuation.resume(text)
-                            closeWindow()
+                            if (!userInteraction.continuation.isCompleted) {
+                                userInteraction.continuation.resume(text)
+                                closeWindow()
+                            }
                         },
                         modifier = Modifier.align(Alignment.End),
                     ) {

@@ -16,6 +16,8 @@ import com.cereal.client.presentation.error.ErrorResolver
 import com.cereal.client.presentation.error.handleFailureOrElse
 import com.cereal.client.presentation.util.InteractorRunner
 import com.cereal_automation.cereal_client.BuildConfig
+import com.github.kittinunf.result.coroutines.SuspendableResult
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
@@ -56,6 +58,7 @@ class BootstrapViewModel(
     val errorAction = errorResolver.errorAction
     var bootstrapJob: Job? = null
     private var loadingIndicatorJob: Job? = null
+    private var installJob: Job? = null
     private var currentInterruptedState: BootstrapState.Interrupted? = null
     private val interactorRunner = InteractorRunner(scope, dispatcherProvider, errorResolver)
 
@@ -69,16 +72,29 @@ class BootstrapViewModel(
         scope.launch(dispatcherProvider.io) {
             // For store builds, open the store URL instead of downloading
             if (BuildConfig.IS_STORE_BUILD) {
-                val latestVersion = appUpdateProvider.getLatestAvailableAppVersion()
-                latestVersion.storeUrl?.let { storeUrl ->
+                val storeUrl =
+                    try {
+                        appUpdateProvider.getLatestAvailableAppVersion().storeUrl
+                    } catch (e: CancellationException) {
+                        throw e
+                    } catch (e: Exception) {
+                        withContext(dispatcherProvider.main) { failFatally(e) }
+                        return@launch
+                    }
+                if (storeUrl != null) {
                     openUrlInteractor(OpenUrlInteractor.Params(storeUrl)) { _ -> }
-                    shouldExitApp.value = true
                 }
+                // Either way bootstrap can't continue past a required update; quit rather than hang.
+                shouldExitApp.value = true
                 return@launch
             }
 
             downloadLatestAppVersionInteractor(Interactor.None()).collectLatest {
                 withContext(dispatcherProvider.main) {
+                    if (it is SuspendableResult.Failure) {
+                        failFatally(it.error)
+                        return@withContext
+                    }
                     it.handleFailureOrElse(errorResolver) {
                         when (it) {
                             is DownloadStatus.Downloading -> {
@@ -121,6 +137,10 @@ class BootstrapViewModel(
             scope.launch(dispatcherProvider.io) {
                 bootstrapInteractor(BootstrapInteractor.Params(continueAfterInterruption?.continueAt)).collectLatest {
                     withContext(dispatcherProvider.main) {
+                        if (it is SuspendableResult.Failure) {
+                            failFatally(it.error)
+                            return@withContext
+                        }
                         it.handleFailureOrElse(errorResolver) {
                             progress.value = it.progress
                             progressStatus.value = it.state.toText()
@@ -136,6 +156,15 @@ class BootstrapViewModel(
                     }
                 }
             }
+    }
+
+    /**
+     * The bootstrap window is undecorated with no other way out, so a failure that stops bootstrap
+     * must quit the app once the user dismisses the error instead of leaving a frozen splash.
+     */
+    private fun failFatally(error: Exception) {
+        cancelLoadingIndicatorTimer()
+        errorResolver.setError(error) { shouldExitApp.value = true }
     }
 
     private fun handleInterruptedState(state: BootstrapState.Interrupted) {
@@ -160,27 +189,30 @@ class BootstrapViewModel(
     }
 
     fun installUpdate(file: File) {
+        // The countdown and the Update button can both fire; never launch the installer twice.
+        if (installJob?.isActive == true) return
         val params = InstallUpdateInteractor.Params(file, pendingInstallerSha256)
-        interactorRunner.launch(installUpdateInteractor, params) { installResult ->
-            when (installResult) {
-                // Linux AppImage self-installed and relaunched, or the OS installer
-                // launched: quit (via shouldExitApp) so the new build takes over.
-                UpdateInstallResult.Relaunching,
-                UpdateInstallResult.Opened,
-                -> {
-                    shouldExitApp.value = true
-                }
+        installJob =
+            interactorRunner.launch(installUpdateInteractor, params) { installResult ->
+                when (installResult) {
+                    // Linux AppImage self-installed and relaunched, or the OS installer
+                    // launched: quit (via shouldExitApp) so the new build takes over.
+                    UpdateInstallResult.Relaunching,
+                    UpdateInstallResult.Opened,
+                    -> {
+                        shouldExitApp.value = true
+                    }
 
-                // Could not launch it; keep the app open and tell the user where the
-                // download is so they can install it manually.
-                UpdateInstallResult.Revealed,
-                UpdateInstallResult.Failed,
-                -> {
-                    openInstaller.value = null
-                    installerLocation.value = file
+                    // Could not launch it; keep the app open and tell the user where the
+                    // download is so they can install it manually.
+                    UpdateInstallResult.Revealed,
+                    UpdateInstallResult.Failed,
+                    -> {
+                        openInstaller.value = null
+                        installerLocation.value = file
+                    }
                 }
             }
-        }
     }
 
     private fun BootstrapState.toText(): String =

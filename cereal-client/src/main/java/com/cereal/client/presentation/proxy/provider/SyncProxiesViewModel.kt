@@ -58,11 +58,15 @@ class SyncProxiesViewModel(
         open(provider, targetMode = SyncTargetMode.EXISTING, selectedGroupId = groupId)
     }
 
+    // Bumped on every open so results of a sync left running in the background can't land on a new wizard.
+    private var session = 0
+
     private fun open(
         provider: ProxyVendor,
         targetMode: SyncTargetMode,
         selectedGroupId: String?,
     ) {
+        session++
         val defaultCountry = ProxyGeoCatalogue.countries.firstOrNull()?.code ?: ProxyGeoCatalogue.UNITED_STATES_CODE
         _state.value =
             SyncWizardState.Open(
@@ -84,6 +88,7 @@ class SyncProxiesViewModel(
     }
 
     private fun loadContext(provider: ProxyVendor) {
+        val startedIn = session
         scope.launch(dispatcherProvider.io) {
             val groups =
                 getProxyGroupsInteractor
@@ -97,6 +102,7 @@ class SyncProxiesViewModel(
                     .first()
                     ?.let { it.availableTrafficGb <= 0.0 } ?: false
             withContext(dispatcherProvider.main) {
+                if (session != startedIn) return@withContext
                 update { current ->
                     current.copy(
                         existingGroups = groups,
@@ -165,10 +171,16 @@ class SyncProxiesViewModel(
             )
 
         update { it.copy(step = SyncWizardStep.SYNCING, failed = false) }
+        val startedIn = session
 
         scope.launch(dispatcherProvider.io) {
             syncProxiesInteractor(SyncProxiesInteractor.Params(provider, config)) { result ->
                 withContext(dispatcherProvider.main) {
+                    if (session != startedIn) {
+                        // The wizard was dismissed; still health-check what a background sync wrote.
+                        if (result is SuspendableResult.Success) launchHealthCheck(result.value.groupId, result.value.groupName)
+                        return@withContext
+                    }
                     when (result) {
                         is SuspendableResult.Success -> {
                             update {

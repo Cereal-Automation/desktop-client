@@ -157,6 +157,7 @@ class ApplicationSettingsViewModel(
     val errorAction: State<ErrorAction> = errorResolver.errorAction
 
     private var downloadJob: Job? = null
+    private var appliedNotificationSettings: List<Any?>? = null
 
     init {
         getApplicationSettings()
@@ -200,11 +201,37 @@ class ApplicationSettingsViewModel(
     }
 
     private fun updateApplicationSettings(applicationSettings: ApplicationPreferenceSettings) {
-        _desktopNotificationsEnabled.value = applicationSettings.desktopNotificationsEnabled
         _developmentScriptsEnabled.value = applicationSettings.developmentScriptsEnabled
         _showDebugLogsEnabled.value = applicationSettings.showDebugLogs
         _proxyHealthCheckInterval.value = applicationSettings.proxyHealthCheckInterval
         _discordActivityStatusEnabled.value = applicationSettings.discordActivityStatusEnabled
+
+        // The settings flow re-emits on any preference change. Notification fields are only persisted on
+        // Save, so overwrite them only when their stored values actually changed — otherwise toggling an
+        // unrelated setting would wipe the user's unsaved notification edits.
+        val notificationSettings =
+            with(applicationSettings) {
+                listOf(
+                    desktopNotificationsEnabled,
+                    discordWebhookEnabled,
+                    discordWebhookUrl,
+                    telegramEnabled,
+                    telegramBotToken,
+                    telegramChatId,
+                    emailEnabled,
+                    emailSmtpHost,
+                    emailSmtpPort,
+                    emailUsername,
+                    emailPassword,
+                    emailFrom,
+                    emailTo,
+                    emailUseTls,
+                )
+            }
+        if (notificationSettings == appliedNotificationSettings) return
+        appliedNotificationSettings = notificationSettings
+
+        _desktopNotificationsEnabled.value = applicationSettings.desktopNotificationsEnabled
         _discordWebhookEnabledState.value = applicationSettings.discordWebhookEnabled
         discordWebhookUrlState.text = applicationSettings.discordWebhookUrl.orEmpty()
         _telegramEnabled.value = applicationSettings.telegramEnabled
@@ -460,9 +487,10 @@ class ApplicationSettingsViewModel(
                     when (downloadResult) {
                         is SuspendableResult.Failure -> {
                             withContext(dispatcherProvider.main) {
+                                // Set the error first: dismissing cancels this very job.
+                                errorResolver.setError(downloadResult.error)
                                 dismissDownloadDialog()
                             }
-                            errorResolver.setError(downloadResult.error)
                         }
 
                         is SuspendableResult.Success -> {

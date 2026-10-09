@@ -69,7 +69,7 @@ class ScriptDetailViewModel(
 
     fun onScriptLoaded(script: MarketplaceScript) {
         loadedScript = script
-        installState.value = InstallState.Idle
+        installState.value = InstallState.Loading
         scope.launch(dispatcherProvider.io) {
             val user = (getAuthenticatedUserInteractor(Interactor.None()).first() as? SuspendableResult.Success)?.value
             if (user?.isGuest == true && !script.isFree) {
@@ -80,31 +80,36 @@ class ScriptDetailViewModel(
             }
             isScriptInstalledInteractor(IsScriptInstalledInteractor.Params(script.publicIdentifier)) { result ->
                 withContext(dispatcherProvider.main) {
+                    installState.value = InstallState.Idle
                     result.handleFailureOrElse(errorResolver) { isInstalled ->
                         if (isInstalled) {
                             installState.value = InstallState.AlreadyInstalled
-                            runningTasksJob?.cancel()
-                            runningTasksJob =
-                                scope.launch(dispatcherProvider.io) {
-                                    val pkg = scriptRepository.getScript(script.publicIdentifier)
-                                    loadedScriptPackage = pkg
-                                    if (pkg != null) {
-                                        hasRunningTasksForScriptInteractor(
-                                            HasRunningTasksForScriptInteractor.Params(pkg.manifest.packageName),
-                                        ).collect { res ->
-                                            if (res is SuspendableResult.Success) {
-                                                withContext(dispatcherProvider.main) {
-                                                    hasRunningTasks.value = res.value
-                                                }
-                                            }
-                                        }
-                                    }
-                                }
+                            observeInstalledPackage(script)
                         }
                     }
                 }
             }
         }
+    }
+
+    private fun observeInstalledPackage(script: MarketplaceScript) {
+        runningTasksJob?.cancel()
+        runningTasksJob =
+            scope.launch(dispatcherProvider.io) {
+                val pkg = scriptRepository.getScript(script.publicIdentifier)
+                loadedScriptPackage = pkg
+                if (pkg != null) {
+                    hasRunningTasksForScriptInteractor(
+                        HasRunningTasksForScriptInteractor.Params(pkg.manifest.packageName),
+                    ).collect { res ->
+                        if (res is SuspendableResult.Success) {
+                            withContext(dispatcherProvider.main) {
+                                hasRunningTasks.value = res.value
+                            }
+                        }
+                    }
+                }
+            }
     }
 
     fun onInstall(script: MarketplaceScript) {
@@ -117,6 +122,7 @@ class ScriptDetailViewModel(
                     when (result) {
                         is SuspendableResult.Success -> {
                             installState.value = InstallState.Success
+                            observeInstalledPackage(script)
                         }
 
                         is SuspendableResult.Failure -> {
@@ -176,7 +182,9 @@ class ScriptDetailViewModel(
                     when (result) {
                         is SuspendableResult.Success -> {
                             installState.value = InstallState.Idle
+                            runningTasksJob?.cancel()
                             loadedScriptPackage = null
+                            hasRunningTasks.value = false
                         }
 
                         is SuspendableResult.Failure -> {

@@ -73,6 +73,8 @@ class MainViewModel(
                 withContext(dispatcherProvider.main) {
                     if (result is SuspendableResult.Success) {
                         username = result.value?.name
+                        // Logging out tears down the router; the next login lands on Tasks again.
+                        if (result.value == null) selectedRoute = Root.Routing.Tasks()
                     }
                     menuItems.value = buildMenuItems()
                 }
@@ -143,10 +145,13 @@ class MainViewModel(
     }
 
     fun onMenuItemClicked(item: MenuItemUiModel) {
-        item.route?.let { route ->
-            selectedRoute = route
-            menuItems.value = buildMenuItems()
-        }
+        item.route?.let { onNavigatedTo(it) }
+    }
+
+    /** Tracks in-app navigation, including routes without a menu item, so the highlight never goes stale. */
+    fun onNavigatedTo(route: Root.Routing) {
+        selectedRoute = route
+        menuItems.value = buildMenuItems()
     }
 
     fun onMenuItemReselected(route: Root.Routing) {

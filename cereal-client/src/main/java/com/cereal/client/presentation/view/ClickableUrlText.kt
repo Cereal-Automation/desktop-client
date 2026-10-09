@@ -89,7 +89,7 @@ fun ClickableUrlText(
     BasicText(
         text = annotatedString,
         modifier =
-            modifier.pointerInput(Unit) {
+            modifier.pointerInput(annotatedString) {
                 detectTapGestures { offset ->
                     layoutResult.value?.let { layoutResult ->
                         val position = layoutResult.getOffsetForPosition(offset)

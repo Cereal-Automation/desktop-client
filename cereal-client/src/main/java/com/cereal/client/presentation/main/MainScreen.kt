@@ -132,10 +132,7 @@ fun MainScreen(
                                         }
                                     },
                                 )
-                            }, onNavigateTo = { route ->
-                                val menuItem = viewModel.menuItems.value.find { it.route != null && it.route::class == route::class }
-                                menuItem?.let { viewModel.onMenuItemClicked(it) }
-                            })
+                            }, onNavigateTo = { route -> viewModel.onNavigatedTo(route) })
                         }
                     }
                 } else {

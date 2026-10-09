@@ -13,7 +13,7 @@ class TaskDialogManager {
     }
 
     fun showEditGroup(group: ScriptPackageGroup) {
-        dialogState.value = TaskViewState.DialogState.EditingTaskGroup(group.name)
+        dialogState.value = TaskViewState.DialogState.EditingTaskGroup(group)
     }
 
     fun showConfirmDeletion(group: ScriptPackageGroup) {

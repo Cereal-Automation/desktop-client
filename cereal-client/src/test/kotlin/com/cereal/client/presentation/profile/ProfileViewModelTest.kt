@@ -51,7 +51,7 @@ class ProfileViewModelTest {
     }
 
     private fun createViewModel() {
-        viewModel = ProfileViewModel(CoroutineScope(dispatcher), dispatcherProvider, getUserInteractor, logoutInteractor)
+        viewModel = ProfileViewModel(CoroutineScope(dispatcher), dispatcherProvider, getUserInteractor, logoutInteractor, mockk(relaxed = true))
     }
 
     @Test

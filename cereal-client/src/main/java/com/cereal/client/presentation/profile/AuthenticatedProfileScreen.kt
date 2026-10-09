@@ -42,8 +42,6 @@ import com.cereal_automation.cereal_client.generated.resources.view_profile_desc
 import com.cereal_automation.cereal_client.generated.resources.visit
 import org.jetbrains.compose.resources.painterResource
 import org.jetbrains.compose.resources.stringResource
-import java.awt.Desktop
-import java.net.URI
 
 @Composable
 fun AuthenticatedProfileScreen(
@@ -150,7 +148,7 @@ fun AuthenticatedProfileScreen(
                                 title = stringResource(Res.string.view_profile),
                                 description = stringResource(Res.string.view_profile_desc),
                                 actionText = stringResource(Res.string.visit),
-                                onClick = { Desktop.getDesktop().browse(URI(applicationConfig.marketplaceViewProfileUrl)) },
+                                onClick = { vm.openUrl(applicationConfig.marketplaceViewProfileUrl) },
                             )
                         }
 
@@ -158,7 +156,7 @@ fun AuthenticatedProfileScreen(
                             title = stringResource(Res.string.subscriptions),
                             description = stringResource(Res.string.subscriptions_desc),
                             actionText = stringResource(Res.string.visit),
-                            onClick = { Desktop.getDesktop().browse(URI(applicationConfig.marketplaceViewSubscriptionsUrl)) },
+                            onClick = { vm.openUrl(applicationConfig.marketplaceViewSubscriptionsUrl) },
                         )
                     }
                 }
