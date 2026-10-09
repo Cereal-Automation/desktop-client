@@ -16,6 +16,7 @@ import com.cereal.client.domain.model.task.ScriptPackageGroup
 import com.cereal.client.presentation.error.ErrorResolver
 import com.cereal.client.presentation.error.handleFailureOrElse
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
@@ -160,7 +161,7 @@ class TasksActionHandler(
     fun startTaskInternal(
         scope: CoroutineScope,
         taskId: String,
-    ) {
+    ): Job =
         scope.launch(dispatcherProvider.io) {
             startTaskInteractor(
                 StartTaskInteractor.Params(
@@ -174,7 +175,6 @@ class TasksActionHandler(
                 }
             }
         }
-    }
 
     fun stopTask(
         scope: CoroutineScope,

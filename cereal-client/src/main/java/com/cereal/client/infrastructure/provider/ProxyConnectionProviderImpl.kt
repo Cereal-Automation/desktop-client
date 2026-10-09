@@ -19,6 +19,7 @@ import com.cereal.client.domain.repository.ProxyProviderConnectorRepository
 import com.cereal.client.domain.repository.ProxyProviderCredentialRepository
 import com.cereal.client.domain.repository.ProxyRepository
 import com.cereal.client.infrastructure.data.datasource.network.ProxyProviderDataSource
+import com.cereal.client.infrastructure.data.datasource.network.exception.ApiException
 import com.cereal.client.infrastructure.data.datasource.network.exception.AuthenticationException
 import com.cereal.client.infrastructure.data.datasource.network.marsproxies.dto.MarsProxiesGenerateProxyListRequest
 import kotlinx.coroutines.flow.first
@@ -93,7 +94,11 @@ class ProxyConnectionProviderImpl(
         val rendered =
             try {
                 proxyProviderDataSource.generateProxies(token, request)
+            } catch (_: AuthenticationException) {
+                throw InvalidProxyProviderTokenException(provider.name)
             } catch (e: IOException) {
+                throw ProxySyncFailedException(provider.name, e)
+            } catch (e: ApiException) {
                 throw ProxySyncFailedException(provider.name, e)
             }
 
@@ -136,6 +141,8 @@ class ProxyConnectionProviderImpl(
         } catch (_: AuthenticationException) {
             throw InvalidProxyProviderTokenException(provider.name)
         } catch (e: IOException) {
+            throw ProxyProviderConnectivityException(provider.name, e)
+        } catch (e: ApiException) {
             throw ProxyProviderConnectivityException(provider.name, e)
         }
 

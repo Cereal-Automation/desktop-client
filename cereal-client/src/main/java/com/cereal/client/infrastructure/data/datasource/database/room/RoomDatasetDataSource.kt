@@ -6,6 +6,7 @@ import com.cereal.client.domain.model.user.User
 import com.cereal.client.infrastructure.data.datasource.database.DatasetDataSource
 import com.cereal.client.infrastructure.data.datasource.database.room.mapper.DatasetMapper
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.map
 import java.util.UUID
 import kotlin.time.Clock

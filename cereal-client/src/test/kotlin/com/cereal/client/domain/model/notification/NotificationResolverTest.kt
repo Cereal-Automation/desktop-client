@@ -111,12 +111,12 @@ class NotificationResolverTest {
     }
 
     @Test
-    fun `telegram defaults to markdown formatting`() {
+    fun `telegram defaults to plain text so stray markdown characters cannot break delivery`() {
         val resolutions =
             resolver.resolve(basic, null, config(telegramEnabled = true, telegramBotToken = "123:token", telegramChatId = "123"))
         val data = resolved(resolutions, NotificationChannelType.TELEGRAM).data as TelegramNotificationData
-        assertEquals("*Title*\nMessage", data.text)
-        assertEquals(TelegramParseMode.MARKDOWN, data.parseMode)
+        assertEquals("Title\nMessage", data.text)
+        assertNull(data.parseMode)
     }
 
     @Test
@@ -185,6 +185,20 @@ class NotificationResolverTest {
         assertEquals("override@from.com", data.from) // override wins (no script value)
         assertEquals("smtp.override.com", data.smtpHost) // override wins
         assertEquals(25, data.smtpPort) // override wins over global
+        assertEquals(false, data.useTls) // override wins over global; the script set none
+    }
+
+    @Test
+    fun `a blank title falls back to the default email subject`() {
+        val request = basic.copy(title = " ")
+        val resolutions =
+            resolver.resolve(
+                request,
+                null,
+                config(emailEnabled = true, emailSmtpHost = "smtp.x.com", emailSmtpPort = 25, emailFrom = "a@x.com", emailTo = "b@x.com"),
+            )
+        val data = resolved(resolutions, NotificationChannelType.EMAIL).data as EmailNotificationData
+        assertEquals("Notification", data.subject)
     }
 
     // --- validation -> MissingConfig (never throws, never aborts other channels) ---

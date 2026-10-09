@@ -505,7 +505,8 @@ class MarketplaceApiClient(
         val response = downloadClient.newCall(request).await()
 
         if (!response.isSuccessful) {
-            throw apiException(response, "Failed to download script.").also { response.close() }
+            response.close()
+            throw apiException(response, "Failed to download script.")
         }
 
         return response.body.byteStream()
@@ -531,11 +532,15 @@ class MarketplaceApiClient(
     }
 
     @Throws(ApiException::class)
-    private suspend inline fun <reified T> handleResponse(response: Response): T =
-        response.use {
-            if (response.isSuccessful) {
-                return json.decodeFromString<T>(response.body.string())
+    private suspend inline fun <reified T> handleResponse(response: Response): T = response.use { handleOpenResponse(it) }
+
+    @Throws(ApiException::class)
+    private inline fun <reified T> handleOpenResponse(response: Response): T {
+        if (response.isSuccessful) {
+            response.body.string().let { responseBody ->
+                return json.decodeFromString<T>(responseBody)
             }
+        } else {
             if (response.code == HTTP_UNAUTHORIZED) {
                 throw AuthenticationException()
             }
@@ -551,6 +556,7 @@ class MarketplaceApiClient(
 
             throw apiException(response, errorResponse?.message, errorResponse?.errors)
         }
+    }
 
     /**
      * Builds an [ApiException] carrying the status and CDN diagnostics of the failed response.

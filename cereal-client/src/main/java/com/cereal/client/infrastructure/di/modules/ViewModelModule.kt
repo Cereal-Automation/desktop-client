@@ -212,7 +212,7 @@ object ViewModelModule {
                     get(),
                 )
             }
-            factory { (scope: CoroutineScope) -> ProfileViewModel(scope, get(), get(), get()) }
+            factory { (scope: CoroutineScope) -> ProfileViewModel(scope, get(), get(), get(), get()) }
             factory { (scope: CoroutineScope) ->
                 NotificationCenterViewModel(
                     scope = scope,
@@ -225,7 +225,7 @@ object ViewModelModule {
                     errorResolver = get(),
                 )
             }
-            factory { (scope: CoroutineScope) -> BrandPaywallViewModel(scope, get(), get(), get(), get(), get()) }
+            factory { (scope: CoroutineScope) -> BrandPaywallViewModel(scope, get(), get(), get(), get(), get(), get()) }
             factory { ErrorResolver() }
             factory { (scope: CoroutineScope, scriptPackage: ScriptPackage, initialScriptPackageInstance: ScriptPackageInstance?) ->
                 ScriptConfigurationViewModel(

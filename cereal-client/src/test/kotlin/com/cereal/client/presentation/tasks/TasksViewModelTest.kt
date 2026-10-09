@@ -214,7 +214,7 @@ class TasksViewModelTest {
             viewModel.hierarchicalListViewModel.selectParent(group)
 
             // Act
-            viewModel.deleteGroup()
+            viewModel.deleteGroup(group)
             dispatcher.scheduler.advanceUntilIdle()
 
             // Assert
@@ -241,7 +241,7 @@ class TasksViewModelTest {
             viewModel.hierarchicalListViewModel.selectParent(group)
 
             // Act
-            viewModel.deleteGroup()
+            viewModel.deleteGroup(group)
             dispatcher.scheduler.advanceUntilIdle()
 
             // Assert
@@ -745,7 +745,7 @@ class TasksViewModelTest {
             createViewModel()
             viewModel.hierarchicalListViewModel.selectParent(ScriptPackageGroup("1", "Group 1"))
 
-            viewModel.editGroup("Renamed")
+            viewModel.editGroup(ScriptPackageGroup("1", "Group 1"), "Renamed")
             dispatcher.scheduler.advanceUntilIdle()
 
             coVerify(exactly = 1) { editScriptInstanceGroupInteractor(any(), any()) }

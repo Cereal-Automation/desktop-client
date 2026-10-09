@@ -20,6 +20,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.requiredHeight
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
@@ -553,8 +554,9 @@ private fun ResizeDragHandle(
             modifier =
                 Modifier
                     .fillMaxWidth()
-                    .height(8.dp)
-                    .offset(y = (-3.5).dp)
+                    // requiredHeight escapes the 1dp parent constraint (height() would be clamped to it) and
+                    // centres the 8dp hit area on the border line.
+                    .requiredHeight(8.dp)
                     .then(
                         if (enabled) {
                             Modifier.pointerHoverIcon(PointerIcon(Cursor(Cursor.N_RESIZE_CURSOR)))

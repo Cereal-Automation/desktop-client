@@ -108,8 +108,8 @@ class DownloadsApiClient(
     @Throws(ApiException::class)
     private inline fun <reified T> handleResponse(response: Response): T =
         response.use {
-            if (!response.isSuccessful) throw NetworkException()
-            json.decodeFromString<T>(response.body.string())
+            if (!it.isSuccessful) throw NetworkException()
+            json.decodeFromString<T>(it.body.string())
         }
 
     private companion object {

@@ -91,12 +91,14 @@ fun SyncIconButton(
                         ),
                 )
 
-            if (loadState is LoadState.NotLoading && loadState.success) {
-                LaunchedEffect(Unit) {
+            // Keyed on loadState so a new sync started within the 1s window cancels this and clears the
+            // checkmark instead of leaving it stuck on.
+            LaunchedEffect(loadState) {
+                if (loadState is LoadState.NotLoading && loadState.success) {
                     showSuccessIcon = true
                     delay(1000)
-                    showSuccessIcon = false
                 }
+                showSuccessIcon = false
             }
 
             val icon = if (showSuccessIcon) Icons.Filled.Done else Icons.Filled.Sync

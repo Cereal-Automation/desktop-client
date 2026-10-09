@@ -1,8 +1,10 @@
 package com.cereal.client.presentation.tasks
 
+import com.cereal.client.domain.model.task.UserInteraction
 import fixtures.aScriptInstance
 import fixtures.aScriptPackageInstance
 import fixtures.aTask
+import io.mockk.mockk
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertFalse
 import org.junit.jupiter.api.Assertions.assertTrue
@@ -75,21 +77,27 @@ class TasksViewStateBuilderTest {
 
     @Test
     fun `extractUserInteractions is empty when no task awaits interaction`() {
-        val packageInstance = aScriptPackageInstance("pkg1", "com.test")
-        val scriptInstance = aScriptInstance(packageInstance)
-        val filled =
-            TasksViewStateBuilder.buildDetailViewState(
-                tasks = listOf(aTask("t1", scriptInstance, running = true)),
-                selectedScriptPackageInstance = packageInstance,
-            )
+        val scriptInstance = aScriptInstance(aScriptPackageInstance("pkg1", "com.test"))
 
-        assertTrue(TasksViewStateBuilder.extractUserInteractions(filled).isEmpty())
+        assertTrue(TasksViewStateBuilder.extractUserInteractions(listOf(aTask("t1", scriptInstance, running = true))).isEmpty())
     }
 
     @Test
-    fun `extractUserInteractions is empty for a non-filled state`() {
-        val noSelection = TaskViewState.DetailViewState.NoSelection
+    fun `extractUserInteractions is empty when there are no tasks`() {
+        assertFalse(TasksViewStateBuilder.extractUserInteractions(null).isNotEmpty())
+    }
 
-        assertFalse(TasksViewStateBuilder.extractUserInteractions(noSelection).isNotEmpty())
+    @Test
+    fun `extractUserInteractions includes tasks of every package, not just the selected one`() {
+        val interaction = UserInteraction.ContinueButton(mockk(relaxed = true))
+        val first = aTask("t1", aScriptInstance(aScriptPackageInstance("pkg1", "com.one")), running = true)
+        val second = aTask("t2", aScriptInstance(aScriptPackageInstance("pkg2", "com.two")), running = true)
+
+        val result =
+            TasksViewStateBuilder.extractUserInteractions(
+                listOf(first.copy(userInteraction = interaction), second.copy(userInteraction = interaction)),
+            )
+
+        assertEquals(listOf("t1", "t2"), result.map { it.id.id })
     }
 }

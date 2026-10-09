@@ -27,11 +27,13 @@ import com.github.kittinunf.result.coroutines.map
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.cancel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.joinAll
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.io.File
@@ -71,6 +73,9 @@ class TasksViewModel(
             },
             onChildSelectedChange = { scriptInstance ->
                 updateTasks(scriptInstance)
+                // Restore this script's last selected task (fresh copy) so logs never show another script's task.
+                val remembered = scriptInstance?.let { selectedTaskInScriptInstance[it] }
+                onTaskSelected(remembered?.let { r -> tasks?.firstOrNull { it.id == r.id } })
             },
             onParentMenuOptionSelected = { group, menuItem ->
                 if (menuItem == MenuOption.DELETE) {
@@ -106,6 +111,11 @@ class TasksViewModel(
     val dialogState get() = dialogManager.dialogState
     val logViewerMessages = mutableStateOf<List<LoggingEvent>>(emptyList())
     val artifacts = mutableStateOf<List<Artifact>>(emptyList())
+
+    /** The VM owns its scope (it's a Koin factory per screen visit), so the screen must release it. */
+    fun dispose() {
+        scope.cancel()
+    }
 
     fun clearLogs() {
         logViewerMessages.value = emptyList()
@@ -269,8 +279,14 @@ class TasksViewModel(
         dialogManager.showConfiguration(scriptPackageInstance)
     }
 
+    /** The group that actually holds [scriptInstance]; menu actions must not assume it's the selected one. */
+    private fun groupOf(scriptInstance: ScriptPackageInstance): ScriptPackageGroup? =
+        tasksListObserver.childrenByGroupState.entries
+            .firstOrNull { (_, items) -> items.any { it.id.id == scriptInstance.id } }
+            ?.key ?: hierarchicalListViewModel.selectedParent
+
     fun moveScriptToGroup(scriptInstance: ScriptPackageInstance) {
-        val currentGroup = hierarchicalListViewModel.selectedParent
+        val currentGroup = groupOf(scriptInstance)
         if (currentGroup != null) {
             val availableGroups = tasksListObserver.childrenByGroupState.keys.toList()
             dialogManager.showMoveScriptToGroup(
@@ -282,8 +298,8 @@ class TasksViewModel(
     }
 
     fun duplicateScriptInstance(scriptPackageInstance: ScriptPackageInstance) {
-        val selectedGroup = hierarchicalListViewModel.selectedParent ?: return
-        dialogManager.showDuplicateScript(selectedGroup, scriptPackageInstance)
+        val group = groupOf(scriptPackageInstance) ?: return
+        dialogManager.showDuplicateScript(group, scriptPackageInstance)
     }
 
     fun createGroup(groupName: String) {
@@ -293,21 +309,17 @@ class TasksViewModel(
         }
     }
 
-    fun editGroup(groupName: String) {
-        val taskGroup = hierarchicalListViewModel.selectedParent
-        val taskGroupId = taskGroup?.id ?: return
-
-        tasksActionHandler.editGroup(scope, taskGroupId, groupName) {
+    fun editGroup(
+        group: ScriptPackageGroup,
+        groupName: String,
+    ) {
+        tasksActionHandler.editGroup(scope, group.id, groupName) {
             closeDialog()
         }
     }
 
-    fun deleteGroup() {
-        val group = hierarchicalListViewModel.selectedParent
-
-        group?.let {
-            onDeleteGroup(it)
-        }
+    fun deleteGroup(group: ScriptPackageGroup) {
+        onDeleteGroup(group)
     }
 
     fun onScriptInstanceCreated(scriptPackageInstance: ScriptPackageInstance) {
@@ -346,7 +358,7 @@ class TasksViewModel(
         restartErroredJob =
             scope.launch {
                 try {
-                    erroredIds.forEach { id -> tasksActionHandler.startTaskInternal(scope, id) }
+                    erroredIds.map { id -> tasksActionHandler.startTaskInternal(scope, id) }.joinAll()
                 } finally {
                     restartErroredInFlight.value = false
                 }
@@ -418,7 +430,7 @@ class TasksViewModel(
     }
 
     private fun updateUserInteractions() {
-        userInteractions.value = TasksViewStateBuilder.extractUserInteractions(tasksViewState.value)
+        userInteractions.value = TasksViewStateBuilder.extractUserInteractions(tasks)
     }
 
     private fun observeTasks() {

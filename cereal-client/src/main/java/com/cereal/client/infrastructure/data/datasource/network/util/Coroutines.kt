@@ -28,7 +28,6 @@ private class ContinuationCallback(
         call: Call,
         response: Response,
     ) {
-        // If the coroutine was cancelled meanwhile the response is never delivered; close it so the connection is freed.
         continuation.resume(response) { _, value, _ -> value.close() }
     }
 

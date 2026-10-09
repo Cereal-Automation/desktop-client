@@ -166,15 +166,17 @@ class KeyValueRoomMapper(
             }
 
             ValueType.CUSTOM_DATASET_GROUP -> {
-                // A deleted dataset resolves to null (like a deleted proxy) instead of failing the whole load.
-                val dataSource = datasetDataSource ?: throw MissingPropertyException("Missing dataset datasource")
-                stringValue?.let { dataSource.getDatasetGroup(user, it) }
+                // A deleted dataset leaves a stale reference; resolve it to null like a deleted proxy.
+                stringValue?.let {
+                    (datasetDataSource ?: throw MissingPropertyException("Missing dataset datasource")).getDatasetGroup(user, it)
+                }
             }
 
             ValueType.CUSTOM_DATASET -> {
-                // A deleted dataset resolves to null (like a deleted proxy) instead of failing the whole load.
-                val dataSource = datasetDataSource ?: throw MissingPropertyException("Missing dataset datasource")
-                stringValue?.let { dataSource.getDataset(user, it) }
+                // A deleted dataset leaves a stale reference; resolve it to null like a deleted proxy.
+                stringValue?.let {
+                    (datasetDataSource ?: throw MissingPropertyException("Missing dataset datasource")).getDataset(user, it)
+                }
             }
 
             ValueType.UNKNOWN -> {
@@ -249,15 +251,17 @@ class KeyValueRoomMapper(
             }
 
             ValueType.CUSTOM_DATASET_GROUP -> {
-                // A deleted dataset resolves to null (like a deleted proxy) instead of failing the whole load.
-                val dataSource = datasetDataSource ?: throw MissingPropertyException("Missing dataset datasource")
-                stringValue?.let { dataSource.getDatasetGroup(user, it) }
+                // A deleted dataset leaves a stale reference; resolve it to null like a deleted proxy.
+                stringValue?.let {
+                    (datasetDataSource ?: throw MissingPropertyException("Missing dataset datasource")).getDatasetGroup(user, it)
+                }
             }
 
             ValueType.CUSTOM_DATASET -> {
-                // A deleted dataset resolves to null (like a deleted proxy) instead of failing the whole load.
-                val dataSource = datasetDataSource ?: throw MissingPropertyException("Missing dataset datasource")
-                stringValue?.let { dataSource.getDataset(user, it) }
+                // A deleted dataset leaves a stale reference; resolve it to null like a deleted proxy.
+                stringValue?.let {
+                    (datasetDataSource ?: throw MissingPropertyException("Missing dataset datasource")).getDataset(user, it)
+                }
             }
 
             ValueType.UNKNOWN -> {
@@ -347,15 +351,17 @@ class KeyValueRoomMapper(
             }
 
             ValueType.CUSTOM_DATASET_GROUP -> {
-                // A deleted dataset resolves to null (like a deleted proxy) instead of failing the whole load.
-                val dataSource = datasetDataSource ?: throw MissingPropertyException("Missing dataset datasource")
-                stringValue?.let { dataSource.getDatasetGroup(user, it) }
+                // A deleted dataset leaves a stale reference; resolve it to null like a deleted proxy.
+                stringValue?.let {
+                    (datasetDataSource ?: throw MissingPropertyException("Missing dataset datasource")).getDatasetGroup(user, it)
+                }
             }
 
             ValueType.CUSTOM_DATASET -> {
-                // A deleted dataset resolves to null (like a deleted proxy) instead of failing the whole load.
-                val dataSource = datasetDataSource ?: throw MissingPropertyException("Missing dataset datasource")
-                stringValue?.let { dataSource.getDataset(user, it) }
+                // A deleted dataset leaves a stale reference; resolve it to null like a deleted proxy.
+                stringValue?.let {
+                    (datasetDataSource ?: throw MissingPropertyException("Missing dataset datasource")).getDataset(user, it)
+                }
             }
 
             ValueType.UNKNOWN -> {

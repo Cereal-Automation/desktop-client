@@ -63,6 +63,10 @@ class ScriptSelectionViewModel(
     val scriptInstanceStarted = mutableStateOf<ScriptPackageInstance?>(null)
     val errorAction = errorResolver.errorAction
     private var scriptConfigurationViewModel: ScriptConfigurationViewModel? = null
+
+    // The initial script is auto-selected once; later emissions (refresh, install) must not override
+    // the user's own selection or discard their edited configuration.
+    private var initialSelectionApplied = false
     val startScriptWarningConfirmation = mutableStateOf<String?>(null)
     val showNoNotificationChannelsWarning = mutableStateOf(false)
 
@@ -111,22 +115,24 @@ class ScriptSelectionViewModel(
                             overviewViewState.value = ScriptSelectionState.Overview.Filled(scriptsListViewModel)
 
                             // Auto-select the script if duplicating from an existing instance.
-                            initialScriptPackageInstance?.let { instance ->
+                            initialScriptPackageInstance?.takeUnless { initialSelectionApplied }?.let { instance ->
                                 val matchingScript =
                                     items.find { item ->
                                         item.id.manifest.packageName == instance.definition.manifest.packageName
                                     }
                                 matchingScript?.let { scriptItem ->
+                                    initialSelectionApplied = true
                                     scriptsListViewModel.selectItem(scriptItem.id)
                                 }
                             }
 
-                            if (initialPublicIdentifier != null && initialScriptPackageInstance == null) {
+                            if (!initialSelectionApplied && initialPublicIdentifier != null && initialScriptPackageInstance == null) {
                                 val matchingScript =
                                     items.find { item ->
                                         item.id.manifest.packageName == initialPublicIdentifier
                                     }
                                 matchingScript?.let { scriptItem ->
+                                    initialSelectionApplied = true
                                     scriptsListViewModel.selectItem(scriptItem.id)
                                 }
                             }

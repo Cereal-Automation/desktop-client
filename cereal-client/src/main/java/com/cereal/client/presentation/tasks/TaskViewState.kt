@@ -74,8 +74,10 @@ sealed class TaskViewState {
         data object AddingTaskGroup : DialogState()
 
         class EditingTaskGroup(
-            val initialValue: String,
-        ) : DialogState()
+            val group: ScriptPackageGroup,
+        ) : DialogState() {
+            val initialValue: String get() = group.name
+        }
 
         class SelectingScript(
             val scriptPackageGroup: ScriptPackageGroup,

@@ -23,6 +23,8 @@ import com.cereal.sdk.component.notification.discord.model.embed.VideoEmbed
  * Mapper to convert SDK Discord models to serializable models for JSON serialization.
  */
 object DiscordModelMapper {
+    private const val HEX_RADIX = 16
+
     fun toSerializable(message: DiscordMessage): SerializableDiscordMessage =
         SerializableDiscordMessage(
             username = message.username,
@@ -40,7 +42,7 @@ object DiscordModelMapper {
             description = embed.description,
             url = embed.url,
             timestamp = embed.timestamp,
-            color = embed.color?.let(::parseColor),
+            color = parseColor(embed.color),
             footer = embed.footer?.let { toSerializable(it) },
             image = embed.image?.let { toSerializable(it) },
             thumbnail = embed.thumbnail?.let { toSerializable(it) },
@@ -49,6 +51,16 @@ object DiscordModelMapper {
             author = embed.author?.let { toSerializable(it) },
             fields = embed.fields?.map { toSerializable(it) },
         )
+
+    /** Discord wants an integer color; scripts may pass `#RRGGBB`, `0xRRGGBB` or a decimal string. */
+    internal fun parseColor(color: String?): Int? {
+        val value = color?.trim() ?: return null
+        return when {
+            value.startsWith("#") -> value.drop(1).toIntOrNull(HEX_RADIX)
+            value.startsWith("0x", ignoreCase = true) -> value.drop(2).toIntOrNull(HEX_RADIX)
+            else -> value.toIntOrNull()
+        }
+    }
 
     private fun toSerializable(author: AuthorEmbed): SerializableAuthorEmbed =
         SerializableAuthorEmbed(
@@ -100,16 +112,4 @@ object DiscordModelMapper {
             height = video.height,
             width = video.width,
         )
-
-    /** Accepts decimal ("6613812") or hex ("#64EB34", "0x64EB34") colors; anything else is dropped rather than failing the send. */
-    internal fun parseColor(color: String): Int? {
-        val trimmed = color.trim()
-        val hex = trimmed.removePrefix("#").removePrefix("0x").removePrefix("0X")
-        return when {
-            hex != trimmed -> hex.toIntOrNull(HEX_RADIX)
-            else -> trimmed.toIntOrNull()
-        }
-    }
-
-    private const val HEX_RADIX = 16
 }

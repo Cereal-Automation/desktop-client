@@ -53,15 +53,15 @@ class FileSystemScriptsDataSource(
         user: User,
         installedSdkVersion: SemVer,
     ): ScriptPackageDefinition {
-        // Install and load the new release before touching the old one: if the download breaks, the JAR
-        // can't load, or it needs a newer SDK, the user keeps the working script.
+        // Store and validate the new jar first: a failed download, load or SDK check must leave the
+        // installed version in place rather than leaving the user without the script.
         val updated = storeScript(scriptPackage.manifest.packageName, release, inputStream, user, installedSdkVersion)
 
-        if (scriptPackage.source.canonicalFile != updated.source.canonicalFile) {
+        if (scriptPackage.source.canonicalPath != updated.source.canonicalPath) {
             scriptPackage.source.delete()
         }
-        getOrCreateScriptsFlow(user).update { list ->
-            list.filterNot { it.manifest.packageName == scriptPackage.manifest.packageName && it !== updated }
+        getOrCreateScriptsFlow(user).update { definitions ->
+            definitions.filterNot { it.manifest.packageName == scriptPackage.manifest.packageName && it !== updated }
         }
         return updated
     }

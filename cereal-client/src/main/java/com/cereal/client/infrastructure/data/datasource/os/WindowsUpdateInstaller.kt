@@ -15,16 +15,18 @@ import java.nio.file.Files
  * so — unlike Linux/macOS — the swap cannot happen in-process. Instead this spawns a detached,
  * console-less `javaw` process running the app's own [com.cereal.client.updater.UpdaterMain] entry
  * point in "updater mode": it waits for this app to exit (releasing the locks), then silently
- * reinstalls the signed installer and relaunches. Because the helper is the app-image's own bundled
- * `javaw.exe` run against the app classpath, there is **no new build artifact** — only the reused
- * signed `.exe` installer.
+ * reinstalls the signed installer and relaunches. The helper is the app-image's own bundled JVM run
+ * against the app classpath, so there is **no new build artifact** — only the reused signed `.exe`
+ * installer. The runtime and jars are first copied to [stageDir] and run from there: a helper running from the
+ * install directory would itself hold `runtime\` and `app\*.jar` open, and the installer could not
+ * overwrite them.
  *
- * We drive the existing signed jpackage NSIS installer (`installer.exe /S`) rather than a raw
- * file-copy: it already overwrites the app image and refreshes Start-menu/shortcut/uninstall
- * entries, and under `perUserInstall = true` it targets a user-writable location with no UAC. If the
- * install is per-machine (`Program Files`) or its path is undetectable, a silent reinstall would
- * need elevation, so this returns false and the caller falls back to the interactive installer — the
- * no-elevation boundary.
+ * We drive the existing signed jpackage installer (an `exe` wrapping a WiX MSI; see [UpdateApplier])
+ * rather than a raw file-copy: it already overwrites the app image and refreshes
+ * Start-menu/shortcut/uninstall entries, and under `perUserInstall = true` it targets a
+ * user-writable location with no UAC. If the install is per-machine (`Program Files`) or its path is
+ * undetectable, a silent reinstall would need elevation, so this returns false and the caller falls
+ * back to the interactive installer — the no-elevation boundary.
  *
  * The OS-touching seams are injectable so the spawn logic is unit-testable without launching a real
  * process. Whether the detached `javaw` truly outlives the parent with no console is one of the
@@ -36,7 +38,12 @@ class WindowsUpdateInstaller(
     private val javawResolver: (File) -> File? = ::defaultJavaw,
     private val classpathProvider: () -> String = { System.getProperty("java.class.path").orEmpty() },
     private val writable: (File) -> Boolean = { Files.isWritable(it.toPath()) },
-    private val helperLauncher: (List<String>) -> Unit = { command -> ProcessBuilder(command).start() },
+    private val stageDir: () -> File = { File(System.getProperty("java.io.tmpdir"), "cereal-updater") },
+    // Runs from the staged runtime's directory so the helper (and msiexec under it) holds no handle
+    // on the install directory.
+    private val helperLauncher: (List<String>) -> Unit = { command ->
+        ProcessBuilder(command).directory(File(command[0]).parentFile).start()
+    },
 ) {
     private val logger = LoggerFactory.getLogger(WindowsUpdateInstaller::class.java)
 
@@ -67,7 +74,7 @@ class WindowsUpdateInstaller(
             return false
         }
         // No-elevation boundary: a per-machine install under Program Files is not user-writable, so a
-        // silent /S reinstall there would require UAC. Degrade to the interactive installer instead.
+        // silent reinstall there would require UAC. Degrade to the interactive installer instead.
         if (!writable(app) || !writable(installDir)) {
             logger.warn("Windows install at $app is not user-writable; skipping silent self-install")
             return false
@@ -86,17 +93,35 @@ class WindowsUpdateInstaller(
 
         FileSha256.verifyMatch(installer, expectedSha256, "Windows update")
 
-        val command =
-            listOf(javaw.absolutePath, "-cp", classpathProvider(), UPDATER_MAIN_CLASS) +
-                UpdaterArguments(currentPidProvider(), installer, app, expectedSha256).toArgs()
         return try {
+            val (stagedJavaw, stagedClasspath) = stageHelper(javaw)
+            val command =
+                listOf(stagedJavaw.absolutePath, "-cp", stagedClasspath, UPDATER_MAIN_CLASS) +
+                    UpdaterArguments(currentPidProvider(), installer, app, expectedSha256).toArgs()
             helperLauncher(command)
             true
         } catch (e: IOException) {
-            logger.error("Failed to spawn the Windows updater helper", e)
+            logger.error("Failed to stage or spawn the Windows updater helper", e)
             CrashReporter.report(e)
             false
         }
+    }
+
+    /**
+     * Copies the bundled runtime (the directory holding `bin\javaw.exe`) and every classpath jar into
+     * a fresh [stageDir], returning the staged `javaw` and classpath. The previous update's stage is
+     * deleted first; its helper exited long ago.
+     */
+    private fun stageHelper(javaw: File): Pair<File, String> {
+        val stage = stageDir().apply { deleteRecursively() }
+        val runtime = javaw.absoluteFile.parentFile.parentFile
+        runtime.copyRecursively(File(stage, "runtime"))
+        val jars =
+            classpathProvider()
+                .split(File.pathSeparator)
+                .filter { it.isNotBlank() }
+                .map { File(it).copyTo(File(stage, "app/${File(it).name}"), overwrite = true) }
+        return File(stage, "runtime/${javaw.parentFile.name}/${javaw.name}") to jars.joinToString(File.pathSeparator) { it.absolutePath }
     }
 
     companion object {

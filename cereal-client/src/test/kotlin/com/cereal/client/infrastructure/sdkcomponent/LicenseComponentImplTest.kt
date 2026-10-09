@@ -51,7 +51,8 @@ class LicenseComponentImplTest {
                     every { isSuccessful } returns true
                 }
 
-            licenseComponent.cache[publicScriptId to salt] = expectedResponse
+            licenseComponent.cache[publicScriptId to salt] =
+                LicenseComponentImpl.CachedResponse(expectedResponse, System.currentTimeMillis())
 
             // Act
             val result = licenseComponent.checkScriptLicense(publicScriptId, salt)
@@ -79,6 +80,32 @@ class LicenseComponentImplTest {
             // Verify cache
             assertTrue(licenseComponent.cache.containsKey(publicScriptId to salt))
             Unit
+        }
+
+    @Test
+    fun `checkScriptLicense should not cache a failed response`() =
+        runBlocking {
+            every { response.isSuccessful } returns false
+            coEvery { dataSource.checkScriptLicense(publicScriptId, salt) } returns response
+
+            licenseComponent.checkScriptLicense(publicScriptId, salt)
+            licenseComponent.checkScriptLicense(publicScriptId, salt)
+
+            coVerify(exactly = 2) { dataSource.checkScriptLicense(publicScriptId, salt) }
+        }
+
+    @Test
+    fun `checkScriptLicense should refetch once the cached response is stale`() =
+        runBlocking {
+            var now = 0L
+            licenseComponent = LicenseComponentImpl(dataSource) { now }
+            coEvery { dataSource.checkScriptLicense(publicScriptId, salt) } returns response
+
+            licenseComponent.checkScriptLicense(publicScriptId, salt)
+            now += 10 * 60 * 1000
+            licenseComponent.checkScriptLicense(publicScriptId, salt)
+
+            coVerify(exactly = 2) { dataSource.checkScriptLicense(publicScriptId, salt) }
         }
 
     @Test
