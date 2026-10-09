@@ -56,6 +56,7 @@ class BrandPaywallViewModelTest {
             getBrandGateStatusInteractor = getBrandGateStatusInteractor,
             syncBrandScriptsInteractor = syncBrandScriptsInteractor,
             logoutInteractor = logoutInteractor,
+            openUrlInteractor = mockk(relaxed = true),
         )
 
     @Test

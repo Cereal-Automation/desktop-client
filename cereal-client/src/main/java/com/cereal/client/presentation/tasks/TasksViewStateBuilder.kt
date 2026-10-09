@@ -103,17 +103,19 @@ object TasksViewStateBuilder {
         }
     }
 
-    fun extractUserInteractions(detailViewState: TaskViewState.DetailViewState): List<TaskUiModel> {
-        val taskUiModelsWithUserInteractions = mutableListOf<TaskUiModel>()
-
-        (detailViewState as? TaskViewState.DetailViewState.Filled)?.scriptInstances?.forEach { scriptInstanceUiModel ->
-            scriptInstanceUiModel.tasks.forEach { taskUiModel ->
-                if (taskUiModel.id.userInteraction != null) {
-                    taskUiModelsWithUserInteractions.add(taskUiModel)
+    /**
+     * Pending interactions across ALL tasks, not just the selected script's: an interaction window that
+     * leaves composition cancels the interaction, so switching scripts must not drop other scripts' windows.
+     */
+    fun extractUserInteractions(tasks: List<Task>?): List<TaskUiModel> =
+        tasks
+            .orEmpty()
+            .groupBy { it.scriptInstance.getScriptPackageInstance().id }
+            .values
+            .flatMap { tasksInPackage ->
+                // Same per-package numbering as buildDetailViewState.
+                tasksInPackage.sortedBy { it.createdAt }.mapIndexedNotNull { index, task ->
+                    if (task.userInteraction != null) task.toUiModel(index + 1) else null
                 }
             }
-        }
-
-        return taskUiModelsWithUserInteractions
-    }
 }

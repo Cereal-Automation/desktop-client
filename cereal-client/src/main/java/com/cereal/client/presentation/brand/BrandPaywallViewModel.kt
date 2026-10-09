@@ -9,12 +9,11 @@ import com.cereal.client.application.interactor.auth.LogoutInteractor
 import com.cereal.client.application.interactor.brand.BrandGateStatus
 import com.cereal.client.application.interactor.brand.GetBrandGateStatusInteractor
 import com.cereal.client.application.interactor.brand.SyncBrandScriptsInteractor
+import com.cereal.client.application.interactor.settings.OpenUrlInteractor
 import com.github.kittinunf.result.coroutines.SuspendableResult
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-import java.awt.Desktop
-import java.net.URI
 
 /**
  * Drives the branded gate (see docs/adr/0004): resolves whether to show the app, the subscription
@@ -28,6 +27,7 @@ class BrandPaywallViewModel(
     private val getBrandGateStatusInteractor: GetBrandGateStatusInteractor,
     private val syncBrandScriptsInteractor: SyncBrandScriptsInteractor,
     private val logoutInteractor: LogoutInteractor,
+    private val openUrlInteractor: OpenUrlInteractor,
 ) {
     val brandName: String = applicationConfig.name
     val hasPurchaseUrl: Boolean = !applicationConfig.paywallUrl.isNullOrBlank()
@@ -69,7 +69,10 @@ class BrandPaywallViewModel(
     }
 
     fun openPurchasePage() {
-        applicationConfig.paywallUrl?.takeIf { it.isNotBlank() }?.let { Desktop.getDesktop().browse(URI(it)) }
+        val url = applicationConfig.paywallUrl?.takeIf { it.isNotBlank() } ?: return
+        scope.launch(dispatcherProvider.io) {
+            openUrlInteractor(OpenUrlInteractor.Params(url)) { _ -> }
+        }
     }
 
     fun logout() {

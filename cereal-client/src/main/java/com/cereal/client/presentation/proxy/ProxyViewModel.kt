@@ -29,6 +29,7 @@ import com.cereal.client.presentation.view.group.GroupListItemContent
 import com.cereal.client.presentation.view.group.GroupViewState
 import com.cereal.client.presentation.view.group.GroupedListViewModel
 import com.github.kittinunf.result.coroutines.map
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.collectLatest
@@ -111,6 +112,10 @@ class ProxyViewModel(
     }
 
     fun onCloseDetails() {
+        // A running "Test all" belongs to the group being closed; stop it so another group can be tested.
+        checkAllJob?.cancel()
+        inFlightProxyIds.value = emptySet()
+        isCheckingGroup.value = false
         selectedGroup.value = null
         proxyGroupsListViewModel.selectItem(null)
     }
@@ -215,6 +220,10 @@ class ProxyViewModel(
                                 inFlightProxyIds.value = inFlightProxyIds.value - result.proxyId
                             }
                         }
+                } catch (e: CancellationException) {
+                    throw e
+                } catch (e: Exception) {
+                    withContext(dispatcherProvider.main) { errorResolver.setError(e) }
                 } finally {
                     withContext(dispatcherProvider.main) {
                         inFlightProxyIds.value = emptySet()
@@ -249,17 +258,20 @@ class ProxyViewModel(
                         groups.value = newGroups
                         // If the currently selected group disappeared upstream, clear the
                         // selection so we don't keep a stale detail view open.
+                        val previous = selectedGroup.value
                         selectedGroup.value =
-                            selectedGroup.value?.let { current ->
+                            previous?.let { current ->
                                 newGroups.find { it.id == current.id }
                             }
-                        if (selectedGroup.value == null) {
+                        // Only clear when the open group vanished; a row action (edit/import) may have
+                        // selected a group without opening it, and that target must survive re-emissions.
+                        if (previous != null && selectedGroup.value == null) {
                             proxyGroupsListViewModel.selectItem(null)
                         }
                         if (newGroups.isEmpty()) {
                             groupViewState.value = GroupViewState.Empty
                         } else {
-                            proxyGroupsListViewModel.updateItems(proxyGroupsUi, true)
+                            proxyGroupsListViewModel.updateItems(proxyGroupsUi, false)
                             groupViewState.value = GroupViewState.Filled(proxyGroupsListViewModel)
                         }
                     }

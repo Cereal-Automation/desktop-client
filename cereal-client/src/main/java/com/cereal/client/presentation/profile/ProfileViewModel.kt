@@ -5,6 +5,7 @@ import com.cereal.client.application.CoroutinesDispatcherProvider
 import com.cereal.client.application.Interactor
 import com.cereal.client.application.interactor.auth.GetAuthenticatedUserInteractor
 import com.cereal.client.application.interactor.auth.LogoutInteractor
+import com.cereal.client.application.interactor.settings.OpenUrlInteractor
 import com.cereal.client.domain.model.user.User
 import com.github.kittinunf.result.coroutines.SuspendableResult
 import kotlinx.coroutines.CoroutineScope
@@ -17,6 +18,7 @@ class ProfileViewModel(
     private val dispatcherProvider: CoroutinesDispatcherProvider,
     getUserInteractor: GetAuthenticatedUserInteractor,
     private val logoutInteractor: LogoutInteractor,
+    private val openUrlInteractor: OpenUrlInteractor,
 ) {
     val user = mutableStateOf<User?>(null)
 
@@ -29,6 +31,12 @@ class ProfileViewModel(
                     }
                 }
             }
+        }
+    }
+
+    fun openUrl(url: String) {
+        scope.launch(dispatcherProvider.io) {
+            openUrlInteractor(OpenUrlInteractor.Params(url)) { _ -> }
         }
     }
 

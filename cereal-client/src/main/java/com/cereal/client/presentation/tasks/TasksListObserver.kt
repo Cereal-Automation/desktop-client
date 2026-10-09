@@ -68,8 +68,11 @@ class TasksListObserver(
         // Cancel previous jobs
         getScriptsInGroupInteractorJob?.cancel()
 
-        // Clear children for groups that no longer exist
-        childrenByGroupState.keys.retainAll(groups.map { it.id }.toSet())
+        // Re-key children by the fresh group objects (groups equal by id, so a plain retainAll would keep
+        // the stale key and its old name) and drop groups that no longer exist.
+        val retained = groups.mapNotNull { group -> childrenByGroupState[group.id]?.let { group.id to it } }
+        childrenByGroupState.clear()
+        childrenByGroupState.putAll(retained)
 
         // Update hierarchical list with groups (parents will be updated with children later)
         hierarchicalListViewModel.updateItems(
@@ -87,7 +90,8 @@ class TasksListObserver(
             scope.launch(dispatcherProvider.io) {
                 // Start a separate job for each group to observe its children
                 groups.forEach { groupContent ->
-                    scope.launch(dispatcherProvider.io) {
+                    // Child of the outer job, so cancelling it on the next emission stops these collectors.
+                    launch {
                         getScriptsInGroupInteractor(GetScriptsInGroupInteractor.Params(groupContent.id.id))
                             .collectLatest { result ->
                                 withContext(dispatcherProvider.main) {
@@ -123,8 +127,7 @@ class TasksListObserver(
         scope.launch(dispatcherProvider.io) {
             observeTasksInteractor(Interactor.None()).collectLatest { result ->
                 withContext(dispatcherProvider.main) {
-                    val tasks = result.get()
-                    onTasksUpdated(tasks)
+                    result.handleFailureOrElse(errorResolver) { tasks -> onTasksUpdated(tasks) }
                 }
             }
         }

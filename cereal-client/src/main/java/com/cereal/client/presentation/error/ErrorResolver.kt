@@ -12,19 +12,26 @@ class ErrorResolver {
     private val _errorAction = mutableStateOf<ErrorAction>(ErrorAction.None)
     val errorAction: State<ErrorAction> = _errorAction
 
-    fun setError(ex: Exception) {
+    fun setError(
+        ex: Exception,
+        onDismiss: () -> Unit = {},
+    ) {
         val message = ex.localizedMessage ?: DEFAULT_ERROR_MESSAGE
-        setError(message)
+        setError(message, onDismiss)
     }
 
     /**
      * Convenience method to set an [ErrorAction.Message] with the provider message as error.
      */
-    fun setError(message: String) {
+    fun setError(
+        message: String,
+        onDismiss: () -> Unit = {},
+    ) {
         val error =
             ErrorAction.Message(message) {
                 // Reset error on dismiss.
                 _errorAction.value = ErrorAction.None
+                onDismiss()
             }
         _errorAction.value = error
     }

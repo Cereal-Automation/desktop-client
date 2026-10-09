@@ -13,6 +13,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.rememberScrollbarAdapter
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
@@ -62,6 +63,10 @@ fun TasksScreen(
             )
         },
 ) {
+    DisposableEffect(viewModel) {
+        onDispose { viewModel.dispose() }
+    }
+
     LaunchedEffect(openScriptSelectionForPackage) {
         openScriptSelectionForPackage?.let {
             viewModel.openScriptSelectionForPublicIdentifier(it)
@@ -203,10 +208,14 @@ fun TasksScreen(
                                             onStopTask = { viewModel.stopTask(it) },
                                             onRowClick = { viewModel.onTaskSelected(it.id) },
                                             onContinueClick = {
-                                                (it.id.userInteraction as? UserInteraction.ContinueButton)?.let { btn ->
-                                                    btn.continuation.resume(Unit)
-                                                    viewModel.finishUserInteraction(it)
-                                                }
+                                                // The button lingers until the cleared interaction propagates; a second
+                                                // click must not resume the continuation again.
+                                                (it.id.userInteraction as? UserInteraction.ContinueButton)
+                                                    ?.takeIf { btn -> !btn.continuation.isCompleted }
+                                                    ?.let { btn ->
+                                                        btn.continuation.resume(Unit)
+                                                        viewModel.finishUserInteraction(it)
+                                                    }
                                             },
                                             onReportIssue =
                                                 if (it.isError && it.hasSupportUrl) {
@@ -263,10 +272,10 @@ fun TasksScreen(
                     viewModel.closeDialog()
                 },
                 onDeleteClicked = {
-                    viewModel.deleteGroup()
+                    viewModel.deleteGroup(state.group)
                 },
                 onConfirmClicked = { value ->
-                    viewModel.editGroup(groupName = value)
+                    viewModel.editGroup(state.group, groupName = value)
                 },
             )
         }
