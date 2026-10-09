@@ -11,8 +11,9 @@ import java.util.concurrent.ConcurrentHashMap
 
 class LicenseComponentImpl(
     private val dataSource: MarketplaceDataSource,
+    private val clock: () -> Long = System::currentTimeMillis,
 ) : LicenseComponent {
-    internal val cache = mutableMapOf<Pair<String, String>, HttpResponse>()
+    internal val cache = ConcurrentHashMap<Pair<String, String>, CachedResponse>()
     internal val mutexMap = ConcurrentHashMap<Pair<String, String>, Mutex>()
 
     /**
@@ -33,7 +34,7 @@ class LicenseComponentImpl(
         val key = publicScriptId to salt
 
         // Check cache before acquiring the lock
-        cache[key]?.let { return it }
+        freshCached(key)?.let { return it }
 
         // Get or create a mutex for this specific key
         val mutex = mutexMap.computeIfAbsent(key) { Mutex() }
@@ -41,10 +42,15 @@ class LicenseComponentImpl(
         return mutex.withLock {
             try {
                 // Double-check cache inside the lock to avoid redundant requests
-                cache[key] ?: run {
+                freshCached(key) ?: run {
                     val response = dataSource.checkScriptLicense(publicScriptId, salt)
                     val httpResponse = OkHttpResponse(response)
-                    cache[key] = httpResponse
+                    // Only successes are shared, and only briefly: a cached failure would block every
+                    // later check, and a long-lived success would outlive the server's expires_at window.
+                    if (httpResponse.isSuccessful) {
+                        httpResponse.body() // Buffer now; the first consumer closes the response.
+                        cache[key] = CachedResponse(httpResponse, clock())
+                    }
                     httpResponse
                 }
             } finally {
@@ -52,6 +58,18 @@ class LicenseComponentImpl(
                 mutexMap.remove(key, mutex)
             }
         }
+    }
+
+    private fun freshCached(key: Pair<String, String>): HttpResponse? = cache[key]?.takeIf { clock() - it.cachedAt < CACHE_TTL_MS }?.response
+
+    internal data class CachedResponse(
+        val response: HttpResponse,
+        val cachedAt: Long,
+    )
+
+    private companion object {
+        // Long enough to collapse a burst of tasks starting together into one request.
+        const val CACHE_TTL_MS = 60_000L
     }
 }
 

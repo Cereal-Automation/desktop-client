@@ -337,6 +337,25 @@ class FileSystemScriptsDataSourceTest {
         }
 
     @Test
+    fun `updateScript should keep the installed jar when the new release fails to load`() =
+        runTest {
+            val installedJar = File(tempDir.toFile(), "${testUser.id}/com.test.script-1.0.0-1.jar")
+            installedJar.writeText("installed")
+            val installed = mockk<com.cereal.client.domain.model.script.ScriptPackage>()
+            every { installed.source } returns installedJar
+            every { installed.manifest.packageName } returns "com.test.script"
+            val newRelease = mockk<Release>()
+            every { newRelease.versionName } returns "2.0.0"
+            every { newRelease.versionCode } returns 2
+
+            assertThrows<LoadScriptException> {
+                dataSource.updateScript(installed, newRelease, "not a jar".byteInputStream(), testUser, SemVer(2, 0, 0))
+            }
+
+            assertTrue(installedJar.exists())
+        }
+
+    @Test
     fun `storeScript should reject packageName that escapes the user directory`() =
         runTest {
             // Given - a packageName containing path separators that would escape the user script dir

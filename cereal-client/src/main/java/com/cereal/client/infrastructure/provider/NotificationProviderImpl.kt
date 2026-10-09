@@ -39,7 +39,8 @@ class NotificationProviderImpl(
         } catch (ce: CancellationException) {
             throw ce
         } catch (e: Exception) {
-            logger.error("Failed to send notification: $notification", e)
+            // Only the type: toString() carries credentials (SMTP password, bot token, webhook URL).
+            logger.error("Failed to send ${notification::class.simpleName} notification", e)
             CrashReporter.report(e)
         }
     }

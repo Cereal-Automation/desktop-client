@@ -166,13 +166,15 @@ class KeyValueRoomMapper(
             }
 
             ValueType.CUSTOM_DATASET_GROUP -> {
-                datasetDataSource?.getDatasetGroup(user, stringValue!!)
-                    ?: throw MissingPropertyException("Missing dataset datasource")
+                // A deleted dataset leaves a stale reference; resolve it to null like a deleted proxy.
+                (datasetDataSource ?: throw MissingPropertyException("Missing dataset datasource"))
+                    .getDatasetGroup(user, stringValue!!)
             }
 
             ValueType.CUSTOM_DATASET -> {
-                datasetDataSource?.getDataset(user, stringValue!!)
-                    ?: throw MissingPropertyException("Missing dataset datasource")
+                // A deleted dataset leaves a stale reference; resolve it to null like a deleted proxy.
+                (datasetDataSource ?: throw MissingPropertyException("Missing dataset datasource"))
+                    .getDataset(user, stringValue!!)
             }
 
             ValueType.UNKNOWN -> {
@@ -247,13 +249,15 @@ class KeyValueRoomMapper(
             }
 
             ValueType.CUSTOM_DATASET_GROUP -> {
-                datasetDataSource?.getDatasetGroup(user, stringValue!!)
-                    ?: throw MissingPropertyException("Missing dataset datasource")
+                // A deleted dataset leaves a stale reference; resolve it to null like a deleted proxy.
+                (datasetDataSource ?: throw MissingPropertyException("Missing dataset datasource"))
+                    .getDatasetGroup(user, stringValue!!)
             }
 
             ValueType.CUSTOM_DATASET -> {
-                datasetDataSource?.getDataset(user, stringValue!!)
-                    ?: throw MissingPropertyException("Missing dataset datasource")
+                // A deleted dataset leaves a stale reference; resolve it to null like a deleted proxy.
+                (datasetDataSource ?: throw MissingPropertyException("Missing dataset datasource"))
+                    .getDataset(user, stringValue!!)
             }
 
             ValueType.UNKNOWN -> {
@@ -343,13 +347,15 @@ class KeyValueRoomMapper(
             }
 
             ValueType.CUSTOM_DATASET_GROUP -> {
-                datasetDataSource?.getDatasetGroup(user, stringValue!!)
-                    ?: throw MissingPropertyException("Missing dataset datasource")
+                // A deleted dataset leaves a stale reference; resolve it to null like a deleted proxy.
+                (datasetDataSource ?: throw MissingPropertyException("Missing dataset datasource"))
+                    .getDatasetGroup(user, stringValue!!)
             }
 
             ValueType.CUSTOM_DATASET -> {
-                datasetDataSource?.getDataset(user, stringValue!!)
-                    ?: throw MissingPropertyException("Missing dataset datasource")
+                // A deleted dataset leaves a stale reference; resolve it to null like a deleted proxy.
+                (datasetDataSource ?: throw MissingPropertyException("Missing dataset datasource"))
+                    .getDataset(user, stringValue!!)
             }
 
             ValueType.UNKNOWN -> {

@@ -100,6 +100,9 @@ class SignatureInterceptor(
             // key parsing throws for a malformed configured key. Both are "could not verify", not
             // crashes — and neither may escape a non-IOException from an interceptor.
             "${InvalidSignatureException.REASON_CRYPTO_ERROR}:${e::class.simpleName}"
+        } catch (e: IllegalArgumentException) {
+            // Base64 decoding of a malformed configured key. Escaping here would hang the awaiting call.
+            "${InvalidSignatureException.REASON_CRYPTO_ERROR}:${e::class.simpleName}"
         }
     }
 

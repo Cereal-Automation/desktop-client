@@ -305,6 +305,7 @@ class MarketplaceApiClient(
         val response = apiClient.newCall(request).await()
         // 409 means already subscribed — treat it as a successful no-op
         if (response.code == HTTP_CONFLICT) {
+            response.close()
             return SubscribeScriptResponse(status = SubscribeStatus.ALREADY_SUBSCRIBED)
         }
         return handleResponse<SubscribeScriptResponse>(response)
@@ -503,6 +504,7 @@ class MarketplaceApiClient(
         val response = downloadClient.newCall(request).await()
 
         if (!response.isSuccessful) {
+            response.close()
             throw apiException(response, "Failed to download script.")
         }
 
@@ -529,7 +531,10 @@ class MarketplaceApiClient(
     }
 
     @Throws(ApiException::class)
-    private suspend inline fun <reified T> handleResponse(response: Response): T {
+    private suspend inline fun <reified T> handleResponse(response: Response): T = response.use { handleOpenResponse(it) }
+
+    @Throws(ApiException::class)
+    private inline fun <reified T> handleOpenResponse(response: Response): T {
         if (response.isSuccessful) {
             response.body.string().let { responseBody ->
                 return json.decodeFromString<T>(responseBody)
