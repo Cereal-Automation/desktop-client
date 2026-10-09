@@ -40,7 +40,7 @@ object DiscordModelMapper {
             description = embed.description,
             url = embed.url,
             timestamp = embed.timestamp,
-            color = embed.color,
+            color = embed.color?.let(::parseColor),
             footer = embed.footer?.let { toSerializable(it) },
             image = embed.image?.let { toSerializable(it) },
             thumbnail = embed.thumbnail?.let { toSerializable(it) },
@@ -100,4 +100,14 @@ object DiscordModelMapper {
             height = video.height,
             width = video.width,
         )
+
+    /** Accepts decimal ("6613812") or hex ("#64EB34", "0x64EB34") colors; anything else is dropped rather than failing the send. */
+    internal fun parseColor(color: String): Int? {
+        val trimmed = color.trim()
+        val hex = trimmed.removePrefix("#").removePrefix("0x").removePrefix("0X")
+        return when {
+            hex != trimmed -> hex.toIntOrNull(16)
+            else -> trimmed.toIntOrNull()
+        }
+    }
 }

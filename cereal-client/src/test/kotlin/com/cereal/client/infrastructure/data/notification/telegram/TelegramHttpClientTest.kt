@@ -4,6 +4,7 @@ import ch.qos.logback.classic.Level
 import ch.qos.logback.classic.Logger
 import ch.qos.logback.classic.spi.ILoggingEvent
 import ch.qos.logback.core.read.ListAppender
+import com.cereal.client.application.exception.CerealException
 import com.cereal.sdk.component.notification.telegram.model.TelegramMessage
 import kotlinx.coroutines.test.runTest
 import okhttp3.mockwebserver.MockResponse
@@ -12,6 +13,8 @@ import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.slf4j.LoggerFactory
+import kotlin.test.assertEquals
+import kotlin.test.assertFailsWith
 import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 
@@ -98,10 +101,12 @@ class TelegramHttpClientTest {
             val sensitiveResponseBody = """{"ok":false,"error_code":400,"description":"chat not found"}"""
             server.enqueue(MockResponse().setResponseCode(400).setBody(sensitiveResponseBody))
 
-            client.sendMessage(
-                botToken = "fake-bot-token",
-                telegramMessage = TelegramMessage(chatId = "999", text = "Hi"),
-            )
+            assertFailsWith<CerealException> {
+                client.sendMessage(
+                    botToken = "fake-bot-token",
+                    telegramMessage = TelegramMessage(chatId = "999", text = "Hi"),
+                )
+            }
 
             val warnMessages =
                 logAppender.list
@@ -119,5 +124,23 @@ class TelegramHttpClientTest {
                     "Failure log should include the status code",
                 )
             }
+        }
+
+    @Test
+    fun `sendMessage retries after a rate limit and succeeds`() =
+        runTest {
+            server.enqueue(
+                MockResponse()
+                    .setResponseCode(429)
+                    .setBody("""{"ok":false,"error_code":429,"description":"Too Many Requests: retry after 5","parameters":{"retry_after":5}}"""),
+            )
+            server.enqueue(MockResponse().setResponseCode(200).setBody("{\"ok\":true}"))
+
+            client.sendMessage(
+                botToken = "fake-bot-token",
+                telegramMessage = TelegramMessage(chatId = "1", text = "Hi"),
+            )
+
+            assertEquals(2, server.requestCount)
         }
 }

@@ -21,8 +21,13 @@ import io.mockk.every
 import io.mockk.mockk
 import io.mockk.mockkObject
 import io.mockk.unmockkObject
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.runTest
+import kotlinx.coroutines.withContext
+import kotlinx.coroutines.withTimeout
 import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertNotNull
@@ -380,6 +385,41 @@ class DatasetDataSourceIntegrationTest {
                 assertEquals(testDatasetItem.fields["username"], retrievedDataset.fields["username"])
                 assertEquals(testDatasetItem.fields["email"], retrievedDataset.fields["email"])
                 assertEquals(testDatasetItem.fields["age"], retrievedDataset.fields["age"])
+            } finally {
+                tearDown()
+            }
+        }
+
+    @ParameterizedTest(name = "test dataset group flow re-emits when records change - {0}")
+    @EnumSource(value = DatabaseImplementation::class, names = ["ROOM"])
+    fun `test dataset group flow re-emits when records change`(implementation: DatabaseImplementation) =
+        runTest {
+            setupForImplementation(implementation)
+            try {
+                val datasetGroup =
+                    CustomDatasetGroup(
+                        id = UUID.randomUUID().toString(),
+                        name = "Test Group",
+                        numberOfItems = 0,
+                        itemDefinitions = createTestItemDefinitions(),
+                        items = emptySequence(),
+                        createdAt = kotlin.time.Instant.fromEpochSeconds(0),
+                    )
+                datasetDataSource.createDatasetGroup(testUser, datasetGroup)
+                val counts = Channel<Int>(Channel.UNLIMITED)
+                val collector =
+                    launch(Dispatchers.Default) {
+                        datasetDataSource.getDatasetGroups(testUser).collect { counts.send(it.single().numberOfItems) }
+                    }
+                withContext(Dispatchers.Default) {
+                    withTimeout(5_000) {
+                        assertEquals(0, counts.receive())
+                        // Only the dataset/dataset_item tables are written here, never dataset_group.
+                        datasetDataSource.createOrUpdateDataset(testUser, createTestDatasetItem(), datasetGroup.id)
+                        while (counts.receive() != 1) Unit
+                    }
+                }
+                collector.cancel()
             } finally {
                 tearDown()
             }

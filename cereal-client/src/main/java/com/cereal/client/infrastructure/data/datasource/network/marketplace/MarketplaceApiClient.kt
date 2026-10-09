@@ -224,17 +224,18 @@ class MarketplaceApiClient(
                 .post(requestJson.toRequestBody())
                 .build()
 
-        val response = apiClient.newCall(request).await()
-        if (!response.isSuccessful) {
-            val errorResponse =
-                response.body.string().let { body ->
-                    try {
-                        json.decodeFromString<ErrorResponse>(body)
-                    } catch (_: Exception) {
-                        null
+        apiClient.newCall(request).await().use { response ->
+            if (!response.isSuccessful) {
+                val errorResponse =
+                    response.body.string().let { body ->
+                        try {
+                            json.decodeFromString<ErrorResponse>(body)
+                        } catch (_: Exception) {
+                            null
+                        }
                     }
-                }
-            throw apiException(response, errorResponse?.message)
+                throw apiException(response, errorResponse?.message)
+            }
         }
     }
 
@@ -305,6 +306,7 @@ class MarketplaceApiClient(
         val response = apiClient.newCall(request).await()
         // 409 means already subscribed — treat it as a successful no-op
         if (response.code == HTTP_CONFLICT) {
+            response.close()
             return SubscribeScriptResponse(status = SubscribeStatus.ALREADY_SUBSCRIBED)
         }
         return handleResponse<SubscribeScriptResponse>(response)
@@ -503,7 +505,7 @@ class MarketplaceApiClient(
         val response = downloadClient.newCall(request).await()
 
         if (!response.isSuccessful) {
-            throw apiException(response, "Failed to download script.")
+            throw apiException(response, "Failed to download script.").also { response.close() }
         }
 
         return response.body.byteStream()
@@ -529,12 +531,11 @@ class MarketplaceApiClient(
     }
 
     @Throws(ApiException::class)
-    private suspend inline fun <reified T> handleResponse(response: Response): T {
-        if (response.isSuccessful) {
-            response.body.string().let { responseBody ->
-                return json.decodeFromString<T>(responseBody)
+    private suspend inline fun <reified T> handleResponse(response: Response): T =
+        response.use {
+            if (response.isSuccessful) {
+                return json.decodeFromString<T>(response.body.string())
             }
-        } else {
             if (response.code == HTTP_UNAUTHORIZED) {
                 throw AuthenticationException()
             }
@@ -550,7 +551,6 @@ class MarketplaceApiClient(
 
             throw apiException(response, errorResponse?.message, errorResponse?.errors)
         }
-    }
 
     /**
      * Builds an [ApiException] carrying the status and CDN diagnostics of the failed response.

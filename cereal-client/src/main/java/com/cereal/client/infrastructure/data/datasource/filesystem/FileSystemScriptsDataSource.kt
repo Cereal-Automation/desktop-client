@@ -53,9 +53,17 @@ class FileSystemScriptsDataSource(
         user: User,
         installedSdkVersion: SemVer,
     ): ScriptPackageDefinition {
-        deleteScript(scriptPackage, user)
+        // Install and load the new release before touching the old one: if the download breaks, the JAR
+        // can't load, or it needs a newer SDK, the user keeps the working script.
+        val updated = storeScript(scriptPackage.manifest.packageName, release, inputStream, user, installedSdkVersion)
 
-        return storeScript(scriptPackage.manifest.packageName, release, inputStream, user, installedSdkVersion)
+        if (scriptPackage.source.canonicalFile != updated.source.canonicalFile) {
+            scriptPackage.source.delete()
+        }
+        getOrCreateScriptsFlow(user).update { list ->
+            list.filterNot { it.manifest.packageName == scriptPackage.manifest.packageName && it !== updated }
+        }
+        return updated
     }
 
     suspend fun storeScript(
@@ -78,8 +86,14 @@ class FileSystemScriptsDataSource(
                 }
             }
             // Create FileOutputStream after directory creation
-            FileOutputStream(file).use { outputStream ->
-                encryption.writeJar(inputStream, outputStream, getFileEncryptionKey(user))
+            try {
+                FileOutputStream(file).use { outputStream ->
+                    encryption.writeJar(inputStream, outputStream, getFileEncryptionKey(user))
+                }
+            } catch (e: Exception) {
+                // Don't leave a truncated JAR behind for the next startup scan to trip over.
+                file.delete()
+                throw e
             }
         }
 

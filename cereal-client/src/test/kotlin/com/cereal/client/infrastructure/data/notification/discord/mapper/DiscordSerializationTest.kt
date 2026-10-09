@@ -103,7 +103,7 @@ class DiscordSerializationTest {
         assertTrue(jsonString.contains("\"content\":\"Message with embed\""))
         assertTrue(jsonString.contains("\"title\":\"Test Embed\""))
         assertTrue(jsonString.contains("\"description\":\"This is a test embed\""))
-        assertTrue(jsonString.contains("\"color\":\"16711680\""))
+        assertTrue(jsonString.contains("\"color\":16711680"))
         assertTrue(jsonString.contains("\"icon_url\":\"https://example.com/footer.png\""))
         assertTrue(jsonString.contains("\"proxy_icon_url\":\"https://proxy.example.com/footer.png\""))
         assertTrue(jsonString.contains("\"proxy_url\":\"https://proxy.example.com/image.png\""))
@@ -161,5 +161,13 @@ class DiscordSerializationTest {
         assertTrue(!jsonString.contains("\"tts\"") || jsonString.contains("\"tts\":null"))
         assertTrue(!jsonString.contains("\"embeds\"") || jsonString.contains("\"embeds\":null"))
         assertTrue(!jsonString.contains("\"webhook_url\"") || jsonString.contains("\"webhook_url\":null"))
+    }
+
+    @Test
+    fun `embed color accepts decimal and hex strings and drops garbage`() {
+        assertEquals(16711680, DiscordModelMapper.parseColor("16711680"))
+        assertEquals(0xFF0000, DiscordModelMapper.parseColor("#FF0000"))
+        assertEquals(0x64EB34, DiscordModelMapper.parseColor("0x64eb34"))
+        assertEquals(null, DiscordModelMapper.parseColor("red"))
     }
 }

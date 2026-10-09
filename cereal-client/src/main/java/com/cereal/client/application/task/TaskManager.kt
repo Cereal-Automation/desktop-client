@@ -149,9 +149,8 @@ class TaskManager(
                     },
                 )
 
-            // Check if task needs to be removed as a consequence of a manual restart after it went into error/success state.
-            tasksRepository.deletePersistedTask(freshTask.id)
-
+            // Persisting a task that is already stored (manual restart after error/success) replaces its
+            // configuration and status rows in place, keeping its artifacts.
             tasksRepository.createPersistedTask(freshTask.id)
             tasksRepository.addStatusHistory(freshTask.id, TaskStatus.Running("Starting script", Clock.System.now()))
             val job =

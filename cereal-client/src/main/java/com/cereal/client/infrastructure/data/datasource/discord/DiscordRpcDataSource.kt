@@ -33,12 +33,12 @@ class DiscordRpcDataSource internal constructor(
         discordEventHandlers.spectateGame = this.spectateGame
         discordEventHandlers.joinRequest = this.joinRequest
         discordRpc?.let { discordRpc ->
-            discordRpc.Discord_Initialize(DiscordComponentConfig.DISCORD_APP_ID, discordEventHandlers, true, null)
             // A ScheduledExecutorService cannot be restarted after shutdown, so a previous close()
             // (e.g. on logout) permanently terminates it. Because this data source is an app-wide
             // singleton, a subsequent initialize() (e.g. on re-login) would otherwise schedule onto the
             // dead executor and throw RejectedExecutionException. Always start from a fresh executor.
-            executorService?.shutdownNow()
+            stopCallbacks()
+            discordRpc.Discord_Initialize(DiscordComponentConfig.DISCORD_APP_ID, discordEventHandlers, true, null)
             executorService =
                 executorServiceFactory().also { executor ->
                     executor.scheduleAtFixedRate(discordRpc::Discord_RunCallbacks, 0, 2, TimeUnit.SECONDS)
@@ -47,9 +47,18 @@ class DiscordRpcDataSource internal constructor(
     }
 
     fun close() {
-        executorService?.shutdownNow()
-        executorService = null
+        stopCallbacks()
         discordRpc?.Discord_Shutdown()
+    }
+
+    // Wait for an in-flight Discord_RunCallbacks to return: the native library isn't safe to shut down
+    // (or re-initialize) while a callback run is still inside it.
+    private fun stopCallbacks() {
+        executorService?.let {
+            it.shutdown()
+            it.awaitTermination(CALLBACK_SHUTDOWN_TIMEOUT_SECONDS, TimeUnit.SECONDS)
+        }
+        executorService = null
     }
 
     private val ready =
@@ -133,6 +142,7 @@ class DiscordRpcDataSource internal constructor(
     }
 
     companion object {
+        private const val CALLBACK_SHUTDOWN_TIMEOUT_SECONDS = 2L
         private val logger = LoggerFactory.getLogger(DiscordRpcDataSource::class.java)
 
         /**

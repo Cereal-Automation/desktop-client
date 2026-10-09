@@ -23,7 +23,9 @@ class RoomDatasetDataSource(
         val database = roomDatabases.getUserDatabase(user)
         val dao = database.datasetDao()
 
-        return dao.getAllDatasetGroupsFlow().map { groupEntities ->
+        // The groups embed their datasets and items, so re-read on writes to any dataset table, not just dataset_group.
+        return database.invalidationTracker.createFlow(*DATASET_TABLES).map {
+            val groupEntities = dao.getAllDatasetGroups()
             val allDatasets = dao.getAllDatasets().groupBy { it.groupId }
 
             val allDatasetIds = allDatasets.values.flatten().map { it.id }
@@ -274,5 +276,9 @@ class RoomDatasetDataSource(
             dao.deleteDatasetById(customDatasetItemId)
             // Foreign key constraints will handle cascading deletes for dataset items
         }
+    }
+
+    private companion object {
+        val DATASET_TABLES = arrayOf("dataset_group", "dataset_group_item_definition", "dataset", "dataset_item")
     }
 }

@@ -39,7 +39,7 @@ class DownloadsApiClientTest {
         mockWebServer = MockWebServer()
         mockWebServer.start()
         val baseUrl = mockWebServer.url("").toString()
-        dataSource = DownloadsApiClient(baseUrl, publicKeyPem, enableLogging = false)
+        dataSource = DownloadsApiClient(baseUrl, publicKeyPem, enableLogging = false, requireSignedMetadata = true)
     }
 
     @AfterEach
@@ -243,12 +243,34 @@ class DownloadsApiClientTest {
                     ),
             )
 
+            val storeDataSource =
+                DownloadsApiClient(
+                    baseUrl = mockWebServer.url("").toString(),
+                    publicKey = "-----BEGIN PUBLIC KEY-----\n" + Base64.getEncoder().encodeToString(keyPair.public.encoded) + "\n-----END PUBLIC KEY-----",
+                    requireSignedMetadata = false,
+                )
+
             // Act
-            val result = dataSource.getLatestAvailableVersionInfo(OperatingSystemType.Windows)
+            val result = storeDataSource.getLatestAvailableVersionInfo(OperatingSystemType.Windows)
 
             // Assert
             assertEquals("2.0.0", result.version)
             assertEquals("https://store.example.com/app", result.storeUrl)
+        }
+
+    @Test
+    fun `getLatestAvailableVersionInfo should reject unsigned metadata without a download url on direct builds`() =
+        runTest {
+            // A blank download_url must not let tampered metadata skip verification and force an update.
+            mockWebServer.enqueue(
+                MockResponse()
+                    .setResponseCode(200)
+                    .setBody("""{"version":"2.0.0","min_version":"99.0.0","download_url":""}"""),
+            )
+
+            assertThrows<NetworkException> {
+                dataSource.getLatestAvailableVersionInfo(OperatingSystemType.Windows)
+            }
         }
 
     @Test

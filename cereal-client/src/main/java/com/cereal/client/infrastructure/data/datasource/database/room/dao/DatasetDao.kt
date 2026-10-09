@@ -28,7 +28,7 @@ interface DatasetDao {
     suspend fun getDatasetGroupById(id: UUID): DatasetGroupEntity?
 
     @Query("SELECT * FROM dataset_group")
-    fun getAllDatasetGroupsFlow(): Flow<List<DatasetGroupEntity>>
+    suspend fun getAllDatasetGroups(): List<DatasetGroupEntity>
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertDatasetGroup(entity: DatasetGroupEntity)

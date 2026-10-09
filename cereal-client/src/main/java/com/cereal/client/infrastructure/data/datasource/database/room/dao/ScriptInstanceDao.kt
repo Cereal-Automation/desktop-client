@@ -183,6 +183,9 @@ interface ScriptInstanceDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertTaskConfigurations(entities: List<TaskConfigurationEntity>)
 
+    @Query("DELETE FROM task_configuration WHERE task_id = :taskId")
+    suspend fun deleteTaskConfigurationsByTaskId(taskId: UUID)
+
     // Task Status operations
     @Query("SELECT * FROM task_status WHERE task_id = :taskId ORDER BY timestamp ASC")
     suspend fun getTaskStatusesByTaskId(taskId: UUID): List<TaskStatusEntity>
@@ -192,6 +195,9 @@ interface ScriptInstanceDao {
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertTaskStatuses(entities: List<TaskStatusEntity>)
+
+    @Query("DELETE FROM task_status WHERE task_id = :taskId")
+    suspend fun deleteTaskStatusesByTaskId(taskId: UUID)
 
     // Script Notification Override operations
     @Query("SELECT * FROM script_notification_override WHERE package_id = :packageId")

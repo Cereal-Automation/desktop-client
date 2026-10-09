@@ -13,7 +13,8 @@ data class SerializableDiscordEmbed(
     val description: String?,
     val url: String?,
     val timestamp: String?,
-    val color: String?,
+    // Discord requires an integer RGB value here; a string like "#ff0000" makes it reject the whole message.
+    val color: Int?,
     val footer: SerializableFooterEmbed?,
     val image: SerializableImageEmbed?,
     val thumbnail: SerializableThumbnailEmbed?,
