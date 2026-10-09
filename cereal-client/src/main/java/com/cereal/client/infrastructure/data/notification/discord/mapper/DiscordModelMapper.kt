@@ -23,6 +23,8 @@ import com.cereal.sdk.component.notification.discord.model.embed.VideoEmbed
  * Mapper to convert SDK Discord models to serializable models for JSON serialization.
  */
 object DiscordModelMapper {
+    private const val HEX_RADIX = 16
+
     fun toSerializable(message: DiscordMessage): SerializableDiscordMessage =
         SerializableDiscordMessage(
             username = message.username,
@@ -54,8 +56,8 @@ object DiscordModelMapper {
     private fun parseColor(color: String?): Int? {
         val value = color?.trim() ?: return null
         return when {
-            value.startsWith("#") -> value.drop(1).toIntOrNull(16)
-            value.startsWith("0x", ignoreCase = true) -> value.drop(2).toIntOrNull(16)
+            value.startsWith("#") -> value.drop(1).toIntOrNull(HEX_RADIX)
+            value.startsWith("0x", ignoreCase = true) -> value.drop(2).toIntOrNull(HEX_RADIX)
             else -> value.toIntOrNull()
         }
     }
