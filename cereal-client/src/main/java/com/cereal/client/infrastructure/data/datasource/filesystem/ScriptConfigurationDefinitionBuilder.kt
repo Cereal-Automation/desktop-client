@@ -513,12 +513,18 @@ class ScriptConfigurationDefinitionBuilder {
         // Pin the lookup to the declaring class's classloader rather than letting
         // Class.forName resolve via the caller's loader and walk up.
         val declaringClassLoader = javaMethod.declaringClass.classLoader
+        // No DefaultImpls class means the method is abstract: with -jvm-default=enable, Kotlin bodies
+        // compile to real JVM defaults (handled above) and DefaultImpls only exists for legacy builds.
         val defaultImplsClass =
-            Class.forName(
-                "${javaMethod.declaringClass.name}\$DefaultImpls",
-                false,
-                declaringClassLoader,
-            )
+            try {
+                Class.forName(
+                    "${javaMethod.declaringClass.name}\$DefaultImpls",
+                    false,
+                    declaringClassLoader,
+                )
+            } catch (_: ClassNotFoundException) {
+                return null
+            }
         val defaultMethod =
             defaultImplsClass.methods.find {
                 it.name == javaMethod.name && it.parameterCount == 1
