@@ -33,7 +33,7 @@ class ConfigurationItemsForm(
             initialValue = 1,
         )
 
-    private fun getAllFormSections(): List<ConfigurationItemsFormSection> = childConfigurationFormSections.values + mainConfigurationFormSection
+    fun getAllFormSections(): List<ConfigurationItemsFormSection> = childConfigurationFormSections.values + mainConfigurationFormSection
 
     fun getAllFormFieldStates(): List<FormFieldState<*, *>> {
         val states = getAllFormSections().map { it.getFormFieldStates() }.flatten()

@@ -19,7 +19,8 @@ fun TextField(
     title: String,
     state: TextFieldState<*>,
     modifier: Modifier = Modifier,
-    hintText: String = "",
+    // The script's placeholder (StateModifier.getPlaceholder) unless the caller supplies its own hint.
+    hintText: String = state.placeholder.value.orEmpty(),
     enabled: Boolean = true,
     singleLine: Boolean = true,
     imeAction: ImeAction = ImeAction.Next,

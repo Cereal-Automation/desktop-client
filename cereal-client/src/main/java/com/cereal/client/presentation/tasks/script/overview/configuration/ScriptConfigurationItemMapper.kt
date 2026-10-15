@@ -13,6 +13,7 @@ import com.cereal.client.presentation.view.fields.state.FormFieldState
 import com.cereal.client.presentation.view.fields.state.IntTextFieldState
 import com.cereal.client.presentation.view.fields.state.ListFieldState
 import com.cereal.client.presentation.view.fields.state.ListRowState
+import com.cereal.client.presentation.view.fields.state.OptionsTextFieldState
 import com.cereal.client.presentation.view.fields.state.SecretTextFieldState
 import com.cereal.client.presentation.view.fields.state.StringTextFieldState
 import com.cereal.client.presentation.view.fields.state.SwitchFieldState
@@ -99,17 +100,10 @@ fun ConfigurationItem.createFormFieldState(
         }
 
         ConfigItemType.StringConfigItem -> {
-            StringTextFieldState(
-                validators =
-                    listOf(
-                        ScriptConfigurationItemDefinitionStringFieldValidator(
-                            definition,
-                            scriptConfigProvider,
-                        ),
-                    ),
-                initialValue = (value as? ConfigValue.StringValue)?.raw ?: "",
-                onValueChange = onValueChange,
-            )
+            val validators = listOf(ScriptConfigurationItemDefinitionStringFieldValidator(definition, scriptConfigProvider))
+            val initialValue = (value as? ConfigValue.StringValue)?.raw ?: ""
+            definition.fieldOptions?.let { OptionsTextFieldState(it, validators, initialValue, onValueChange) }
+                ?: StringTextFieldState(validators, initialValue, onValueChange)
         }
 
         ConfigItemType.SecretConfigItem -> {
