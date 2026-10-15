@@ -64,6 +64,25 @@ class ScriptConfigurationViewListTest {
             onNodeWithText("Import from CSV").assertIsDisplayed()
         }
 
+    // region #87 row-field descriptions
+    @Test
+    fun rendersEachRecordFieldsDescriptionUnderTheField() =
+        runScreenTest {
+            setScreenContent { ScriptConfigurationView(viewModelWithManyRows(fieldCount = 2)) }
+
+            onAllNodesWithText("Product identifier").onFirst().assertIsDisplayed()
+            onAllNodesWithText("How many to buy").onFirst().assertIsDisplayed()
+        }
+
+    @Test
+    fun rendersASingleFieldRecordsDescriptionOnceAboveTheRows() =
+        runScreenTest {
+            setScreenContent { ScriptConfigurationView(viewModelWithManyRows(fieldCount = 1)) }
+
+            onNodeWithText("Product identifier").assertIsDisplayed()
+        }
+    // endregion
+
     private fun viewModelWithManyRows(fieldCount: Int): ScriptConfigurationViewModel {
         val getScriptConfigDefinitionInteractor = mockk<GetScriptConfigDefinitionInteractor>(relaxed = true)
         coEvery { getScriptConfigDefinitionInteractor(any(), any()) } coAnswers {
