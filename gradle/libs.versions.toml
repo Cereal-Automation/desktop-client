@@ -40,8 +40,8 @@ markdown-renderer = "0.41.0"
 # Sekret 2.4.0 requires the Kotlin 2.4 compiler; keep in lockstep with the `kotlin` version.
 sekret = "2.3.0"
 sekret-lib = "2.3.0"
-cereal-sdk = "1.12.0"
-cereal-test-utils = "1.11.0"
+cereal-sdk = "1.13.0"
+cereal-test-utils = "1.13.0"
 
 # Java native interface
 jna = "5.19.1"
