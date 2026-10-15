@@ -98,6 +98,26 @@ class TaskManagerTaskActionTest {
         }
 
     @Test
+    fun `an Error thrown by the action does not leave the instance blocked`() {
+        // runTest rethrows the uncaught Error at the end; the assertions inside it run first.
+        assertThrows<NotImplementedError> {
+            runTest {
+                tasksRepository.addTask(task)
+                val manager = taskManager()
+                runner.onRun = { TODO() }
+
+                manager.startTaskAction(instance, "Check balance")
+                testScheduler.advanceUntilIdle()
+
+                assertTrue(
+                    manager.taskActions.value.inProgress
+                        .isEmpty(),
+                )
+            }
+        }
+    }
+
+    @Test
     fun `an action that outlives the timeout fails with a timeout`() =
         runTest {
             tasksRepository.addTask(task)

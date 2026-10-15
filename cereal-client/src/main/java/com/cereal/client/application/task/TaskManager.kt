@@ -153,19 +153,23 @@ class TaskManager(
                 task
             }
         scope.launch(dispatcherProvider.io) {
-            val result =
-                try {
-                    TaskActionResult.Completed(withTimeout(SCRIPT_CALL_TIMEOUT) { taskActionRunner.run(task, actionName) })
-                } catch (e: TimeoutCancellationException) {
-                    TaskActionResult.Failed(TaskActionTimeoutException(SCRIPT_CALL_TIMEOUT))
-                } catch (e: CancellationException) {
-                    _taskActions.update { it.copy(inProgress = it.inProgress - id) }
-                    throw e
-                } catch (e: Exception) {
-                    logger.warn("Task action \"$actionName\" failed", e)
-                    TaskActionResult.Failed(ScriptCallException(e))
-                }
-            _taskActions.update { it.copy(inProgress = it.inProgress - id, results = it.results + result) }
+            var result: TaskActionResult? = null
+            // finally: script code can throw an Error (e.g. TODO()), which must not leave the instance blocked.
+            try {
+                result =
+                    try {
+                        TaskActionResult.Completed(withTimeout(SCRIPT_CALL_TIMEOUT) { taskActionRunner.run(task, actionName) })
+                    } catch (e: TimeoutCancellationException) {
+                        TaskActionResult.Failed(TaskActionTimeoutException(SCRIPT_CALL_TIMEOUT))
+                    } catch (e: CancellationException) {
+                        throw e
+                    } catch (e: Exception) {
+                        logger.warn("Task action \"$actionName\" failed", e)
+                        TaskActionResult.Failed(ScriptCallException(e))
+                    }
+            } finally {
+                _taskActions.update { it.copy(inProgress = it.inProgress - id, results = it.results + listOfNotNull(result)) }
+            }
         }
     }
 
