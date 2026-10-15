@@ -143,9 +143,9 @@ class TaskExecutor(
     /** The script's task actions, from a fresh script instance (actions don't depend on configuration). */
     fun taskActions(): List<TaskAction<ScriptConfiguration>> = newInstance(task.scriptInstance.definition, null).taskActions()
 
-    /** Runs the task action at [index] with this task's configuration and components, off the caller's thread. */
-    suspend fun runTaskAction(index: Int): String? {
-        val action = taskActions()[index]
+    /** Runs the task action named [name] with this task's configuration and components, off the caller's thread. */
+    suspend fun runTaskAction(name: String): String? {
+        val action = taskActions().firstOrNull { it.name == name } ?: error("The script has no task action named \"$name\".")
         val componentProvider =
             getKoin().getOrCreateScope(task.id, named<Task>(), source = task).get<ComponentProvider>(ComponentProvider::class)
         val config = createConfigurationProxy<ScriptConfiguration>()

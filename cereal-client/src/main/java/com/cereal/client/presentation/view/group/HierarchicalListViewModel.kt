@@ -2,6 +2,7 @@ package com.cereal.client.presentation.view.group
 
 import androidx.compose.runtime.mutableStateOf
 import com.cereal.client.presentation.tasks.MenuOption
+import org.jetbrains.compose.resources.StringResource
 
 /**
  * ViewModel for managing a hierarchical list with parent-child relationships (e.g., groups and script instances)
@@ -186,6 +187,6 @@ data class ExtraMenuItem(
     val label: String,
     val enabled: Boolean,
     /** Shown when the item is disabled, to explain why. */
-    val hint: String?,
+    val hint: StringResource?,
     val onClick: () -> Unit,
 )

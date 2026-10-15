@@ -1,8 +1,12 @@
 package com.cereal.client.application.task
 
 import com.cereal.client.application.CoroutinesDispatcherProvider
-import com.cereal.client.application.exception.CerealException
 import com.cereal.client.application.exception.MaxConcurrentTasksReachedException
+import com.cereal.client.application.exception.ScriptCallException
+import com.cereal.client.application.exception.StopTaskFirstException
+import com.cereal.client.application.exception.TaskActionAlreadyRunningException
+import com.cereal.client.application.exception.TaskActionInProgressException
+import com.cereal.client.application.exception.TaskActionTimeoutException
 import com.cereal.client.domain.model.exception.InvalidScriptConfigurationException
 import com.cereal.client.domain.model.script.MainScriptInstance
 import com.cereal.client.domain.model.script.ScriptInstance
@@ -22,12 +26,18 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.TimeoutCancellationException
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
+import kotlinx.coroutines.withTimeout
+import org.slf4j.LoggerFactory
 import java.util.UUID
-import java.util.concurrent.ConcurrentHashMap
 import kotlin.coroutines.cancellation.CancellationException
 import kotlin.time.Clock
 import kotlin.time.ExperimentalTime
@@ -40,12 +50,17 @@ class TaskManager(
     private val scriptInstanceRepository: ScriptInstanceRepository,
     private val jobTaskFactory: JobTaskFactory,
     private val artifactRepository: ArtifactRepository,
+    private val taskActionRunner: TaskActionRunner = TaskExecutorActionRunner,
 ) {
+    private val logger = LoggerFactory.getLogger(TaskManager::class.java)
     private val scope = CoroutineScope(Dispatchers.Default + SupervisorJob())
 
     private val startTaskMutex = Mutex()
     private val startTasksToConcurrencyLimitMutex = Mutex()
-    private val taskActionsInProgress: MutableSet<String> = ConcurrentHashMap.newKeySet()
+    private val _taskActions = MutableStateFlow(TaskActionsState())
+
+    /** Task actions run on this app-lifetime scope, so leaving the Tasks screen neither cancels them nor loses their result. */
+    val taskActions: StateFlow<TaskActionsState> = _taskActions.asStateFlow()
 
     /**
      * This method should only be called once per script instance (at startup).
@@ -116,23 +131,46 @@ class TaskManager(
 
     suspend fun getTaskActions(scriptPackageInstance: ScriptPackageInstance): List<TaskActionItem> {
         val task = mainTask(scriptPackageInstance) ?: return emptyList()
-        return TaskExecutor(task) {}.taskActions().map { TaskActionItem(it.name, it.confirm) }
+        return taskActionRunner.actions(task)
     }
 
-    /** Runs a task action; while it runs the instance's tasks can't be started (see [performPreStartCheck]). */
-    suspend fun runTaskAction(
+    /**
+     * Starts the task action [actionName] and returns at once; progress and the result are published on [taskActions].
+     * While it runs the instance's tasks can't be started (see [performPreStartCheck]).
+     */
+    suspend fun startTaskAction(
         scriptPackageInstance: ScriptPackageInstance,
-        index: Int,
-    ): String? {
-        val tasks = tasksRepository.getTasks(scriptPackageInstance)
-        if (tasks.any { it.status.isRunning() }) throw CerealException("Stop the task first.")
-        val task = tasks.firstOrNull { it.scriptInstance is MainScriptInstance } ?: error("No task for ${scriptPackageInstance.id}.")
-        if (!taskActionsInProgress.add(scriptPackageInstance.id)) throw CerealException("A task action is already running.")
-        try {
-            return TaskExecutor(task) {}.runTaskAction(index)
-        } finally {
-            taskActionsInProgress.remove(scriptPackageInstance.id)
+        actionName: String,
+    ) {
+        val id = scriptPackageInstance.id
+        // Same lock as startTask, so "no task running" and claiming the action can't interleave with a Start.
+        val task =
+            startTaskMutex.withLock {
+                if (tasksRepository.getTasks(scriptPackageInstance).any { it.status.isRunning() }) throw StopTaskFirstException()
+                if (id in _taskActions.value.inProgress) throw TaskActionAlreadyRunningException()
+                val task = mainTask(scriptPackageInstance) ?: error("No task for $id.")
+                _taskActions.update { it.copy(inProgress = it.inProgress + id) }
+                task
+            }
+        scope.launch(dispatcherProvider.io) {
+            val result =
+                try {
+                    TaskActionResult.Completed(withTimeout(SCRIPT_CALL_TIMEOUT) { taskActionRunner.run(task, actionName) })
+                } catch (e: TimeoutCancellationException) {
+                    TaskActionResult.Failed(TaskActionTimeoutException(SCRIPT_CALL_TIMEOUT))
+                } catch (e: CancellationException) {
+                    _taskActions.update { it.copy(inProgress = it.inProgress - id) }
+                    throw e
+                } catch (e: Exception) {
+                    logger.warn("Task action \"$actionName\" failed", e)
+                    TaskActionResult.Failed(ScriptCallException(e))
+                }
+            _taskActions.update { it.copy(inProgress = it.inProgress - id, results = it.results + result) }
         }
+    }
+
+    fun dismissTaskActionResult(result: TaskActionResult) {
+        _taskActions.update { it.copy(results = it.results - result) }
     }
 
     private suspend fun performPreStartCheck(task: JobTask) {
@@ -140,8 +178,8 @@ class TaskManager(
             error("Task already running.")
         }
 
-        if (task.scriptInstance.packageInstance.id in taskActionsInProgress) {
-            throw CerealException("Wait for the task action to finish before starting the task.")
+        if (task.scriptInstance.packageInstance.id in _taskActions.value.inProgress) {
+            throw TaskActionInProgressException()
         }
 
         val numberOfRunningTasks =

@@ -476,7 +476,7 @@ private fun <P, C> ScriptRow(
                                         CerealText(item.label)
                                         if (!item.enabled && item.hint != null) {
                                             CerealText(
-                                                text = item.hint,
+                                                text = stringResource(item.hint),
                                                 style = MaterialTheme.typography.labelMedium,
                                                 color = CerealTheme.colorScheme.contentSubtle,
                                             )

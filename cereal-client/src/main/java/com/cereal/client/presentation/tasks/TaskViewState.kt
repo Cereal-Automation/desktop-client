@@ -113,7 +113,7 @@ sealed class TaskViewState {
 
         class ConfirmTaskAction(
             val scriptPackageInstance: ScriptPackageInstance,
-            val index: Int,
+            val actionName: String,
             val text: String,
         ) : DialogState()
     }

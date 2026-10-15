@@ -441,6 +441,7 @@
     <string name="select_script_to_configure">Please, select a script to configure.</string>
     <string name="settings">Settings</string>
     <string name="show_section_settings">Show %1$s settings</string>
+    <string name="hide_section_settings">Hide %1$s settings</string>
     <plurals name="section_error_count">
         <item quantity="one">%1$d error</item>
         <item quantity="other">%1$d errors</item>
@@ -537,4 +538,11 @@
     <string name="options_field_open">Show options</string>
     <string name="options_field_refresh">Refresh options</string>
     <string name="options_field_retry">Retry</string>
+    <string name="field_options_timeout">Loading the options took longer than %1$d seconds.</string>
+    <string name="task_action_done">Done</string>
+    <string name="task_action_failed">The action failed.</string>
+    <string name="task_action_timeout">The action did not finish within %1$d seconds.</string>
+    <string name="task_action_stop_task_first">Stop the task first</string>
+    <string name="task_action_already_running">A task action is already running.</string>
+    <string name="task_action_in_progress">Wait for the task action to finish before starting the task.</string>
 </resources>

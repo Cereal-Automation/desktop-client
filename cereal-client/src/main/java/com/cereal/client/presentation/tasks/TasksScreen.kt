@@ -26,9 +26,11 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import com.cereal.client.application.task.TaskActionResult
 import com.cereal.client.domain.model.script.ScriptPackageInstance
 import com.cereal.client.domain.model.task.UserInteraction
 import com.cereal.client.presentation.error.errorView
+import com.cereal.client.presentation.error.localizedErrorMessage
 import com.cereal.client.presentation.group.GroupNameDialog
 import com.cereal.client.presentation.logs.LogOutputView
 import com.cereal.client.presentation.tasks.dialog.MoveScriptDialog
@@ -50,6 +52,8 @@ import com.cereal_automation.cereal_client.generated.resources.delete_script_ins
 import com.cereal_automation.cereal_client.generated.resources.restart
 import com.cereal_automation.cereal_client.generated.resources.restart_task
 import com.cereal_automation.cereal_client.generated.resources.restart_task_message
+import com.cereal_automation.cereal_client.generated.resources.task_action_done
+import com.cereal_automation.cereal_client.generated.resources.task_action_failed
 import org.jetbrains.compose.resources.stringResource
 import org.koin.java.KoinJavaComponent
 import java.awt.FileDialog
@@ -86,12 +90,13 @@ fun TasksScreen(
     val detailsViewState by viewModel.tasksViewState
 
     val snackbarHostState = remember { SnackbarHostState() }
-    val taskActionMessage by viewModel.taskActionMessage
-    LaunchedEffect(taskActionMessage) {
-        taskActionMessage?.let {
-            snackbarHostState.showSnackbar(it)
-            viewModel.onTaskActionMessageShown()
-        }
+    // Results wait in the TaskManager while the user is elsewhere and show here once they're on Tasks.
+    val taskActionResult by viewModel.taskActionResult
+    val taskActionText = taskActionResult?.let { taskActionResultText(it) }
+    LaunchedEffect(taskActionResult) {
+        val result = taskActionResult ?: return@LaunchedEffect
+        snackbarHostState.showSnackbar(taskActionText.orEmpty())
+        viewModel.onTaskActionResultShown(result)
     }
 
     Box {
@@ -408,3 +413,17 @@ fun TasksScreen(
         }
     }
 }
+
+@Composable
+private fun taskActionResultText(result: TaskActionResult): String =
+    when (result) {
+        is TaskActionResult.Completed -> {
+            result.message ?: stringResource(Res.string.task_action_done)
+        }
+
+        is TaskActionResult.Failed -> {
+            localizedErrorMessage(result.error)
+                ?: result.error.message?.takeIf { it.isNotBlank() }
+                ?: stringResource(Res.string.task_action_failed)
+        }
+    }

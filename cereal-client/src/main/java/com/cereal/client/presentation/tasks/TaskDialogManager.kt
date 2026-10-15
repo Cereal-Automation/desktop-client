@@ -58,10 +58,10 @@ class TaskDialogManager {
 
     fun showConfirmTaskAction(
         scriptPackageInstance: ScriptPackageInstance,
-        index: Int,
+        actionName: String,
         text: String,
     ) {
-        dialogState.value = TaskViewState.DialogState.ConfirmTaskAction(scriptPackageInstance, index, text)
+        dialogState.value = TaskViewState.DialogState.ConfirmTaskAction(scriptPackageInstance, actionName, text)
     }
 
     fun closeDialog() {
