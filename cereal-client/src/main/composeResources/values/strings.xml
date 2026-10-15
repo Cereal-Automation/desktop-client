@@ -529,4 +529,7 @@
     <string name="tasks_empty_message">Create a group to organize your scripts, or add a script to get started.</string>
     <string name="tasks_empty_action_create_group">Create group</string>
     <string name="tasks_empty_action_add_script">Add script</string>
+    <string name="options_field_open">Show options</string>
+    <string name="options_field_refresh">Refresh options</string>
+    <string name="options_field_retry">Retry</string>
 </resources>

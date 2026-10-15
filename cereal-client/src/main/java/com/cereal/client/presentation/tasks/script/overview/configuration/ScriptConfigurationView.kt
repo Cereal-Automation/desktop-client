@@ -42,6 +42,7 @@ import com.cereal.client.presentation.view.InfoBox
 import com.cereal.client.presentation.view.SettingsItem
 import com.cereal.client.presentation.view.fields.DropdownTextField
 import com.cereal.client.presentation.view.fields.FileField
+import com.cereal.client.presentation.view.fields.OptionsTextField
 import com.cereal.client.presentation.view.fields.SecretTextField
 import com.cereal.client.presentation.view.fields.SwitchField
 import com.cereal.client.presentation.view.fields.TextField
@@ -50,6 +51,7 @@ import com.cereal.client.presentation.view.fields.state.FileFieldState
 import com.cereal.client.presentation.view.fields.state.FormFieldState
 import com.cereal.client.presentation.view.fields.state.ListFieldState
 import com.cereal.client.presentation.view.fields.state.ListRowState
+import com.cereal.client.presentation.view.fields.state.OptionsTextFieldState
 import com.cereal.client.presentation.view.fields.state.SecretTextFieldState
 import com.cereal.client.presentation.view.fields.state.SwitchFieldState
 import com.cereal.client.presentation.view.fields.state.TextFieldState
@@ -159,7 +161,7 @@ fun ScriptConfigurationView(viewModel: ScriptConfigurationViewModel) {
                     title = t.definition.name + nameSuffix,
                     description = t.definition.description,
                 ) {
-                    FormFieldContent(t, u)
+                    FormFieldContent(t, u, viewModel::loadOptions)
                 }
                 Spacer(modifier = Modifier.height(8.dp))
             }
@@ -215,7 +217,12 @@ fun ScriptConfigurationView(viewModel: ScriptConfigurationViewModel) {
 private fun FormFieldContent(
     configurationItem: ConfigurationItem,
     formFieldState: FormFieldState<*, *>,
+    onLoadOptions: (OptionsTextFieldState, refresh: Boolean) -> Unit,
 ) = when (formFieldState) {
+    is OptionsTextFieldState -> {
+        OptionsTextField(configurationItem.definition.name, formFieldState) { onLoadOptions(formFieldState, it) }
+    }
+
     // Before the general TextFieldState branch: a SecretTextFieldState *is* one, and the first
     // matching branch wins, so this ordering is what keeps a credential from rendering in clear text.
     is SecretTextFieldState -> {

@@ -12,6 +12,9 @@ abstract class FormFieldState<T, V>(
     val isVisible = mutableStateOf(true)
     val isRequired = mutableStateOf(false)
 
+    /** Hint text the script supplies via `StateModifier.getPlaceholder`, shown while the field is empty. */
+    val placeholder = mutableStateOf<String?>(null)
+
     /**
      * Whether the user has actually entered something in this field.
      *

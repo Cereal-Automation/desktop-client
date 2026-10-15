@@ -7,6 +7,7 @@ import com.cereal.client.domain.model.exception.UnsupportedConfigurationTypeExce
 import com.cereal.client.domain.model.proxy.Proxy
 import com.cereal.client.domain.model.proxy.ProxyGroup
 import com.cereal.client.domain.model.script.ScriptConfigurationValues
+import com.cereal.sdk.FieldOptions
 import com.cereal.sdk.statemodifier.StateModifier
 import kotlin.reflect.KClass
 import kotlin.reflect.full.isSubclassOf
@@ -83,6 +84,8 @@ data class ScriptConfigurationItemDefinition(
     val stateModifier: StateModifier?,
     val isScriptIdentifier: Boolean,
     val defaultValue: ConfigValue? = null,
+    /** The script's options provider for a combo-box String field; null for every other field. */
+    val fieldOptions: FieldOptions? = null,
 )
 
 fun ScriptConfigurationItemDefinition.containsValidData(value: ConfigValue): Boolean =
