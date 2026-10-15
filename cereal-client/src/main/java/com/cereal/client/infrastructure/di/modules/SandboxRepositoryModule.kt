@@ -1,11 +1,15 @@
 package com.cereal.client.infrastructure.di.modules
 
 import com.cereal.client.domain.provider.AuthProvider
+import com.cereal.client.domain.repository.LogEventRepository
+import com.cereal.client.domain.repository.NotificationHistoryRepository
 import com.cereal.client.domain.repository.ScriptRepository
 import com.cereal.client.domain.repository.SessionRepository
 import com.cereal.client.infrastructure.data.repository.FileSystemScriptRepository
 import com.cereal.client.infrastructure.data.repository.SandboxScriptSeeder
 import com.cereal.client.infrastructure.data.repository.SandboxSessionRepository
+import com.cereal.client.infrastructure.data.repository.SandboxTextFileLogEventRepository
+import com.cereal.client.infrastructure.data.repository.SandboxTextFileNotificationHistoryRepository
 import com.cereal.client.infrastructure.provider.SandboxAuthProvider
 import org.koin.dsl.module
 
@@ -18,6 +22,8 @@ import org.koin.dsl.module
  *  - [SandboxUserRepository] drives the real [com.cereal.client.infrastructure.data.datasource.auth.UserSession]
  *    so logging in opens the Koin `UserScope` and populates the session the rest of the graph
  *    (including the script repository) reads from.
+ *  - log events and notifications are mirrored to plain-text files under
+ *    `~/Cereal-Sandbox/` (see [SandboxTextFileLogEventRepository]) for easy inspection.
  *
  * UI tests do not load this module, so they remain fully hermetic against the in-memory
  * `InMemoryScriptRepository` / `InMemoryUserRepository`.
@@ -32,5 +38,7 @@ object SandboxRepositoryModule {
             single<ScriptRepository> { FileSystemScriptRepository(get(), get(), get()) }
             single<SessionRepository> { SandboxSessionRepository(get()) }
             single<AuthProvider> { SandboxAuthProvider(get()) }
+            single<LogEventRepository> { SandboxTextFileLogEventRepository() }
+            single<NotificationHistoryRepository> { SandboxTextFileNotificationHistoryRepository() }
         }
 }
