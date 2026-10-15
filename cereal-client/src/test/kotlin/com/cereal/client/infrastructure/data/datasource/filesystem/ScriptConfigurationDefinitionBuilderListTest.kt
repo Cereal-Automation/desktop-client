@@ -6,6 +6,7 @@ import com.cereal.client.domain.model.script.configuration.ConfigItemType
 import com.cereal.sdk.ScriptConfiguration
 import com.cereal.sdk.ScriptConfigurationItem
 import com.cereal.sdk.ScriptConfigurationListItem
+import com.cereal.sdk.models.Secret
 import com.cereal.sdk.models.proxy.Proxy
 import com.cereal.sdk.statemodifier.ScriptConfig
 import com.cereal.sdk.statemodifier.StateModifier
@@ -374,4 +375,32 @@ class ScriptConfigurationDefinitionBuilderListTest {
             assertTrue(exception.message!!.contains("ScriptConfigurationListItem"), exception.message)
         }
     }
+
+    // region #84 Secret record fields
+    interface Account : ScriptConfigurationListItem {
+        @ScriptConfigurationItem(keyName = "password", name = "Password", description = "Login", position = 0)
+        fun password(): Secret
+
+        @ScriptConfigurationItem(keyName = "pin", name = "PIN", description = "Optional", position = 1)
+        fun pin(): Secret?
+    }
+
+    interface SecretListConfig : ScriptConfiguration {
+        @ScriptConfigurationItem(keyName = "accounts", name = "Accounts", description = "Logins", position = 1)
+        fun accounts(): List<Account>
+    }
+
+    @Test
+    fun `createFrom accepts Secret and nullable Secret record fields`() {
+        val type =
+            createFrom(SecretListConfig::class)
+                .configurationItems
+                .single()
+                .type as ConfigItemType.ListConfigItem
+
+        assertEquals(listOf(ConfigItemType.SecretConfigItem, ConfigItemType.SecretConfigItem), type.items.map { it.type })
+        assertFalse(type.items.single { it.key == "password" }.isNullable)
+        assertTrue(type.items.single { it.key == "pin" }.isNullable)
+    }
+    // endregion
 }

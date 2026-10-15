@@ -5,6 +5,7 @@ import com.cereal.client.domain.model.script.configuration.ConfigValue
 import com.cereal.client.domain.model.script.configuration.ListRow
 import com.cereal.client.domain.model.script.configuration.ListRows
 import com.cereal.client.domain.model.script.configuration.ScriptConfigurationDefinition
+import com.cereal.client.domain.model.script.configuration.Secret
 import com.cereal.client.infrastructure.data.datasource.filesystem.ScriptConfigurationDefinitionBuilder
 import com.cereal.sdk.ScriptConfiguration
 import com.cereal.sdk.ScriptConfigurationItem
@@ -219,4 +220,34 @@ class ConfigInvocationHandlerListTest {
 
         assertNull(configuration.targets())
     }
+
+    // region #84 Secret record fields
+    interface Account : ScriptConfigurationListItem {
+        @ScriptConfigurationItem(keyName = "password", name = "Password", description = "Login", position = 0)
+        fun password(): com.cereal.sdk.models.Secret
+
+        @ScriptConfigurationItem(keyName = "pin", name = "PIN", description = "Optional", position = 1)
+        fun pin(): com.cereal.sdk.models.Secret?
+    }
+
+    interface AccountsConfig : ScriptConfiguration {
+        @ScriptConfigurationItem(keyName = "accounts", name = "Accounts", description = "Logins", position = 0)
+        fun accounts(): List<Account>
+    }
+
+    @Test
+    fun `returns a row secret as the SDK Secret`() {
+        val row = ListRow(mapOf("password" to ConfigValue.SecretValue(Secret("hunter2"))))
+        val configuration =
+            configurationProxy<AccountsConfig>(
+                definitionOf(AccountsConfig::class),
+                mapOf("accounts" to ConfigValue.ListValue(ListRows(listOf(row)))),
+            )
+
+        val account = configuration.accounts().single()
+
+        assertEquals("hunter2", account.password().reveal())
+        assertNull(account.pin())
+    }
+    // endregion
 }

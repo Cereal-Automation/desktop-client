@@ -435,6 +435,11 @@ private fun ListRowField(
     val label =
         if (showLabel) fieldDefinition.name + if (fieldDefinition.isNullable) "" else "*" else ""
     when (fieldState) {
+        // Before TextFieldState: a SecretTextFieldState is one, and must render masked.
+        is SecretTextFieldState -> {
+            SecretTextField(label, fieldState)
+        }
+
         is TextFieldState -> {
             TextField(label, fieldState)
         }
