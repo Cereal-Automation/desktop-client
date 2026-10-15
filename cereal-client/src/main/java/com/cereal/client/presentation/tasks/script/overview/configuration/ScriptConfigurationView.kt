@@ -1,5 +1,6 @@
 package com.cereal.client.presentation.tasks.script.overview.configuration
 
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -15,6 +16,8 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.KeyboardArrowDown
+import androidx.compose.material.icons.filled.KeyboardArrowUp
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -27,6 +30,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.unit.dp
 import com.cereal.client.domain.model.script.ScriptPackageInstance
+import com.cereal.client.domain.model.script.configuration.ConfigSection
 import com.cereal.client.domain.model.script.configuration.ConfigurationItem
 import com.cereal.client.domain.model.script.configuration.ScriptConfigurationItemDefinition
 import com.cereal.client.domain.model.script.configuration.getScriptIdentifierValue
@@ -34,6 +38,7 @@ import com.cereal.client.presentation.error.errorView
 import com.cereal.client.presentation.tasks.dialog.ImportFromFileDialog
 import com.cereal.client.presentation.tasks.script.overview.configuration.model.ConfigurationItemsForm
 import com.cereal.client.presentation.theme.CerealTheme
+import com.cereal.client.presentation.view.Body2Text
 import com.cereal.client.presentation.view.CaptionText
 import com.cereal.client.presentation.view.CerealButton
 import com.cereal.client.presentation.view.CerealCard
@@ -62,7 +67,10 @@ import com.cereal_automation.cereal_client.generated.resources.remove_entry
 import com.cereal_automation.cereal_client.generated.resources.row_number
 import com.cereal_automation.cereal_client.generated.resources.rows_replace_confirmation_message
 import com.cereal_automation.cereal_client.generated.resources.rows_replace_confirmation_title
+import com.cereal_automation.cereal_client.generated.resources.section_error_count
 import com.cereal_automation.cereal_client.generated.resources.select_script
+import com.cereal_automation.cereal_client.generated.resources.show_section_settings
+import org.jetbrains.compose.resources.pluralStringResource
 import org.jetbrains.compose.resources.stringResource
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
@@ -152,16 +160,29 @@ fun ScriptConfigurationView(viewModel: ScriptConfigurationViewModel) {
         }
 
         val scriptConfigurationForm = viewModel.scriptConfigurationForm.value
-        scriptConfigurationForm?.getAllConfigurationItemWithFieldStates().orEmpty().forEach { (t, u) ->
-            if (u.isVisible.value) {
-                val nameSuffix = if (u.isRequired.value) "*" else ""
-                SettingsItem(
-                    title = t.definition.name + nameSuffix,
-                    description = t.definition.description,
-                ) {
-                    FormFieldContent(t, u)
+        viewModel.fieldSections().forEach { (section, fields) ->
+            if (section != null && fields.values.any { it.isVisible.value }) {
+                ConfigSectionHeader(
+                    section = section,
+                    isOpen = viewModel.isSectionOpen(section),
+                    errorCount = viewModel.sectionErrorCounts[section.key] ?: 0,
+                    onToggle = { viewModel.toggleSection(section) },
+                )
+            }
+            // Collapsing only skips rendering: the field states, and so the values, are kept.
+            if (section == null || viewModel.isSectionOpen(section)) {
+                fields.forEach { (t, u) ->
+                    if (u.isVisible.value) {
+                        val nameSuffix = if (u.isRequired.value) "*" else ""
+                        SettingsItem(
+                            title = t.definition.name + nameSuffix,
+                            description = t.definition.description,
+                        ) {
+                            FormFieldContent(t, u)
+                        }
+                        Spacer(modifier = Modifier.height(8.dp))
+                    }
                 }
-                Spacer(modifier = Modifier.height(8.dp))
             }
         }
         if (scriptConfigurationForm != null && viewModel.showConcurrentTasks.value) {
@@ -208,6 +229,38 @@ fun ScriptConfigurationView(viewModel: ScriptConfigurationViewModel) {
             onConfirm = { viewModel.confirmListReplace() },
             onDismiss = { viewModel.cancelListReplace() },
         )
+    }
+}
+
+@Composable
+private fun ConfigSectionHeader(
+    section: ConfigSection,
+    isOpen: Boolean,
+    errorCount: Int,
+    onToggle: () -> Unit,
+) {
+    val rowModifier = Modifier.fillMaxWidth().padding(top = 16.dp, bottom = 8.dp)
+    Row(
+        modifier = if (section.collapsed) rowModifier.clickable(onClick = onToggle) else rowModifier,
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        if (section.collapsed) {
+            Icon(
+                imageVector = if (isOpen) Icons.Default.KeyboardArrowUp else Icons.Default.KeyboardArrowDown,
+                contentDescription = null,
+            )
+            Spacer(modifier = Modifier.width(4.dp))
+            Body2Text(stringResource(Res.string.show_section_settings, section.name))
+        } else {
+            Body2Text(section.name)
+        }
+        if (errorCount > 0) {
+            Spacer(modifier = Modifier.width(8.dp))
+            CaptionText(
+                pluralStringResource(Res.plurals.section_error_count, errorCount, errorCount),
+                color = MaterialTheme.colorScheme.error,
+            )
+        }
     }
 }
 

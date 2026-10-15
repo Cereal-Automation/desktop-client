@@ -1,6 +1,7 @@
 package com.cereal.client.presentation.tasks.script.overview.configuration
 
 import androidx.compose.runtime.MutableState
+import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.mutableStateOf
 import com.cereal.client.application.CoroutinesDispatcherProvider
 import com.cereal.client.application.interactor.files.ReadCustomDatasetFileInteractor
@@ -14,6 +15,7 @@ import com.cereal.client.domain.model.proxy.ProxyGroup
 import com.cereal.client.domain.model.script.ScriptPackage
 import com.cereal.client.domain.model.script.ScriptPackageInstance
 import com.cereal.client.domain.model.script.configuration.ConfigItemType
+import com.cereal.client.domain.model.script.configuration.ConfigSection
 import com.cereal.client.domain.model.script.configuration.ConfigurationItem
 import com.cereal.client.domain.model.script.configuration.ListRows
 import com.cereal.client.domain.model.script.configuration.ScriptConfigurationItemDefinition
@@ -56,6 +58,12 @@ class ScriptConfigurationViewModel(
     val listReplaceConfirmation = mutableStateOf<ListReplaceConfirmation?>(null)
     val scriptInstructions: String? = scriptPackage.manifest.instructions
     val existingInstances: MutableState<List<ScriptPackageInstance>> = mutableStateOf(emptyList())
+
+    // Not persisted: the view model is recreated per form open, so collapsed sections start closed every time.
+    private val openedSections = mutableStateMapOf<String, Boolean>()
+
+    /** Per collapsed section key, how many of its fields failed the last Save. */
+    val sectionErrorCounts = mutableStateMapOf<String, Int>()
 
     private val interactorRunner = InteractorRunner(scope, dispatcherProvider, errorResolver)
 
@@ -153,6 +161,35 @@ class ScriptConfigurationViewModel(
     }
 
     fun validate(): Boolean = validateConfigurationForm() && validateNotificationOverrides()
+
+    /** Unsectioned fields first, then each declared section in order; fields keep their definition order. */
+    fun fieldSections(): List<FieldSection> =
+        scriptConfigurationForm.value
+            ?.getAllConfigurationItemWithFieldStates()
+            .orEmpty()
+            .entries
+            .groupBy { it.key.definition.section }
+            .entries
+            .sortedBy { it.key?.order ?: -1 }
+            .map { (section, fields) -> FieldSection(section, fields.associate { it.key to it.value }) }
+
+    fun isSectionOpen(section: ConfigSection): Boolean = !section.collapsed || openedSections[section.key] == true
+
+    fun toggleSection(section: ConfigSection) {
+        openedSections[section.key] = !isSectionOpen(section)
+    }
+
+    private fun openCollapsedSectionsWithErrors() {
+        sectionErrorCounts.clear()
+        fieldSections().forEach { (section, fields) ->
+            if (section?.collapsed != true) return@forEach
+            val errors = fields.values.count { it.error != null }
+            if (errors > 0) {
+                sectionErrorCounts[section.key] = errors
+                openedSections[section.key] = true
+            }
+        }
+    }
 
     private fun validateNotificationOverrides(): Boolean = notificationOverridesForm.validate()
 
@@ -284,9 +321,15 @@ class ScriptConfigurationViewModel(
                 isValid = false
             }
         }
+        openCollapsedSectionsWithErrors()
 
         return isValid
     }
+
+    data class FieldSection(
+        val section: ConfigSection?,
+        val fields: Map<ConfigurationItem, FormFieldState<*, *>>,
+    )
 
     /**
      * A finished import waiting on the user's confirmation because applying it would replace rows they
