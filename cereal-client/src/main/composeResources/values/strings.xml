@@ -440,6 +440,11 @@
     <string name="select_script">Select script</string>
     <string name="select_script_to_configure">Please, select a script to configure.</string>
     <string name="settings">Settings</string>
+    <string name="show_section_settings">Show %1$s settings</string>
+    <plurals name="section_error_count">
+        <item quantity="one">%1$d error</item>
+        <item quantity="other">%1$d errors</item>
+    </plurals>
     <string name="show_development_scripts">Show development scripts</string>
     <string name="show_development_scripts_desc">Show and use your team's draft scripts.</string>
     <string name="show_debug_logs">Show debug logs</string>

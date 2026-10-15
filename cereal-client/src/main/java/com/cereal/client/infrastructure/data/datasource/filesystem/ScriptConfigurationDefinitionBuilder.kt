@@ -5,6 +5,7 @@ import com.cereal.client.application.exception.InvalidScriptConfigurationDefinit
 import com.cereal.client.domain.model.exception.UnsupportedConfigurationTypeException
 import com.cereal.client.domain.model.script.configuration.ApplicationScriptConfigurationKeys
 import com.cereal.client.domain.model.script.configuration.ConfigItemType
+import com.cereal.client.domain.model.script.configuration.ConfigSection
 import com.cereal.client.domain.model.script.configuration.ConfigValue
 import com.cereal.client.domain.model.script.configuration.ScriptConfigurationDefinition
 import com.cereal.client.domain.model.script.configuration.ScriptConfigurationItemDefinition
@@ -14,6 +15,7 @@ import com.cereal.sdk.NoFieldOptions
 import com.cereal.sdk.ScriptConfiguration
 import com.cereal.sdk.ScriptConfigurationItem
 import com.cereal.sdk.ScriptConfigurationListItem
+import com.cereal.sdk.ScriptConfigurationSections
 import com.cereal.sdk.models.proxy.Proxy
 import com.cereal.sdk.models.proxy.RandomProxy
 import com.cereal.sdk.statemodifier.DefaultStateModifier
@@ -22,6 +24,7 @@ import org.slf4j.LoggerFactory
 import java.lang.reflect.InvocationHandler
 import java.lang.reflect.Method
 import kotlin.reflect.KClass
+import kotlin.reflect.full.findAnnotation
 import kotlin.reflect.full.findAnnotations
 import kotlin.reflect.full.isSubclassOf
 import kotlin.reflect.full.memberFunctions
@@ -119,6 +122,7 @@ class ScriptConfigurationDefinitionBuilder {
 
         // Create a proxy to extract default values from interface methods
         val defaultValuesProxy = createDefaultValuesProxy(scriptConfigurationClass)
+        val sections = getSections(scriptConfigurationClass)
 
         scriptConfigurationMethods.forEach { item ->
             // Please note that the state modifier must be an object and not a class because we only read the objectInstance.
@@ -147,6 +151,7 @@ class ScriptConfigurationDefinitionBuilder {
                     stateModifier = stateModifier,
                     isScriptIdentifier = item.annotation.isScriptIdentifier,
                     defaultValue = defaultValue,
+                    section = item.sectionIn(sections),
                     fieldOptions = fieldOptions,
                 )
 
@@ -188,6 +193,32 @@ class ScriptConfigurationDefinitionBuilder {
             ?: throw InvalidScriptConfigurationDefinitionException(
                 "The '${annotation.name}' config item declares options which aren't an object. Declare the " +
                     "options as an object instead of a class.",
+            )
+    }
+
+    private fun getSections(scriptConfigurationClass: KClass<ScriptConfiguration>): Map<String, ConfigSection> {
+        val declared = scriptConfigurationClass.findAnnotation<ScriptConfigurationSections>()?.value.orEmpty()
+        declared
+            .groupBy { it.key }
+            .filterValues { it.size > 1 }
+            .keys
+            .firstOrNull()
+            ?.let { key ->
+                throw InvalidScriptConfigurationDefinitionException(
+                    "The script contains an invalid configuration: the section key '$key' is declared more than once.",
+                )
+            }
+        return declared
+            .mapIndexed { index, section -> ConfigSection(section.key, section.name, section.collapsed, order = index) }
+            .associateBy { it.key }
+    }
+
+    private fun ScriptConfigurationMethod.sectionIn(sections: Map<String, ConfigSection>): ConfigSection? {
+        val key = annotation.section.takeIf { it.isNotEmpty() } ?: return null
+        return sections[key]
+            ?: throw InvalidScriptConfigurationDefinitionException(
+                "The script contains an invalid configuration: the '${annotation.name}' config item names the " +
+                    "section '$key', which isn't declared in @ScriptConfigurationSections.",
             )
     }
 

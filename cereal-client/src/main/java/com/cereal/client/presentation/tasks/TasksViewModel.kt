@@ -1,6 +1,7 @@
 package com.cereal.client.presentation.tasks
 
 import androidx.compose.runtime.State
+import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.mutableStateOf
 import com.cereal.client.application.CoroutinesDispatcherProvider
 import com.cereal.client.application.Interactor
@@ -10,6 +11,9 @@ import com.cereal.client.application.interactor.script.ReportScriptIssueInteract
 import com.cereal.client.application.interactor.settings.OpenUrlInteractor
 import com.cereal.client.application.interactor.settings.developers.ObserveShowDebugLogsInteractor
 import com.cereal.client.application.interactor.task.GetOrCreateDefaultTaskGroupInteractor
+import com.cereal.client.application.interactor.task.GetTaskActionsInteractor
+import com.cereal.client.application.interactor.task.RunTaskActionInteractor
+import com.cereal.client.application.task.TaskActionItem
 import com.cereal.client.domain.model.artifact.Artifact
 import com.cereal.client.domain.model.logging.LoggingEvent
 import com.cereal.client.domain.model.logging.LoggingPriority
@@ -21,6 +25,8 @@ import com.cereal.client.domain.repository.LogEventRepository
 import com.cereal.client.presentation.error.ErrorResolver
 import com.cereal.client.presentation.tasks.model.TaskUiModel
 import com.cereal.client.presentation.util.InteractorRunner
+import com.cereal.client.presentation.view.group.ExtraMenuItem
+import com.cereal.client.presentation.view.group.GroupListItemContent
 import com.cereal.client.presentation.view.group.HierarchicalListViewModel
 import com.github.kittinunf.result.coroutines.SuspendableResult
 import com.github.kittinunf.result.coroutines.map
@@ -55,6 +61,8 @@ class TasksViewModel(
     private val openUrlInteractor: OpenUrlInteractor,
     private val observeArtifactsInteractor: ObserveArtifactsInteractor,
     private val saveArtifactToFileInteractor: SaveArtifactToFileInteractor,
+    private val getTaskActionsInteractor: GetTaskActionsInteractor,
+    private val runTaskActionInteractor: RunTaskActionInteractor,
 ) {
     private val scope = CoroutineScope(SupervisorJob() + dispatcherProvider.main)
     private val interactorRunner = InteractorRunner(scope, dispatcherProvider, errorResolver)
@@ -99,6 +107,9 @@ class TasksViewModel(
                 // Open the script selection dialog for this group
                 dialogManager.showSelectingScript(group)
             },
+            childExtraMenuItems = ::taskActionMenuItems,
+            onChildMenuOpened = ::loadTaskActions,
+            isChildBusy = { it.id in taskActionsInProgress.value },
         )
 
     // Start in Loading, not Empty: the groups flow has not emitted yet on screen entry, and
@@ -111,6 +122,11 @@ class TasksViewModel(
     val dialogState get() = dialogManager.dialogState
     val logViewerMessages = mutableStateOf<List<LoggingEvent>>(emptyList())
     val artifacts = mutableStateOf<List<Artifact>>(emptyList())
+
+    /** The latest task action result, shown in a snackbar; reset with [onTaskActionMessageShown]. */
+    val taskActionMessage = mutableStateOf<String?>(null)
+    private val taskActionsByInstance = mutableStateMapOf<String, List<TaskActionItem>>()
+    private val taskActionsInProgress = mutableStateOf<Set<String>>(emptySet())
 
     /** The VM owns its scope (it's a Koin factory per screen visit), so the screen must release it. */
     fun dispose() {
@@ -396,6 +412,62 @@ class TasksViewModel(
 
     fun closeDialog() {
         dialogManager.closeDialog()
+    }
+
+    private fun loadTaskActions(scriptPackageInstance: ScriptPackageInstance) {
+        if (scriptPackageInstance.id in taskActionsByInstance) return
+        interactorRunner.launch(getTaskActionsInteractor, GetTaskActionsInteractor.Params(scriptPackageInstance)) {
+            taskActionsByInstance[scriptPackageInstance.id] = it
+        }
+    }
+
+    private fun taskActionMenuItems(content: GroupListItemContent<ScriptPackageInstance>): List<ExtraMenuItem> {
+        val instance = content.id
+        val enabled = !content.isRunning && instance.id !in taskActionsInProgress.value
+        return taskActionsByInstance[instance.id].orEmpty().mapIndexed { index, action ->
+            ExtraMenuItem(
+                label = action.name,
+                enabled = enabled,
+                hint = if (content.isRunning) "Stop the task first" else null,
+                onClick = {
+                    if (action.confirm != null) {
+                        dialogManager.showConfirmTaskAction(instance, index, action.confirm)
+                    } else {
+                        runTaskAction(instance, index)
+                    }
+                },
+            )
+        }
+    }
+
+    fun confirmTaskAction(state: TaskViewState.DialogState.ConfirmTaskAction) {
+        closeDialog()
+        runTaskAction(state.scriptPackageInstance, state.index)
+    }
+
+    fun onTaskActionMessageShown() {
+        taskActionMessage.value = null
+    }
+
+    private fun runTaskAction(
+        scriptPackageInstance: ScriptPackageInstance,
+        index: Int,
+    ) {
+        val id = scriptPackageInstance.id
+        if (id in taskActionsInProgress.value) return
+        taskActionsInProgress.value += id
+        scope.launch(dispatcherProvider.io) {
+            runTaskActionInteractor(RunTaskActionInteractor.Params(scriptPackageInstance, index)) { result ->
+                withContext(dispatcherProvider.main) {
+                    taskActionsInProgress.value -= id
+                    taskActionMessage.value =
+                        when (result) {
+                            is SuspendableResult.Success -> result.value.message ?: "Done"
+                            is SuspendableResult.Failure -> result.error.message ?: "The action failed."
+                        }
+                }
+            }
+        }
     }
 
     fun finishUserInteraction(taskUiModel: TaskUiModel) {

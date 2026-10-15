@@ -1,6 +1,7 @@
 package com.cereal.client.presentation.tasks
 
 import com.cereal.client.application.CoroutinesDispatcherProvider
+import com.cereal.client.application.exception.CerealException
 import com.cereal.client.application.interactor.artifact.ObserveArtifactsInteractor
 import com.cereal.client.application.interactor.artifact.SaveArtifactToFileInteractor
 import com.cereal.client.application.interactor.script.GetScriptsInGroupInteractor
@@ -14,13 +15,17 @@ import com.cereal.client.application.interactor.task.DeleteScriptInstanceInterac
 import com.cereal.client.application.interactor.task.DeleteTaskGroupInteractor
 import com.cereal.client.application.interactor.task.EditScriptInstanceGroupInteractor
 import com.cereal.client.application.interactor.task.GetOrCreateDefaultTaskGroupInteractor
+import com.cereal.client.application.interactor.task.GetTaskActionsInteractor
 import com.cereal.client.application.interactor.task.GetTaskGroupsInteractor
 import com.cereal.client.application.interactor.task.ObserveTasksInteractor
+import com.cereal.client.application.interactor.task.RunTaskActionInteractor
 import com.cereal.client.application.interactor.task.StartAllTasksInScriptPackageInstanceInteractor
 import com.cereal.client.application.interactor.task.StartTaskInteractor
 import com.cereal.client.application.interactor.task.StopTaskInteractor
 import com.cereal.client.application.interactor.task.StopTasksInScriptPackageInstanceInteractor
 import com.cereal.client.application.interactor.task.UserInteractionDismissedInteractor
+import com.cereal.client.application.task.TaskActionItem
+import com.cereal.client.application.task.TaskManager
 import com.cereal.client.domain.model.artifact.Artifact
 import com.cereal.client.domain.model.logging.LoggingEvent
 import com.cereal.client.domain.model.logging.LoggingPriority
@@ -42,6 +47,7 @@ import io.mockk.mockk
 import io.mockk.slot
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
@@ -50,6 +56,7 @@ import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.test.setMain
 import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.Assertions.assertEquals
+import org.junit.jupiter.api.Assertions.assertFalse
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
@@ -96,6 +103,9 @@ class TasksViewModelTest {
     private val openUrlInteractor = mockk<OpenUrlInteractor>(relaxed = true)
     private val observeArtifactsInteractor = mockk<ObserveArtifactsInteractor>(relaxed = true)
     private val saveArtifactToFileInteractor = mockk<SaveArtifactToFileInteractor>(relaxed = true)
+
+    // TaskManager is the edge that instantiates and runs script code; the interactors around it are real.
+    private val taskManager = mockk<TaskManager>(relaxed = true)
 
     @BeforeEach
     fun setUp() {
@@ -155,6 +165,8 @@ class TasksViewModelTest {
             openUrlInteractor,
             observeArtifactsInteractor,
             saveArtifactToFileInteractor,
+            GetTaskActionsInteractor(taskManager),
+            RunTaskActionInteractor(taskManager),
         )
     }
 
@@ -526,6 +538,8 @@ class TasksViewModelTest {
                     openUrlInteractor,
                     observeArtifactsInteractor,
                     saveArtifactToFileInteractor,
+                    GetTaskActionsInteractor(taskManager),
+                    RunTaskActionInteractor(taskManager),
                 )
 
             vm.onTaskSelected(task)
@@ -617,6 +631,8 @@ class TasksViewModelTest {
                     openUrlInteractor,
                     observeArtifactsInteractor,
                     saveArtifactToFileInteractor,
+                    GetTaskActionsInteractor(taskManager),
+                    RunTaskActionInteractor(taskManager),
                 )
 
             vm.onTaskSelected(task)
@@ -982,4 +998,134 @@ class TasksViewModelTest {
         // updateTasks ran for the selected child (no tasks → not a NoSelection state).
         assertTrue(viewModel.tasksViewState.value !is TaskViewState.DetailViewState.NoSelection)
     }
+
+    // region Task actions (#88)
+
+    private fun taskActionInstance(): ScriptPackageInstance {
+        val instance = mockk<ScriptPackageInstance>(relaxed = true)
+        every { instance.id } returns "inst-actions"
+        coEvery { taskManager.getTaskActions(instance) } returns
+            listOf(TaskActionItem("Check balance", null), TaskActionItem("Reset", "Really reset?"))
+        return instance
+    }
+
+    private fun openMenuFor(
+        instance: ScriptPackageInstance,
+        isRunning: Boolean = false,
+    ): List<com.cereal.client.presentation.view.group.ExtraMenuItem> {
+        viewModel.hierarchicalListViewModel.onChildMenuOpened(instance)
+        dispatcher.scheduler.advanceUntilIdle()
+        return viewModel.hierarchicalListViewModel.childExtraMenuItems(
+            GroupListItemContent(id = instance, title = "instance", isRunning = isRunning),
+        )
+    }
+
+    @Test
+    fun `task actions appear in the script's order and are enabled while the task is idle`() =
+        runTest {
+            createViewModel()
+            val items = openMenuFor(taskActionInstance())
+
+            assertEquals(listOf("Check balance", "Reset"), items.map { it.label })
+            assertTrue(items.all { it.enabled })
+        }
+
+    @Test
+    fun `a script without task actions adds no menu items`() =
+        runTest {
+            createViewModel()
+            val instance = mockk<ScriptPackageInstance>(relaxed = true)
+            every { instance.id } returns "inst-none"
+            coEvery { taskManager.getTaskActions(instance) } returns emptyList()
+
+            assertTrue(openMenuFor(instance).isEmpty())
+        }
+
+    @Test
+    fun `task actions are disabled with a hint while the task runs`() =
+        runTest {
+            createViewModel()
+            val items = openMenuFor(taskActionInstance(), isRunning = true)
+
+            assertTrue(items.none { it.enabled })
+            assertTrue(items.all { it.hint == "Stop the task first" })
+        }
+
+    @Test
+    fun `an action with a confirm text asks first and only runs once confirmed`() =
+        runTest {
+            createViewModel()
+            val instance = taskActionInstance()
+            coEvery { taskManager.runTaskAction(instance, 1) } returns "Reset done"
+
+            openMenuFor(instance)[1].onClick()
+            dispatcher.scheduler.advanceUntilIdle()
+
+            val dialog = assertIs<TaskViewState.DialogState.ConfirmTaskAction>(viewModel.dialogState.value)
+            assertEquals("Really reset?", dialog.text)
+            coVerify(exactly = 0) { taskManager.runTaskAction(any(), any()) }
+
+            viewModel.confirmTaskAction(dialog)
+            dispatcher.scheduler.advanceUntilIdle()
+
+            coVerify(exactly = 1) { taskManager.runTaskAction(instance, 1) }
+            assertIs<TaskViewState.DialogState.Hidden>(viewModel.dialogState.value)
+            assertEquals("Reset done", viewModel.taskActionMessage.value)
+        }
+
+    @Test
+    fun `a successful action shows its returned message, or Done for null`() =
+        runTest {
+            createViewModel()
+            val instance = taskActionInstance()
+            coEvery { taskManager.runTaskAction(instance, 0) } returns "Balance: 5" andThen null
+
+            val checkBalance = openMenuFor(instance)[0]
+            checkBalance.onClick()
+            dispatcher.scheduler.advanceUntilIdle()
+            assertEquals("Balance: 5", viewModel.taskActionMessage.value)
+
+            checkBalance.onClick()
+            dispatcher.scheduler.advanceUntilIdle()
+            assertEquals("Done", viewModel.taskActionMessage.value)
+        }
+
+    @Test
+    fun `a failing action shows the failure message`() =
+        runTest {
+            createViewModel()
+            val instance = taskActionInstance()
+            coEvery { taskManager.runTaskAction(instance, 0) } throws CerealException("Login failed")
+
+            openMenuFor(instance)[0].onClick()
+            dispatcher.scheduler.advanceUntilIdle()
+
+            assertEquals("Login failed", viewModel.taskActionMessage.value)
+        }
+
+    @Test
+    fun `an action that outlives the timeout shows the timeout message and marks the row busy meanwhile`() =
+        runTest {
+            createViewModel()
+            val instance = taskActionInstance()
+            coEvery { taskManager.runTaskAction(instance, 0) } coAnswers {
+                delay(60_000)
+                "too late"
+            }
+
+            openMenuFor(instance)[0].onClick()
+            dispatcher.scheduler.advanceTimeBy(14_000)
+            assertTrue(viewModel.hierarchicalListViewModel.isChildBusy(instance))
+            val itemsWhileBusy =
+                viewModel.hierarchicalListViewModel.childExtraMenuItems(GroupListItemContent(id = instance, title = "instance"))
+            assertTrue(itemsWhileBusy.none { it.enabled })
+
+            dispatcher.scheduler.advanceTimeBy(2_000)
+            dispatcher.scheduler.runCurrent()
+
+            assertEquals("The action did not finish within 15 seconds.", viewModel.taskActionMessage.value)
+            assertFalse(viewModel.hierarchicalListViewModel.isChildBusy(instance))
+        }
+
+    // endregion
 }

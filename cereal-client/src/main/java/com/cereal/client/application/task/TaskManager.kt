@@ -1,8 +1,10 @@
 package com.cereal.client.application.task
 
 import com.cereal.client.application.CoroutinesDispatcherProvider
+import com.cereal.client.application.exception.CerealException
 import com.cereal.client.application.exception.MaxConcurrentTasksReachedException
 import com.cereal.client.domain.model.exception.InvalidScriptConfigurationException
+import com.cereal.client.domain.model.script.MainScriptInstance
 import com.cereal.client.domain.model.script.ScriptInstance
 import com.cereal.client.domain.model.script.ScriptPackageInstance
 import com.cereal.client.domain.model.script.getNumberOfConcurrentTasks
@@ -25,6 +27,7 @@ import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 import java.util.UUID
+import java.util.concurrent.ConcurrentHashMap
 import kotlin.coroutines.cancellation.CancellationException
 import kotlin.time.Clock
 import kotlin.time.ExperimentalTime
@@ -42,6 +45,7 @@ class TaskManager(
 
     private val startTaskMutex = Mutex()
     private val startTasksToConcurrencyLimitMutex = Mutex()
+    private val taskActionsInProgress: MutableSet<String> = ConcurrentHashMap.newKeySet()
 
     /**
      * This method should only be called once per script instance (at startup).
@@ -107,9 +111,37 @@ class TaskManager(
         startTask(task)
     }
 
+    /** The main-script task of [scriptPackageInstance]; task actions run with its configuration and components. */
+    private suspend fun mainTask(scriptPackageInstance: ScriptPackageInstance): JobTask? = tasksRepository.getTasks(scriptPackageInstance).firstOrNull { it.scriptInstance is MainScriptInstance }
+
+    suspend fun getTaskActions(scriptPackageInstance: ScriptPackageInstance): List<TaskActionItem> {
+        val task = mainTask(scriptPackageInstance) ?: return emptyList()
+        return TaskExecutor(task) {}.taskActions().map { TaskActionItem(it.name, it.confirm) }
+    }
+
+    /** Runs a task action; while it runs the instance's tasks can't be started (see [performPreStartCheck]). */
+    suspend fun runTaskAction(
+        scriptPackageInstance: ScriptPackageInstance,
+        index: Int,
+    ): String? {
+        val tasks = tasksRepository.getTasks(scriptPackageInstance)
+        if (tasks.any { it.status.isRunning() }) throw CerealException("Stop the task first.")
+        val task = tasks.firstOrNull { it.scriptInstance is MainScriptInstance } ?: error("No task for ${scriptPackageInstance.id}.")
+        if (!taskActionsInProgress.add(scriptPackageInstance.id)) throw CerealException("A task action is already running.")
+        try {
+            return TaskExecutor(task) {}.runTaskAction(index)
+        } finally {
+            taskActionsInProgress.remove(scriptPackageInstance.id)
+        }
+    }
+
     private suspend fun performPreStartCheck(task: JobTask) {
         if (task.job?.isActive == true) {
             error("Task already running.")
+        }
+
+        if (task.scriptInstance.packageInstance.id in taskActionsInProgress) {
+            throw CerealException("Wait for the task action to finish before starting the task.")
         }
 
         val numberOfRunningTasks =
