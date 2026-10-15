@@ -9,10 +9,12 @@ import com.cereal.client.domain.model.task.TaskStatus
 import com.cereal.sdk.ExecutionResult
 import com.cereal.sdk.Script
 import com.cereal.sdk.ScriptConfiguration
+import com.cereal.sdk.TaskAction
 import com.cereal.sdk.component.ComponentProvider
 import com.cereal.sdk.component.script.ScriptParameters
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineDispatcher
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.asCoroutineDispatcher
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.runBlocking
@@ -136,6 +138,18 @@ class TaskExecutor(
         }
 
         return result
+    }
+
+    /** The script's task actions, from a fresh script instance (actions don't depend on configuration). */
+    fun taskActions(): List<TaskAction<ScriptConfiguration>> = newInstance(task.scriptInstance.definition, null).taskActions()
+
+    /** Runs the task action at [index] with this task's configuration and components, off the caller's thread. */
+    suspend fun runTaskAction(index: Int): String? {
+        val action = taskActions()[index]
+        val componentProvider =
+            getKoin().getOrCreateScope(task.id, named<Task>(), source = task).get<ComponentProvider>(ComponentProvider::class)
+        val config = createConfigurationProxy<ScriptConfiguration>()
+        return runInterruptibleScript(Dispatchers.IO) { action.run(config, componentProvider) }
     }
 
     private suspend fun <T> runInterruptibleScript(
