@@ -6,6 +6,13 @@
   configuration"
 * Complex list configuration items can be filled in by importing a CSV. Download a template with the expected column
   headers, fill it in with your spreadsheet, and the rows appear as ordinary editable rows. Up to 5000 rows per file.
+* Richer script forms (requires scripts built on SDK 1.13.0):
+  * Secret fields (passwords, API keys) inside list rows, masked like other secrets.
+  * Fields grouped into sections, with rarely needed settings in a collapsed "Advanced" group.
+  * Text fields that suggest options fetched by the script, picked from a combo box or typed freely.
+  * Placeholder hints on empty fields.
+  * Links in field descriptions, and descriptions under each field of a list row.
+  * Task actions: one-off script actions (e.g. "Check balance") in a task's menu, with an optional confirmation.
 
 # Changed
 

@@ -26,14 +26,26 @@ private val logger = LoggerFactory.getLogger("ClickableUrlText")
 // A Markdown link `[text](target)` (groups 1 and 2), or a bare http(s) URL — compiled once and reused.
 private val LINK_PATTERN =
     Regex(
-        """\[([^\]]+)]\(([^)\s]+)\)|https?://[^\s,;!?(){}<>'"]+""",
+        """\[([^\]]+)]\(([^)\s]+)\)|https?://[^\s{}<>'"]+""",
         RegexOption.IGNORE_CASE,
     )
 
+/** Drops trailing `.`, `,` and unbalanced `)` — sentence punctuation — keeping a `)` that closes an inner `(`. */
+private fun trimBareUrl(match: String): String {
+    var url = match
+    while (url.isNotEmpty()) {
+        val last = url.last()
+        val unbalanced = last == ')' && url.count { it == ')' } > url.count { it == '(' }
+        if (last != '.' && last != ',' && !unbalanced) break
+        url = url.dropLast(1)
+    }
+    return url
+}
+
 /**
  * Text that renders Markdown links `[text](url)` as clickable `text` and auto-links bare URLs.
- * Only http(s) targets become clickable; anything else stays literal text. A bare URL never takes a
- * trailing `.` with it, so a sentence-ending URL still opens.
+ * Only http(s) targets become clickable; anything else stays literal text. A bare URL may contain
+ * `,` and `(`…`)`, but never takes trailing sentence punctuation with it (see [trimBareUrl]).
  */
 @Composable
 fun ClickableUrlText(
@@ -51,7 +63,7 @@ fun ClickableUrlText(
                 var lastIndex = 0
                 LINK_PATTERN.findAll(text).forEach { match ->
                     val isMarkdown = match.groups[1] != null
-                    val label = if (isMarkdown) match.groupValues[1] else match.value.trimEnd('.')
+                    val label = if (isMarkdown) match.groupValues[1] else trimBareUrl(match.value)
                     val url = WebUrl.parse(if (isMarkdown) match.groupValues[2] else label)
                     append(text.substring(lastIndex, match.range.first))
                     if (url == null) {

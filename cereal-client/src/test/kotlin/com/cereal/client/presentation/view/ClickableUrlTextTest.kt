@@ -69,6 +69,26 @@ class ClickableUrlTextTest {
         }
 
     @Test
+    fun `a bare url keeps a comma in its query string`() =
+        runScreenTest {
+            val handler = render("https://example.com/q?ids=1,2&sort=asc")
+
+            onNodeWithText("https://example.com/q?ids=1,2&sort=asc").performClick()
+
+            assertEquals(listOf("https://example.com/q?ids=1,2&sort=asc"), handler.opened)
+        }
+
+    @Test
+    fun `a bare url keeps a closing parenthesis that balances an inner one`() =
+        runScreenTest {
+            val handler = render("https://en.wikipedia.org/wiki/Foo_(bar).")
+
+            onNodeWithText("https://en.wikipedia.org/wiki/Foo_(bar).").performClick()
+
+            assertEquals(listOf("https://en.wikipedia.org/wiki/Foo_(bar)"), handler.opened)
+        }
+
+    @Test
     fun `plain text renders unchanged and opens nothing`() =
         runScreenTest {
             val handler = render("Just a description, no links.")

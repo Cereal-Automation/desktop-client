@@ -29,6 +29,7 @@ import kotlinx.coroutines.Dispatchers
 import testutil.runScreenTest
 import testutil.setScreenContent
 import kotlin.test.Test
+import kotlin.test.assertTrue
 
 /**
  * Renders the configuration screen with a list on the in-memory harness.
@@ -89,11 +90,13 @@ class ScriptConfigurationViewListTest {
         }
 
     @Test
-    fun rendersASingleFieldRecordsDescriptionOnceAboveTheRows() =
+    fun rendersASingleFieldRecordsDescriptionUnderTheFieldInEachRow() =
         runScreenTest {
             setScreenContent { ScriptConfigurationView(viewModelWithManyRows(fieldCount = 1)) }
 
-            onNodeWithText("Product identifier").assertIsDisplayed()
+            val descriptions = onAllNodesWithText("Product identifier")
+            descriptions.onFirst().assertIsDisplayed()
+            assertTrue(descriptions.fetchSemanticsNodes().size > 1)
         }
     // endregion
 

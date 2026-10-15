@@ -65,6 +65,7 @@ import com.cereal_automation.cereal_client.generated.resources.Res
 import com.cereal_automation.cereal_client.generated.resources.add
 import com.cereal_automation.cereal_client.generated.resources.copy_from_existing_script
 import com.cereal_automation.cereal_client.generated.resources.copy_from_existing_script_desc
+import com.cereal_automation.cereal_client.generated.resources.hide_section_settings
 import com.cereal_automation.cereal_client.generated.resources.import_from_csv
 import com.cereal_automation.cereal_client.generated.resources.remove_entry
 import com.cereal_automation.cereal_client.generated.resources.row_number
@@ -253,7 +254,7 @@ private fun ConfigSectionHeader(
                 contentDescription = null,
             )
             Spacer(modifier = Modifier.width(4.dp))
-            Body2Text(stringResource(Res.string.show_section_settings, section.name))
+            Body2Text(stringResource(if (isOpen) Res.string.hide_section_settings else Res.string.show_section_settings, section.name))
         } else {
             Body2Text(section.name)
         }
@@ -378,8 +379,6 @@ private val LIST_MAX_HEIGHT = 400.dp
 private fun ListField(state: ListFieldState) {
     val isSingleField = state.fieldDefinitions.size == 1
     Column {
-        // A single-field row has no per-field chrome, so its description is shown once, not per row.
-        if (isSingleField) FieldDescription(state.fieldDefinitions.first())
         LazyColumn(
             modifier =
                 Modifier
@@ -529,10 +528,5 @@ private fun ListRowField(
     }
     // The per-field error is rendered by FormField inside each widget above, so it lands next to the
     // field that is wrong.
-    if (showLabel) FieldDescription(fieldDefinition)
-}
-
-@Composable
-private fun FieldDescription(fieldDefinition: ScriptConfigurationItemDefinition) {
     if (fieldDefinition.description.isNotBlank()) ClickableUrlText(fieldDefinition.description)
 }
