@@ -24,6 +24,7 @@ import org.slf4j.LoggerFactory
 import java.lang.reflect.InvocationHandler
 import java.lang.reflect.Method
 import kotlin.reflect.KClass
+import kotlin.reflect.KFunction
 import kotlin.reflect.full.findAnnotation
 import kotlin.reflect.full.findAnnotations
 import kotlin.reflect.full.isSubclassOf
@@ -367,28 +368,7 @@ class ScriptConfigurationDefinitionBuilder {
                 .map { field ->
                     val annotation = field.findAnnotations(ScriptConfigurationItem::class).first()
 
-                    if (annotation.stateModifier != DefaultStateModifier::class) {
-                        throw InvalidScriptConfigurationDefinitionException(
-                            "Field '${annotation.keyName}' of the record used by list '$listItemName' declares a " +
-                                "stateModifier. Visibility and validation belong to the list item itself — move the " +
-                                "stateModifier to '$listItemName'.",
-                        )
-                    }
-
-                    if (annotation.options != NoFieldOptions::class) {
-                        throw InvalidScriptConfigurationDefinitionException(
-                            "Field '${annotation.keyName}' of the record used by list '$listItemName' declares " +
-                                "options, but options are only supported on a top-level String config item.",
-                        )
-                    }
-
-                    if (field.hasDefaultImplementation()) {
-                        throw InvalidScriptConfigurationDefinitionException(
-                            "Field '${annotation.keyName}' of the record used by list '$listItemName' has a " +
-                                "default implementation, but lists do not support default values or pre-seeded " +
-                                "rows. Remove the default implementation.",
-                        )
-                    }
+                    requireSupportedListField(field, annotation, listItemName)
 
                     ScriptConfigurationItemDefinition(
                         name = annotation.name,
@@ -415,6 +395,36 @@ class ScriptConfigurationDefinitionBuilder {
             }
 
         return definitions
+    }
+
+    /** Rejects record-field declarations a list row can't honour. */
+    private fun requireSupportedListField(
+        field: KFunction<*>,
+        annotation: ScriptConfigurationItem,
+        listItemName: String,
+    ) {
+        if (annotation.stateModifier != DefaultStateModifier::class) {
+            throw InvalidScriptConfigurationDefinitionException(
+                "Field '${annotation.keyName}' of the record used by list '$listItemName' declares a " +
+                    "stateModifier. Visibility and validation belong to the list item itself — move the " +
+                    "stateModifier to '$listItemName'.",
+            )
+        }
+
+        if (annotation.options != NoFieldOptions::class) {
+            throw InvalidScriptConfigurationDefinitionException(
+                "Field '${annotation.keyName}' of the record used by list '$listItemName' declares " +
+                    "options, but options are only supported on a top-level String config item.",
+            )
+        }
+
+        if (field.hasDefaultImplementation()) {
+            throw InvalidScriptConfigurationDefinitionException(
+                "Field '${annotation.keyName}' of the record used by list '$listItemName' has a " +
+                    "default implementation, but lists do not support default values or pre-seeded " +
+                    "rows. Remove the default implementation.",
+            )
+        }
     }
 
     private fun listFieldType(
