@@ -4,13 +4,15 @@ import com.cereal.client.domain.model.logging.LoggingEvent
 import com.cereal.client.domain.repository.LogEventRepository
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.update
+import java.util.concurrent.ConcurrentHashMap
 
 /**
- * In-memory [LogEventRepository] for tests. Log events per task can be seeded via [seed] so that
- * log-output UI can be exercised. [persist] is a no-op.
+ * In-memory [LogEventRepository] for tests and the sandboxed (`mock`) flavor. [persist] keeps each
+ * event under its tag (the task id, as in the Room-backed impl); events can also be seeded via [seed].
  */
 class InMemoryLogEventRepository : LogEventRepository {
-    private val events = mutableMapOf<String, MutableStateFlow<List<LoggingEvent>>>()
+    private val events = ConcurrentHashMap<String, MutableStateFlow<List<LoggingEvent>>>()
 
     fun seed(
         taskId: String,
@@ -19,7 +21,8 @@ class InMemoryLogEventRepository : LogEventRepository {
         flowFor(taskId).value = loggingEvents
     }
 
-    override fun persist(event: LoggingEvent) = Unit
+    // ponytail: unbounded, fine for a dev session; cap per task if long runs eat memory.
+    override fun persist(event: LoggingEvent) = flowFor(event.tag).update { it + event }
 
     override fun observeLogEvents(taskId: String): Flow<List<LoggingEvent>> = flowFor(taskId)
 
