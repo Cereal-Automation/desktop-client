@@ -14,6 +14,7 @@ import org.junit.jupiter.api.Assertions.assertNull
 import org.junit.jupiter.api.Assertions.assertThrows
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
+import org.slf4j.LoggerFactory
 import kotlin.reflect.KClass
 
 class ScriptConfigurationDefinitionBuilderTest {
@@ -80,6 +81,24 @@ class ScriptConfigurationDefinitionBuilderTest {
 
         val item = definition.configurationItems.first { it.key == "nullableKey" }
         assertNull(item.defaultValue)
+    }
+
+    @Test
+    fun `createFrom does not warn for an abstract item without a default`() {
+        val logger = LoggerFactory.getLogger(ScriptConfigurationDefinitionBuilder::class.java) as ch.qos.logback.classic.Logger
+        val appender =
+            ch.qos.logback.core.read
+                .ListAppender<ch.qos.logback.classic.spi.ILoggingEvent>()
+                .apply { start() }
+        logger.addAppender(appender)
+        try {
+            @Suppress("UNCHECKED_CAST")
+            builder.createFrom(NullableConfiguration::class as KClass<ScriptConfiguration>)
+        } finally {
+            logger.detachAppender(appender)
+        }
+
+        assertTrue(appender.list.none { it.level == ch.qos.logback.classic.Level.WARN }, appender.list.toString())
     }
 
     @Test
