@@ -2,6 +2,8 @@ package com.cereal.client.presentation.tasks.script.overview.configuration
 
 import androidx.compose.ui.test.ExperimentalTestApi
 import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.onAllNodesWithContentDescription
+import androidx.compose.ui.test.onAllNodesWithTag
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onFirst
 import androidx.compose.ui.test.onNodeWithText
@@ -17,6 +19,7 @@ import com.cereal.client.domain.model.script.configuration.ConfigItemType
 import com.cereal.client.domain.model.script.configuration.ConfigurationItem
 import com.cereal.client.domain.model.script.configuration.ScriptConfigurationItemDefinition
 import com.cereal.client.presentation.error.ErrorResolver
+import com.cereal.client.presentation.view.fields.SECRET_FIELD_REVEAL_TOGGLE_TAG
 import com.cereal.client.presentation.view.fields.state.ListFieldState
 import com.github.kittinunf.result.coroutines.SuspendableResult
 import io.mockk.coEvery
@@ -64,6 +67,17 @@ class ScriptConfigurationViewListTest {
             onNodeWithText("Import from CSV").assertIsDisplayed()
         }
 
+    // region #84 Secret record fields
+    @Test
+    fun rendersARowSecretAsAMaskedFieldWithARevealToggleThatStartsOff() =
+        runScreenTest {
+            setScreenContent { ScriptConfigurationView(viewModelWithManyRows(fieldCount = 1, withSecret = true)) }
+
+            onAllNodesWithTag(SECRET_FIELD_REVEAL_TOGGLE_TAG).onFirst().assertIsDisplayed()
+            onAllNodesWithContentDescription("Reveal").onFirst().assertIsDisplayed()
+        }
+    // endregion
+
     // region #87 row-field descriptions
     @Test
     fun rendersEachRecordFieldsDescriptionUnderTheField() =
@@ -83,13 +97,16 @@ class ScriptConfigurationViewListTest {
         }
     // endregion
 
-    private fun viewModelWithManyRows(fieldCount: Int): ScriptConfigurationViewModel {
+    private fun viewModelWithManyRows(
+        fieldCount: Int,
+        withSecret: Boolean = false,
+    ): ScriptConfigurationViewModel {
         val getScriptConfigDefinitionInteractor = mockk<GetScriptConfigDefinitionInteractor>(relaxed = true)
         coEvery { getScriptConfigDefinitionInteractor(any(), any()) } coAnswers {
             secondArg<suspend (SuspendableResult<GetScriptConfigDefinitionInteractor.Result, Exception>) -> Unit>()(
                 SuspendableResult.Success(
                     GetScriptConfigDefinitionInteractor.Result(
-                        listOf(ConfigurationItem(listDefinition(fieldCount), null)),
+                        listOf(ConfigurationItem(listDefinition(fieldCount, withSecret), null)),
                         emptyMap(),
                     ),
                 ),
@@ -128,39 +145,53 @@ class ScriptConfigurationViewListTest {
     }
 
     /** A record of [fieldCount] fields — one to exercise the compact layout, more for the card layout. */
-    private fun listDefinition(fieldCount: Int) =
+    private fun listDefinition(
+        fieldCount: Int,
+        withSecret: Boolean = false,
+    ) = ScriptConfigurationItemDefinition(
+        name = "Targets",
+        description = "Products to purchase",
+        key = "targets",
+        position = 0,
+        type =
+            ConfigItemType.ListConfigItem(
+                itemType = ScriptPackage::class,
+                items =
+                    listOf(
+                        ScriptConfigurationItemDefinition(
+                            name = "SKU",
+                            description = "Product identifier",
+                            key = "sku",
+                            position = 0,
+                            type = ConfigItemType.StringConfigItem,
+                            isNullable = false,
+                            stateModifier = null,
+                            isScriptIdentifier = false,
+                        ),
+                        ScriptConfigurationItemDefinition(
+                            name = "Quantity",
+                            description = "How many to buy",
+                            key = "qty",
+                            position = 1,
+                            type = ConfigItemType.IntConfigItem,
+                            isNullable = false,
+                            stateModifier = null,
+                            isScriptIdentifier = false,
+                        ),
+                    ).take(fieldCount) + listOfNotNull(passwordField().takeIf { withSecret }),
+            ),
+        isNullable = false,
+        stateModifier = null,
+        isScriptIdentifier = false,
+    )
+
+    private fun passwordField() =
         ScriptConfigurationItemDefinition(
-            name = "Targets",
-            description = "Products to purchase",
-            key = "targets",
-            position = 0,
-            type =
-                ConfigItemType.ListConfigItem(
-                    itemType = ScriptPackage::class,
-                    items =
-                        listOf(
-                            ScriptConfigurationItemDefinition(
-                                name = "SKU",
-                                description = "Product identifier",
-                                key = "sku",
-                                position = 0,
-                                type = ConfigItemType.StringConfigItem,
-                                isNullable = false,
-                                stateModifier = null,
-                                isScriptIdentifier = false,
-                            ),
-                            ScriptConfigurationItemDefinition(
-                                name = "Quantity",
-                                description = "How many to buy",
-                                key = "qty",
-                                position = 1,
-                                type = ConfigItemType.IntConfigItem,
-                                isNullable = false,
-                                stateModifier = null,
-                                isScriptIdentifier = false,
-                            ),
-                        ).take(fieldCount),
-                ),
+            name = "Password",
+            description = "Login",
+            key = "password",
+            position = 2,
+            type = ConfigItemType.SecretConfigItem,
             isNullable = false,
             stateModifier = null,
             isScriptIdentifier = false,

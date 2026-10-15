@@ -64,6 +64,7 @@ class ScriptConfigurationDefinitionBuilder {
             setOf(
                 Boolean::class,
                 String::class,
+                SdkSecret::class,
                 Int::class,
                 Float::class,
                 Double::class,
@@ -398,7 +399,7 @@ class ScriptConfigurationDefinitionBuilder {
         ) {
             throw InvalidScriptConfigurationDefinitionException(
                 "Field '${field.name}' of the record used by list '$listItemName' has unsupported type " +
-                    "'${field.returnType}'. A record field must be a String, Int, Float, Double, Boolean or enum " +
+                    "'${field.returnType}'. A record field must be a String, Secret, Int, Float, Double, Boolean or enum " +
                     "(optionally nullable).",
             )
         }

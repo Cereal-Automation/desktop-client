@@ -2,6 +2,8 @@ package com.cereal.client.infrastructure.data.datasource.database.room.mapper
 
 import com.cereal.client.domain.model.script.configuration.ConfigItemType
 import com.cereal.client.domain.model.script.configuration.ConfigValue
+import com.cereal.client.domain.model.script.configuration.ListRow
+import com.cereal.client.domain.model.script.configuration.ListRows
 import com.cereal.client.domain.model.script.configuration.ScriptConfigurationDefinition
 import com.cereal.client.domain.model.script.configuration.ScriptConfigurationItemDefinition
 import com.cereal.client.domain.model.script.configuration.Secret
@@ -245,4 +247,47 @@ class KeyValueRoomMapperSecretTest {
 
             assertEquals(ConfigValue.SecretValue(Secret("sk-live-token")), result["apiKey"])
         }
+
+    // region #84 Secret record fields
+    @Test
+    fun `a secret inside a list row survives a save and reload`() =
+        runTest {
+            val rows = ListRows(listOf(ListRow(mapOf("password" to ConfigValue.SecretValue(Secret("hunter2"))))))
+            val definition =
+                definitionDeclaring(
+                    ConfigItemType.ListConfigItem(
+                        itemType = Any::class,
+                        items =
+                            listOf(
+                                ScriptConfigurationItemDefinition(
+                                    name = "Password",
+                                    description = "Login",
+                                    key = "password",
+                                    position = 0,
+                                    type = ConfigItemType.SecretConfigItem,
+                                    isNullable = false,
+                                    stateModifier = null,
+                                    isScriptIdentifier = false,
+                                ),
+                            ),
+                    ),
+                )
+
+            val stored = mapper.valueToString(rows)
+            val reloaded =
+                mapper.mapConfigurationItemsFromEntities(
+                    configurationItems = listOf(configurationItemEntity(stored, mapper.getValueType(rows))),
+                    user = user,
+                    scriptConfigurationDefinition = definition,
+                )["apiKey"] as ConfigValue.ListValue
+
+            val secret =
+                reloaded.raw.rows
+                    .single()
+                    .fields
+                    .getValue("password") as ConfigValue.SecretValue
+            assertEquals("hunter2", secret.raw.reveal())
+            assertEquals("password=***", reloaded.raw.describe())
+        }
+    // endregion
 }
