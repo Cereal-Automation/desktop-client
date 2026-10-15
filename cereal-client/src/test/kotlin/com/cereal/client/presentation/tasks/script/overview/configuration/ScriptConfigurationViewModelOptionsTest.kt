@@ -1,15 +1,17 @@
 package com.cereal.client.presentation.tasks.script.overview.configuration
 
 import com.cereal.client.application.CoroutinesDispatcherProvider
+import com.cereal.client.application.exception.FieldOptionsTimeoutException
 import com.cereal.client.application.interactor.script.GetScriptConfigDefinitionInteractor
 import com.cereal.client.application.interactor.script.GetScriptPackageInstancesByPackageNameInteractor
 import com.cereal.client.domain.model.script.ScriptPackage
-import com.cereal.client.domain.model.script.ScriptPackageInstance
 import com.cereal.client.domain.model.script.configuration.ConfigItemType
 import com.cereal.client.domain.model.script.configuration.ConfigValue
 import com.cereal.client.domain.model.script.configuration.ConfigurationItem
 import com.cereal.client.domain.model.script.configuration.ScriptConfigurationItemDefinition
+import com.cereal.client.infrastructure.data.repository.inmemory.InMemoryScriptInstanceRepository
 import com.cereal.client.presentation.error.ErrorResolver
+import com.cereal.client.presentation.view.fields.state.OptionsLoadStatus
 import com.cereal.client.presentation.view.fields.state.OptionsTextFieldState
 import com.cereal.client.presentation.view.fields.state.StringTextFieldState
 import com.cereal.sdk.FieldOption
@@ -20,7 +22,6 @@ import com.cereal.sdk.statemodifier.StateModifier
 import com.cereal.sdk.statemodifier.Visibility
 import com.github.kittinunf.result.coroutines.SuspendableResult
 import io.mockk.coEvery
-import io.mockk.every
 import io.mockk.mockk
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineScope
@@ -37,15 +38,19 @@ import org.junit.jupiter.api.Assertions.assertNull
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
+import kotlin.test.assertIs
 import kotlin.time.Duration.Companion.seconds
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class ScriptConfigurationViewModelOptionsTest {
     private val dispatcher = StandardTestDispatcher()
     private val dispatcherProvider = CoroutinesDispatcherProvider(dispatcher, dispatcher, dispatcher)
-    private val errorResolver: ErrorResolver = mockk(relaxed = true)
+    private val errorResolver = ErrorResolver()
+
+    // Stubbed: the real one reflects over an SDK configuration class, while these tests hand-build their items.
     private val getScriptConfigDefinitionInteractor: GetScriptConfigDefinitionInteractor = mockk()
-    private val getScriptPackageInstancesByPackageNameInteractor: GetScriptPackageInstancesByPackageNameInteractor = mockk()
+    private val getScriptPackageInstancesByPackageNameInteractor =
+        GetScriptPackageInstancesByPackageNameInteractor(InMemoryScriptInstanceRepository())
 
     /** Controls what the script's `load` does; each call records the config it received. */
     private class TestOptions(
@@ -76,12 +81,6 @@ class ScriptConfigurationViewModelOptionsTest {
     @BeforeEach
     fun setUp() {
         Dispatchers.setMain(dispatcher)
-        every { errorResolver.errorAction } returns mockk(relaxed = true)
-        coEvery { getScriptPackageInstancesByPackageNameInteractor(any(), any()) } coAnswers {
-            secondArg<suspend (SuspendableResult<List<ScriptPackageInstance>, Exception>) -> Unit>()(
-                SuspendableResult.Success(emptyList()),
-            )
-        }
     }
 
     @AfterEach
@@ -263,7 +262,7 @@ class ScriptConfigurationViewModelOptionsTest {
         dispatcher.scheduler.runCurrent()
 
         assertFalse(viewModel.accountState().isLoading)
-        assertTrue(viewModel.accountState().failure!!.contains("15 seconds"))
+        assertIs<FieldOptionsTimeoutException>((viewModel.accountState().loadStatus as OptionsLoadStatus.Failed).error)
         assertEquals("typed", viewModel.accountState().getValidatedValue())
     }
 
@@ -276,7 +275,7 @@ class ScriptConfigurationViewModelOptionsTest {
         dispatcher.scheduler.advanceUntilIdle()
         viewModel.accountState().onValueChange("typed-by-hand")
 
-        assertEquals("Invalid API key", viewModel.accountState().failure)
+        assertEquals("Invalid API key", (viewModel.accountState().loadStatus as OptionsLoadStatus.Failed).error.message)
         assertTrue(viewModel.validate())
         val values =
             viewModel.scriptConfigurationForm.value!!

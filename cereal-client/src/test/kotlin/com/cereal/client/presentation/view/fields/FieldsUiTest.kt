@@ -37,6 +37,20 @@ class FieldsUiTest {
         }
 
     @Test
+    fun placeholderShowsOnAnEmptyUnfocusedLabeledField() =
+        runScreenTest {
+            val state = StringTextFieldState(initialValue = "")
+            state.placeholder.value = "e.g. main account"
+
+            setScreenContent {
+                TextField(title = "Account", state = state)
+            }
+
+            onNodeWithText("Account").assertIsDisplayed()
+            onNodeWithText("e.g. main account").assertIsDisplayed()
+        }
+
+    @Test
     fun typingIntoTextFieldUpdatesState() =
         runScreenTest {
             val state = StringTextFieldState(initialValue = "")

@@ -9,7 +9,7 @@ import com.cereal.client.application.interactor.files.ReadListFileInteractor
 import com.cereal.client.application.interactor.files.ReadProxyFileInteractor
 import com.cereal.client.application.interactor.script.GetScriptConfigDefinitionInteractor
 import com.cereal.client.application.interactor.script.GetScriptPackageInstancesByPackageNameInteractor
-import com.cereal.client.application.task.SCRIPT_CALL_TIMEOUT
+import com.cereal.client.application.interactor.script.LoadFieldOptionsInteractor
 import com.cereal.client.domain.model.datasets.CustomDatasetGroup
 import com.cereal.client.domain.model.datasets.DatasetType
 import com.cereal.client.domain.model.proxy.ProxyGroup
@@ -31,13 +31,12 @@ import com.cereal.client.presentation.util.InteractorRunner
 import com.cereal.client.presentation.view.fields.state.DropDownFieldState
 import com.cereal.client.presentation.view.fields.state.FormFieldState
 import com.cereal.client.presentation.view.fields.state.ListFieldState
+import com.cereal.client.presentation.view.fields.state.OptionsLoadStatus
 import com.cereal.client.presentation.view.fields.state.OptionsTextFieldState
 import com.cereal.sdk.statemodifier.Visibility
-import kotlinx.coroutines.CancellationException
+import com.github.kittinunf.result.coroutines.SuspendableResult
 import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.TimeoutCancellationException
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.withTimeout
 import java.io.File
 
 // Constructor parameters are injected dependencies and screen arguments.
@@ -53,6 +52,7 @@ class ScriptConfigurationViewModel(
     private val readCustomDatasetFileInteractor: ReadCustomDatasetFileInteractor,
     private val readProxyFileInteractor: ReadProxyFileInteractor,
     private val readListFileInteractor: ReadListFileInteractor,
+    private val loadFieldOptionsInteractor: LoadFieldOptionsInteractor = LoadFieldOptionsInteractor(),
 ) {
     val scriptConfigurationForm: MutableState<ConfigurationItemsForm?> = mutableStateOf(null)
     val showConcurrentTasks: MutableState<Boolean> = mutableStateOf(false)
@@ -182,20 +182,21 @@ class ScriptConfigurationViewModel(
         val config = RawScriptConfigValues(section.dependsOnValues(state))
 
         state.loadJob?.cancel()
-        state.isLoading = true
-        state.failure = null
+        state.loadStatus = OptionsLoadStatus.Loading
         state.loadJob =
             scope.launch(dispatcherProvider.io) {
-                try {
-                    state.options = withTimeout(SCRIPT_CALL_TIMEOUT) { state.fieldOptions.load(config) }
-                } catch (e: TimeoutCancellationException) {
-                    state.failure = "Loading the options took longer than ${SCRIPT_CALL_TIMEOUT.inWholeSeconds} seconds."
-                } catch (e: CancellationException) {
-                    throw e
-                } catch (e: Exception) {
-                    state.failure = e.message ?: e::class.simpleName
+                loadFieldOptionsInteractor(LoadFieldOptionsInteractor.Params(state.fieldOptions, config)) { result ->
+                    when (result) {
+                        is SuspendableResult.Success -> {
+                            state.options = result.value
+                            state.loadStatus = OptionsLoadStatus.Idle
+                        }
+
+                        is SuspendableResult.Failure -> {
+                            state.loadStatus = OptionsLoadStatus.Failed(result.error)
+                        }
+                    }
                 }
-                state.isLoading = false
             }
     }
 

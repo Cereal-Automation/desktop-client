@@ -61,6 +61,7 @@ import com.cereal.client.application.interactor.script.GetScriptPackageInstances
 import com.cereal.client.application.interactor.script.GetScriptsInGroupInteractor
 import com.cereal.client.application.interactor.script.GetScriptsInteractor
 import com.cereal.client.application.interactor.script.GetSdkVersionInteractor
+import com.cereal.client.application.interactor.script.LoadFieldOptionsInteractor
 import com.cereal.client.application.interactor.script.ReportScriptIssueInteractor
 import com.cereal.client.application.interactor.script.StartChildScriptInteractor
 import com.cereal.client.application.interactor.script.StartScriptInteractor
@@ -117,6 +118,7 @@ object InteractorModule {
             factory { GetScriptCapacityInteractor(get()) }
             factory { GetScriptConfigDefinitionInteractor(get(), get()) }
             factory { GetScriptPackageInstancesByPackageNameInteractor(get()) }
+            factory { LoadFieldOptionsInteractor() }
             factory { StartScriptInteractor(get(), get(), get(), get(), get()) }
             factory { GetScriptsInGroupInteractor(get(), get()) }
             factory { SyncScriptsOnScriptSelectionInteractor(get()) }

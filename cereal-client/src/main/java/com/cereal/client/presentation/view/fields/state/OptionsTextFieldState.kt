@@ -9,6 +9,17 @@ import com.cereal.sdk.FieldOption
 import com.cereal.sdk.FieldOptions
 import kotlinx.coroutines.Job
 
+/** Where the latest options load stands; the last loaded options stay in [OptionsTextFieldState.options] meanwhile. */
+sealed interface OptionsLoadStatus {
+    data object Idle : OptionsLoadStatus
+
+    data object Loading : OptionsLoadStatus
+
+    data class Failed(
+        val error: Exception,
+    ) : OptionsLoadStatus
+}
+
 /**
  * A free-text String field whose suggestions come from the script's [fieldOptions]. Any text is
  * accepted; picking an option just sets the text to its id.
@@ -21,8 +32,8 @@ class OptionsTextFieldState(
 ) : StringTextFieldState(validators, initialValue, onValueChange) {
     /** The last loaded options, null until loaded; kept until a `dependsOn` value changes. */
     var options: List<FieldOption>? by mutableStateOf(null)
-    var isLoading: Boolean by mutableStateOf(false)
-    var failure: String? by mutableStateOf(null)
+    var loadStatus: OptionsLoadStatus by mutableStateOf(OptionsLoadStatus.Idle)
+    val isLoading: Boolean get() = loadStatus == OptionsLoadStatus.Loading
     var loadJob: Job? = null
     private var dependsOnValues: ScriptConfigurationValues? = null
 
@@ -32,7 +43,6 @@ class OptionsTextFieldState(
         dependsOnValues = values
         loadJob?.cancel()
         options = null
-        failure = null
-        isLoading = false
+        loadStatus = OptionsLoadStatus.Idle
     }
 }

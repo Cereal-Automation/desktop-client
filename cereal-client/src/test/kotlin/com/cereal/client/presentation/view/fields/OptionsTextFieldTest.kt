@@ -5,6 +5,9 @@ import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
+import com.cereal.client.application.exception.FieldOptionsTimeoutException
+import com.cereal.client.application.exception.ScriptCallException
+import com.cereal.client.presentation.view.fields.state.OptionsLoadStatus
 import com.cereal.client.presentation.view.fields.state.OptionsTextFieldState
 import com.cereal.sdk.FieldOption
 import com.cereal.sdk.NoFieldOptions
@@ -12,6 +15,7 @@ import testutil.runScreenTest
 import testutil.setScreenContent
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.time.Duration.Companion.seconds
 
 @OptIn(ExperimentalTestApi::class)
 class OptionsTextFieldTest {
@@ -49,12 +53,22 @@ class OptionsTextFieldTest {
         runScreenTest {
             val requests = mutableListOf<Boolean>()
             val state = OptionsTextFieldState(NoFieldOptions)
-            state.failure = "Invalid API key"
+            state.loadStatus = OptionsLoadStatus.Failed(ScriptCallException(IllegalStateException("Invalid API key")))
             setScreenContent { OptionsTextField("Account", state, onLoadOptions = { requests += it }) }
 
             onNodeWithText("Invalid API key").assertIsDisplayed()
             onNodeWithText("Retry").performClick()
 
             assertEquals(listOf(true), requests)
+        }
+
+    @Test
+    fun `a timeout shows the localized timeout text`() =
+        runScreenTest {
+            val state = OptionsTextFieldState(NoFieldOptions)
+            state.loadStatus = OptionsLoadStatus.Failed(FieldOptionsTimeoutException(15.seconds))
+            setScreenContent { OptionsTextField("Account", state, onLoadOptions = {}) }
+
+            onNodeWithText("Loading the options took longer than 15 seconds.").assertIsDisplayed()
         }
 }

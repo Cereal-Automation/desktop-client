@@ -23,7 +23,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.PopupProperties
+import com.cereal.client.presentation.error.localizedErrorMessage
 import com.cereal.client.presentation.view.CerealText
+import com.cereal.client.presentation.view.fields.state.OptionsLoadStatus
 import com.cereal.client.presentation.view.fields.state.OptionsTextFieldState
 import com.cereal_automation.cereal_client.generated.resources.Res
 import com.cereal_automation.cereal_client.generated.resources.options_field_open
@@ -72,7 +74,8 @@ fun OptionsTextField(
             },
         )
 
-        state.failure?.let { failure ->
+        (state.loadStatus as? OptionsLoadStatus.Failed)?.let { failed ->
+            val failure = localizedErrorMessage(failed.error) ?: failed.error.message.orEmpty()
             Row(verticalAlignment = Alignment.CenterVertically) {
                 CerealText(failure, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.error)
                 TextButton(onClick = { onLoadOptions(true) }) {
