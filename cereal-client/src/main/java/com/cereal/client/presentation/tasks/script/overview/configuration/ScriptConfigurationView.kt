@@ -37,6 +37,7 @@ import com.cereal.client.presentation.theme.CerealTheme
 import com.cereal.client.presentation.view.CaptionText
 import com.cereal.client.presentation.view.CerealButton
 import com.cereal.client.presentation.view.CerealCard
+import com.cereal.client.presentation.view.ClickableUrlText
 import com.cereal.client.presentation.view.ConfirmationDialog
 import com.cereal.client.presentation.view.InfoBox
 import com.cereal.client.presentation.view.SettingsItem
@@ -317,6 +318,8 @@ private val LIST_MAX_HEIGHT = 400.dp
 private fun ListField(state: ListFieldState) {
     val isSingleField = state.fieldDefinitions.size == 1
     Column {
+        // A single-field row has no per-field chrome, so its description is shown once, not per row.
+        if (isSingleField) FieldDescription(state.fieldDefinitions.first())
         LazyColumn(
             modifier =
                 Modifier
@@ -461,4 +464,10 @@ private fun ListRowField(
     }
     // The per-field error is rendered by FormField inside each widget above, so it lands next to the
     // field that is wrong.
+    if (showLabel) FieldDescription(fieldDefinition)
+}
+
+@Composable
+private fun FieldDescription(fieldDefinition: ScriptConfigurationItemDefinition) {
+    if (fieldDefinition.description.isNotBlank()) ClickableUrlText(fieldDefinition.description)
 }
