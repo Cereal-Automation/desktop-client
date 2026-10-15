@@ -7,11 +7,13 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.rememberScrollbarAdapter
+import androidx.compose.material3.SnackbarHostState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
@@ -32,12 +34,14 @@ import com.cereal.client.presentation.logs.LogOutputView
 import com.cereal.client.presentation.tasks.dialog.MoveScriptDialog
 import com.cereal.client.presentation.tasks.dialog.ViewConfigurationDialog
 import com.cereal.client.presentation.tasks.script.overview.ScriptSelectionDialog
+import com.cereal.client.presentation.view.CerealSnackbarHost
 import com.cereal.client.presentation.view.ConfirmationDialog
 import com.cereal.client.presentation.view.VerticalDivider
 import com.cereal.client.presentation.view.group.ScriptsColumn
 import com.cereal.client.presentation.view.rememberFileDialogLauncher
 import com.cereal_automation.cereal_client.generated.resources.Res
 import com.cereal_automation.cereal_client.generated.resources.cancel
+import com.cereal_automation.cereal_client.generated.resources.confirm
 import com.cereal_automation.cereal_client.generated.resources.delete
 import com.cereal_automation.cereal_client.generated.resources.delete_group_confirmation_message
 import com.cereal_automation.cereal_client.generated.resources.delete_group_confirmation_title
@@ -81,174 +85,189 @@ fun TasksScreen(
     val hierarchicalListState by viewModel.hierarchicalListState
     val detailsViewState by viewModel.tasksViewState
 
-    Column {
-        Row(Modifier.fillMaxWidth().weight(1.0f)) {
-            Box(Modifier.width(320.dp)) {
-                when (hierarchicalListState) {
-                    is TaskViewState.GroupViewState.Filled<*, *> -> {
-                        ScriptsColumn(
-                            viewModel = viewModel.hierarchicalListViewModel,
-                            onCreateGroup = { viewModel.onCreateTaskGroup() },
-                            onChildLongClick = { child ->
-                                child?.let {
-                                    viewModel.showConfiguration(it.content.id)
-                                }
-                            },
-                        )
-                    }
+    val snackbarHostState = remember { SnackbarHostState() }
+    val taskActionMessage by viewModel.taskActionMessage
+    LaunchedEffect(taskActionMessage) {
+        taskActionMessage?.let {
+            snackbarHostState.showSnackbar(it)
+            viewModel.onTaskActionMessageShown()
+        }
+    }
 
-                    TaskViewState.GroupViewState.Empty -> {
-                        TasksEmptyState(
-                            onCreateGroup = { viewModel.onCreateTaskGroup() },
-                            onAddScript = { viewModel.onAddScriptClicked() },
-                        )
-                    }
+    Box {
+        Column {
+            Row(Modifier.fillMaxWidth().weight(1.0f)) {
+                Box(Modifier.width(320.dp)) {
+                    when (hierarchicalListState) {
+                        is TaskViewState.GroupViewState.Filled<*, *> -> {
+                            ScriptsColumn(
+                                viewModel = viewModel.hierarchicalListViewModel,
+                                onCreateGroup = { viewModel.onCreateTaskGroup() },
+                                onChildLongClick = { child ->
+                                    child?.let {
+                                        viewModel.showConfiguration(it.content.id)
+                                    }
+                                },
+                            )
+                        }
 
-                    // Loading is the brief window before the groups flow first emits. Render
-                    // nothing here so the empty-state CTA never flashes ahead of the real list.
-                    TaskViewState.GroupViewState.Loading -> {}
+                        TaskViewState.GroupViewState.Empty -> {
+                            TasksEmptyState(
+                                onCreateGroup = { viewModel.onCreateTaskGroup() },
+                                onAddScript = { viewModel.onAddScriptClicked() },
+                            )
+                        }
+
+                        // Loading is the brief window before the groups flow first emits. Render
+                        // nothing here so the empty-state CTA never flashes ahead of the real list.
+                        TaskViewState.GroupViewState.Loading -> {}
+                    }
                 }
-            }
 
-            VerticalDivider()
+                VerticalDivider()
 
-            Box {
-                Column(Modifier.fillMaxSize()) {
-                    val filled = detailsViewState as? TaskViewState.DetailViewState.Filled
-                    val counts =
-                        remember(filled) {
-                            filled?.let {
-                                TaskCounts(
-                                    idle = it.idleTasksCount,
-                                    running = it.runningTasksCount,
-                                    finished = it.finishedTasksCount,
-                                    errored = it.erroredTasksCount,
+                Box {
+                    Column(Modifier.fillMaxSize()) {
+                        val filled = detailsViewState as? TaskViewState.DetailViewState.Filled
+                        val counts =
+                            remember(filled) {
+                                filled?.let {
+                                    TaskCounts(
+                                        idle = it.idleTasksCount,
+                                        running = it.runningTasksCount,
+                                        finished = it.finishedTasksCount,
+                                        errored = it.erroredTasksCount,
+                                    )
+                                }
+                            }
+
+                        val supportUrl =
+                            viewModel.hierarchicalListViewModel.selectedChild
+                                ?.definition
+                                ?.manifest
+                                ?.supportUrl
+
+                        TasksToolbar(
+                            title = detailsViewState.headerTitle,
+                            subtitle = detailsViewState.headerSubtitle,
+                            onViewConfig =
+                                filled?.let {
+                                    {
+                                        viewModel.hierarchicalListViewModel.selectedChild?.let { instance ->
+                                            viewModel.showConfiguration(instance)
+                                        }
+                                    }
+                                },
+                            onContactSupport =
+                                if (filled != null && !supportUrl.isNullOrBlank()) {
+                                    { viewModel.contactSupport() }
+                                } else {
+                                    null
+                                },
+                        )
+
+                        var taskFilter by rememberSaveable { mutableStateOf(TaskFilter.ALL) }
+
+                        if (filled != null && counts != null) {
+                            TaskStatsStrip(counts = counts)
+
+                            TasksQuickActions(
+                                state =
+                                    TaskQuickActionsState(
+                                        startAllEnabled = filled.startAllTasksEnabled,
+                                        stopAllEnabled = filled.stopAllTasksEnabled,
+                                        restartErroredEnabled =
+                                            counts.errored > 0 && !viewModel.restartErroredInFlight.value,
+                                        filter = taskFilter,
+                                    ),
+                                callbacks =
+                                    remember(viewModel) {
+                                        TaskQuickActionsCallbacks(
+                                            onFilterChange = { taskFilter = it },
+                                            onStartAll = { viewModel.startAllTasks() },
+                                            onStopAll = { viewModel.stopAllTasks() },
+                                            onRestartErrored = { viewModel.restartErroredTasks() },
+                                        )
+                                    },
+                            )
+                        }
+
+                        val listState = rememberLazyListState()
+                        Box(Modifier.weight(1.0f)) {
+                            filled?.let { filledState ->
+                                // Pre-filter and group outside the LazyColumn content lambda so this
+                                // only re-runs when the data or the filter actually changes, not on
+                                // every recomposition of the list.
+                                val visibleGroups =
+                                    remember(filledState, taskFilter) {
+                                        filledState.scriptInstances.mapNotNull { scriptInstance ->
+                                            val visibleTasks =
+                                                scriptInstance.tasks.filter { task -> taskFilter.matches(task) }
+                                            if (visibleTasks.isEmpty()) null else scriptInstance to visibleTasks
+                                        }
+                                    }
+                                LazyColumn(state = listState) {
+                                    visibleGroups.forEach { (scriptInstance, visibleTasks) ->
+                                        scriptInstance.title?.let { title ->
+                                            item(key = "group-${scriptInstance.id.id}") {
+                                                TaskGroupTitle(title)
+                                            }
+                                        }
+
+                                        items(visibleTasks, key = { it.id.id }) {
+                                            TaskRow(
+                                                taskItem = it,
+                                                isSelected = viewModel.selectedTask.value?.id == it.id.id,
+                                                onStartTask = { viewModel.startTask(it) },
+                                                onStopTask = { viewModel.stopTask(it) },
+                                                onRowClick = { viewModel.onTaskSelected(it.id) },
+                                                onContinueClick = {
+                                                    // The button lingers until the cleared interaction propagates; a second
+                                                    // click must not resume the continuation again.
+                                                    (it.id.userInteraction as? UserInteraction.ContinueButton)
+                                                        ?.takeIf { btn -> !btn.continuation.isCompleted }
+                                                        ?.let { btn ->
+                                                            btn.continuation.resume(Unit)
+                                                            viewModel.finishUserInteraction(it)
+                                                        }
+                                                },
+                                                onReportIssue =
+                                                    if (it.isError && it.hasSupportUrl) {
+                                                        { viewModel.reportIssue(it) }
+                                                    } else {
+                                                        null
+                                                    },
+                                            )
+                                        }
+                                    }
+                                }
+
+                                VerticalScrollbar(
+                                    modifier = Modifier.align(Alignment.CenterEnd).fillMaxHeight(),
+                                    adapter = rememberScrollbarAdapter(scrollState = listState),
                                 )
                             }
                         }
 
-                    val supportUrl =
-                        viewModel.hierarchicalListViewModel.selectedChild
-                            ?.definition
-                            ?.manifest
-                            ?.supportUrl
-
-                    TasksToolbar(
-                        title = detailsViewState.headerTitle,
-                        subtitle = detailsViewState.headerSubtitle,
-                        onViewConfig =
-                            filled?.let {
-                                {
-                                    viewModel.hierarchicalListViewModel.selectedChild?.let { instance ->
-                                        viewModel.showConfiguration(instance)
-                                    }
+                        val openFileDialog = rememberFileDialogLauncher()
+                        LogOutputView(
+                            events = viewModel.logViewerMessages.value,
+                            onClear = viewModel::clearLogs,
+                            artifacts = viewModel.artifacts.value,
+                            onDownloadArtifact = { artifact ->
+                                openFileDialog(FileDialog.SAVE)?.let { file ->
+                                    viewModel.onDownloadArtifact(artifact, file)
                                 }
                             },
-                        onContactSupport =
-                            if (filled != null && !supportUrl.isNullOrBlank()) {
-                                { viewModel.contactSupport() }
-                            } else {
-                                null
-                            },
-                    )
-
-                    var taskFilter by rememberSaveable { mutableStateOf(TaskFilter.ALL) }
-
-                    if (filled != null && counts != null) {
-                        TaskStatsStrip(counts = counts)
-
-                        TasksQuickActions(
-                            state =
-                                TaskQuickActionsState(
-                                    startAllEnabled = filled.startAllTasksEnabled,
-                                    stopAllEnabled = filled.stopAllTasksEnabled,
-                                    restartErroredEnabled =
-                                        counts.errored > 0 && !viewModel.restartErroredInFlight.value,
-                                    filter = taskFilter,
-                                ),
-                            callbacks =
-                                remember(viewModel) {
-                                    TaskQuickActionsCallbacks(
-                                        onFilterChange = { taskFilter = it },
-                                        onStartAll = { viewModel.startAllTasks() },
-                                        onStopAll = { viewModel.stopAllTasks() },
-                                        onRestartErrored = { viewModel.restartErroredTasks() },
-                                    )
-                                },
                         )
                     }
-
-                    val listState = rememberLazyListState()
-                    Box(Modifier.weight(1.0f)) {
-                        filled?.let { filledState ->
-                            // Pre-filter and group outside the LazyColumn content lambda so this
-                            // only re-runs when the data or the filter actually changes, not on
-                            // every recomposition of the list.
-                            val visibleGroups =
-                                remember(filledState, taskFilter) {
-                                    filledState.scriptInstances.mapNotNull { scriptInstance ->
-                                        val visibleTasks =
-                                            scriptInstance.tasks.filter { task -> taskFilter.matches(task) }
-                                        if (visibleTasks.isEmpty()) null else scriptInstance to visibleTasks
-                                    }
-                                }
-                            LazyColumn(state = listState) {
-                                visibleGroups.forEach { (scriptInstance, visibleTasks) ->
-                                    scriptInstance.title?.let { title ->
-                                        item(key = "group-${scriptInstance.id.id}") {
-                                            TaskGroupTitle(title)
-                                        }
-                                    }
-
-                                    items(visibleTasks, key = { it.id.id }) {
-                                        TaskRow(
-                                            taskItem = it,
-                                            isSelected = viewModel.selectedTask.value?.id == it.id.id,
-                                            onStartTask = { viewModel.startTask(it) },
-                                            onStopTask = { viewModel.stopTask(it) },
-                                            onRowClick = { viewModel.onTaskSelected(it.id) },
-                                            onContinueClick = {
-                                                // The button lingers until the cleared interaction propagates; a second
-                                                // click must not resume the continuation again.
-                                                (it.id.userInteraction as? UserInteraction.ContinueButton)
-                                                    ?.takeIf { btn -> !btn.continuation.isCompleted }
-                                                    ?.let { btn ->
-                                                        btn.continuation.resume(Unit)
-                                                        viewModel.finishUserInteraction(it)
-                                                    }
-                                            },
-                                            onReportIssue =
-                                                if (it.isError && it.hasSupportUrl) {
-                                                    { viewModel.reportIssue(it) }
-                                                } else {
-                                                    null
-                                                },
-                                        )
-                                    }
-                                }
-                            }
-
-                            VerticalScrollbar(
-                                modifier = Modifier.align(Alignment.CenterEnd).fillMaxHeight(),
-                                adapter = rememberScrollbarAdapter(scrollState = listState),
-                            )
-                        }
-                    }
-
-                    val openFileDialog = rememberFileDialogLauncher()
-                    LogOutputView(
-                        events = viewModel.logViewerMessages.value,
-                        onClear = viewModel::clearLogs,
-                        artifacts = viewModel.artifacts.value,
-                        onDownloadArtifact = { artifact ->
-                            openFileDialog(FileDialog.SAVE)?.let { file ->
-                                viewModel.onDownloadArtifact(artifact, file)
-                            }
-                        },
-                    )
                 }
             }
         }
+        CerealSnackbarHost(
+            hostState = snackbarHostState,
+            modifier = Modifier.align(Alignment.BottomCenter).padding(16.dp),
+        )
     }
 
     when (val state = dialogState) {
@@ -357,6 +376,17 @@ fun TasksScreen(
                 confirmButtonText = stringResource(Res.string.delete),
                 dismissButtonText = stringResource(Res.string.cancel),
                 onConfirm = { viewModel.confirmScriptInstanceDeletion(state.scriptPackageInstance) },
+                onDismiss = { viewModel.closeDialog() },
+            )
+        }
+
+        is TaskViewState.DialogState.ConfirmTaskAction -> {
+            ConfirmationDialog(
+                title = stringResource(Res.string.confirm),
+                message = state.text,
+                confirmButtonText = stringResource(Res.string.confirm),
+                dismissButtonText = stringResource(Res.string.cancel),
+                onConfirm = { viewModel.confirmTaskAction(state) },
                 onDismiss = { viewModel.closeDialog() },
             )
         }

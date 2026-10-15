@@ -110,5 +110,11 @@ sealed class TaskViewState {
         class ConfirmScriptInstanceDeletion(
             val scriptPackageInstance: ScriptPackageInstance,
         ) : DialogState()
+
+        class ConfirmTaskAction(
+            val scriptPackageInstance: ScriptPackageInstance,
+            val index: Int,
+            val text: String,
+        ) : DialogState()
     }
 }
