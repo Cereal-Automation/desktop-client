@@ -2,6 +2,8 @@ package com.cereal.client.presentation.tasks.script.overview.configuration
 
 import androidx.compose.ui.test.ExperimentalTestApi
 import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.onAllNodesWithText
+import androidx.compose.ui.test.onFirst
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import com.cereal.client.application.CoroutinesDispatcherProvider
@@ -72,6 +74,6 @@ class ScriptConfigurationViewSectionTest {
             onNodeWithText("Show Advanced settings").performClick()
 
             onNodeWithText("Hide Advanced settings").assertIsDisplayed()
-            onNodeWithText("Retries").assertIsDisplayed()
+            onAllNodesWithText("Retries").onFirst().assertIsDisplayed()
         }
 }
