@@ -8,6 +8,7 @@ import com.cereal.client.domain.repository.ApplicationRepository
 import com.cereal.client.domain.repository.ArtifactRepository
 import com.cereal.client.domain.repository.CustomDatasetRepository
 import com.cereal.client.domain.repository.FeatureFlagRepository
+import com.cereal.client.domain.repository.LlmProviderConfigRepository
 import com.cereal.client.domain.repository.LogEventRepository
 import com.cereal.client.domain.repository.NotificationHistoryRepository
 import com.cereal.client.domain.repository.NotificationSettingsRepository
@@ -27,6 +28,7 @@ import com.cereal.client.infrastructure.data.repository.inmemory.InMemoryApplica
 import com.cereal.client.infrastructure.data.repository.inmemory.InMemoryApplicationRepository
 import com.cereal.client.infrastructure.data.repository.inmemory.InMemoryArtifactRepository
 import com.cereal.client.infrastructure.data.repository.inmemory.InMemoryCustomDatasetRepository
+import com.cereal.client.infrastructure.data.repository.inmemory.InMemoryLlmProviderConfigRepository
 import com.cereal.client.infrastructure.data.repository.inmemory.InMemoryLogEventRepository
 import com.cereal.client.infrastructure.data.repository.inmemory.InMemoryNotificationHistoryRepository
 import com.cereal.client.infrastructure.data.repository.inmemory.InMemoryNotificationSettingsRepository
@@ -82,6 +84,7 @@ object InMemoryRepositoryModule {
             single<ApplicationPreferenceRepository> { InMemoryApplicationPreferenceRepository() }
             single<NotificationSettingsRepository> { InMemoryNotificationSettingsRepository() }
             single<ProxyProviderCredentialRepository> { InMemoryProxyProviderCredentialRepository() }
+            single<LlmProviderConfigRepository> { InMemoryLlmProviderConfigRepository() }
             // Feature flags are pure build configuration (no database/network/native deps), so the
             // sandbox graph uses the real impl rather than an in-memory fake. Tests that need to
             // force a specific flag state override this binding with InMemoryFeatureFlagRepository.

@@ -55,6 +55,9 @@ sealed class ApplicationPreferenceKey<T>(
 
     object MarsProxiesApiToken : ApplicationPreferenceKey<String>(KEY_MARS_PROXIES_API_TOKEN, "")
 
+    /** Settings → AI config as one JSON value (it carries the API key). */
+    object LlmProviderConfig : ApplicationPreferenceKey<String>(KEY_LLM_PROVIDER_CONFIG, "")
+
     companion object {
         const val KEY_DESKTOP_NOTIFICATIONS_ENABLED = "key_desktop_notifications_enabled"
         const val KEY_DISCORD_ACTIVITY_STATUS_ENABLED = "key_discord_activity_status_enabled"
@@ -78,6 +81,7 @@ sealed class ApplicationPreferenceKey<T>(
         const val KEY_PROXY_HEALTH_CHECK_INTERVAL = "key_proxy_health_check_interval"
         const val KEY_NOTIFICATION_CENTER_LAST_SEEN_AT = "key_notification_center_last_seen_at"
         const val KEY_MARS_PROXIES_API_TOKEN = "key_mars_proxies_api_token"
+        const val KEY_LLM_PROVIDER_CONFIG = "key_llm_provider_config"
 
         private const val DEFAULT_SMTP_PORT = 587
 
@@ -92,6 +96,7 @@ sealed class ApplicationPreferenceKey<T>(
                 KEY_EMAIL_PASSWORD,
                 KEY_DISCORD_WEBHOOK_URL,
                 KEY_MARS_PROXIES_API_TOKEN,
+                KEY_LLM_PROVIDER_CONFIG,
             )
     }
 }

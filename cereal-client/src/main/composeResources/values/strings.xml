@@ -545,4 +545,19 @@
     <string name="task_action_stop_task_first">Stop the task first</string>
     <string name="task_action_already_running">A task action is already running.</string>
     <string name="task_action_in_progress">Wait for the task action to finish before starting the task.</string>
+    <string name="ai">AI</string>
+    <string name="ai_provider">Provider</string>
+    <string name="ai_provider_desc">Choose the LLM provider scripts use.</string>
+    <string name="ai_provider_none">None</string>
+    <string name="ai_provider_anthropic">Anthropic</string>
+    <string name="ai_provider_openai_compatible">OpenAI-compatible</string>
+    <string name="ai_base_url">Base URL</string>
+    <string name="ai_base_url_desc">Change it to use a proxy, OpenRouter, or a local server such as Ollama or LM Studio.</string>
+    <string name="ai_api_key">API key</string>
+    <string name="ai_api_key_desc_required">Your key for this provider. Scripts never see it.</string>
+    <string name="ai_api_key_desc_optional">Optional: local servers often need no key. Scripts never see it.</string>
+    <string name="ai_model">Model</string>
+    <string name="ai_model_desc">The model id every script call uses.</string>
+    <string name="ai_spend_limits_anthropic">Your provider bills you directly for tokens. Set a spend limit in the Anthropic Console (console.anthropic.com → Settings → Limits).</string>
+    <string name="ai_spend_limits_openai_compatible">Your provider bills you directly for tokens. Set a spend limit in your provider dashboard, e.g. OpenAI usage limits (platform.openai.com → Settings → Limits).</string>
 </resources>
