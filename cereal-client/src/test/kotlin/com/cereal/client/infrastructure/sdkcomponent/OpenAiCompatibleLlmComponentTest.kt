@@ -9,6 +9,7 @@ import com.cereal.client.domain.model.llm.LlmProviderType
 import com.cereal.client.infrastructure.data.repository.inmemory.InMemoryLlmProviderConfigRepository
 import com.cereal.client.infrastructure.provider.LlmProviderImpl
 import com.cereal.client.infrastructure.sdkcomponent.fixtures.RecordingLoggerComponent
+import com.cereal.sdk.component.llm.ImageMediaType
 import com.cereal.sdk.component.llm.LlmException
 import com.cereal.sdk.component.llm.LlmRequest
 import com.cereal.sdk.component.llm.LlmTurn
@@ -20,6 +21,7 @@ import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonObject
+import kotlinx.serialization.json.jsonPrimitive
 import okhttp3.OkHttpClient
 import okhttp3.mockwebserver.MockResponse
 import okhttp3.mockwebserver.MockWebServer
@@ -57,6 +59,9 @@ class OpenAiCompatibleLlmComponentTest {
             turns = listOf(LlmTurn.User(listOf(UserPart.Text("What is the capital of France?")))),
             maxTokens = 1024,
         )
+
+    private val imageRequest =
+        request.copy(turns = listOf(LlmTurn.User(listOf(UserPart.Text("What is the capital of France?"), UserPart.Image(IMAGE_BYTES, ImageMediaType.Png)))))
 
     @BeforeEach
     fun setUp() =
@@ -157,6 +162,76 @@ class OpenAiCompatibleLlmComponentTest {
                     .jsonObject["message"]
             assertEquals(4, messages.size)
             assertEquals(original, messages[2])
+        }
+
+    @Test
+    fun `an image is sent as an image_url part with a base64 data URI`() =
+        runTest {
+            ImageMediaType.entries.forEach { mediaType ->
+                server.enqueue(fixture("chat-text.json"))
+                val image = UserPart.Image(IMAGE_BYTES, mediaType)
+
+                component.complete(request.copy(turns = listOf(LlmTurn.User(listOf(UserPart.Text("What is this?"), image)))))
+
+                assertEquals(
+                    Json.parseToJsonElement(
+                        """
+                        [
+                          {"type": "text", "text": "What is this?"},
+                          {"type": "image_url", "image_url": {"url": "data:${mediaType.mimeType};base64,$IMAGE_BASE64"}}
+                        ]
+                        """,
+                    ),
+                    server
+                        .takeRequest()
+                        .json()["messages"]!!
+                        .jsonArray[1]
+                        .jsonObject["content"],
+                )
+            }
+        }
+
+    @Test
+    fun `an image sent to a model without vision fails as InvalidRequest with the provider message`() =
+        runTest {
+            server.enqueue(fixture("error-image-unsupported.json", code = 400))
+
+            val error = assertThrows<LlmException.InvalidRequest> { component.complete(imageRequest) }
+
+            assertEquals("Invalid content type. image_url is only supported by certain models.", error.message)
+            assertEquals(1, server.requestCount)
+        }
+
+    @Test
+    fun `a Gemini reply to an image keeps the thought signature on its tool call when sent back`() =
+        runTest {
+            // Fixture from Google's OpenAI-compatibility docs (signature on tool_calls[].extra_content), not a live call.
+            server.enqueue(fixture("gemini-chat-image-tool-call.json"))
+            server.enqueue(fixture("chat-text.json"))
+
+            val first = component.complete(imageRequest)
+            component.complete(imageRequest.copy(turns = imageRequest.turns + first.assistantTurn + request.turns))
+
+            assertEquals(StopReason.ToolUse, first.stopReason)
+            server.takeRequest()
+            val messages = server.takeRequest().json()["messages"]!!.jsonArray
+            val original =
+                Json
+                    .parseToJsonElement(fixtureText("gemini-chat-image-tool-call.json"))
+                    .jsonObject["choices"]!!
+                    .jsonArray[0]
+                    .jsonObject["message"]
+            assertEquals(original, messages[2])
+            assertEquals(
+                "EjQKMgHGeminiImageSignatureExample0002",
+                messages[2]
+                    .jsonObject["tool_calls"]!!
+                    .jsonArray[0]
+                    .jsonObject["extra_content"]!!
+                    .jsonObject["google"]!!
+                    .jsonObject["thought_signature"]!!
+                    .jsonPrimitive.content,
+            )
         }
 
     @Test
@@ -318,8 +393,8 @@ class OpenAiCompatibleLlmComponentTest {
                 server.enqueue(MockResponse().setResponseCode(400).setBody("not json"))
                 repeat(4) { server.enqueue(fixture("error-server.json", code = 503)) }
 
-                val first = component.complete(request)
-                val next = request.copy(turns = request.turns + first.assistantTurn)
+                val first = component.complete(imageRequest)
+                val next = imageRequest.copy(turns = imageRequest.turns + first.assistantTurn)
                 repeat(4) { errors += assertThrows<LlmException> { component.complete(next) } }
             } finally {
                 root.detachAppender(appLog)
@@ -327,7 +402,7 @@ class OpenAiCompatibleLlmComponentTest {
 
             val everything =
                 taskLog.lines + appLog.list.map { it.formattedMessage } + errors.map { it.messageChain() }
-            val secrets = listOf(API_KEY, "capital of France", "geography", "Paris", "CsQBAdHtim9")
+            val secrets = listOf(API_KEY, "capital of France", "geography", "Paris", "CsQBAdHtim9", IMAGE_TEXT, IMAGE_BASE64)
             everything.forEach { line -> secrets.forEach { assertFalse(line.contains(it), "\"$it\" leaked in: $line") } }
             assertTrue(appLog.list.isNotEmpty(), "retries should be logged")
         }
@@ -355,5 +430,8 @@ class OpenAiCompatibleLlmComponentTest {
 
     private companion object {
         const val API_KEY = "sk-test-key-1234"
+        const val IMAGE_TEXT = "secret-screenshot-pixels"
+        val IMAGE_BYTES = IMAGE_TEXT.toByteArray()
+        const val IMAGE_BASE64 = "c2VjcmV0LXNjcmVlbnNob3QtcGl4ZWxz"
     }
 }

@@ -1,0 +1,1 @@
+{"error":{"message":"Invalid content type. image_url is only supported by certain models.","type":"invalid_request_error","param":"messages.[1].content.[1].type","code":null}}
