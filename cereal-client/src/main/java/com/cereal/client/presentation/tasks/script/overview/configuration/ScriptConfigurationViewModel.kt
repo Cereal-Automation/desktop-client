@@ -1,6 +1,7 @@
 package com.cereal.client.presentation.tasks.script.overview.configuration
 
 import androidx.compose.runtime.MutableState
+import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.mutableStateOf
 import com.cereal.client.application.CoroutinesDispatcherProvider
 import com.cereal.client.application.interactor.files.ReadCustomDatasetFileInteractor
@@ -8,12 +9,14 @@ import com.cereal.client.application.interactor.files.ReadListFileInteractor
 import com.cereal.client.application.interactor.files.ReadProxyFileInteractor
 import com.cereal.client.application.interactor.script.GetScriptConfigDefinitionInteractor
 import com.cereal.client.application.interactor.script.GetScriptPackageInstancesByPackageNameInteractor
+import com.cereal.client.application.interactor.script.LoadFieldOptionsInteractor
 import com.cereal.client.domain.model.datasets.CustomDatasetGroup
 import com.cereal.client.domain.model.datasets.DatasetType
 import com.cereal.client.domain.model.proxy.ProxyGroup
 import com.cereal.client.domain.model.script.ScriptPackage
 import com.cereal.client.domain.model.script.ScriptPackageInstance
 import com.cereal.client.domain.model.script.configuration.ConfigItemType
+import com.cereal.client.domain.model.script.configuration.ConfigSection
 import com.cereal.client.domain.model.script.configuration.ConfigurationItem
 import com.cereal.client.domain.model.script.configuration.ListRows
 import com.cereal.client.domain.model.script.configuration.ScriptConfigurationItemDefinition
@@ -28,7 +31,10 @@ import com.cereal.client.presentation.util.InteractorRunner
 import com.cereal.client.presentation.view.fields.state.DropDownFieldState
 import com.cereal.client.presentation.view.fields.state.FormFieldState
 import com.cereal.client.presentation.view.fields.state.ListFieldState
+import com.cereal.client.presentation.view.fields.state.OptionsLoadStatus
+import com.cereal.client.presentation.view.fields.state.OptionsTextFieldState
 import com.cereal.sdk.statemodifier.Visibility
+import com.github.kittinunf.result.coroutines.SuspendableResult
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
 import java.io.File
@@ -46,6 +52,7 @@ class ScriptConfigurationViewModel(
     private val readCustomDatasetFileInteractor: ReadCustomDatasetFileInteractor,
     private val readProxyFileInteractor: ReadProxyFileInteractor,
     private val readListFileInteractor: ReadListFileInteractor,
+    private val loadFieldOptionsInteractor: LoadFieldOptionsInteractor = LoadFieldOptionsInteractor(),
 ) {
     val scriptConfigurationForm: MutableState<ConfigurationItemsForm?> = mutableStateOf(null)
     val showConcurrentTasks: MutableState<Boolean> = mutableStateOf(false)
@@ -56,6 +63,12 @@ class ScriptConfigurationViewModel(
     val listReplaceConfirmation = mutableStateOf<ListReplaceConfirmation?>(null)
     val scriptInstructions: String? = scriptPackage.manifest.instructions
     val existingInstances: MutableState<List<ScriptPackageInstance>> = mutableStateOf(emptyList())
+
+    // Not persisted: the view model is recreated per form open, so collapsed sections start closed every time.
+    private val openedSections = mutableStateMapOf<String, Boolean>()
+
+    /** Per collapsed section key, how many of its fields failed the last Save. */
+    val sectionErrorCounts = mutableStateMapOf<String, Int>()
 
     private val interactorRunner = InteractorRunner(scope, dispatcherProvider, errorResolver)
 
@@ -153,6 +166,68 @@ class ScriptConfigurationViewModel(
     }
 
     fun validate(): Boolean = validateConfigurationForm() && validateNotificationOverrides()
+
+    /**
+     * Runs the script's options `load` for [state] with the current values of its `dependsOn` fields.
+     * Called only when the dropdown opens ([refresh] false: a cached result is reused) or on refresh/retry.
+     * The call runs in [scope], so closing the form cancels it, as do a new trigger and a `dependsOn` edit.
+     */
+    fun loadOptions(
+        state: OptionsTextFieldState,
+        refresh: Boolean = false,
+    ) {
+        if (!refresh && (state.options != null || state.isLoading)) return
+        val section =
+            scriptConfigurationForm.value?.getAllFormSections()?.firstOrNull { state in it.getFormFieldStates() } ?: return
+        val config = RawScriptConfigValues(section.dependsOnValues(state))
+
+        state.loadJob?.cancel()
+        state.loadStatus = OptionsLoadStatus.Loading
+        state.loadJob =
+            scope.launch(dispatcherProvider.io) {
+                loadFieldOptionsInteractor(LoadFieldOptionsInteractor.Params(state.fieldOptions, config)) { result ->
+                    when (result) {
+                        is SuspendableResult.Success -> {
+                            state.options = result.value
+                            state.loadStatus = OptionsLoadStatus.Idle
+                        }
+
+                        is SuspendableResult.Failure -> {
+                            state.loadStatus = OptionsLoadStatus.Failed(result.error)
+                        }
+                    }
+                }
+            }
+    }
+
+    /** Unsectioned fields first, then each declared section in order; fields keep their definition order. */
+    fun fieldSections(): List<FieldSection> =
+        scriptConfigurationForm.value
+            ?.getAllConfigurationItemWithFieldStates()
+            .orEmpty()
+            .entries
+            .groupBy { it.key.definition.section }
+            .entries
+            .sortedBy { it.key?.order ?: -1 }
+            .map { (section, fields) -> FieldSection(section, fields.associate { it.key to it.value }) }
+
+    fun isSectionOpen(section: ConfigSection): Boolean = !section.collapsed || openedSections[section.key] == true
+
+    fun toggleSection(section: ConfigSection) {
+        openedSections[section.key] = !isSectionOpen(section)
+    }
+
+    private fun openCollapsedSectionsWithErrors() {
+        sectionErrorCounts.clear()
+        fieldSections().forEach { (section, fields) ->
+            if (section?.collapsed != true) return@forEach
+            val errors = fields.values.count { it.error != null }
+            if (errors > 0) {
+                sectionErrorCounts[section.key] = errors
+                openedSections[section.key] = true
+            }
+        }
+    }
 
     private fun validateNotificationOverrides(): Boolean = notificationOverridesForm.validate()
 
@@ -284,9 +359,15 @@ class ScriptConfigurationViewModel(
                 isValid = false
             }
         }
+        openCollapsedSectionsWithErrors()
 
         return isValid
     }
+
+    data class FieldSection(
+        val section: ConfigSection?,
+        val fields: Map<ConfigurationItem, FormFieldState<*, *>>,
+    )
 
     /**
      * A finished import waiting on the user's confirmation because applying it would replace rows they

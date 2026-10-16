@@ -231,7 +231,7 @@ class ConfigInvocationHandler(
                             "with @ScriptConfigurationItem, so it has no configured value.",
                     )
 
-            row.fields[annotation.keyName]?.raw?.let { return it }
+            row.fields[annotation.keyName]?.raw?.let { return (it as? Secret)?.toComponentSecret() ?: it }
 
             if (method.kotlinFunction?.returnType?.isMarkedNullable == true) {
                 return null

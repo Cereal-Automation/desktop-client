@@ -13,6 +13,7 @@ import com.cereal.client.domain.model.script.configuration.ConfigItemType
 import com.cereal.client.domain.model.script.configuration.ConfigurationItem
 import com.cereal.client.domain.model.script.configuration.MAX_LIST_IMPORT_ROWS
 import com.cereal.client.domain.model.script.configuration.ScriptConfigurationItemDefinition
+import com.cereal.client.domain.model.script.configuration.Secret
 import com.cereal.client.infrastructure.data.datasource.csv.CsvReader
 import com.cereal.client.infrastructure.data.datasource.csv.CsvWriter
 import com.cereal.client.infrastructure.data.datasource.filesystem.FileSystemProxyTemplateDataSource
@@ -32,6 +33,7 @@ import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.setMain
 import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.Assertions.assertEquals
+import org.junit.jupiter.api.Assertions.assertFalse
 import org.junit.jupiter.api.Assertions.assertNull
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.BeforeEach
@@ -357,8 +359,36 @@ class ScriptConfigurationCsvImportTest {
         )
     }
 
+    // region #84 Secret record fields
+    @Test
+    fun `imports a Secret column as a masked secret`() {
+        extraFields = listOf(fieldDefinition("password", ConfigItemType.SecretConfigItem, position = 6))
+
+        val state =
+            importing(
+                """
+                sku,qty,size,password
+                ABC-123,2,LARGE,hunter2
+                """.trimIndent(),
+            )
+
+        val password =
+            state.fieldValue.rows
+                .single()
+                .fields
+                .getValue("password")
+                .raw as Secret
+        assertEquals("hunter2", password.reveal())
+        assertTrue(state.fieldValue.describe().contains("***"))
+        assertFalse(state.fieldValue.describe().contains("hunter2"))
+        assertNoError()
+    }
+    // endregion
+
     // ------------------------------------------------------------------
     // Harness
+
+    private var extraFields: List<ScriptConfigurationItemDefinition> = emptyList()
     // ------------------------------------------------------------------
 
     private fun importing(contents: String): ListFieldState = importFile(csvFile(contents))
@@ -481,7 +511,7 @@ class ScriptConfigurationCsvImportTest {
             description = "Products to purchase",
             key = "targets",
             position = 0,
-            type = ConfigItemType.ListConfigItem(itemType = Size::class, items = recordFields()),
+            type = ConfigItemType.ListConfigItem(itemType = Size::class, items = recordFields() + extraFields),
             isNullable = false,
             stateModifier = null,
             isScriptIdentifier = false,

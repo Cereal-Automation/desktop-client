@@ -22,7 +22,7 @@ fun errorView(errorAction: State<ErrorAction>) {
                 CerealText(stringResource(Res.string.error))
             },
             text = {
-                CerealText(it.message)
+                CerealText(it.exception?.let { e -> localizedErrorMessage(e) } ?: it.message)
             },
             confirmButton = {
                 CerealTextButton(onClick = { it.dismiss() }) {

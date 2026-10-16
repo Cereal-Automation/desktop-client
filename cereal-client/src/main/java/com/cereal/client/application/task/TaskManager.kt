@@ -2,7 +2,13 @@ package com.cereal.client.application.task
 
 import com.cereal.client.application.CoroutinesDispatcherProvider
 import com.cereal.client.application.exception.MaxConcurrentTasksReachedException
+import com.cereal.client.application.exception.ScriptCallException
+import com.cereal.client.application.exception.StopTaskFirstException
+import com.cereal.client.application.exception.TaskActionAlreadyRunningException
+import com.cereal.client.application.exception.TaskActionInProgressException
+import com.cereal.client.application.exception.TaskActionTimeoutException
 import com.cereal.client.domain.model.exception.InvalidScriptConfigurationException
+import com.cereal.client.domain.model.script.MainScriptInstance
 import com.cereal.client.domain.model.script.ScriptInstance
 import com.cereal.client.domain.model.script.ScriptPackageInstance
 import com.cereal.client.domain.model.script.getNumberOfConcurrentTasks
@@ -20,10 +26,17 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.TimeoutCancellationException
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
+import kotlinx.coroutines.withTimeout
+import org.slf4j.LoggerFactory
 import java.util.UUID
 import kotlin.coroutines.cancellation.CancellationException
 import kotlin.time.Clock
@@ -37,11 +50,17 @@ class TaskManager(
     private val scriptInstanceRepository: ScriptInstanceRepository,
     private val jobTaskFactory: JobTaskFactory,
     private val artifactRepository: ArtifactRepository,
+    private val taskActionRunner: TaskActionRunner = TaskExecutorActionRunner,
 ) {
+    private val logger = LoggerFactory.getLogger(TaskManager::class.java)
     private val scope = CoroutineScope(Dispatchers.Default + SupervisorJob())
 
     private val startTaskMutex = Mutex()
     private val startTasksToConcurrencyLimitMutex = Mutex()
+    private val _taskActions = MutableStateFlow(TaskActionsState())
+
+    /** Task actions run on this app-lifetime scope, so leaving the Tasks screen neither cancels them nor loses their result. */
+    val taskActions: StateFlow<TaskActionsState> = _taskActions.asStateFlow()
 
     /**
      * This method should only be called once per script instance (at startup).
@@ -107,9 +126,64 @@ class TaskManager(
         startTask(task)
     }
 
+    /** The main-script task of [scriptPackageInstance]; task actions run with its configuration and components. */
+    private suspend fun mainTask(scriptPackageInstance: ScriptPackageInstance): JobTask? = tasksRepository.getTasks(scriptPackageInstance).firstOrNull { it.scriptInstance is MainScriptInstance }
+
+    suspend fun getTaskActions(scriptPackageInstance: ScriptPackageInstance): List<TaskActionItem> {
+        val task = mainTask(scriptPackageInstance) ?: return emptyList()
+        return taskActionRunner.actions(task)
+    }
+
+    /**
+     * Starts the task action [actionName] and returns at once; progress and the result are published on [taskActions].
+     * While it runs the instance's tasks can't be started (see [performPreStartCheck]).
+     */
+    suspend fun startTaskAction(
+        scriptPackageInstance: ScriptPackageInstance,
+        actionName: String,
+    ) {
+        val id = scriptPackageInstance.id
+        // Same lock as startTask, so "no task running" and claiming the action can't interleave with a Start.
+        val task =
+            startTaskMutex.withLock {
+                if (tasksRepository.getTasks(scriptPackageInstance).any { it.status.isRunning() }) throw StopTaskFirstException()
+                if (id in _taskActions.value.inProgress) throw TaskActionAlreadyRunningException()
+                val task = mainTask(scriptPackageInstance) ?: error("No task for $id.")
+                _taskActions.update { it.copy(inProgress = it.inProgress + id) }
+                task
+            }
+        scope.launch(dispatcherProvider.io) {
+            var result: TaskActionResult? = null
+            // finally: script code can throw an Error (e.g. TODO()), which must not leave the instance blocked.
+            try {
+                result =
+                    try {
+                        TaskActionResult.Completed(withTimeout(SCRIPT_CALL_TIMEOUT) { taskActionRunner.run(task, actionName) })
+                    } catch (e: TimeoutCancellationException) {
+                        TaskActionResult.Failed(TaskActionTimeoutException(SCRIPT_CALL_TIMEOUT))
+                    } catch (e: CancellationException) {
+                        throw e
+                    } catch (e: Exception) {
+                        logger.warn("Task action \"$actionName\" failed", e)
+                        TaskActionResult.Failed(ScriptCallException(e))
+                    }
+            } finally {
+                _taskActions.update { it.copy(inProgress = it.inProgress - id, results = it.results + listOfNotNull(result)) }
+            }
+        }
+    }
+
+    fun dismissTaskActionResult(result: TaskActionResult) {
+        _taskActions.update { it.copy(results = it.results - result) }
+    }
+
     private suspend fun performPreStartCheck(task: JobTask) {
         if (task.job?.isActive == true) {
             error("Task already running.")
+        }
+
+        if (task.scriptInstance.packageInstance.id in _taskActions.value.inProgress) {
+            throw TaskActionInProgressException()
         }
 
         val numberOfRunningTasks =

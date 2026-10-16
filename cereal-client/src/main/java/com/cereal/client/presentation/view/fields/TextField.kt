@@ -19,7 +19,8 @@ fun TextField(
     title: String,
     state: TextFieldState<*>,
     modifier: Modifier = Modifier,
-    hintText: String = "",
+    // The script's placeholder (StateModifier.getPlaceholder) unless the caller supplies its own hint.
+    hintText: String = state.placeholder.value.orEmpty(),
     enabled: Boolean = true,
     singleLine: Boolean = true,
     imeAction: ImeAction = ImeAction.Next,
@@ -27,6 +28,10 @@ fun TextField(
     trailingIcon: @Composable (() -> Unit)? = null,
     onImeAction: () -> Unit = {},
 ) {
+    // Material3 hides `placeholder` behind an unfocused floating label, so a labeled field shows its hint
+    // under the box while it's empty instead; an unlabeled field keeps it inside as the placeholder.
+    val hasLabel = title.isNotBlank()
+    val hint = hintText.takeIf { it.isNotBlank() }
     FormField(state.error) {
         Column(modifier = modifier.fillMaxWidth()) {
             OutlinedTextField(
@@ -38,11 +43,8 @@ fun TextField(
                 singleLine = singleLine,
                 visualTransformation = visualTransformation,
                 trailingIcon = trailingIcon,
-                placeholder = {
-                    CerealText(
-                        text = hintText,
-                    )
-                },
+                placeholder = hint?.takeIf { !hasLabel }?.let { { CerealText(text = it) } },
+                supportingText = hint?.takeIf { hasLabel && state.text.isEmpty() }?.let { { CerealText(text = it) } },
                 // A blank title renders no label at all rather than an empty one, so a caller that
                 // has already named the field above the input (a single-field list row) gets a bare
                 // box instead of a floating label slot holding nothing.

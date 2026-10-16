@@ -2,6 +2,7 @@ package com.cereal.client.presentation.view.group
 
 import androidx.compose.runtime.mutableStateOf
 import com.cereal.client.presentation.tasks.MenuOption
+import org.jetbrains.compose.resources.StringResource
 
 /**
  * ViewModel for managing a hierarchical list with parent-child relationships (e.g., groups and script instances)
@@ -14,6 +15,12 @@ class HierarchicalListViewModel<P, C>(
     private val onParentMenuOptionSelected: ((item: P, menuItem: MenuOption) -> Unit)? = null,
     private val onChildMenuOptionSelected: ((item: C, menuItem: MenuOption) -> Unit)? = null,
     private val onAddChildClicked: ((parentId: P) -> Unit)? = null,
+    /** Extra, per-child items rendered after [childMenuOptions] (e.g. a script's task actions). */
+    val childExtraMenuItems: (GroupListItemContent<C>) -> List<ExtraMenuItem> = { emptyList() },
+    /** Called when a child's menu opens, so [childExtraMenuItems] can be loaded lazily. */
+    val onChildMenuOpened: (C) -> Unit = {},
+    /** Whether a child shows a progress indicator (e.g. a task action is running). */
+    val isChildBusy: (C) -> Boolean = { false },
 ) {
     val state = mutableStateOf<List<HierarchicalListItem<P, C>>>(emptyList())
 
@@ -175,3 +182,11 @@ class HierarchicalListViewModel<P, C>(
         onAddChildClicked?.invoke(parent.content.id)
     }
 }
+
+data class ExtraMenuItem(
+    val label: String,
+    val enabled: Boolean,
+    /** Shown when the item is disabled, to explain why. */
+    val hint: StringResource?,
+    val onClick: () -> Unit,
+)

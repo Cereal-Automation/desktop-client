@@ -5,13 +5,17 @@ import com.cereal.client.application.exception.InvalidScriptConfigurationDefinit
 import com.cereal.client.domain.model.exception.UnsupportedConfigurationTypeException
 import com.cereal.client.domain.model.script.configuration.ApplicationScriptConfigurationKeys
 import com.cereal.client.domain.model.script.configuration.ConfigItemType
+import com.cereal.client.domain.model.script.configuration.ConfigSection
 import com.cereal.client.domain.model.script.configuration.ConfigValue
 import com.cereal.client.domain.model.script.configuration.ScriptConfigurationDefinition
 import com.cereal.client.domain.model.script.configuration.ScriptConfigurationItemDefinition
 import com.cereal.client.domain.model.script.configuration.toConfigValue
+import com.cereal.sdk.FieldOptions
+import com.cereal.sdk.NoFieldOptions
 import com.cereal.sdk.ScriptConfiguration
 import com.cereal.sdk.ScriptConfigurationItem
 import com.cereal.sdk.ScriptConfigurationListItem
+import com.cereal.sdk.ScriptConfigurationSections
 import com.cereal.sdk.models.proxy.Proxy
 import com.cereal.sdk.models.proxy.RandomProxy
 import com.cereal.sdk.statemodifier.DefaultStateModifier
@@ -20,6 +24,8 @@ import org.slf4j.LoggerFactory
 import java.lang.reflect.InvocationHandler
 import java.lang.reflect.Method
 import kotlin.reflect.KClass
+import kotlin.reflect.KFunction
+import kotlin.reflect.full.findAnnotation
 import kotlin.reflect.full.findAnnotations
 import kotlin.reflect.full.isSubclassOf
 import kotlin.reflect.full.memberFunctions
@@ -61,6 +67,7 @@ class ScriptConfigurationDefinitionBuilder {
             setOf(
                 Boolean::class,
                 String::class,
+                SdkSecret::class,
                 Int::class,
                 Float::class,
                 Double::class,
@@ -117,6 +124,7 @@ class ScriptConfigurationDefinitionBuilder {
 
         // Create a proxy to extract default values from interface methods
         val defaultValuesProxy = createDefaultValuesProxy(scriptConfigurationClass)
+        val sections = getSections(scriptConfigurationClass)
 
         scriptConfigurationMethods.forEach { item ->
             // Please note that the state modifier must be an object and not a class because we only read the objectInstance.
@@ -128,6 +136,8 @@ class ScriptConfigurationDefinitionBuilder {
                             " as a class, change it to an object instead. Another reason could be that you're missing" +
                             " proguard rules to keep all Kotlin object singletons in your package.",
                     )
+
+            val fieldOptions = item.fieldOptions()
 
             // Extract default value from the interface method if it has a default implementation
             val defaultValue = extractDefaultValue(defaultValuesProxy, item)
@@ -143,6 +153,8 @@ class ScriptConfigurationDefinitionBuilder {
                     stateModifier = stateModifier,
                     isScriptIdentifier = item.annotation.isScriptIdentifier,
                     defaultValue = defaultValue,
+                    section = item.sectionIn(sections),
+                    fieldOptions = fieldOptions,
                 )
 
             if (item.annotation.valuePerTask) {
@@ -168,6 +180,48 @@ class ScriptConfigurationDefinitionBuilder {
         }
 
         return definitions
+    }
+
+    /** The options object of a combo-box field, or null. Only a top-level, non-per-task String may declare one. */
+    private fun ScriptConfigurationMethod.fieldOptions(): FieldOptions? {
+        if (annotation.options == NoFieldOptions::class) return null
+        if (returnType != String::class || annotation.valuePerTask) {
+            throw InvalidScriptConfigurationDefinitionException(
+                "The '${annotation.name}' config item declares options, but options are only supported on a " +
+                    "String config item that is not valuePerTask.",
+            )
+        }
+        return annotation.options.objectInstance
+            ?: throw InvalidScriptConfigurationDefinitionException(
+                "The '${annotation.name}' config item declares options which aren't an object. Declare the " +
+                    "options as an object instead of a class.",
+            )
+    }
+
+    private fun getSections(scriptConfigurationClass: KClass<ScriptConfiguration>): Map<String, ConfigSection> {
+        val declared = scriptConfigurationClass.findAnnotation<ScriptConfigurationSections>()?.value.orEmpty()
+        declared
+            .groupBy { it.key }
+            .filterValues { it.size > 1 }
+            .keys
+            .firstOrNull()
+            ?.let { key ->
+                throw InvalidScriptConfigurationDefinitionException(
+                    "The script contains an invalid configuration: the section key '$key' is declared more than once.",
+                )
+            }
+        return declared
+            .mapIndexed { index, section -> ConfigSection(section.key, section.name, section.collapsed, order = index) }
+            .associateBy { it.key }
+    }
+
+    private fun ScriptConfigurationMethod.sectionIn(sections: Map<String, ConfigSection>): ConfigSection? {
+        val key = annotation.section.takeIf { it.isNotEmpty() } ?: return null
+        return sections[key]
+            ?: throw InvalidScriptConfigurationDefinitionException(
+                "The script contains an invalid configuration: the '${annotation.name}' config item names the " +
+                    "section '$key', which isn't declared in @ScriptConfigurationSections.",
+            )
     }
 
     private fun getScriptConfigurationMethods(scriptConfigurationClass: KClass<ScriptConfiguration>): List<ScriptConfigurationMethod> =
@@ -314,21 +368,7 @@ class ScriptConfigurationDefinitionBuilder {
                 .map { field ->
                     val annotation = field.findAnnotations(ScriptConfigurationItem::class).first()
 
-                    if (annotation.stateModifier != DefaultStateModifier::class) {
-                        throw InvalidScriptConfigurationDefinitionException(
-                            "Field '${annotation.keyName}' of the record used by list '$listItemName' declares a " +
-                                "stateModifier. Visibility and validation belong to the list item itself — move the " +
-                                "stateModifier to '$listItemName'.",
-                        )
-                    }
-
-                    if (field.hasDefaultImplementation()) {
-                        throw InvalidScriptConfigurationDefinitionException(
-                            "Field '${annotation.keyName}' of the record used by list '$listItemName' has a " +
-                                "default implementation, but lists do not support default values or pre-seeded " +
-                                "rows. Remove the default implementation.",
-                        )
-                    }
+                    requireSupportedListField(field, annotation, listItemName)
 
                     ScriptConfigurationItemDefinition(
                         name = annotation.name,
@@ -357,6 +397,36 @@ class ScriptConfigurationDefinitionBuilder {
         return definitions
     }
 
+    /** Rejects record-field declarations a list row can't honour. */
+    private fun requireSupportedListField(
+        field: KFunction<*>,
+        annotation: ScriptConfigurationItem,
+        listItemName: String,
+    ) {
+        if (annotation.stateModifier != DefaultStateModifier::class) {
+            throw InvalidScriptConfigurationDefinitionException(
+                "Field '${annotation.keyName}' of the record used by list '$listItemName' declares a " +
+                    "stateModifier. Visibility and validation belong to the list item itself — move the " +
+                    "stateModifier to '$listItemName'.",
+            )
+        }
+
+        if (annotation.options != NoFieldOptions::class) {
+            throw InvalidScriptConfigurationDefinitionException(
+                "Field '${annotation.keyName}' of the record used by list '$listItemName' declares " +
+                    "options, but options are only supported on a top-level String config item.",
+            )
+        }
+
+        if (field.hasDefaultImplementation()) {
+            throw InvalidScriptConfigurationDefinitionException(
+                "Field '${annotation.keyName}' of the record used by list '$listItemName' has a " +
+                    "default implementation, but lists do not support default values or pre-seeded " +
+                    "rows. Remove the default implementation.",
+            )
+        }
+    }
+
     private fun listFieldType(
         field: kotlin.reflect.KFunction<*>,
         listItemName: String,
@@ -367,7 +437,7 @@ class ScriptConfigurationDefinitionBuilder {
         ) {
             throw InvalidScriptConfigurationDefinitionException(
                 "Field '${field.name}' of the record used by list '$listItemName' has unsupported type " +
-                    "'${field.returnType}'. A record field must be a String, Int, Float, Double, Boolean or enum " +
+                    "'${field.returnType}'. A record field must be a String, Secret, Int, Float, Double, Boolean or enum " +
                     "(optionally nullable).",
             )
         }

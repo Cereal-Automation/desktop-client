@@ -11,10 +11,18 @@ import com.cereal.client.domain.model.datasets.DatasetType
 import com.cereal.client.domain.model.proxy.ProxyGroup
 import com.cereal.client.domain.model.script.ScriptPackage
 import com.cereal.client.domain.model.script.ScriptPackageInstance
+import com.cereal.client.domain.model.script.configuration.ConfigItemType
+import com.cereal.client.domain.model.script.configuration.ConfigValue
 import com.cereal.client.domain.model.script.configuration.ConfigurationItem
+import com.cereal.client.domain.model.script.configuration.ListRow
+import com.cereal.client.domain.model.script.configuration.ListRows
+import com.cereal.client.domain.model.script.configuration.ScriptConfigurationItemDefinition
+import com.cereal.client.domain.model.script.configuration.Secret
 import com.cereal.client.presentation.error.ErrorResolver
 import com.cereal.client.presentation.tasks.script.overview.configuration.model.FileImportConfig
 import com.cereal.client.presentation.view.fields.state.DropDownFieldState
+import com.cereal.client.presentation.view.fields.state.ListFieldState
+import com.cereal.client.presentation.view.fields.state.SecretTextFieldState
 import com.github.kittinunf.result.coroutines.SuspendableResult
 import io.mockk.coEvery
 import io.mockk.coVerify
@@ -203,4 +211,73 @@ class ScriptConfigurationViewModelTest {
 
         assertNotNull(viewModel.scriptConfigurationForm.value)
     }
+
+    // region #84 Secret record fields
+    @Test
+    fun `a stored row secret loads into a masked field and saves back as a secret`() {
+        val definition =
+            ScriptConfigurationItemDefinition(
+                name = "Accounts",
+                description = "Logins",
+                key = "accounts",
+                position = 0,
+                type =
+                    ConfigItemType.ListConfigItem(
+                        itemType = Any::class,
+                        items =
+                            listOf(
+                                ScriptConfigurationItemDefinition(
+                                    name = "Password",
+                                    description = "Login",
+                                    key = "password",
+                                    position = 0,
+                                    type = ConfigItemType.SecretConfigItem,
+                                    isNullable = false,
+                                    stateModifier = null,
+                                    isScriptIdentifier = false,
+                                ),
+                            ),
+                    ),
+                isNullable = false,
+                stateModifier = null,
+                isScriptIdentifier = false,
+            )
+        val stored = ListRows(listOf(ListRow(mapOf("password" to ConfigValue.SecretValue(Secret("hunter2"))))))
+        coEvery { getScriptConfigDefinitionInteractor(any(), any()) } coAnswers {
+            secondArg<suspend (SuspendableResult<GetScriptConfigDefinitionInteractor.Result, Exception>) -> Unit>()(
+                SuspendableResult.Success(
+                    GetScriptConfigDefinitionInteractor.Result(
+                        listOf(ConfigurationItem(definition, ConfigValue.ListValue(stored))),
+                        emptyMap(),
+                    ),
+                ),
+            )
+        }
+        val viewModel = createViewModel()
+        dispatcher.scheduler.advanceUntilIdle()
+        val section = viewModel.scriptConfigurationForm.value!!.mainConfigurationFormSection
+
+        val field =
+            section
+                .getFormFieldStates()
+                .filterIsInstance<ListFieldState>()
+                .single()
+                .rows
+                .single()
+                .fieldStates
+                .getValue("password") as SecretTextFieldState
+        assertEquals("hunter2", field.text)
+        assertFalse(field.isRevealed.value)
+
+        val saved = (section.getScriptConfigurationValues().getValue("accounts") as ConfigValue.ListValue).raw
+        val secret =
+            (
+                saved.rows
+                    .single()
+                    .fields
+                    .getValue("password") as ConfigValue.SecretValue
+            ).raw
+        assertEquals("hunter2", secret.reveal())
+    }
+    // endregion
 }

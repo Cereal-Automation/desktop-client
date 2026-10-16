@@ -61,6 +61,7 @@ import com.cereal.client.application.interactor.script.GetScriptPackageInstances
 import com.cereal.client.application.interactor.script.GetScriptsInGroupInteractor
 import com.cereal.client.application.interactor.script.GetScriptsInteractor
 import com.cereal.client.application.interactor.script.GetSdkVersionInteractor
+import com.cereal.client.application.interactor.script.LoadFieldOptionsInteractor
 import com.cereal.client.application.interactor.script.ReportScriptIssueInteractor
 import com.cereal.client.application.interactor.script.StartChildScriptInteractor
 import com.cereal.client.application.interactor.script.StartScriptInteractor
@@ -82,10 +83,14 @@ import com.cereal.client.application.interactor.task.ChangeScriptPackageInstance
 import com.cereal.client.application.interactor.task.CreateScriptInstanceGroupInteractor
 import com.cereal.client.application.interactor.task.DeleteScriptInstanceInteractor
 import com.cereal.client.application.interactor.task.DeleteTaskGroupInteractor
+import com.cereal.client.application.interactor.task.DismissTaskActionResultInteractor
 import com.cereal.client.application.interactor.task.EditScriptInstanceGroupInteractor
 import com.cereal.client.application.interactor.task.GetOrCreateDefaultTaskGroupInteractor
+import com.cereal.client.application.interactor.task.GetTaskActionsInteractor
 import com.cereal.client.application.interactor.task.GetTaskGroupsInteractor
+import com.cereal.client.application.interactor.task.ObserveTaskActionsInteractor
 import com.cereal.client.application.interactor.task.ObserveTasksInteractor
+import com.cereal.client.application.interactor.task.RunTaskActionInteractor
 import com.cereal.client.application.interactor.task.StartAllTasksInScriptPackageInstanceInteractor
 import com.cereal.client.application.interactor.task.StartTaskInteractor
 import com.cereal.client.application.interactor.task.StopTaskInteractor
@@ -113,6 +118,7 @@ object InteractorModule {
             factory { GetScriptCapacityInteractor(get()) }
             factory { GetScriptConfigDefinitionInteractor(get(), get()) }
             factory { GetScriptPackageInstancesByPackageNameInteractor(get()) }
+            factory { LoadFieldOptionsInteractor() }
             factory { StartScriptInteractor(get(), get(), get(), get(), get()) }
             factory { GetScriptsInGroupInteractor(get(), get()) }
             factory { SyncScriptsOnScriptSelectionInteractor(get()) }
@@ -135,6 +141,10 @@ object InteractorModule {
             factory { StopTasksInScriptPackageInstanceInteractor(get(), get()) }
             factory { StartAllTasksInScriptPackageInstanceInteractor(get(), get()) }
             factory { UserInteractionDismissedInteractor(get()) }
+            factory { GetTaskActionsInteractor(get()) }
+            factory { RunTaskActionInteractor(get()) }
+            factory { ObserveTaskActionsInteractor(get()) }
+            factory { DismissTaskActionResultInteractor(get()) }
             // Proxies
             factory { GetProxyGroupsInteractor(get()) }
             factory { CreateProxyGroupInteractor(get()) }
