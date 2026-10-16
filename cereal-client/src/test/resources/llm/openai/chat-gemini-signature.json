@@ -1,0 +1,26 @@
+{
+  "id": "gemini-chatcmpl-example-0001",
+  "object": "chat.completion",
+  "created": 1792137600,
+  "model": "gemini-3-pro",
+  "choices": [
+    {
+      "index": 0,
+      "message": {
+        "role": "assistant",
+        "content": "Paris is the capital of France.",
+        "extra_content": {
+          "google": {
+            "thought_signature": "CsQBAdHtim9GeminiSignatureExample0001"
+          }
+        }
+      },
+      "finish_reason": "stop"
+    }
+  ],
+  "usage": {
+    "prompt_tokens": 21,
+    "completion_tokens": 9,
+    "total_tokens": 30
+  }
+}
