@@ -1,6 +1,7 @@
 package com.cereal.script.sample
 
 import com.cereal.script.sample.child.TestChildScript
+import com.cereal.script.sample.llm.CheapestSkuPicker
 import com.cereal.sdk.ExecutionResult
 import com.cereal.sdk.Script
 import com.cereal.sdk.component.ComponentProvider
@@ -22,6 +23,7 @@ class SampleScript : Script<SampleConfiguration> {
                 configuration.testUserInteraction() == null &&
                 configuration.testLicense() == null &&
                 configuration.testArtifacts() == null &&
+                configuration.testLlm() == null &&
                 configuration.crashWithException() == null
 
         if (allNull) return true
@@ -101,6 +103,7 @@ class SampleScript : Script<SampleConfiguration> {
         return true
     }
 
+    @Suppress("LongMethod") // One block per component demo; keeping them side by side is the point of the sample.
     override suspend fun execute(
         configuration: SampleConfiguration,
         provider: ComponentProvider,
@@ -111,6 +114,8 @@ class SampleScript : Script<SampleConfiguration> {
 
         // Test Artifacts (emits downloadable files; each emit appends a new artifact to this task)
         testArtifacts(configuration, provider, statusUpdate)
+
+        testLlm(configuration, provider, statusUpdate)
 
         // Test Notification
         if (shouldRun(configuration, configuration.testNotification())) {
@@ -234,6 +239,18 @@ class SampleScript : Script<SampleConfiguration> {
         delay(DEMO_DELAY_MS)
     }
 
+    private suspend fun testLlm(
+        configuration: SampleConfiguration,
+        provider: ComponentProvider,
+        statusUpdate: suspend (message: String) -> Unit,
+    ) {
+        if (!shouldRun(configuration, configuration.testLlm())) return
+
+        statusUpdate("Asking the AI model for the cheapest SKU...")
+        val pick = CheapestSkuPicker(DEMO_PRICES).pick(provider)
+        provider.logger().info("Cheapest SKU: ${pick.sku} (${pick.reason}) byModel=${pick.byModel}")
+    }
+
     override suspend fun onFinish(
         configuration: SampleConfiguration,
         provider: ComponentProvider,
@@ -247,5 +264,6 @@ class SampleScript : Script<SampleConfiguration> {
         const val TEST_LONG_VALUE = 123456789L
         const val DEMO_DELAY_MS = 1000L
         const val COMPLETION_DELAY_MS = 2000L
+        val DEMO_PRICES = mapOf("ABC-1" to 19.99, "ABC-2" to 24.50)
     }
 }
