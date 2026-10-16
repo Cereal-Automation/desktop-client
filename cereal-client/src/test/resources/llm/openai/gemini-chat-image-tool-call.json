@@ -1,0 +1,36 @@
+{
+  "id": "gemini-chatcmpl-example-0002",
+  "object": "chat.completion",
+  "created": 1792137700,
+  "model": "gemini-3-pro",
+  "choices": [
+    {
+      "index": 0,
+      "message": {
+        "role": "assistant",
+        "content": null,
+        "tool_calls": [
+          {
+            "id": "function-call-0001",
+            "type": "function",
+            "function": {
+              "name": "lookup_product",
+              "arguments": "{\"sku\":\"FR-1234\"}"
+            },
+            "extra_content": {
+              "google": {
+                "thought_signature": "EjQKMgHGeminiImageSignatureExample0002"
+              }
+            }
+          }
+        ]
+      },
+      "finish_reason": "tool_calls"
+    }
+  ],
+  "usage": {
+    "prompt_tokens": 1312,
+    "completion_tokens": 14,
+    "total_tokens": 1326
+  }
+}

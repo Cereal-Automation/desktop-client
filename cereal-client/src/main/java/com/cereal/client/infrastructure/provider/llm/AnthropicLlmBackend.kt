@@ -24,6 +24,7 @@ import kotlinx.serialization.json.jsonPrimitive
 import kotlinx.serialization.json.put
 import kotlinx.serialization.json.putJsonArray
 import kotlinx.serialization.json.putJsonObject
+import java.util.Base64
 
 /**
  * Anthropic Messages (`POST {baseUrl}/messages`). Fixed tuning: adaptive thinking, effort `medium`,
@@ -112,8 +113,19 @@ class AnthropicLlmBackend(
                 buildJsonObject { textBlock(text) }
             }
 
-            // ponytail: images arrive with #112, tool results with #111.
-            is LlmUserPart.Image, is LlmUserPart.ToolResult -> {
+            is LlmUserPart.Image -> {
+                buildJsonObject {
+                    put("type", "image")
+                    putJsonObject("source") {
+                        put("type", "base64")
+                        put("media_type", mimeType)
+                        put("data", Base64.getEncoder().encodeToString(bytes))
+                    }
+                }
+            }
+
+            // ponytail: tool results arrive with #111.
+            is LlmUserPart.ToolResult -> {
                 throw LlmCallException.InvalidRequest("This version of Cereal can only send text to the AI provider.")
             }
         }

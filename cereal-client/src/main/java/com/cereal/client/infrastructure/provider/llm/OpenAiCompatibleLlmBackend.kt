@@ -23,6 +23,8 @@ import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 import kotlinx.serialization.json.put
 import kotlinx.serialization.json.putJsonArray
+import kotlinx.serialization.json.putJsonObject
+import java.util.Base64
 
 /**
  * OpenAI-compatible Chat Completions (`POST {baseUrl}/chat/completions`): OpenAI, OpenRouter, Gemini's
@@ -109,8 +111,15 @@ class OpenAiCompatibleLlmBackend(
                 }
             }
 
-            // ponytail: images arrive with #112, tool results with #111.
-            is LlmUserPart.Image, is LlmUserPart.ToolResult -> {
+            is LlmUserPart.Image -> {
+                buildJsonObject {
+                    put("type", "image_url")
+                    putJsonObject("image_url") { put("url", "data:$mimeType;base64,${Base64.getEncoder().encodeToString(bytes)}") }
+                }
+            }
+
+            // ponytail: tool results arrive with #111.
+            is LlmUserPart.ToolResult -> {
                 throw LlmCallException.InvalidRequest("This version of Cereal can only send text to the AI provider.")
             }
         }
