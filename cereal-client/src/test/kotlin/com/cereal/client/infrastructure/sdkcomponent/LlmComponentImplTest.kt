@@ -7,6 +7,7 @@ import com.cereal.client.domain.model.llm.LlmProviderConfig
 import com.cereal.client.domain.model.llm.LlmProviderType
 import com.cereal.client.infrastructure.data.repository.inmemory.InMemoryLlmProviderConfigRepository
 import com.cereal.client.infrastructure.provider.inmemory.InMemoryLlmProvider
+import com.cereal.client.infrastructure.sdkcomponent.fixtures.RecordingLoggerComponent
 import com.cereal.sdk.component.llm.CerealPlatformApi
 import com.cereal.sdk.component.llm.LlmException
 import com.cereal.sdk.component.llm.LlmRequest
@@ -25,7 +26,7 @@ import kotlin.time.Duration.Companion.seconds
 class LlmComponentImplTest {
     private val configRepository = InMemoryLlmProviderConfigRepository()
     private val llmProvider = InMemoryLlmProvider()
-    private val component = LlmComponentImpl(CompleteLlmRequestInteractor(configRepository, llmProvider))
+    private val component = LlmComponentImpl(CompleteLlmRequestInteractor(configRepository, llmProvider), RecordingLoggerComponent())
 
     private val request = LlmRequest(turns = listOf(LlmTurn.User(listOf(UserPart.Text("Hi")))))
 
