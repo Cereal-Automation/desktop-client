@@ -2,6 +2,7 @@
   "package_name": "com.cereal",
   "name": "SampleScript",
   "version_code": 1,
+  "sdk_version": "1.14.0",
   "script": "com.cereal.script.sample.SampleScript",
   "child_scripts": [
     "com.cereal.script.sample.child.TestChildScript"

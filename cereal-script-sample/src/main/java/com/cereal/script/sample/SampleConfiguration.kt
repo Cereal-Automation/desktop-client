@@ -200,6 +200,13 @@ interface SampleConfiguration : ScriptConfiguration {
     fun testArtifacts(): Boolean?
 
     @ScriptConfigurationItem(
+        keyName = "TestLlm",
+        name = "Test LLM",
+        description = "Enable testing of LlmComponent (uses the AI provider set up in Settings → AI)",
+    )
+    fun testLlm(): Boolean?
+
+    @ScriptConfigurationItem(
         keyName = "CrashWithException",
         name = "Crash With Exception",
         description = "Enable to crash the script with an exception for demo purposes",
