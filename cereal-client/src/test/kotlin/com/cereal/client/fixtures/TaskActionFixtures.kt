@@ -12,6 +12,7 @@ import com.cereal.client.domain.model.task.TaskStatus
 import com.cereal.sdk.ScriptConfiguration
 import io.mockk.mockk
 import java.io.File
+import kotlin.reflect.KClass
 import kotlin.time.Clock
 import kotlin.time.ExperimentalTime
 
@@ -38,13 +39,14 @@ class FakeTaskActionRunner(
 fun mainTaskFixture(
     instanceId: String = "pkg-actions",
     statusHistory: List<TaskStatus> = emptyList(),
+    scriptClass: KClass<out com.cereal.sdk.Script<*>> = com.cereal.sdk.Script::class,
 ): JobTask {
     val configDef = ScriptConfigurationDefinition(scriptConfigurationClass = ScriptConfiguration::class, configurationItems = emptyList())
     val scriptPackage =
         ScriptPackage(
             source = File("."),
             manifest = mockk(relaxed = true),
-            mainScript = MainScript(clazz = com.cereal.sdk.Script::class, configuration = configDef),
+            mainScript = MainScript(clazz = scriptClass, configuration = configDef),
             childScripts = emptyMap(),
         )
     val packageInstance: ScriptPackageInstance =

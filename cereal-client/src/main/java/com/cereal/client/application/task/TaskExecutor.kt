@@ -11,6 +11,7 @@ import com.cereal.sdk.Script
 import com.cereal.sdk.ScriptConfiguration
 import com.cereal.sdk.TaskAction
 import com.cereal.sdk.component.ComponentProvider
+import com.cereal.sdk.component.llm.LlmException
 import com.cereal.sdk.component.script.ScriptParameters
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineDispatcher
@@ -108,26 +109,24 @@ class TaskExecutor(
             // Job was canceled
             isTaskActive = false
             result = TaskStatus.Idle(cancellationException.message, timestamp = Clock.System.now())
-        } catch (cerealException: CerealException) {
-            // Expected, script-originated error: report it without sending to Sentry.
-            isTaskActive = false
-            val message = cerealException.message ?: DEFAULT_ERROR_MESSAGE
-            result = TaskStatus.Error(message, cerealException.stackTraceToString(), timestamp = Clock.System.now())
-            componentProvider?.logger()?.error("Error executing task: ${cerealException.message}")
         } catch (e: Exception) {
             isTaskActive = false
-            result = TaskStatus.Error(DEFAULT_ERROR_MESSAGE, e.stackTraceToString(), timestamp = Clock.System.now())
             componentProvider?.logger()?.error("Error executing task: ${e.message}")
-
-            CrashReporter.report(
-                e,
-                mapOf(
-                    "script_name" to manifest.name,
-                    "script_package" to manifest.packageName,
-                    "script_version_code" to manifest.versionCode,
-                    "task_configuration" to task.configuration,
-                ),
-            )
+            if (e.isExpectedScriptError()) {
+                // Expected, script-originated error: report it without sending to Sentry.
+                result = TaskStatus.Error(e.message ?: DEFAULT_ERROR_MESSAGE, e.stackTraceToString(), timestamp = Clock.System.now())
+            } else {
+                result = TaskStatus.Error(DEFAULT_ERROR_MESSAGE, e.stackTraceToString(), timestamp = Clock.System.now())
+                CrashReporter.report(
+                    e,
+                    mapOf(
+                        "script_name" to manifest.name,
+                        "script_package" to manifest.packageName,
+                        "script_version_code" to manifest.versionCode,
+                        "task_configuration" to task.configuration,
+                    ),
+                )
+            }
         } finally {
             isTaskActive = false
             scriptDispatcher.close()
@@ -169,12 +168,10 @@ class TaskExecutor(
             script.onFinish(config, componentProvider)
         } catch (ce: CancellationException) {
             throw ce
-        } catch (cerealException: CerealException) {
-            // Expected, script-originated error: surface it without sending to Sentry.
-            componentProvider.logger().error("Script failed to finish: ${cerealException.message}")
         } catch (exception: Exception) {
             componentProvider.logger().error("Script failed to finish: ${exception.message}")
-            CrashReporter.report(exception)
+            // Expected, script-originated errors are surfaced without sending to Sentry.
+            if (!exception.isExpectedScriptError()) CrashReporter.report(exception)
         }
     }
 
@@ -214,6 +211,9 @@ class TaskExecutor(
             constructor.call() as Script<ScriptConfiguration>
         }
     }
+
+    /** A [CerealException] or an SDK [LlmException] (e.g. no AI provider set up) is the script's expected failure. */
+    private fun Exception.isExpectedScriptError() = this is CerealException || this is LlmException
 
     companion object {
         const val MIN_LOOP_DELAY_MS = 50L
