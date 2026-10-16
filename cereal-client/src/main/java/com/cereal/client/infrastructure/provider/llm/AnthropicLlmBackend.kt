@@ -33,8 +33,27 @@ import kotlinx.serialization.json.putJsonObject
 class AnthropicLlmBackend(
     private val http: LlmHttp,
 ) : LlmProvider {
-    // ponytail: Settings → AI's model list and connection test arrive with #110.
-    override suspend fun listModels(config: LlmProviderConfig): List<LlmModel> = throw LlmCallException.Unavailable("Listing models isn't supported by this version of Cereal yet.")
+    // ponytail: one page of up to 1000 models (the API's max) and no `after_id` paging; page if a provider ever lists more.
+    override suspend fun listModels(config: LlmProviderConfig): List<LlmModel> {
+        val headers =
+            buildMap {
+                config.apiKey?.let { put("x-api-key", it.reveal()) }
+                put("anthropic-version", API_VERSION)
+            }
+        val body = http.getJson("${config.baseUrl.value}/models?limit=1000", headers)
+        return http.readResponse { json.decodeFromString<ModelList>(body).data.map { LlmModel(it.id, it.displayName) } }
+    }
+
+    @Serializable
+    private data class ModelList(
+        val data: List<ModelEntry>,
+    )
+
+    @Serializable
+    private data class ModelEntry(
+        val id: String,
+        @SerialName("display_name") val displayName: String? = null,
+    )
 
     override suspend fun complete(
         config: LlmProviderConfig,

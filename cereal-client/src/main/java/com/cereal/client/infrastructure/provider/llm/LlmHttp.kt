@@ -11,6 +11,7 @@ import okhttp3.Response
 import org.slf4j.LoggerFactory
 import java.io.IOException
 import java.net.HttpURLConnection.HTTP_FORBIDDEN
+import java.net.HttpURLConnection.HTTP_NOT_FOUND
 import java.net.HttpURLConnection.HTTP_UNAUTHORIZED
 import kotlin.time.Duration
 import kotlin.time.Duration.Companion.seconds
@@ -56,13 +57,44 @@ class LlmHttp(
                 .apply { headers.forEach { (name, value) -> header(name, value) } }
                 .post(body.toRequestBody(JSON))
                 .build()
+        return execute(request) { it.toFailure(model, parseError) }
+    }
+
+    /**
+     * GETs [url] (e.g. `{baseUrl}/models`), with the same retries and status mapping as [postJson],
+     * except that a 404 means the base URL is wrong: [LlmCallException.InvalidRequest] with
+     * [NOT_FOUND_MESSAGE].
+     */
+    suspend fun getJson(
+        url: String,
+        headers: Map<String, String>,
+    ): String {
+        val request =
+            Request
+                .Builder()
+                .url(url)
+                .apply { headers.forEach { (name, value) -> header(name, value) } }
+                .build()
+        return execute(request) { response ->
+            if (response.code == HTTP_NOT_FOUND) {
+                LlmCallException.InvalidRequest(NOT_FOUND_MESSAGE)
+            } else {
+                response.toFailure(model = "") { ProviderError(null) }
+            }
+        }
+    }
+
+    private suspend fun execute(
+        request: Request,
+        toFailure: (Response) -> LlmCallException,
+    ): String {
         var attempt = 0
         while (true) {
             val failure =
                 try {
                     client.newCall(request).await().use { response ->
                         if (response.isSuccessful) return response.body.string()
-                        response.toFailure(model, parseError)
+                        toFailure(response)
                     }
                 } catch (_: IOException) {
                     throw LlmCallException.Unavailable()
@@ -117,6 +149,7 @@ class LlmHttp(
 
     companion object {
         val DEFAULT_RETRY_DELAYS = listOf(1.seconds, 2.seconds, 4.seconds)
+        const val NOT_FOUND_MESSAGE = "Not found: there are no models at this base URL. Check it, including the version path (for example /v1)."
         private const val HTTP_TOO_MANY_REQUESTS = 429
         private val SERVER_ERRORS = 500..599
         private val JSON = "application/json".toMediaType()
