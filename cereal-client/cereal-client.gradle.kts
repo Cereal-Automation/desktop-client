@@ -135,6 +135,7 @@ dependencies {
     implementation(libs.kotlinx.collections.immutable)
     implementation(libs.semver)
     implementation(libs.kotlinx.serialization.json)
+    implementation(libs.json.schema.validator)
     implementation(libs.kotlin.csv)
     implementation(libs.kamel)
     implementation(libs.ktor.client.okhttp)

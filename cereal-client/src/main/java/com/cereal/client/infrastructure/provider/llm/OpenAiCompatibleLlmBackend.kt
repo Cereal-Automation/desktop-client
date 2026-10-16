@@ -8,14 +8,18 @@ import com.cereal.client.domain.model.llm.LlmMessage
 import com.cereal.client.domain.model.llm.LlmModel
 import com.cereal.client.domain.model.llm.LlmProviderConfig
 import com.cereal.client.domain.model.llm.LlmTokenUsage
+import com.cereal.client.domain.model.llm.LlmToolCall
+import com.cereal.client.domain.model.llm.LlmToolChoice
 import com.cereal.client.domain.model.llm.LlmUserPart
 import com.cereal.client.domain.provider.LlmProvider
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonNull
 import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.addJsonObject
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.contentOrNull
@@ -23,6 +27,7 @@ import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 import kotlinx.serialization.json.put
 import kotlinx.serialization.json.putJsonArray
+import kotlinx.serialization.json.putJsonObject
 
 /**
  * OpenAI-compatible Chat Completions (`POST {baseUrl}/chat/completions`): OpenAI, OpenRouter, Gemini's
@@ -62,26 +67,76 @@ class OpenAiCompatibleLlmBackend(
                         put("content", system)
                     }
                 }
-                messages.forEach { add(it.toJson()) }
+                messages.forEach { message -> message.toJson().forEach { add(it) } }
+            }
+            if (tools.isNotEmpty()) {
+                putJsonArray("tools") {
+                    tools.forEach { tool ->
+                        addJsonObject {
+                            put("type", "function")
+                            putJsonObject("function") {
+                                put("name", tool.name)
+                                put("description", tool.description)
+                                put("parameters", json.parseToJsonElement(tool.inputSchemaJson))
+                            }
+                        }
+                    }
+                }
+                // Ollama ignores tool_choice.
+                put(
+                    "tool_choice",
+                    when (toolChoice) {
+                        LlmToolChoice.AUTO -> "auto"
+                        LlmToolChoice.NONE -> "none"
+                    },
+                )
+            }
+            responseSchemaJson?.let { schema ->
+                putJsonObject("response_format") {
+                    put("type", "json_schema")
+                    putJsonObject("json_schema") {
+                        // OpenAI requires a name; scripts don't give one. No `strict`: OpenAI's strict mode
+                        // demands every property be required, which the Anthropic subset doesn't.
+                        put("name", "response")
+                        put("schema", json.parseToJsonElement(schema))
+                    }
+                }
             }
         }
 
-    private fun LlmMessage.toJson(): JsonObject =
+    /** One user turn may become several messages: one `role:"tool"` message per tool result, then the rest. */
+    private fun LlmMessage.toJson(): List<JsonObject> =
         when (this) {
             is LlmMessage.User -> {
-                buildJsonObject {
-                    put("role", "user")
-                    putJsonArray("content") { parts.forEach { add(it.toJson()) } }
-                }
+                val content = parts.filterNot { it is LlmUserPart.ToolResult }
+                parts.filterIsInstance<LlmUserPart.ToolResult>().map { it.toToolMessage() } +
+                    listOfNotNull(
+                        content.takeIf { it.isNotEmpty() }?.let {
+                            buildJsonObject {
+                                put("role", "user")
+                                putJsonArray("content") { content.forEach { add(it.toJson()) } }
+                            }
+                        },
+                    )
             }
 
             is LlmMessage.Assistant -> {
-                providerPayload?.let { json.parseToJsonElement(it).jsonObject }
-                    ?: buildJsonObject {
-                        put("role", "assistant")
-                        put("content", text)
-                    }
+                listOf(
+                    providerPayload?.let { json.parseToJsonElement(it).jsonObject }
+                        ?: buildJsonObject {
+                            put("role", "assistant")
+                            put("content", text)
+                        },
+                )
             }
+        }
+
+    /** Chat Completions has no error flag on tool results, so a failed tool says so in its content. */
+    private fun LlmUserPart.ToolResult.toToolMessage() =
+        buildJsonObject {
+            put("role", "tool")
+            put("tool_call_id", toolCallId)
+            put("content", if (isError) "Error: $text" else text)
         }
 
     private fun LlmUserPart.toJson(): JsonObject =
@@ -93,8 +148,12 @@ class OpenAiCompatibleLlmBackend(
                 }
             }
 
-            // ponytail: images arrive with #112, tool results with #111.
-            is LlmUserPart.Image, is LlmUserPart.ToolResult -> {
+            is LlmUserPart.ToolResult -> {
+                error("tool results are sent as role:tool messages")
+            }
+
+            // ponytail: images arrive with #112.
+            is LlmUserPart.Image -> {
                 throw LlmCallException.InvalidRequest("This version of Cereal can only send text to the AI provider.")
             }
         }
@@ -112,7 +171,7 @@ class OpenAiCompatibleLlmBackend(
                     ?.jsonPrimitive
                     ?.content
                     .orEmpty(),
-            toolCalls = emptyList(),
+            toolCalls = message.toolCalls(),
             structuredJson = null,
             finishReason =
                 when {
@@ -134,6 +193,18 @@ class OpenAiCompatibleLlmBackend(
             providerPayload = JsonObject(message - "annotations").toString(),
         )
     }
+
+    /** `arguments` is a JSON string holding the JSON object; some compatible servers send the object itself. */
+    private fun JsonObject.toolCalls(): List<LlmToolCall> =
+        (get("tool_calls") as? JsonArray).orEmpty().map { call ->
+            val function = call.jsonObject["function"]!!.jsonObject
+            val arguments = function["arguments"]!!
+            LlmToolCall(
+                id = call.jsonObject["id"]!!.jsonPrimitive.content,
+                name = function["name"]!!.jsonPrimitive.content,
+                argumentsJson = (arguments as? JsonPrimitive)?.content ?: arguments.toString(),
+            )
+        }
 
     /**
      * OpenAI: `{"error":{"code":"model_not_found",...}}`. Ollama: `{"error":{"message":"model \"x\" not found, ..."}}`.

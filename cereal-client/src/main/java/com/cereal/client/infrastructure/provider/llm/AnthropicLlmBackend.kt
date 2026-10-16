@@ -8,6 +8,8 @@ import com.cereal.client.domain.model.llm.LlmMessage
 import com.cereal.client.domain.model.llm.LlmModel
 import com.cereal.client.domain.model.llm.LlmProviderConfig
 import com.cereal.client.domain.model.llm.LlmTokenUsage
+import com.cereal.client.domain.model.llm.LlmToolCall
+import com.cereal.client.domain.model.llm.LlmToolChoice
 import com.cereal.client.domain.model.llm.LlmUserPart
 import com.cereal.client.domain.provider.LlmProvider
 import kotlinx.serialization.SerialName
@@ -20,6 +22,7 @@ import kotlinx.serialization.json.addJsonObject
 import kotlinx.serialization.json.buildJsonArray
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.jsonArray
+import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 import kotlinx.serialization.json.put
 import kotlinx.serialization.json.putJsonArray
@@ -61,8 +64,36 @@ class AnthropicLlmBackend(
             put("max_tokens", maxTokens)
             system?.let { put("system", it) }
             putJsonArray("messages") { messages.forEach { add(it.toJson()) } }
+            if (tools.isNotEmpty()) {
+                putJsonArray("tools") {
+                    tools.forEach { tool ->
+                        addJsonObject {
+                            put("name", tool.name)
+                            put("description", tool.description)
+                            put("input_schema", json.parseToJsonElement(tool.inputSchemaJson))
+                        }
+                    }
+                }
+                putJsonObject("tool_choice") {
+                    put(
+                        "type",
+                        when (toolChoice) {
+                            LlmToolChoice.AUTO -> "auto"
+                            LlmToolChoice.NONE -> "none"
+                        },
+                    )
+                }
+            }
             putJsonObject("thinking") { put("type", "adaptive") }
-            putJsonObject("output_config") { put("effort", "medium") }
+            putJsonObject("output_config") {
+                put("effort", "medium")
+                responseSchemaJson?.let { schema ->
+                    putJsonObject("format") {
+                        put("type", "json_schema")
+                        put("schema", json.parseToJsonElement(schema))
+                    }
+                }
+            }
             putJsonObject("cache_control") { put("type", "ephemeral") }
         }
 
@@ -71,7 +102,8 @@ class AnthropicLlmBackend(
             is LlmMessage.User -> {
                 buildJsonObject {
                     put("role", "user")
-                    putJsonArray("content") { parts.forEach { add(it.toJson()) } }
+                    // Anthropic rejects a user turn whose tool_result blocks don't come first.
+                    putJsonArray("content") { parts.sortedBy { it !is LlmUserPart.ToolResult }.forEach { add(it.toJson()) } }
                 }
             }
 
@@ -93,8 +125,17 @@ class AnthropicLlmBackend(
                 buildJsonObject { textBlock(text) }
             }
 
-            // ponytail: images arrive with #112, tool results with #111.
-            is LlmUserPart.Image, is LlmUserPart.ToolResult -> {
+            is LlmUserPart.ToolResult -> {
+                buildJsonObject {
+                    put("type", "tool_result")
+                    put("tool_use_id", toolCallId)
+                    put("content", text)
+                    put("is_error", isError)
+                }
+            }
+
+            // ponytail: images arrive with #112.
+            is LlmUserPart.Image -> {
                 throw LlmCallException.InvalidRequest("This version of Cereal can only send text to the AI provider.")
             }
         }
@@ -106,11 +147,11 @@ class AnthropicLlmBackend(
 
     private fun MessageResponse.toCompletion() =
         LlmCompletion(
-            text =
-                content
-                    .filter { it is JsonObject && it["type"]?.jsonPrimitive?.content == "text" }
-                    .joinToString("") { (it as JsonObject)["text"]!!.jsonPrimitive.content },
-            toolCalls = emptyList(),
+            text = blocks("text").joinToString("") { it["text"]!!.jsonPrimitive.content },
+            toolCalls =
+                blocks("tool_use").map {
+                    LlmToolCall(it["id"]!!.jsonPrimitive.content, it["name"]!!.jsonPrimitive.content, it["input"]!!.jsonObject.toString())
+                },
             structuredJson = null,
             finishReason =
                 when (stopReason) {
@@ -129,6 +170,8 @@ class AnthropicLlmBackend(
             model = model,
             providerPayload = content.toString(),
         )
+
+    private fun MessageResponse.blocks(type: String): List<JsonObject> = content.filterIsInstance<JsonObject>().filter { it["type"]?.jsonPrimitive?.content == type }
 
     /** `{"type":"error","error":{"type":"not_found_error","message":"model: <id>"}}` means an unknown model. */
     private fun parseError(body: String): LlmHttp.ProviderError {
