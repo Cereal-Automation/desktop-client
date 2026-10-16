@@ -35,8 +35,24 @@ import java.util.Base64
 class OpenAiCompatibleLlmBackend(
     private val http: LlmHttp,
 ) : LlmProvider {
-    // ponytail: Settings → AI's model list and connection test arrive with #110.
-    override suspend fun listModels(config: LlmProviderConfig): List<LlmModel> = throw LlmCallException.Unavailable("Listing models isn't supported by this version of Cereal yet.")
+    override suspend fun listModels(config: LlmProviderConfig): List<LlmModel> {
+        val body =
+            http.getJson(
+                url = "${config.baseUrl.value}/models",
+                headers = config.apiKey?.let { mapOf("Authorization" to "Bearer ${it.reveal()}") }.orEmpty(),
+            )
+        return http.readResponse { json.decodeFromString<ModelList>(body).data.map { LlmModel(it.id) } }
+    }
+
+    @Serializable
+    private data class ModelList(
+        val data: List<ModelEntry>,
+    )
+
+    @Serializable
+    private data class ModelEntry(
+        val id: String,
+    )
 
     override suspend fun complete(
         config: LlmProviderConfig,

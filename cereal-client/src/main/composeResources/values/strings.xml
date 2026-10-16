@@ -558,6 +558,8 @@
     <string name="ai_api_key_desc_optional">Optional: local servers often need no key. Scripts never see it.</string>
     <string name="ai_model">Model</string>
     <string name="ai_model_desc">The model id every script call uses.</string>
+    <string name="ai_model_open">Show models</string>
+    <string name="ai_test_connection">Test connection</string>
     <string name="ai_spend_limits_anthropic">Your provider bills you directly for tokens. Set a spend limit in the Anthropic Console (console.anthropic.com → Settings → Limits).</string>
     <string name="ai_spend_limits_openai_compatible">Your provider bills you directly for tokens. Set a spend limit in your provider dashboard, e.g. OpenAI usage limits (platform.openai.com → Settings → Limits).</string>
 </resources>

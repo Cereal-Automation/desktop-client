@@ -11,15 +11,19 @@ import androidx.compose.ui.test.hasScrollAction
 import androidx.compose.ui.test.hasSetTextAction
 import androidx.compose.ui.test.hasTestTag
 import androidx.compose.ui.test.hasText
+import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollToNode
 import androidx.compose.ui.test.performTextClearance
 import androidx.compose.ui.test.performTextInput
+import com.cereal.client.domain.model.llm.LlmModel
 import com.cereal.client.domain.model.llm.LlmProviderConfig
 import com.cereal.client.domain.model.llm.LlmProviderType
 import com.cereal.client.domain.model.script.configuration.Secret
+import com.cereal.client.domain.provider.LlmProvider
 import com.cereal.client.domain.repository.LlmProviderConfigRepository
+import com.cereal.client.infrastructure.provider.inmemory.InMemoryLlmProvider
 import com.cereal.client.presentation.settings.ApplicationSettingsScreen
 import kotlinx.coroutines.runBlocking
 import org.koin.java.KoinJavaComponent
@@ -207,5 +211,64 @@ class AiSettingsSectionScreenTest {
 
             awaitText("qwen3")
             input(AI_BASE_URL_TAG).assertTextEquals("http://localhost:1234/v1")
+        }
+
+    private val llmProvider: InMemoryLlmProvider
+        get() = KoinJavaComponent.get(LlmProvider::class.java) as InMemoryLlmProvider
+
+    @Test
+    fun testConnectionReportsTheModelCountAndKeepsTheDefaultModel() =
+        runScreenTest {
+            llmProvider.models = listOf(LlmModel("claude-opus-5-5"), LlmModel("claude-haiku-4-5"))
+            setScreenContent { AiSettingsSection() }
+            onNodeWithText("Anthropic").performClick()
+            input(AI_API_KEY_TAG).performTextInput("sk-ant-1")
+
+            onNodeWithText("Test connection").performClick()
+
+            awaitText("Connected · 2 models")
+            input(AI_MODEL_TAG).assertTextEquals("claude-opus-5-5")
+        }
+
+    @Test
+    fun theModelListFiltersAsYouTypeAndAPickFillsTheField() =
+        runScreenTest {
+            llmProvider.models = listOf(LlmModel("gpt-5"), LlmModel("gpt-5-mini"), LlmModel("llama3"))
+            setScreenContent { AiSettingsSection() }
+            onNodeWithText("OpenAI-compatible").performClick()
+            onNodeWithText("Test connection").performClick()
+            awaitText("Connected · 3 models")
+
+            onNodeWithTag(AI_MODEL_OPEN_TAG).performClick()
+            onNodeWithText("llama3").assertIsDisplayed()
+            input(AI_MODEL_TAG).performTextInput("mini")
+            onNodeWithText("llama3").assertDoesNotExist()
+            onNodeWithText("gpt-5-mini").performClick()
+
+            input(AI_MODEL_TAG).assertTextEquals("gpt-5-mini")
+        }
+
+    @Test
+    fun withoutAFetchedListTheModelIsPlainText() =
+        runScreenTest {
+            setScreenContent { AiSettingsSection() }
+            onNodeWithText("OpenAI-compatible").performClick()
+
+            onNodeWithTag(AI_MODEL_OPEN_TAG).assertDoesNotExist()
+            input(AI_MODEL_TAG).performTextInput("any-model-id")
+            input(AI_MODEL_TAG).assertTextEquals("any-model-id")
+        }
+
+    @Test
+    fun openingASavedProviderFetchesTheListSilently() =
+        runScreenTest {
+            llmProvider.models = listOf(LlmModel("qwen3"), LlmModel("llama3"))
+            runBlocking {
+                repository.save(LlmProviderConfig.of(LlmProviderType.OPENAI_COMPATIBLE, "http://localhost:1234/v1", "", "qwen3"))
+            }
+            setScreenContent { AiSettingsSection() }
+
+            waitUntil(timeoutMillis = 5_000) { onAllNodes(hasTestTag(AI_MODEL_OPEN_TAG)).fetchSemanticsNodes().isNotEmpty() }
+            onNodeWithText("Connected", substring = true).assertDoesNotExist()
         }
 }

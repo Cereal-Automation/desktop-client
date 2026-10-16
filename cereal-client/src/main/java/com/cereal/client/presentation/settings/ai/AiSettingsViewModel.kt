@@ -7,8 +7,10 @@ import com.cereal.client.application.FlowInteractor
 import com.cereal.client.application.Interactor
 import com.cereal.client.application.interactor.settings.ai.ClearLlmProviderConfigInteractor
 import com.cereal.client.application.interactor.settings.ai.GetLlmProviderConfigInteractor
+import com.cereal.client.application.interactor.settings.ai.ListLlmModelsInteractor
 import com.cereal.client.application.interactor.settings.ai.SaveLlmProviderConfigInteractor
 import com.cereal.client.domain.model.exception.InvalidLlmProviderConfigException
+import com.cereal.client.domain.model.exception.LlmCallException
 import com.cereal.client.domain.model.llm.LlmProviderConfig
 import com.cereal.client.domain.model.llm.LlmProviderType
 import com.cereal.client.presentation.error.ErrorAction
@@ -18,6 +20,7 @@ import com.cereal.client.presentation.view.fields.state.StringTextFieldState
 import com.github.kittinunf.result.coroutines.SuspendableResult
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.FlowPreview
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -33,6 +36,7 @@ class AiSettingsViewModel(
     private val getLlmProviderConfigInteractor: GetLlmProviderConfigInteractor,
     private val saveLlmProviderConfigInteractor: SaveLlmProviderConfigInteractor,
     private val clearLlmProviderConfigInteractor: ClearLlmProviderConfigInteractor,
+    private val listLlmModelsInteractor: ListLlmModelsInteractor,
     private val errorResolver: ErrorResolver,
 ) {
     /** The chosen provider; null is "None". */
@@ -48,13 +52,30 @@ class AiSettingsViewModel(
 
     val errorAction: State<ErrorAction> = errorResolver.errorAction
 
+    /** Model ids from the provider's last successful `/models` fetch; empty means the model field is plain text. */
+    private val _models = mutableStateOf<List<String>>(emptyList())
+    val models: State<List<String>> = _models
+
+    private val _connectionStatus = mutableStateOf<ConnectionStatus>(ConnectionStatus.Idle)
+    val connectionStatus: State<ConnectionStatus> = _connectionStatus
+
+    private var fetchJob: Job? = null
+
     init {
         scope.launch(dispatcherProvider.io) {
             val result = getLlmProviderConfigInteractor(FlowInteractor.None()).first()
             withContext(dispatcherProvider.main) {
                 when (result) {
-                    is SuspendableResult.Success -> result.value?.let(::show)
-                    is SuspendableResult.Failure -> errorResolver.setError(result.error)
+                    is SuspendableResult.Success -> {
+                        result.value?.let {
+                            show(it)
+                            fetchModels(silent = true)
+                        }
+                    }
+
+                    is SuspendableResult.Failure -> {
+                        errorResolver.setError(result.error)
+                    }
                 }
             }
         }
@@ -78,6 +99,56 @@ class AiSettingsViewModel(
         apiKeyState.text = ""
         modelState.text = provider?.defaultModel.orEmpty()
         clearFieldErrors()
+        fetchJob?.cancel()
+        _models.value = emptyList()
+        _connectionStatus.value = ConnectionStatus.Idle
+    }
+
+    /** Checks the form's setup against the provider and refills the model list; saving doesn't need it. */
+    fun testConnection() {
+        clearFieldErrors()
+        fetchModels(silent = false)
+    }
+
+    /** A [silent] fetch (on open) only fills the list: no status, no field errors. */
+    private fun fetchModels(silent: Boolean) {
+        val provider = _provider.value ?: return
+        val params = ListLlmModelsInteractor.Params(provider, baseUrlState.text, apiKeyState.text, modelState.text)
+        if (!silent) _connectionStatus.value = ConnectionStatus.Testing
+        fetchJob?.cancel()
+        fetchJob =
+            scope.launch(dispatcherProvider.io) {
+                listLlmModelsInteractor(params) { result ->
+                    withContext(dispatcherProvider.main) {
+                        when (result) {
+                            is SuspendableResult.Success -> {
+                                _models.value = result.value.map { it.id }
+                                if (!silent) _connectionStatus.value = ConnectionStatus.Connected(result.value.size)
+                            }
+
+                            is SuspendableResult.Failure -> {
+                                _models.value = emptyList()
+                                if (!silent) showConnectionFailure(result.error)
+                            }
+                        }
+                    }
+                }
+            }
+    }
+
+    private fun showConnectionFailure(error: Exception) {
+        if (error is InvalidLlmProviderConfigException) {
+            fieldState(error.field).showError(error.message)
+            _connectionStatus.value = ConnectionStatus.Idle
+            return
+        }
+        val message =
+            when (error) {
+                is LlmCallException.Authentication -> "Bad API key: the provider rejected it."
+                is LlmCallException.Unavailable -> "Unreachable: check the base URL and your connection."
+                else -> error.message.orEmpty()
+            }
+        _connectionStatus.value = ConnectionStatus.Failed(message)
     }
 
     fun save() {
@@ -133,4 +204,21 @@ class AiSettingsViewModel(
     private companion object {
         const val FEEDBACK_SAVED = "AI settings saved."
     }
+}
+
+/** Where Settings → AI's Test connection stands; [message] is what the form shows. */
+sealed class ConnectionStatus(
+    val message: String,
+) {
+    data object Idle : ConnectionStatus("")
+
+    data object Testing : ConnectionStatus("Testing…")
+
+    class Connected(
+        count: Int,
+    ) : ConnectionStatus("Connected · $count ${if (count == 1) "model" else "models"}")
+
+    class Failed(
+        message: String,
+    ) : ConnectionStatus(message)
 }
