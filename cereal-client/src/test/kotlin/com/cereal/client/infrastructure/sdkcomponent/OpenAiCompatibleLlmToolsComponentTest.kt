@@ -4,7 +4,7 @@ import com.cereal.client.application.interactor.llm.CompleteLlmRequestInteractor
 import com.cereal.client.domain.model.llm.LlmProviderConfig
 import com.cereal.client.domain.model.llm.LlmProviderType
 import com.cereal.client.infrastructure.data.repository.inmemory.InMemoryLlmProviderConfigRepository
-import com.cereal.client.infrastructure.provider.LlmProviderImpl
+import com.cereal.client.infrastructure.provider.fixtures.llmProviderOverHttp
 import com.cereal.client.infrastructure.sdkcomponent.fixtures.RecordingLoggerComponent
 import com.cereal.sdk.component.llm.LlmException
 import com.cereal.sdk.component.llm.LlmRequest
@@ -20,7 +20,6 @@ import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonObject
-import okhttp3.OkHttpClient
 import okhttp3.mockwebserver.MockResponse
 import okhttp3.mockwebserver.MockWebServer
 import okhttp3.mockwebserver.RecordedRequest
@@ -30,7 +29,6 @@ import org.junit.jupiter.api.Assertions.assertNull
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.assertThrows
-import kotlin.time.Duration
 
 /**
  * Tools and structured output through `provider.llm()` against the OpenAI-compatible backend, with
@@ -42,7 +40,7 @@ class OpenAiCompatibleLlmToolsComponentTest {
     private val configRepository = InMemoryLlmProviderConfigRepository()
     private val component =
         LlmComponentImpl(
-            CompleteLlmRequestInteractor(configRepository, LlmProviderImpl(OkHttpClient(), retryDelays = List(3) { Duration.ZERO })),
+            CompleteLlmRequestInteractor(configRepository, llmProviderOverHttp()),
             RecordingLoggerComponent(),
         )
 

@@ -2,6 +2,7 @@ package com.cereal.client.domain.model.exception
 
 import com.cereal.client.application.exception.CerealException
 import com.cereal.client.domain.model.llm.LlmMessage
+import com.cereal.client.domain.model.llm.LlmTokenUsage
 import kotlin.time.Duration
 
 /**
@@ -38,10 +39,15 @@ sealed class LlmCallException(
         val missingModel: String? = null,
     ) : LlmCallException(message, cause)
 
-    /** The model's JSON failed the request's schema; [raw] and [assistantMessage] let the script retry. */
+    /**
+     * The model's JSON failed the request's schema; [raw] and [assistantMessage] let the script retry.
+     * The call was still billed: [model] and [usage] are the response's, for the task log.
+     */
     class InvalidOutput(
         val raw: String,
         val assistantMessage: LlmMessage.Assistant,
+        val model: String,
+        val usage: LlmTokenUsage,
         message: String = "The model's output doesn't match the requested schema.",
     ) : LlmCallException(message)
 

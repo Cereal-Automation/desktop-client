@@ -2,6 +2,7 @@ package com.cereal.client.domain.provider
 
 import com.cereal.client.domain.model.llm.LlmCompletion
 import com.cereal.client.domain.model.llm.LlmCompletionRequest
+import com.cereal.client.domain.model.llm.LlmConnection
 import com.cereal.client.domain.model.llm.LlmModel
 import com.cereal.client.domain.model.llm.LlmProviderConfig
 
@@ -14,8 +15,8 @@ import com.cereal.client.domain.model.llm.LlmProviderConfig
  * cancellation propagates untouched.
  */
 interface LlmProvider {
-    /** `GET {baseUrl}/models`. Also serves as Settings → AI's connection test. */
-    suspend fun listModels(config: LlmProviderConfig): List<LlmModel>
+    /** `GET {baseUrl}/models`; needs no model. Also serves as Settings → AI's connection test. */
+    suspend fun listModels(connection: LlmConnection): List<LlmModel>
 
     /** Exactly one model call with [config]'s model. */
     suspend fun complete(

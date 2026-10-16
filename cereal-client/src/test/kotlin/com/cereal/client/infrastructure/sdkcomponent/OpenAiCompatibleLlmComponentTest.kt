@@ -7,7 +7,7 @@ import com.cereal.client.application.interactor.llm.CompleteLlmRequestInteractor
 import com.cereal.client.domain.model.llm.LlmProviderConfig
 import com.cereal.client.domain.model.llm.LlmProviderType
 import com.cereal.client.infrastructure.data.repository.inmemory.InMemoryLlmProviderConfigRepository
-import com.cereal.client.infrastructure.provider.LlmProviderImpl
+import com.cereal.client.infrastructure.provider.fixtures.llmProviderOverHttp
 import com.cereal.client.infrastructure.sdkcomponent.fixtures.RecordingLoggerComponent
 import com.cereal.sdk.component.llm.ImageMediaType
 import com.cereal.sdk.component.llm.LlmException
@@ -23,7 +23,6 @@ import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
-import okhttp3.OkHttpClient
 import okhttp3.mockwebserver.MockResponse
 import okhttp3.mockwebserver.MockWebServer
 import okhttp3.mockwebserver.RecordedRequest
@@ -36,7 +35,6 @@ import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.assertThrows
 import org.slf4j.LoggerFactory
-import kotlin.time.Duration
 import kotlin.time.Duration.Companion.seconds
 
 /**
@@ -50,7 +48,7 @@ class OpenAiCompatibleLlmComponentTest {
     private val taskLog = RecordingLoggerComponent()
     private val component =
         LlmComponentImpl(
-            CompleteLlmRequestInteractor(configRepository, LlmProviderImpl(OkHttpClient(), retryDelays = List(3) { Duration.ZERO })),
+            CompleteLlmRequestInteractor(configRepository, llmProviderOverHttp()),
             taskLog,
         )
 
@@ -391,6 +389,24 @@ class OpenAiCompatibleLlmComponentTest {
             server.enqueue(MockResponse().setResponseCode(200).setBody("""{"model": "m", "choices": []}"""))
 
             repeat(2) {
+                val error = assertThrows<LlmException.Unavailable> { component.complete(request) }
+                assertFalse(error.messageChain().contains("Paris"), error.messageChain())
+            }
+        }
+
+    @Test
+    fun `a tool call missing its fields is Unavailable without echoing the body`() =
+        runTest {
+            val calls =
+                listOf(
+                    """{"id": "c1", "type": "function"}""",
+                    """{"id": "c1", "function": {"name": "Paris"}}""",
+                    """{"function": {"name": "Paris", "arguments": "{}"}}""",
+                )
+            calls.forEach { call ->
+                val message = """{"role": "assistant", "content": null, "tool_calls": [$call]}"""
+                server.enqueue(MockResponse().setBody("""{"model": "m", "choices": [{"message": $message, "finish_reason": "tool_calls"}]}"""))
+
                 val error = assertThrows<LlmException.Unavailable> { component.complete(request) }
                 assertFalse(error.messageChain().contains("Paris"), error.messageChain())
             }

@@ -2,6 +2,7 @@ package com.cereal.client.infrastructure.provider.inmemory
 
 import com.cereal.client.domain.model.llm.LlmCompletion
 import com.cereal.client.domain.model.llm.LlmCompletionRequest
+import com.cereal.client.domain.model.llm.LlmConnection
 import com.cereal.client.domain.model.llm.LlmFinishReason
 import com.cereal.client.domain.model.llm.LlmModel
 import com.cereal.client.domain.model.llm.LlmProviderConfig
@@ -21,7 +22,7 @@ class InMemoryLlmProvider(
     /** Every [complete] call in order, with the config it was made with. */
     val requests: List<Pair<LlmProviderConfig, LlmCompletionRequest>> get() = recorded.toList()
 
-    override suspend fun listModels(config: LlmProviderConfig): List<LlmModel> = models
+    override suspend fun listModels(connection: LlmConnection): List<LlmModel> = models
 
     override suspend fun complete(
         config: LlmProviderConfig,

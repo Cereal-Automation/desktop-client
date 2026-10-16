@@ -1,11 +1,11 @@
 package com.cereal.client.infrastructure.provider
 
 import com.cereal.client.domain.model.exception.LlmCallException
+import com.cereal.client.domain.model.llm.LlmConnection
 import com.cereal.client.domain.model.llm.LlmModel
-import com.cereal.client.domain.model.llm.LlmProviderConfig
 import com.cereal.client.domain.model.llm.LlmProviderType
+import com.cereal.client.infrastructure.provider.fixtures.llmProviderOverHttp
 import kotlinx.coroutines.test.runTest
-import okhttp3.OkHttpClient
 import okhttp3.mockwebserver.MockResponse
 import okhttp3.mockwebserver.MockWebServer
 import org.junit.jupiter.api.AfterEach
@@ -14,7 +14,6 @@ import org.junit.jupiter.api.Assertions.assertNull
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.assertThrows
-import kotlin.time.Duration
 
 /**
  * `GET {baseUrl}/models` on both backends against MockWebServer, with fixtures shaped like the
@@ -22,7 +21,7 @@ import kotlin.time.Duration
  */
 class LlmProviderListModelsTest {
     private val server = MockWebServer()
-    private val provider = LlmProviderImpl(OkHttpClient(), retryDelays = List(3) { Duration.ZERO })
+    private val provider = llmProviderOverHttp()
 
     @BeforeEach
     fun setUp() = server.start()
@@ -33,7 +32,7 @@ class LlmProviderListModelsTest {
     private fun config(
         type: LlmProviderType,
         apiKey: String = "sk-test",
-    ) = LlmProviderConfig.of(type, server.url("/v1").toString(), apiKey, "any-model")
+    ) = LlmConnection.of(type, server.url("/v1").toString(), apiKey)
 
     private fun fixture(path: String) = MockResponse().setBody(javaClass.getResource("/llm/$path")!!.readText())
 

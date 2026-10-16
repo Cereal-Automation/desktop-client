@@ -1,22 +1,18 @@
-package com.cereal.client.infrastructure.provider.llm
+package com.cereal.client.infrastructure.data.datasource.network.llm
 
-import com.cereal.client.domain.model.exception.LlmCallException
 import com.cereal.client.domain.model.llm.LlmCompletion
 import com.cereal.client.domain.model.llm.LlmCompletionRequest
+import com.cereal.client.domain.model.llm.LlmConnection
 import com.cereal.client.domain.model.llm.LlmFinishReason
 import com.cereal.client.domain.model.llm.LlmMessage
 import com.cereal.client.domain.model.llm.LlmModel
 import com.cereal.client.domain.model.llm.LlmProviderConfig
 import com.cereal.client.domain.model.llm.LlmTokenUsage
 import com.cereal.client.domain.model.llm.LlmToolCall
-import com.cereal.client.domain.model.llm.LlmToolChoice
 import com.cereal.client.domain.model.llm.LlmUserPart
-import com.cereal.client.domain.provider.LlmProvider
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
-import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonArray
-import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonNull
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
@@ -36,27 +32,10 @@ import java.util.Base64
  * servers need none). The response's `message` object becomes the assistant turn's provider payload and
  * is sent back verbatim, so provider extras (e.g. Gemini's `extra_content` thought signatures) survive.
  */
-class OpenAiCompatibleLlmBackend(
+class OpenAiCompatibleLlmDataSource(
     private val http: LlmHttp,
-) : LlmProvider {
-    override suspend fun listModels(config: LlmProviderConfig): List<LlmModel> {
-        val body =
-            http.getJson(
-                url = "${config.baseUrl.value}/models",
-                headers = config.apiKey?.let { mapOf("Authorization" to "Bearer ${it.reveal()}") }.orEmpty(),
-            )
-        return http.readResponse { json.decodeFromString<ModelList>(body).data.map { LlmModel(it.id) } }
-    }
-
-    @Serializable
-    private data class ModelList(
-        val data: List<ModelEntry>,
-    )
-
-    @Serializable
-    private data class ModelEntry(
-        val id: String,
-    )
+) : LlmDataSource {
+    override suspend fun listModels(connection: LlmConnection): List<LlmModel> = http.getModels("${connection.baseUrl.value}/models", headers(connection))
 
     override suspend fun complete(
         config: LlmProviderConfig,
@@ -65,13 +44,15 @@ class OpenAiCompatibleLlmBackend(
         val body =
             http.postJson(
                 url = "${config.baseUrl.value}/chat/completions",
-                headers = config.apiKey?.let { mapOf("Authorization" to "Bearer ${it.reveal()}") }.orEmpty(),
+                headers = headers(config.connection),
                 body = request.toBody(config.model).toString(),
                 model = config.model,
-                parseError = ::parseError,
+                isModelNotFound = ::isModelNotFound,
             )
         return http.readResponse { json.decodeFromString<ChatResponse>(body).toCompletion() }
     }
+
+    private fun headers(connection: LlmConnection) = connection.apiKey?.let { mapOf("Authorization" to "Bearer ${it.reveal()}") }.orEmpty()
 
     private fun LlmCompletionRequest.toBody(model: String): JsonObject =
         buildJsonObject {
@@ -100,13 +81,7 @@ class OpenAiCompatibleLlmBackend(
                     }
                 }
                 // Ollama ignores tool_choice.
-                put(
-                    "tool_choice",
-                    when (toolChoice) {
-                        LlmToolChoice.AUTO -> "auto"
-                        LlmToolChoice.NONE -> "none"
-                    },
-                )
+                put("tool_choice", toolChoice.wireName)
             }
             responseSchemaJson?.let { schema ->
                 putJsonObject("response_format") {
@@ -139,7 +114,7 @@ class OpenAiCompatibleLlmBackend(
 
             is LlmMessage.Assistant -> {
                 listOf(
-                    providerPayload?.let { json.parseToJsonElement(it).jsonObject }
+                    providerPayload?.let { http.payloadAs<JsonObject>(it) }
                         ?: buildJsonObject {
                             put("role", "assistant")
                             put("content", text)
@@ -178,7 +153,7 @@ class OpenAiCompatibleLlmBackend(
         }
 
     private fun ChatResponse.toCompletion(): LlmCompletion {
-        val choice = choices.firstOrNull() ?: error("no choices")
+        val choice = choices.first()
         val message = choice.message
         val cached = usage.promptTokensDetails?.cachedTokens ?: 0
         // Unverified (no live call): cache_write_tokens is assumed to be counted inside prompt_tokens, like cached_tokens.
@@ -216,41 +191,23 @@ class OpenAiCompatibleLlmBackend(
     /** `arguments` is a JSON string holding the JSON object; some compatible servers send the object itself. */
     private fun JsonObject.toolCalls(): List<LlmToolCall> =
         (get("tool_calls") as? JsonArray).orEmpty().map { call ->
-            val function = call.jsonObject["function"]!!.jsonObject
-            val arguments = function["arguments"]!!
+            val function = call.jsonObject.getValue("function").jsonObject
+            val arguments = function.getValue("arguments")
             LlmToolCall(
-                id = call.jsonObject["id"]!!.jsonPrimitive.content,
-                name = function["name"]!!.jsonPrimitive.content,
+                id =
+                    call.jsonObject
+                        .getValue("id")
+                        .jsonPrimitive.content,
+                name = function.getValue("name").jsonPrimitive.content,
                 argumentsJson = (arguments as? JsonPrimitive)?.content ?: arguments.toString(),
             )
         }
 
-    /**
-     * OpenAI: `{"error":{"code":"model_not_found",...}}`. Ollama: `{"error":{"message":"model \"x\" not found, ..."}}`.
-     * Bodies elsewhere may be any text, or an array (some proxies), so nothing here may throw.
-     */
-    private fun parseError(body: String): LlmHttp.ProviderError {
-        val error = runCatching { json.decodeFromString<ErrorResponse>(body).error }.getOrNull() ?: return LlmHttp.ProviderError(null)
-        val message = error.message
-        return LlmHttp.ProviderError(
-            message = message,
-            modelNotFound =
-                error.code?.jsonPrimitive?.contentOrNull == "model_not_found" ||
-                    (message.orEmpty().startsWith("model ") && message.orEmpty().contains("not found")),
-        )
+    /** OpenAI: `{"error":{"code":"model_not_found",...}}`. Ollama: `{"error":{"message":"model \"x\" not found, ..."}}`. */
+    private fun isModelNotFound(error: LlmHttp.ErrorDetail): Boolean {
+        val message = error.message.orEmpty()
+        return (error.code as? JsonPrimitive)?.contentOrNull == "model_not_found" || (message.startsWith("model ") && message.contains("not found"))
     }
-
-    @Serializable
-    private data class ErrorResponse(
-        val error: ErrorDetail,
-    )
-
-    // `code` is a string on OpenAI but a number on some compatible servers.
-    @Serializable
-    private data class ErrorDetail(
-        val message: String? = null,
-        val code: JsonElement? = null,
-    )
 
     @Serializable
     private data class ChatResponse(
@@ -280,6 +237,6 @@ class OpenAiCompatibleLlmBackend(
     )
 
     private companion object {
-        val json = Json { ignoreUnknownKeys = true }
+        val json = LlmHttp.json
     }
 }

@@ -8,7 +8,7 @@ import com.cereal.client.application.interactor.settings.ai.SaveLlmProviderConfi
 import com.cereal.client.domain.model.llm.LlmProviderConfig
 import com.cereal.client.domain.model.llm.LlmProviderType
 import com.cereal.client.infrastructure.data.repository.inmemory.InMemoryLlmProviderConfigRepository
-import com.cereal.client.infrastructure.provider.LlmProviderImpl
+import com.cereal.client.infrastructure.provider.fixtures.llmProviderOverHttp
 import com.cereal.client.presentation.error.ErrorResolver
 import io.mockk.mockk
 import kotlinx.coroutines.CoroutineScope
@@ -18,14 +18,12 @@ import kotlinx.coroutines.cancel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withTimeout
-import okhttp3.OkHttpClient
 import okhttp3.mockwebserver.MockResponse
 import okhttp3.mockwebserver.MockWebServer
 import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
-import kotlin.time.Duration
 
 /**
  * Settings → AI's Test connection and model list, through the real interactors and HTTP backends with
@@ -34,7 +32,7 @@ import kotlin.time.Duration
 class AiSettingsViewModelTest {
     private val server = MockWebServer()
     private val repository = InMemoryLlmProviderConfigRepository()
-    private val llmProvider = LlmProviderImpl(OkHttpClient(), retryDelays = List(3) { Duration.ZERO })
+    private val llmProvider = llmProviderOverHttp()
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
 
     @BeforeEach
