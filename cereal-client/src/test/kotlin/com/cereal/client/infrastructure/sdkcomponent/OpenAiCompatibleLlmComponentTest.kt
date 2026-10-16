@@ -12,6 +12,7 @@ import com.cereal.client.infrastructure.sdkcomponent.fixtures.RecordingLoggerCom
 import com.cereal.sdk.component.llm.ImageMediaType
 import com.cereal.sdk.component.llm.LlmException
 import com.cereal.sdk.component.llm.LlmRequest
+import com.cereal.sdk.component.llm.LlmTool
 import com.cereal.sdk.component.llm.LlmTurn
 import com.cereal.sdk.component.llm.LlmUsage
 import com.cereal.sdk.component.llm.StopReason
@@ -209,8 +210,20 @@ class OpenAiCompatibleLlmComponentTest {
             server.enqueue(fixture("gemini-chat-image-tool-call.json"))
             server.enqueue(fixture("chat-text.json"))
 
-            val first = component.complete(imageRequest)
-            component.complete(imageRequest.copy(turns = imageRequest.turns + first.assistantTurn + request.turns))
+            val withTool =
+                imageRequest.copy(
+                    tools =
+                        listOf(
+                            LlmTool(
+                                "lookup_product",
+                                "Looks up a product by SKU.",
+                                """{"type":"object","properties":{"sku":{"type":"string"}},"required":["sku"],"additionalProperties":false}""",
+                            ),
+                        ),
+                )
+            val first = component.complete(withTool)
+            val result = LlmTurn.User(listOf(UserPart.ToolResult(first.toolCalls.single().id, "In stock")))
+            component.complete(withTool.copy(turns = withTool.turns + first.assistantTurn + result))
 
             assertEquals(StopReason.ToolUse, first.stopReason)
             server.takeRequest()
@@ -222,6 +235,10 @@ class OpenAiCompatibleLlmComponentTest {
                     .jsonArray[0]
                     .jsonObject["message"]
             assertEquals(original, messages[2])
+            assertEquals(
+                Json.parseToJsonElement("""{"role":"tool","tool_call_id":"function-call-0001","content":"In stock"}"""),
+                messages[3],
+            )
             assertEquals(
                 "EjQKMgHGeminiImageSignatureExample0002",
                 messages[2]

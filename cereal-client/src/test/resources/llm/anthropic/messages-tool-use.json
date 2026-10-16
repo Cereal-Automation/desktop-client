@@ -1,0 +1,38 @@
+{
+  "id": "msg_01Aq9w938a90dw8q",
+  "type": "message",
+  "role": "assistant",
+  "model": "claude-opus-5-5",
+  "content": [
+    {
+      "type": "thinking",
+      "thinking": "",
+      "signature": "EqQBCgIYAhIMToolLoopExampleSignature0000000000000000000000000000000000000000000000000000000000000000"
+    },
+    {
+      "type": "text",
+      "text": "I'll check the weather in both cities."
+    },
+    {
+      "type": "tool_use",
+      "id": "toolu_01A09q90qw90lq917835lq9",
+      "name": "get_weather",
+      "input": {"city": "Paris"}
+    },
+    {
+      "type": "tool_use",
+      "id": "toolu_01B18r81rx81mr826724mr8",
+      "name": "get_weather",
+      "input": {"city": "Madrid"}
+    }
+  ],
+  "stop_reason": "tool_use",
+  "stop_sequence": null,
+  "stop_details": null,
+  "usage": {
+    "input_tokens": 512,
+    "cache_creation_input_tokens": 0,
+    "cache_read_input_tokens": 0,
+    "output_tokens": 96
+  }
+}
