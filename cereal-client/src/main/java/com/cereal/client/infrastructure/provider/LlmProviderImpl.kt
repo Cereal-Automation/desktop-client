@@ -1,6 +1,5 @@
 package com.cereal.client.infrastructure.provider
 
-import com.cereal.client.domain.model.exception.LlmCallException
 import com.cereal.client.domain.model.llm.LlmCompletion
 import com.cereal.client.domain.model.llm.LlmCompletionRequest
 import com.cereal.client.domain.model.llm.LlmModel
@@ -9,6 +8,7 @@ import com.cereal.client.domain.model.llm.LlmProviderType
 import com.cereal.client.domain.provider.LlmProvider
 import com.cereal.client.infrastructure.provider.llm.AnthropicLlmBackend
 import com.cereal.client.infrastructure.provider.llm.LlmHttp
+import com.cereal.client.infrastructure.provider.llm.OpenAiCompatibleLlmBackend
 import okhttp3.OkHttpClient
 import kotlin.time.Duration
 
@@ -25,6 +25,7 @@ class LlmProviderImpl(
 ) : LlmProvider {
     private val http = LlmHttp(client, retryDelays)
     private val anthropic = AnthropicLlmBackend(http)
+    private val openAiCompatible = OpenAiCompatibleLlmBackend(http)
 
     override suspend fun listModels(config: LlmProviderConfig): List<LlmModel> = backendFor(config.provider).listModels(config)
 
@@ -35,13 +36,7 @@ class LlmProviderImpl(
 
     private fun backendFor(provider: LlmProviderType): LlmProvider =
         when (provider) {
-            LlmProviderType.ANTHROPIC -> {
-                anthropic
-            }
-
-            // ponytail: no backend yet; #109 returns its backend here.
-            LlmProviderType.OPENAI_COMPATIBLE -> {
-                throw LlmCallException.Unavailable("This AI provider isn't supported by this version of Cereal yet.")
-            }
+            LlmProviderType.ANTHROPIC -> anthropic
+            LlmProviderType.OPENAI_COMPATIBLE -> openAiCompatible
         }
 }

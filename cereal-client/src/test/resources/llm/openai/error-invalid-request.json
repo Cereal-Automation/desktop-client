@@ -1,0 +1,1 @@
+{"error":{"message":"Invalid value for 'messages[1].role': expected one of system, developer, user, assistant, tool.","type":"invalid_request_error","param":"messages[1].role","code":"invalid_value"}}
