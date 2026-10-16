@@ -3,6 +3,7 @@ package com.cereal.client.infrastructure.sdkcomponent
 import com.cereal.sdk.component.ComponentProvider
 import com.cereal.sdk.component.artifact.ArtifactComponent
 import com.cereal.sdk.component.license.LicenseComponent
+import com.cereal.sdk.component.llm.LlmComponent
 import com.cereal.sdk.component.logger.LoggerComponent
 import com.cereal.sdk.component.notification.NotificationComponent
 import com.cereal.sdk.component.preference.PreferenceComponent
@@ -17,6 +18,7 @@ class ComponentProviderImpl(
     private val scriptLauncherComponent: ScriptLauncherComponent,
     private val userInteractionComponent: UserInteractionComponent,
     private val artifactComponent: ArtifactComponent,
+    private val llmComponent: LlmComponent,
 ) : ComponentProvider {
     override fun logger(): LoggerComponent = loggerComponentImpl
 
@@ -31,4 +33,6 @@ class ComponentProviderImpl(
     override fun userInteraction(): UserInteractionComponent = userInteractionComponent
 
     override fun artifact(): ArtifactComponent = artifactComponent
+
+    override fun llm(): LlmComponent = llmComponent
 }

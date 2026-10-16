@@ -1,16 +1,19 @@
 package com.cereal.client.infrastructure.di.modules
 
+import com.cereal.client.application.interactor.llm.CompleteLlmRequestInteractor
 import com.cereal.client.application.interactor.notification.SendNotificationFromScriptInstanceInteractor
 import com.cereal.client.domain.model.notification.NotificationResolver
 import com.cereal.client.domain.model.script.getScriptPackageInstance
 import com.cereal.client.domain.model.task.Task
 import com.cereal.client.infrastructure.sdkcomponent.ArtifactComponentImpl
 import com.cereal.client.infrastructure.sdkcomponent.ComponentProviderImpl
+import com.cereal.client.infrastructure.sdkcomponent.LlmComponentImpl
 import com.cereal.client.infrastructure.sdkcomponent.LoggerComponentImpl
 import com.cereal.client.infrastructure.sdkcomponent.NotificationComponentImpl
 import com.cereal.client.infrastructure.sdkcomponent.UserInteractionComponentImpl
 import com.cereal.sdk.component.ComponentProvider
 import com.cereal.sdk.component.artifact.ArtifactComponent
+import com.cereal.sdk.component.llm.LlmComponent
 import com.cereal.sdk.component.logger.LoggerComponent
 import com.cereal.sdk.component.notification.NotificationComponent
 import com.cereal.sdk.component.userinteraction.UserInteractionComponent
@@ -45,6 +48,7 @@ object TaskScopeModule {
                         get(),
                         get(),
                         get(),
+                        get(),
                     )
                 }
                 scoped<UserInteractionComponent> {
@@ -58,6 +62,7 @@ object TaskScopeModule {
                     val task = getSource<Task>() ?: throw RuntimeException("Task is required")
                     ArtifactComponentImpl(get(), task.id)
                 }
+                scoped<LlmComponent> { LlmComponentImpl(CompleteLlmRequestInteractor(get(), get())) }
             }
         }
 }
