@@ -9,6 +9,7 @@ import com.cereal.client.domain.model.llm.LlmProviderType
 import com.cereal.client.infrastructure.data.repository.inmemory.InMemoryLlmProviderConfigRepository
 import com.cereal.client.infrastructure.provider.LlmProviderImpl
 import com.cereal.client.infrastructure.sdkcomponent.fixtures.RecordingLoggerComponent
+import com.cereal.sdk.component.llm.ImageMediaType
 import com.cereal.sdk.component.llm.LlmException
 import com.cereal.sdk.component.llm.LlmRequest
 import com.cereal.sdk.component.llm.LlmTurn
@@ -58,6 +59,9 @@ class AnthropicLlmComponentTest {
             turns = listOf(LlmTurn.User(listOf(UserPart.Text("What is the capital of France?")))),
             maxTokens = 1024,
         )
+
+    private val imageRequest =
+        request.copy(turns = listOf(LlmTurn.User(listOf(UserPart.Text("What is the capital of France?"), UserPart.Image(IMAGE_BYTES, ImageMediaType.Png)))))
 
     @BeforeEach
     fun setUp() =
@@ -221,6 +225,44 @@ class AnthropicLlmComponentTest {
         }
 
     @Test
+    fun `an image is sent as a base64 image block with its media type`() =
+        runTest {
+            ImageMediaType.entries.forEach { mediaType ->
+                server.enqueue(fixture("messages-text.json"))
+                val image = UserPart.Image(IMAGE_BYTES, mediaType)
+
+                component.complete(request.copy(turns = listOf(LlmTurn.User(listOf(UserPart.Text("What is this?"), image)))))
+
+                assertEquals(
+                    Json.parseToJsonElement(
+                        """
+                        [
+                          {"type": "text", "text": "What is this?"},
+                          {"type": "image", "source": {"type": "base64", "media_type": "${mediaType.mimeType}", "data": "$IMAGE_BASE64"}}
+                        ]
+                        """,
+                    ),
+                    server
+                        .takeRequest()
+                        .json()["messages"]!!
+                        .jsonArray[0]
+                        .jsonObject["content"],
+                )
+            }
+        }
+
+    @Test
+    fun `an image the provider rejects fails as InvalidRequest with the provider message`() =
+        runTest {
+            server.enqueue(fixture("error-image-too-large.json", code = 400))
+
+            val error = assertThrows<LlmException.InvalidRequest> { component.complete(imageRequest) }
+
+            assertEquals("messages.0.content.1.image.source.base64: image exceeds 5 MB maximum: 7340032 bytes > 5242880 bytes", error.message)
+            assertEquals(1, server.requestCount)
+        }
+
+    @Test
     fun `a validation failure is InvalidRequest with the provider message and is never retried`() =
         runTest {
             listOf(400, 413, 422).forEach { code ->
@@ -288,8 +330,8 @@ class AnthropicLlmComponentTest {
                 server.enqueue(fixture("error-invalid-request.json", code = 400))
                 repeat(4) { server.enqueue(fixture("error-overloaded.json", code = 529)) }
 
-                val first = component.complete(request)
-                val next = request.copy(turns = request.turns + first.assistantTurn)
+                val first = component.complete(imageRequest)
+                val next = imageRequest.copy(turns = imageRequest.turns + first.assistantTurn)
                 repeat(4) { errors += assertThrows<LlmException> { component.complete(next) } }
             } finally {
                 root.detachAppender(appLog)
@@ -297,7 +339,7 @@ class AnthropicLlmComponentTest {
 
             val everything =
                 taskLog.lines + appLog.list.map { it.formattedMessage } + errors.map { it.messageChain() }
-            val secrets = listOf(API_KEY, "capital of France", "geography", "Paris", "EqQBCgIYAhIM1gbcDa9GJwZA")
+            val secrets = listOf(API_KEY, "capital of France", "geography", "Paris", "EqQBCgIYAhIM1gbcDa9GJwZA", IMAGE_TEXT, IMAGE_BASE64)
             everything.forEach { line -> secrets.forEach { assertFalse(line.contains(it), "\"$it\" leaked in: $line") } }
             assertTrue(appLog.list.isNotEmpty(), "retries should be logged")
         }
@@ -319,5 +361,8 @@ class AnthropicLlmComponentTest {
 
     private companion object {
         const val API_KEY = "sk-ant-test-key-1234"
+        const val IMAGE_TEXT = "secret-screenshot-pixels"
+        val IMAGE_BYTES = IMAGE_TEXT.toByteArray()
+        const val IMAGE_BASE64 = "c2VjcmV0LXNjcmVlbnNob3QtcGl4ZWxz"
     }
 }
