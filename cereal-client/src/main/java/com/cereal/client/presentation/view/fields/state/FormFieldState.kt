@@ -56,6 +56,11 @@ abstract class FormFieldState<T, V>(
         return this.error == null
     }
 
+    /** Shows an error found outside this field's own validators, e.g. a domain rule rejected on save. */
+    fun showError(message: String?) {
+        this.error = message
+    }
+
     open fun resetValidationErrors() {
         this.error = null
     }

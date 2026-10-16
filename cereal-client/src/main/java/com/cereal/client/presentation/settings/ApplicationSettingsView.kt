@@ -40,6 +40,9 @@ import androidx.compose.ui.unit.sp
 import com.cereal.client.application.ApplicationConfig
 import com.cereal.client.presentation.error.errorView
 import com.cereal.client.presentation.feedback.feedbackView
+import com.cereal.client.presentation.settings.ai.AiSettingsSection
+import com.cereal.client.presentation.settings.ai.AiSettingsViewModel
+import com.cereal.client.presentation.settings.ai.rememberAiSettingsViewModel
 import com.cereal.client.presentation.settings.components.DiscordWebhookUrlField
 import com.cereal.client.presentation.settings.components.EmailFields
 import com.cereal.client.presentation.settings.components.TelegramFields
@@ -130,6 +133,7 @@ fun ApplicationSettingsScreen(
                 parameters = { parametersOf(coroutineScope) },
             )
         },
+    aiVm: AiSettingsViewModel = rememberAiSettingsViewModel(),
 ) {
     Scaffold { paddingValues ->
         Box(
@@ -326,6 +330,10 @@ fun ApplicationSettingsScreen(
                     }
                 }
 
+                item {
+                    AiSettingsSection(aiVm)
+                }
+
                 // Get In Touch Section
                 item {
                     SettingsSectionCard(title = stringResource(Res.string.get_in_touch)) {
@@ -431,6 +439,8 @@ fun ApplicationSettingsScreen(
 
         errorView(vm.errorAction)
         feedbackView(vm.feedbackAction.value)
+        errorView(aiVm.errorAction)
+        feedbackView(aiVm.feedbackAction.value)
 
         // Update available dialog
         vm.updateAvailableVersion.value?.let { version ->
