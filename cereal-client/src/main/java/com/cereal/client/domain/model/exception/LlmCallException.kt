@@ -28,10 +28,14 @@ sealed class LlmCallException(
         cause: Throwable? = null,
     ) : LlmCallException(message, cause)
 
-    /** 400/404/413/422: [message] is the provider's own explanation. */
+    /**
+     * 400/404/413/422: [message] is the provider's own explanation. [missingModel] is the configured
+     * model when the provider said it doesn't exist (retired or removed); there is no fallback model.
+     */
     class InvalidRequest(
         message: String,
         cause: Throwable? = null,
+        val missingModel: String? = null,
     ) : LlmCallException(message, cause)
 
     /** The model's JSON failed the request's schema; [raw] and [assistantMessage] let the script retry. */

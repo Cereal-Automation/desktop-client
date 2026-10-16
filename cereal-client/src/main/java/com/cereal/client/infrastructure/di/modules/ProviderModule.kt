@@ -27,8 +27,10 @@ import com.cereal.client.infrastructure.provider.NotificationProviderImpl
 import com.cereal.client.infrastructure.provider.ProxyConnectionProviderImpl
 import com.cereal.client.infrastructure.provider.ScriptInstallProviderImpl
 import com.cereal.client.infrastructure.provider.SystemProviderImpl
+import okhttp3.OkHttpClient
 import org.koin.core.module.Module
 import org.koin.dsl.module
+import java.util.concurrent.TimeUnit
 
 /**
  * Production bindings for domain *providers* — adapters to capabilities the app does not own
@@ -60,7 +62,10 @@ object ProviderModule {
             single<ScriptInstallProvider> { ScriptInstallProviderImpl(get(), get(), get(), get(), get()) }
             single<ProxyConnectionProvider> { ProxyConnectionProviderImpl(get(), get(), get(), get()) }
             single<CheckoutProvider> { CheckoutProviderImpl(get(), get()) }
-            single<LlmProvider> { LlmProviderImpl() }
+            single<LlmProvider> {
+                // Thinking models can take minutes to answer a single non-streaming call.
+                LlmProviderImpl(get<OkHttpClient>().newBuilder().readTimeout(10, TimeUnit.MINUTES).build())
+            }
             // BootstrapPreferences.default is resolved here rather than bound in Koin: it is a
             // path holder that deliberately re-resolves the application home on every access.
             single<CrashReportingProvider> { CrashReportingProviderImpl(BootstrapPreferences.default, get()) }

@@ -20,24 +20,39 @@ import com.cereal.sdk.component.llm.LlmUsage
 import com.cereal.sdk.component.llm.StopReason
 import com.cereal.sdk.component.llm.ToolChoice
 import com.cereal.sdk.component.llm.UserPart
+import com.cereal.sdk.component.logger.LoggerComponent
 import com.cereal.sdk.component.llm.LlmToolCall as SdkLlmToolCall
 
 /**
  * The script-facing `provider.llm()`: maps SDK types to the client's [LlmCompletionRequest] and back,
  * and each [LlmCallException] to the matching SDK [LlmException]. Cancellation and unexpected errors
  * pass through untouched.
+ *
+ * Writes to the task log: one usage line per successful call (model and token counts, never money),
+ * and a line naming the configured model when the provider says it doesn't exist. Never any prompt or
+ * response content.
  */
 @OptIn(CerealPlatformApi::class)
 class LlmComponentImpl(
     private val completeLlmRequestInteractor: CompleteLlmRequestInteractor,
+    private val taskLog: LoggerComponent,
 ) : LlmComponent {
     override suspend fun complete(request: LlmRequest): LlmResponse {
         val completion =
             try {
                 completeLlmRequestInteractor.run(CompleteLlmRequestInteractor.Params(request.toDomain()))
+            } catch (e: LlmCallException.InvalidRequest) {
+                e.missingModel?.let { taskLog.warn("The AI model \"$it\" set in Settings → AI wasn't found. Choose another model there.") }
+                throw e.toSdk()
             } catch (e: LlmCallException) {
                 throw e.toSdk()
             }
+        with(completion.usage) {
+            taskLog.info(
+                "AI call to ${completion.model} used $inputUncached input, $cacheRead cache read, " +
+                    "$cacheWrite cache write and $output output tokens.",
+            )
+        }
         return completion.toSdk()
     }
 

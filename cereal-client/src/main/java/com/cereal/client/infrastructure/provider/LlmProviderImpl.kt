@@ -7,13 +7,25 @@ import com.cereal.client.domain.model.llm.LlmModel
 import com.cereal.client.domain.model.llm.LlmProviderConfig
 import com.cereal.client.domain.model.llm.LlmProviderType
 import com.cereal.client.domain.provider.LlmProvider
+import com.cereal.client.infrastructure.provider.llm.AnthropicLlmBackend
+import com.cereal.client.infrastructure.provider.llm.LlmHttp
+import okhttp3.OkHttpClient
+import kotlin.time.Duration
 
 /**
- * Routes each call to the backend for the config's [LlmProviderType]. Backends plug in here: the
- * Anthropic Messages backend (#108) and the OpenAI-compatible Chat Completions backend (#109) each
- * implement [LlmProvider] and replace their branch below.
+ * Routes each call to the backend for the config's [LlmProviderType]. Backends plug in here: each
+ * implements [LlmProvider] on top of the shared [LlmHttp] (error mapping, retries, privacy rules) and
+ * only maps its own request/response format.
+ *
+ * [retryDelays] is the wait before each retry of a 429/5xx; tests pass zeros.
  */
-class LlmProviderImpl : LlmProvider {
+class LlmProviderImpl(
+    client: OkHttpClient,
+    retryDelays: List<Duration> = LlmHttp.DEFAULT_RETRY_DELAYS,
+) : LlmProvider {
+    private val http = LlmHttp(client, retryDelays)
+    private val anthropic = AnthropicLlmBackend(http)
+
     override suspend fun listModels(config: LlmProviderConfig): List<LlmModel> = backendFor(config.provider).listModels(config)
 
     override suspend fun complete(
@@ -23,8 +35,12 @@ class LlmProviderImpl : LlmProvider {
 
     private fun backendFor(provider: LlmProviderType): LlmProvider =
         when (provider) {
-            // ponytail: no backend yet; #108 / #109 return their backend here.
-            LlmProviderType.ANTHROPIC, LlmProviderType.OPENAI_COMPATIBLE -> {
+            LlmProviderType.ANTHROPIC -> {
+                anthropic
+            }
+
+            // ponytail: no backend yet; #109 returns its backend here.
+            LlmProviderType.OPENAI_COMPATIBLE -> {
                 throw LlmCallException.Unavailable("This AI provider isn't supported by this version of Cereal yet.")
             }
         }

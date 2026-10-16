@@ -62,7 +62,7 @@ object TaskScopeModule {
                     val task = getSource<Task>() ?: throw RuntimeException("Task is required")
                     ArtifactComponentImpl(get(), task.id)
                 }
-                scoped<LlmComponent> { LlmComponentImpl(CompleteLlmRequestInteractor(get(), get())) }
+                scoped<LlmComponent> { LlmComponentImpl(CompleteLlmRequestInteractor(get(), get()), get()) }
             }
         }
 }
