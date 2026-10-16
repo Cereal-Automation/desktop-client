@@ -1,27 +1,24 @@
-package com.cereal.client.infrastructure.provider.llm
+package com.cereal.client.infrastructure.data.datasource.network.llm
 
-import com.cereal.client.domain.model.exception.LlmCallException
 import com.cereal.client.domain.model.llm.LlmCompletion
 import com.cereal.client.domain.model.llm.LlmCompletionRequest
+import com.cereal.client.domain.model.llm.LlmConnection
 import com.cereal.client.domain.model.llm.LlmFinishReason
 import com.cereal.client.domain.model.llm.LlmMessage
 import com.cereal.client.domain.model.llm.LlmModel
 import com.cereal.client.domain.model.llm.LlmProviderConfig
 import com.cereal.client.domain.model.llm.LlmTokenUsage
 import com.cereal.client.domain.model.llm.LlmToolCall
-import com.cereal.client.domain.model.llm.LlmToolChoice
 import com.cereal.client.domain.model.llm.LlmUserPart
-import com.cereal.client.domain.provider.LlmProvider
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
-import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.JsonObjectBuilder
 import kotlinx.serialization.json.add
 import kotlinx.serialization.json.addJsonObject
 import kotlinx.serialization.json.buildJsonArray
 import kotlinx.serialization.json.buildJsonObject
-import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 import kotlinx.serialization.json.put
@@ -34,30 +31,11 @@ import java.util.Base64
  * automatic prompt caching. The response's content blocks (thinking included) become the assistant
  * turn's provider payload and are sent back verbatim when that turn returns.
  */
-class AnthropicLlmBackend(
+class AnthropicLlmDataSource(
     private val http: LlmHttp,
-) : LlmProvider {
+) : LlmDataSource {
     // ponytail: one page of up to 1000 models (the API's max) and no `after_id` paging; page if a provider ever lists more.
-    override suspend fun listModels(config: LlmProviderConfig): List<LlmModel> {
-        val headers =
-            buildMap {
-                config.apiKey?.let { put("x-api-key", it.reveal()) }
-                put("anthropic-version", API_VERSION)
-            }
-        val body = http.getJson("${config.baseUrl.value}/models?limit=1000", headers)
-        return http.readResponse { json.decodeFromString<ModelList>(body).data.map { LlmModel(it.id, it.displayName) } }
-    }
-
-    @Serializable
-    private data class ModelList(
-        val data: List<ModelEntry>,
-    )
-
-    @Serializable
-    private data class ModelEntry(
-        val id: String,
-        @SerialName("display_name") val displayName: String? = null,
-    )
+    override suspend fun listModels(connection: LlmConnection): List<LlmModel> = http.getModels("${connection.baseUrl.value}/models?limit=1000", headers(connection))
 
     override suspend fun complete(
         config: LlmProviderConfig,
@@ -66,17 +44,19 @@ class AnthropicLlmBackend(
         val body =
             http.postJson(
                 url = "${config.baseUrl.value}/messages",
-                headers =
-                    buildMap {
-                        config.apiKey?.let { put("x-api-key", it.reveal()) }
-                        put("anthropic-version", API_VERSION)
-                    },
+                headers = headers(config.connection),
                 body = request.toBody(config.model).toString(),
                 model = config.model,
-                parseError = ::parseError,
+                isModelNotFound = ::isModelNotFound,
             )
         return http.readResponse { json.decodeFromString<MessageResponse>(body).toCompletion() }
     }
+
+    private fun headers(connection: LlmConnection) =
+        buildMap {
+            connection.apiKey?.let { put("x-api-key", it.reveal()) }
+            put("anthropic-version", API_VERSION)
+        }
 
     private fun LlmCompletionRequest.toBody(model: String): JsonObject =
         buildJsonObject {
@@ -94,15 +74,7 @@ class AnthropicLlmBackend(
                         }
                     }
                 }
-                putJsonObject("tool_choice") {
-                    put(
-                        "type",
-                        when (toolChoice) {
-                            LlmToolChoice.AUTO -> "auto"
-                            LlmToolChoice.NONE -> "none"
-                        },
-                    )
-                }
+                putJsonObject("tool_choice") { put("type", toolChoice.wireName) }
             }
             putJsonObject("thinking") { put("type", "adaptive") }
             putJsonObject("output_config") {
@@ -132,7 +104,7 @@ class AnthropicLlmBackend(
                     put("role", "assistant")
                     put(
                         "content",
-                        providerPayload?.let { json.parseToJsonElement(it).jsonArray }
+                        providerPayload?.let { http.payloadAs<JsonArray>(it) }
                             ?: buildJsonArray { addJsonObject { textBlock(text) } },
                     )
                 }
@@ -166,17 +138,17 @@ class AnthropicLlmBackend(
             }
         }
 
-    private fun kotlinx.serialization.json.JsonObjectBuilder.textBlock(text: String) {
+    private fun JsonObjectBuilder.textBlock(text: String) {
         put("type", "text")
         put("text", text)
     }
 
     private fun MessageResponse.toCompletion() =
         LlmCompletion(
-            text = blocks("text").joinToString("") { it["text"]!!.jsonPrimitive.content },
+            text = blocks("text").joinToString("") { it.getValue("text").jsonPrimitive.content },
             toolCalls =
                 blocks("tool_use").map {
-                    LlmToolCall(it["id"]!!.jsonPrimitive.content, it["name"]!!.jsonPrimitive.content, it["input"]!!.jsonObject.toString())
+                    LlmToolCall(it.getValue("id").jsonPrimitive.content, it.getValue("name").jsonPrimitive.content, it.getValue("input").jsonObject.toString())
                 },
             structuredJson = null,
             finishReason =
@@ -200,24 +172,7 @@ class AnthropicLlmBackend(
     private fun MessageResponse.blocks(type: String): List<JsonObject> = content.filterIsInstance<JsonObject>().filter { it["type"]?.jsonPrimitive?.content == type }
 
     /** `{"type":"error","error":{"type":"not_found_error","message":"model: <id>"}}` means an unknown model. */
-    private fun parseError(body: String): LlmHttp.ProviderError {
-        val error = runCatching { json.decodeFromString<ErrorResponse>(body).error }.getOrNull() ?: return LlmHttp.ProviderError(null)
-        return LlmHttp.ProviderError(
-            message = error.message,
-            modelNotFound = error.type == "not_found_error" && error.message.orEmpty().startsWith("model:"),
-        )
-    }
-
-    @Serializable
-    private data class ErrorResponse(
-        val error: ErrorDetail,
-    )
-
-    @Serializable
-    private data class ErrorDetail(
-        val type: String? = null,
-        val message: String? = null,
-    )
+    private fun isModelNotFound(error: LlmHttp.ErrorDetail) = error.type == "not_found_error" && error.message.orEmpty().startsWith("model:")
 
     @Serializable
     private data class MessageResponse(
@@ -237,6 +192,6 @@ class AnthropicLlmBackend(
 
     private companion object {
         const val API_VERSION = "2023-06-01"
-        val json = Json { ignoreUnknownKeys = true }
+        val json = LlmHttp.json
     }
 }

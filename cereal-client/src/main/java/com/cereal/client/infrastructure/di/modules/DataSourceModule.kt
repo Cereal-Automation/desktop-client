@@ -41,6 +41,9 @@ import com.cereal.client.infrastructure.data.datasource.network.RealObjectStorag
 import com.cereal.client.infrastructure.data.datasource.network.RealSubscriptionDataSource
 import com.cereal.client.infrastructure.data.datasource.network.SubscriptionDataSource
 import com.cereal.client.infrastructure.data.datasource.network.SystemBrowserOAuthDataSource
+import com.cereal.client.infrastructure.data.datasource.network.llm.AnthropicLlmDataSource
+import com.cereal.client.infrastructure.data.datasource.network.llm.LlmHttp
+import com.cereal.client.infrastructure.data.datasource.network.llm.OpenAiCompatibleLlmDataSource
 import com.cereal.client.infrastructure.data.datasource.network.marketplace.MarketplaceApiClient
 import com.cereal.client.infrastructure.data.datasource.network.marsproxies.MarsProxiesApiClient
 import com.cereal.client.infrastructure.data.datasource.os.AppImageInstaller
@@ -114,6 +117,12 @@ object DataSourceModule {
             single { MacAppBundleInstaller() }
             single { WindowsUpdateInstaller() }
             single { UserTokenDataSource(get()) }
+            single {
+                // Thinking models can take minutes to answer a single non-streaming call.
+                LlmHttp(get<OkHttpClient>().newBuilder().readTimeout(10, java.util.concurrent.TimeUnit.MINUTES).build())
+            }
+            single { AnthropicLlmDataSource(get()) }
+            single { OpenAiCompatibleLlmDataSource(get()) }
 
             if (BuildConfig.FLAVOR == "mock") {
                 single<SubscriptionDataSource> { FakeSubscriptionDataSource(get()) }

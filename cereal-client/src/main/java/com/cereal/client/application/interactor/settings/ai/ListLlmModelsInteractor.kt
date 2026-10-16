@@ -2,8 +2,8 @@ package com.cereal.client.application.interactor.settings.ai
 
 import com.cereal.client.application.Interactor
 import com.cereal.client.application.SensitiveParams
+import com.cereal.client.domain.model.llm.LlmConnection
 import com.cereal.client.domain.model.llm.LlmModel
-import com.cereal.client.domain.model.llm.LlmProviderConfig
 import com.cereal.client.domain.model.llm.LlmProviderType
 import com.cereal.client.domain.provider.LlmProvider
 
@@ -16,21 +16,12 @@ import com.cereal.client.domain.provider.LlmProvider
 class ListLlmModelsInteractor(
     private val llmProvider: LlmProvider,
 ) : Interactor<List<LlmModel>, ListLlmModelsInteractor.Params>() {
-    override suspend fun run(params: Params): List<LlmModel> {
-        // Listing doesn't use the model, and the user may not have picked one yet.
-        val model = params.model.ifBlank { UNUSED_MODEL }
-        return llmProvider.listModels(LlmProviderConfig.of(params.provider, params.baseUrl, params.apiKey, model))
-    }
+    override suspend fun run(params: Params): List<LlmModel> = llmProvider.listModels(LlmConnection.of(params.provider, params.baseUrl, params.apiKey))
 
     // NB: carries the API key — see [SensitiveParams].
     data class Params(
         val provider: LlmProviderType,
         val baseUrl: String,
         val apiKey: String,
-        val model: String,
     ) : SensitiveParams
-
-    private companion object {
-        const val UNUSED_MODEL = "unused"
-    }
 }

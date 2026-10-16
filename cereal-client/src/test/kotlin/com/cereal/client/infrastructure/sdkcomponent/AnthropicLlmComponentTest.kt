@@ -7,7 +7,7 @@ import com.cereal.client.application.interactor.llm.CompleteLlmRequestInteractor
 import com.cereal.client.domain.model.llm.LlmProviderConfig
 import com.cereal.client.domain.model.llm.LlmProviderType
 import com.cereal.client.infrastructure.data.repository.inmemory.InMemoryLlmProviderConfigRepository
-import com.cereal.client.infrastructure.provider.LlmProviderImpl
+import com.cereal.client.infrastructure.provider.fixtures.llmProviderOverHttp
 import com.cereal.client.infrastructure.sdkcomponent.fixtures.RecordingLoggerComponent
 import com.cereal.sdk.component.llm.ImageMediaType
 import com.cereal.sdk.component.llm.LlmException
@@ -22,7 +22,6 @@ import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
-import okhttp3.OkHttpClient
 import okhttp3.mockwebserver.MockResponse
 import okhttp3.mockwebserver.MockWebServer
 import okhttp3.mockwebserver.RecordedRequest
@@ -35,7 +34,9 @@ import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.assertThrows
 import org.slf4j.LoggerFactory
-import kotlin.time.Duration
+import java.time.ZoneOffset
+import java.time.ZonedDateTime
+import java.time.format.DateTimeFormatter
 import kotlin.time.Duration.Companion.seconds
 
 /**
@@ -49,7 +50,7 @@ class AnthropicLlmComponentTest {
     private val taskLog = RecordingLoggerComponent()
     private val component =
         LlmComponentImpl(
-            CompleteLlmRequestInteractor(configRepository, LlmProviderImpl(OkHttpClient(), retryDelays = List(3) { Duration.ZERO })),
+            CompleteLlmRequestInteractor(configRepository, llmProviderOverHttp()),
             taskLog,
         )
 
@@ -185,6 +186,31 @@ class AnthropicLlmComponentTest {
         }
 
     @Test
+    fun `retry-after in HTTP-date form is read as the time left until that date`() =
+        runTest {
+            val date = DateTimeFormatter.RFC_1123_DATE_TIME.format(ZonedDateTime.now(ZoneOffset.UTC).plusSeconds(120))
+            repeat(4) { server.enqueue(fixture("error-rate-limit.json", code = 429).setHeader("retry-after", date)) }
+
+            val error = assertThrows<LlmException.RateLimited> { component.complete(request) }
+
+            val retryAfter = error.retryAfter!!
+            assertTrue(retryAfter > 100.seconds && retryAfter <= 120.seconds, "$retryAfter")
+        }
+
+    @Test
+    fun `a request timeout is retried like a server error and then thrown as Unavailable`() =
+        runTest {
+            // OkHttp itself repeats a 408 once, so each of our attempts is two requests.
+            repeat(8) { server.enqueue(MockResponse().setResponseCode(408)) }
+            repeat(2) { server.enqueue(MockResponse().setResponseCode(408)) }
+            server.enqueue(fixture("messages-text.json"))
+
+            assertThrows<LlmException.Unavailable> { component.complete(request) }
+            assertEquals(8, server.requestCount)
+            assertEquals("Paris is the capital of France.", component.complete(request).text)
+        }
+
+    @Test
     fun `429 without retry-after has no retryAfter`() =
         runTest {
             repeat(4) { server.enqueue(fixture("error-rate-limit.json", code = 429)) }
@@ -314,6 +340,19 @@ class AnthropicLlmComponentTest {
             val error = assertThrows<LlmException.Unavailable> { component.complete(request) }
 
             assertFalse(error.messageChain().contains("Paris"), error.messageChain())
+        }
+
+    @Test
+    fun `a success body with blocks missing their fields is Unavailable without echoing the body`() =
+        runTest {
+            val usage = "\"usage\": {\"input_tokens\": 1, \"output_tokens\": 1}"
+            server.enqueue(MockResponse().setBody("""{"model": "m", "content": [{"type": "text", "txt": "Paris"}], $usage}"""))
+            server.enqueue(MockResponse().setBody("""{"model": "m", "content": [{"type": "tool_use", "id": "t1", "name": "Paris"}], $usage}"""))
+
+            repeat(2) {
+                val error = assertThrows<LlmException.Unavailable> { component.complete(request) }
+                assertFalse(error.messageChain().contains("Paris"), error.messageChain())
+            }
         }
 
     @Test

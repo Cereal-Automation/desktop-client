@@ -6,6 +6,7 @@ import com.cereal.client.domain.model.llm.LlmCompletion
 import com.cereal.client.domain.model.llm.LlmCompletionRequest
 import com.cereal.client.domain.model.llm.LlmFinishReason
 import com.cereal.client.domain.model.llm.LlmMessage
+import com.cereal.client.domain.model.llm.LlmTokenUsage
 import com.cereal.client.domain.model.llm.LlmToolCall
 import com.cereal.client.domain.model.llm.LlmToolChoice
 import com.cereal.client.domain.model.llm.LlmToolDefinition
@@ -28,9 +29,9 @@ import com.cereal.sdk.component.llm.LlmToolCall as SdkLlmToolCall
  * and each [LlmCallException] to the matching SDK [LlmException]. Cancellation and unexpected errors
  * pass through untouched.
  *
- * Writes to the task log: one usage line per successful call (model and token counts, never money),
- * and a line naming the configured model when the provider says it doesn't exist. Never any prompt or
- * response content.
+ * Writes to the task log: one usage line per billed call, [LlmCallException.InvalidOutput] included
+ * (model and token counts, never money), and a line naming the configured model when the provider says
+ * it doesn't exist. Never any prompt or response content.
  */
 @OptIn(CerealPlatformApi::class)
 class LlmComponentImpl(
@@ -44,16 +45,21 @@ class LlmComponentImpl(
             } catch (e: LlmCallException.InvalidRequest) {
                 e.missingModel?.let { taskLog.warn("The AI model \"$it\" set in Settings → AI wasn't found. Choose another model there.") }
                 throw e.toSdk()
+            } catch (e: LlmCallException.InvalidOutput) {
+                logUsage(e.model, e.usage)
+                throw e.toSdk()
             } catch (e: LlmCallException) {
                 throw e.toSdk()
             }
-        with(completion.usage) {
-            taskLog.info(
-                "AI call to ${completion.model} used $inputUncached input, $cacheRead cache read, " +
-                    "$cacheWrite cache write and $output output tokens.",
-            )
-        }
+        logUsage(completion.model, completion.usage)
         return completion.toSdk()
+    }
+
+    private fun logUsage(
+        model: String,
+        usage: LlmTokenUsage,
+    ) = with(usage) {
+        taskLog.info("AI call to $model used $inputUncached input, $cacheRead cache read, $cacheWrite cache write and $output output tokens.")
     }
 
     private fun LlmRequest.toDomain() =

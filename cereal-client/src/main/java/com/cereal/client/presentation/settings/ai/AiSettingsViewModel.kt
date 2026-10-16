@@ -113,7 +113,7 @@ class AiSettingsViewModel(
     /** A [silent] fetch (on open) only fills the list: no status, no field errors. */
     private fun fetchModels(silent: Boolean) {
         val provider = _provider.value ?: return
-        val params = ListLlmModelsInteractor.Params(provider, baseUrlState.text, apiKeyState.text, modelState.text)
+        val params = ListLlmModelsInteractor.Params(provider, baseUrlState.text, apiKeyState.text)
         if (!silent) _connectionStatus.value = ConnectionStatus.Testing
         fetchJob?.cancel()
         fetchJob =

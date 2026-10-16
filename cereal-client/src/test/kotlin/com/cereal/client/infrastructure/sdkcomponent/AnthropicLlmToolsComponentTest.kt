@@ -4,7 +4,7 @@ import com.cereal.client.application.interactor.llm.CompleteLlmRequestInteractor
 import com.cereal.client.domain.model.llm.LlmProviderConfig
 import com.cereal.client.domain.model.llm.LlmProviderType
 import com.cereal.client.infrastructure.data.repository.inmemory.InMemoryLlmProviderConfigRepository
-import com.cereal.client.infrastructure.provider.LlmProviderImpl
+import com.cereal.client.infrastructure.provider.fixtures.llmProviderOverHttp
 import com.cereal.client.infrastructure.sdkcomponent.fixtures.RecordingLoggerComponent
 import com.cereal.sdk.component.llm.LlmException
 import com.cereal.sdk.component.llm.LlmRequest
@@ -19,7 +19,6 @@ import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonObject
-import okhttp3.OkHttpClient
 import okhttp3.mockwebserver.MockResponse
 import okhttp3.mockwebserver.MockWebServer
 import okhttp3.mockwebserver.RecordedRequest
@@ -29,7 +28,6 @@ import org.junit.jupiter.api.Assertions.assertNull
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.assertThrows
-import kotlin.time.Duration
 
 /**
  * Tools and structured output through `provider.llm()` against the Anthropic Messages backend, with
@@ -38,10 +36,11 @@ import kotlin.time.Duration
 class AnthropicLlmToolsComponentTest {
     private val server = MockWebServer()
     private val configRepository = InMemoryLlmProviderConfigRepository()
+    private val taskLog = RecordingLoggerComponent()
     private val component =
         LlmComponentImpl(
-            CompleteLlmRequestInteractor(configRepository, LlmProviderImpl(OkHttpClient(), retryDelays = List(3) { Duration.ZERO })),
-            RecordingLoggerComponent(),
+            CompleteLlmRequestInteractor(configRepository, llmProviderOverHttp()),
+            taskLog,
         )
 
     private val question = LlmTurn.User(listOf(UserPart.Text("Which is warmer right now, Paris or Madrid?")))
@@ -183,6 +182,19 @@ class AnthropicLlmToolsComponentTest {
         }
 
     @Test
+    fun `an InvalidOutput call still writes its billed tokens to the task log`() =
+        runTest {
+            server.enqueue(fixture("messages-structured-invalid.json"))
+
+            assertThrows<LlmException.InvalidOutput> { component.complete(request) }
+
+            assertEquals(
+                listOf("INFO AI call to claude-opus-5-5 used 64 input, 640 cache read, 0 cache write and 18 output tokens."),
+                taskLog.lines,
+            )
+        }
+
+    @Test
     fun `tool arguments that violate the tool's input schema are InvalidOutput`() =
         runTest {
             server.enqueue(fixture("messages-tool-use-invalid-args.json"))
@@ -192,6 +204,19 @@ class AnthropicLlmToolsComponentTest {
             assertEquals("""{"town":"Madrid"}""", error.raw)
             assertEquals(2, error.assistantTurn.toolCalls.size)
             assertEquals(1, server.requestCount)
+        }
+
+    @Test
+    fun `a tool call cut off by max_tokens is returned unvalidated with its stop reason`() =
+        runTest {
+            val truncated = fixtureText("messages-tool-use-invalid-args.json").replace(STOP_TOOL_USE, STOP_MAX_TOKENS)
+            server.enqueue(MockResponse().setHeader("content-type", "application/json").setBody(truncated))
+
+            val response = component.complete(request)
+
+            assertEquals(StopReason.MaxTokens, response.stopReason)
+            assertEquals(2, response.toolCalls.size)
+            assertNull(response.structuredJson)
         }
 
     private fun fixtureText(name: String) = javaClass.getResource("/llm/anthropic/$name")!!.readText()
@@ -204,6 +229,8 @@ class AnthropicLlmToolsComponentTest {
     private fun RecordedRequest.json(): JsonObject = Json.parseToJsonElement(body.readUtf8()).jsonObject
 
     private companion object {
+        const val STOP_TOOL_USE = "\"stop_reason\": \"tool_use\""
+        const val STOP_MAX_TOKENS = "\"stop_reason\": \"max_tokens\""
         const val WEATHER_SCHEMA =
             """{"type":"object","properties":{"city":{"type":"string"}},"required":["city"],"additionalProperties":false}"""
         const val ANSWER_SCHEMA =
