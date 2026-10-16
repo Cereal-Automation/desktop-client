@@ -72,6 +72,10 @@ _Avoid_: save, write, produce, create, output
 The SDK component, reached via `provider.artifact()`, through which a running script emits artifacts — the script→app channel for binary output, peer to `LoggerComponent` and `NotificationComponent`. Client-side impl persists the bytes (encrypted) and registers an `Artifact` row.
 _Avoid_: FileComponent, OutputComponent, ExportComponent
 
+**LlmComponent**:
+The SDK component, reached via `provider.llm()`, through which a running script asks a large language model for a completion. The user supplies their own key once in Settings; the client makes the call, so the script never sees the key.
+_Avoid_: AiComponent, ChatComponent, ModelComponent
+
 **Download (an artifact)**:
 The user-initiated action of decrypting a stored `Artifact` and writing it to a chosen location on disk. The *user* downloads; the *script* emits — the two directions are never both called "export."
 _Avoid_: export, save as, extract
