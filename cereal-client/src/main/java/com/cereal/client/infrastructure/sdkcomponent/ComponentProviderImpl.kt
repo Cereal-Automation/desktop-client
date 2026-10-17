@@ -22,7 +22,7 @@ class ComponentProviderImpl(
     private val userInteractionComponent: UserInteractionComponent,
     private val artifactComponent: ArtifactComponent,
     private val llmComponent: LlmComponent,
-    private val features: Set<ScriptFeature>,
+    private val declaredFeatures: Set<ScriptFeature>,
 ) : ComponentProvider {
     override fun logger(): LoggerComponent = loggerComponentImpl
 
@@ -39,7 +39,7 @@ class ComponentProviderImpl(
     override fun artifact(): ArtifactComponent = artifactComponent
 
     override fun llm(): LlmComponent {
-        if (ScriptFeature.LLM !in features) throw ScriptFeatureNotDeclaredException(ScriptFeature.LLM)
+        if (ScriptFeature.LLM !in declaredFeatures) throw ScriptFeatureNotDeclaredException(ScriptFeature.LLM)
         return llmComponent
     }
 }

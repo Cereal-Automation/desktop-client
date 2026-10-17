@@ -11,7 +11,7 @@ import org.junit.jupiter.api.Test
 
 class HasLlmProviderConfigInteractorTest {
     @Test
-    fun `run returns false when no provider config is saved`() =
+    fun `run should return false when no provider config is saved`() =
         runTest {
             val interactor = HasLlmProviderConfigInteractor(InMemoryLlmProviderConfigRepository())
 
@@ -19,7 +19,7 @@ class HasLlmProviderConfigInteractorTest {
         }
 
     @Test
-    fun `run returns true when a provider config is saved`() =
+    fun `run should return true when a provider config is saved`() =
         runTest {
             val config = LlmProviderConfig.of(LlmProviderType.OPENAI_COMPATIBLE, "http://localhost:11434/v1", "", "llama3")
             val interactor = HasLlmProviderConfigInteractor(InMemoryLlmProviderConfigRepository(config))

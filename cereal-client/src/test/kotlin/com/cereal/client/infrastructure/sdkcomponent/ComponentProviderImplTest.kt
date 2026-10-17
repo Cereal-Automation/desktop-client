@@ -42,6 +42,6 @@ class ComponentProviderImplTest {
             userInteractionComponent = mockk(),
             artifactComponent = mockk(),
             llmComponent = llmComponent,
-            features = features,
+            declaredFeatures = features,
         )
 }

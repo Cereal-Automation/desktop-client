@@ -39,9 +39,9 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.flowOf
-import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.resetMain
+import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.test.setMain
 import net.swiftzer.semver.SemVer
 import org.junit.jupiter.api.AfterEach
@@ -342,21 +342,20 @@ class ScriptSelectionViewModelTest {
     }
 
     @Test
-    fun `launchScript shows no AI warning when an llm script has a provider saved`() {
-        runBlocking {
+    fun `launchScript shows no AI warning when an llm script has a provider saved`() =
+        runTest {
             llmProviderConfigRepository.save(
                 LlmProviderConfig.of(LlmProviderType.OPENAI_COMPATIBLE, "http://localhost:11434/v1", "", "llama3"),
             )
+            stubNotificationChannelsConfigured(true)
+            stubStartScriptSucceeds()
+            val viewModel = createViewModelWithSelectedScript(setOf(ScriptFeature.LLM))
+
+            launch(viewModel)
+
+            assertFalse(viewModel.showNoAiProviderWarning.value)
+            coVerify(exactly = 1) { startScriptInteractor(any(), any()) }
         }
-        stubNotificationChannelsConfigured(true)
-        stubStartScriptSucceeds()
-        val viewModel = createViewModelWithSelectedScript(setOf(ScriptFeature.LLM))
-
-        launch(viewModel)
-
-        assertFalse(viewModel.showNoAiProviderWarning.value)
-        coVerify(exactly = 1) { startScriptInteractor(any(), any()) }
-    }
 
     @Test
     fun `launchScript shows no AI warning for a script without llm and no provider saved`() {

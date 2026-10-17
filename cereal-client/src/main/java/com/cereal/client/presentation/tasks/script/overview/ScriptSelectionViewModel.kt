@@ -199,11 +199,7 @@ class ScriptSelectionViewModel(
      * missing provider breaks the script; the notification check follows.
      */
     fun launchScript() {
-        if (scriptsListViewModel.selectedItem
-                ?.manifest
-                ?.features
-                ?.contains(ScriptFeature.LLM) != true
-        ) {
+        if (scriptsListViewModel.selectedItem?.manifest?.declares(ScriptFeature.LLM) != true) {
             checkNotificationChannelsThenLaunch()
             return
         }

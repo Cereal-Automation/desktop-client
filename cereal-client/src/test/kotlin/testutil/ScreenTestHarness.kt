@@ -12,6 +12,7 @@ import org.jetbrains.skiko.Library
 import org.junit.jupiter.api.Assumptions.assumeTrue
 import org.koin.core.context.startKoin
 import org.koin.core.context.stopKoin
+import org.koin.core.module.Module
 
 /**
  * Whether Compose desktop rendering can run here. Probes skiko's native library once: on headless
@@ -25,7 +26,7 @@ private val composeRenderingAvailable: Boolean by lazy {
 /**
  * Renders a single screen inside a Compose desktop UI test, wired to the real ViewModel/interactor
  * graph but with every repository replaced by an in-memory implementation (see
- * [InMemoryRepositoryModule]).
+ * [InMemoryRepositoryModule]). [overrides] are loaded last, so their definitions replace the defaults.
  *
  * Boots a fresh Koin context per test and tears it down afterwards. Screens resolve their own
  * ViewModel via `KoinJavaComponent.get(...)`, so simply having a started container is enough.
@@ -39,12 +40,15 @@ private val composeRenderingAvailable: Boolean by lazy {
  * ```
  */
 @OptIn(ExperimentalTestApi::class)
-fun runScreenTest(block: ComposeUiTest.() -> Unit) {
+fun runScreenTest(
+    overrides: List<Module> = emptyList(),
+    block: ComposeUiTest.() -> Unit,
+) {
     assumeTrue(composeRenderingAvailable, "Compose desktop rendering is unavailable in this environment")
     runDesktopComposeUiTest {
         // Defend against a previous test that failed before tearing Koin down.
         stopKoin()
-        startKoin { modules(Injector.appModules(InMemoryRepositoryModule.modules, InMemoryProviderModule.modules)) }
+        startKoin { modules(Injector.appModules(InMemoryRepositoryModule.modules, InMemoryProviderModule.modules) + overrides) }
         try {
             block()
         } finally {

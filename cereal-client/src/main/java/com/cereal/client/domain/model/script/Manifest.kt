@@ -16,4 +16,6 @@ data class Manifest(
         if (name.isBlank()) throw InvalidManifestException("Name cannot be blank")
         if (versionCode < 0) throw InvalidManifestException("VersionCode cannot be negative")
     }
+
+    fun declares(feature: ScriptFeature): Boolean = feature in features
 }
