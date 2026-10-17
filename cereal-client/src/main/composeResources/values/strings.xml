@@ -1,11 +1,11 @@
 <resources>
     <string name="activity_indicator">Activity indicator</string>
     <string name="paywall_title">Subscription required</string>
-    <string name="paywall_message">Your %1$s subscription is required to use this app. Once you\'ve subscribed, refresh to continue.</string>
-    <string name="paywall_error_message">We couldn\'t verify your subscription. Check your connection and try again.</string>
-    <string name="paywall_unavailable_message">We couldn\'t download %1$s. Check your connection and try again.</string>
+    <string name="paywall_message">Your %1$s subscription is required to use this app. Once you've subscribed, refresh to continue.</string>
+    <string name="paywall_error_message">We couldn't verify your subscription. Check your connection and try again.</string>
+    <string name="paywall_unavailable_message">We couldn't download %1$s. Check your connection and try again.</string>
     <string name="paywall_get_action">Get %1$s</string>
-    <string name="paywall_refresh_action">I\'ve subscribed — refresh</string>
+    <string name="paywall_refresh_action">I've subscribed — refresh</string>
     <string name="paywall_retry_action">Try again</string>
     <string name="add">Add</string>
     <string name="clear">Clear</string>
