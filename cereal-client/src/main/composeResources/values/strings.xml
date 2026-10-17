@@ -316,6 +316,7 @@
     <string name="datasets_action_import">Import</string>
     <string name="datasets_action_back">Back to datasets</string>
     <string name="datasets_records_crumb">· %1$d records</string>
+    <string name="datasets_records_empty">No records yet. Import a CSV file in the top right corner to add some.</string>
     <string name="datasets_meta_records">Records</string>
     <string name="datasets_meta_columns">Columns</string>
     <string name="datasets_meta_updated">Created</string>
