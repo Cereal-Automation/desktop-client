@@ -533,6 +533,7 @@
     <string name="my_scripts">My Scripts</string>
     <string name="my_scripts_desc">View and manage your installed scripts.</string>
     <string name="my_scripts_empty_title">No scripts installed yet</string>
+    <string name="my_scripts_empty_message">Scripts you install from the marketplace show up here.</string>
     <string name="my_scripts_empty_action_browse">Browse marketplace</string>
     <string name="tasks_empty_title">No script groups yet</string>
     <string name="tasks_empty_message">Create a group to organize your scripts, or add a script to get started.</string>
