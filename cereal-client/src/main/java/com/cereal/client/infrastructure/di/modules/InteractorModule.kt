@@ -69,6 +69,10 @@ import com.cereal.client.application.interactor.script.SyncScriptsOnScriptSelect
 import com.cereal.client.application.interactor.settings.GetApplicationPreferencesSettingsInteractor
 import com.cereal.client.application.interactor.settings.OpenFileInteractor
 import com.cereal.client.application.interactor.settings.OpenUrlInteractor
+import com.cereal.client.application.interactor.settings.ai.ClearLlmProviderConfigInteractor
+import com.cereal.client.application.interactor.settings.ai.GetLlmProviderConfigInteractor
+import com.cereal.client.application.interactor.settings.ai.ListLlmModelsInteractor
+import com.cereal.client.application.interactor.settings.ai.SaveLlmProviderConfigInteractor
 import com.cereal.client.application.interactor.settings.developers.ObserveShowDebugLogsInteractor
 import com.cereal.client.application.interactor.settings.developers.SetDevelopmentScriptsInteractor
 import com.cereal.client.application.interactor.settings.developers.SetShowDebugLogsInteractor
@@ -173,6 +177,10 @@ object InteractorModule {
             factory { SetCrashReportingEnabledInteractor(get()) }
             factory { SendNotificationTestMessageInteractor(get(), get()) }
             factory { SaveAllNotificationSettingsInteractor(get()) }
+            factory { GetLlmProviderConfigInteractor(get()) }
+            factory { SaveLlmProviderConfigInteractor(get()) }
+            factory { ClearLlmProviderConfigInteractor(get()) }
+            factory { ListLlmModelsInteractor(get()) }
             factory { HasNotificationChannelsConfiguredInteractor(get()) }
             // Notification center
             factory { ObserveNotificationCenterInteractor(get()) }

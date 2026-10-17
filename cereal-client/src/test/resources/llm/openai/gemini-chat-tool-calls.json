@@ -1,0 +1,43 @@
+{
+  "choices": [
+    {
+      "finish_reason": "tool_calls",
+      "index": 0,
+      "message": {
+        "role": "assistant",
+        "tool_calls": [
+          {
+            "extra_content": {
+              "google": {
+                "thought_signature": "Er0CCroCAWkUfRPsr/Hv2vosZN7Wg5Hidynil3NQMlncUKbUiYo9o1d6R9wSYA8vQ4G8B+3xJ2YcvHho1hIRiwoEOlYW1SOIkLOx2YlT/w8rubmqMey986Vrf4KwM3DhGIH7vN8NmIbx2j/zhQz5caNoCJsknWPK8lzciNXn3779617sTKy0ai1wZJK4WO5YgSUFUAd/2Fq4GTEYK060PL83j0m4rjiP7+0LDzE6PEwhOxSdDY6fWcW0WMcoa70FfNQO47a9CX6O8CKjynbr8N0zVvMnP4PKMPpS0DvQeQazLmsJbFrHoPX1cm1w/+8oOoy7E1CRgAKh31eno7UNlWYDvHUghhShFZ5Z+FRjleUdj06BZTgw8sUQgms8EDDV5oJ5W37lBHRw2tITvGCZOPZrLtGwFy0aLumfpblJ0iw="
+              }
+            },
+            "function": {
+              "arguments": "{\"sku\":\"A1\"}",
+              "name": "get_price"
+            },
+            "id": "call_3249428",
+            "type": "function"
+          },
+          {
+            "function": {
+              "arguments": "{\"sku\":\"B2\"}",
+              "name": "get_price"
+            },
+            "id": "call_3249429",
+            "type": "function"
+          }
+        ]
+      }
+    }
+  ],
+  "created": 1792222771,
+  "id": "KibTatClJ82gvdIPkI2NkAk",
+  "model": "models/gemini-3-flash-preview",
+  "object": "chat.completion",
+  "usage": {
+    "completion_tokens": 34,
+    "prompt_tokens": 70,
+    "total_tokens": 172
+  }
+}

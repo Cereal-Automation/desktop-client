@@ -74,6 +74,7 @@ class TestSampleScript {
                     every { testUserInteraction() } returns null
                     every { testLicense() } returns null
                     every { testArtifacts() } returns null
+                    every { testLlm() } returns null
                     every { crashWithException() } returns false
                 }
             val componentProviderFactory = TestComponentProviderFactory()

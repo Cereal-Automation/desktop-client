@@ -6,6 +6,7 @@ import com.cereal.client.domain.repository.ApplicationRepository
 import com.cereal.client.domain.repository.ArtifactRepository
 import com.cereal.client.domain.repository.CustomDatasetRepository
 import com.cereal.client.domain.repository.FeatureFlagRepository
+import com.cereal.client.domain.repository.LlmProviderConfigRepository
 import com.cereal.client.domain.repository.LogEventRepository
 import com.cereal.client.domain.repository.NotificationHistoryRepository
 import com.cereal.client.domain.repository.NotificationSettingsRepository
@@ -24,6 +25,7 @@ import com.cereal.client.infrastructure.data.repository.ApplicationRepositoryImp
 import com.cereal.client.infrastructure.data.repository.ArtifactRepositoryImpl
 import com.cereal.client.infrastructure.data.repository.CustomDatasetRepositoryImpl
 import com.cereal.client.infrastructure.data.repository.FeatureFlagRepositoryImpl
+import com.cereal.client.infrastructure.data.repository.LlmProviderConfigRepositoryImpl
 import com.cereal.client.infrastructure.data.repository.LogEventRepositoryImpl
 import com.cereal.client.infrastructure.data.repository.NotificationHistoryRepositoryImpl
 import com.cereal.client.infrastructure.data.repository.NotificationSettingsRepositoryImpl
@@ -65,6 +67,7 @@ object RepositoryModule {
             single<ApplicationPreferenceRepository> { ApplicationPreferenceRepositoryImpl(get(), get()) }
             single<NotificationSettingsRepository> { NotificationSettingsRepositoryImpl(get(), get()) }
             single<ProxyProviderCredentialRepository> { ProxyProviderCredentialRepositoryImpl(get(), get()) }
+            single<LlmProviderConfigRepository> { LlmProviderConfigRepositoryImpl(get(), get()) }
             single<FeatureFlagRepository> { FeatureFlagRepositoryImpl(isDebugBuild = BuildConfig.IS_DEBUG) }
             single<ScriptPreferenceRepository> { ScriptPreferenceRepositoryImpl(get(), get()) }
             single<ScriptInstanceRepository> { ScriptInstanceRepositoryImpl(get(), get(), get(), get()) }

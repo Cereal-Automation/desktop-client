@@ -23,6 +23,7 @@ import com.cereal.client.presentation.proxy.ProxyViewModel
 import com.cereal.client.presentation.proxy.provider.ProxyProviderViewModel
 import com.cereal.client.presentation.proxy.provider.SyncProxiesViewModel
 import com.cereal.client.presentation.settings.ApplicationSettingsViewModel
+import com.cereal.client.presentation.settings.ai.AiSettingsViewModel
 import com.cereal.client.presentation.tasks.TasksActionHandler
 import com.cereal.client.presentation.tasks.TasksListObserver
 import com.cereal.client.presentation.tasks.TasksViewModel
@@ -231,6 +232,7 @@ object ViewModelModule {
             }
             factory { (scope: CoroutineScope) -> BrandPaywallViewModel(scope, get(), get(), get(), get(), get(), get()) }
             factory { ErrorResolver() }
+            factory { (scope: CoroutineScope) -> AiSettingsViewModel(scope, get(), get(), get(), get(), get(), get()) }
             factory { (scope: CoroutineScope, scriptPackage: ScriptPackage, initialScriptPackageInstance: ScriptPackageInstance?) ->
                 ScriptConfigurationViewModel(
                     scriptPackage,
