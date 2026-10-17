@@ -1,0 +1,90 @@
+<!doctype html>
+<!--
+  PROTOTYPE — throwaway. Lives on a research/prototype branch only, never merged.
+  Question (Start warning dialog for scripts that need AI, desktop-client#118):
+  what should the Start warning look like when a script declares `llm` and no AI provider is set up?
+  Three variants over a rough mock of ScriptSelectionDialog, switch with the bottom bar or ←/→.
+  HTML instead of Compose so it opens with a double-click; colours copied from presentation/theme/Colors.kt (dark).
+-->
+<html><head><meta charset="utf-8"><title>AI start warning prototype</title>
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<style>
+:root{--bg:#1C1C1C;--surface:#161616;--sv:#222;--on:#fff;--onv:#B4AFB6;--primary:#E54848;--outline:#3E3E3E;--warn:#F5B73A;--link:#64B5F6}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--on);font:14px/1.45 system-ui,sans-serif;min-height:100vh}
+.app{display:flex;min-height:100vh}.menu{width:64px;background:#141414;border-right:1px solid #2A2A2A}
+.tasks{flex:1;padding:24px;color:var(--onv)}
+.scrim{position:fixed;inset:0;background:#0009;display:flex;align-items:center;justify-content:center;padding:16px}
+.cfg{width:min(760px,100%);background:var(--surface);border:1px solid var(--outline);border-radius:12px;display:flex;flex-direction:column;max-height:90vh}
+.cfg h2{margin:0;padding:16px 20px;font-size:18px;border-bottom:1px solid var(--outline)}
+.cfg .body{display:flex;gap:0;flex:1;min-height:300px}
+.list{width:220px;border-right:1px solid var(--outline);padding:8px}
+.item{padding:10px;border-radius:8px;color:var(--onv)}.item.sel{background:var(--sv);color:var(--on)}
+.form{flex:1;padding:16px 20px;display:flex;flex-direction:column;gap:12px}
+.field{background:var(--sv);border:1px solid var(--outline);border-radius:6px;padding:10px;color:var(--onv)}
+.footer{display:flex;justify-content:flex-end;gap:8px;padding:12px 20px;border-top:1px solid var(--outline);align-items:center}
+button{font:inherit;border:0;border-radius:20px;padding:8px 16px;cursor:pointer;background:none;color:var(--primary)}
+button.filled{background:var(--primary);color:#fff}button.tonal{background:#3E1212;color:#FFDADA}
+.alert{position:fixed;inset:0;background:#0008;display:flex;align-items:center;justify-content:center;padding:16px}
+.alert .box{min-width:400px;max-width:520px;background:#222;border-radius:28px;padding:24px}
+.alert h3{margin:0 0 16px;font-size:22px;font-weight:400}.alert p{margin:0 0 8px;color:var(--onv);white-space:pre-line}
+.alert .btns{display:flex;justify-content:flex-end;gap:8px;margin-top:20px;flex-wrap:wrap}
+.banner{display:flex;gap:12px;align-items:flex-start;border:1px solid #F5B73A55;background:#F5B73A14;border-radius:8px;padding:10px 12px}
+.banner .ic{color:var(--warn);font-size:18px;line-height:1}.banner b{display:block}.banner span{color:var(--onv)}
+.banner a{color:var(--link);cursor:pointer;white-space:nowrap}
+.state{position:fixed;top:12px;right:12px;background:#000c;border:1px solid #555;border-radius:8px;padding:10px 12px;font:12px/1.5 ui-monospace,monospace;max-width:320px;z-index:20}
+.state label{display:block;cursor:pointer}
+.switch{position:fixed;bottom:16px;left:50%;transform:translateX(-50%);display:flex;gap:8px;align-items:center;background:#fff;color:#000;border-radius:999px;padding:6px 10px;box-shadow:0 4px 20px #0008;z-index:30;font-weight:600}
+.switch button{color:#000;padding:4px 10px}
+.note{color:var(--onv);font-size:12px}
+@media (max-width:600px){.list{display:none}.alert .box{min-width:0}}
+</style></head><body>
+<div class="app"><div class="menu"></div><div class="tasks">Tasks screen (behind dialog)</div></div>
+<div id="root"></div>
+<div class="state" id="state"></div>
+<div class="switch"><button onclick="cycle(-1)">←</button><span id="label"></span><button onclick="cycle(1)">→</button></div>
+<script>
+const V={
+  A:"Three-button modal (as charted)",
+  B:"Two-button modal, like the notification warning",
+  C:"Inline banner in the configure dialog, no modal",
+};
+const keys=Object.keys(V);
+let s={variant:new URLSearchParams(location.search).get('variant')||'A',noChannels:false,dialog:null,log:[]};
+const TITLE="AI provider not set up";
+const BODY="This script uses AI, but no AI provider is set up. It will fail as soon as it needs AI.";
+const BODY_B=BODY+"\n\nYou can set up a provider in Settings → AI.";
+function log(m){s.log.unshift(m);s.log=s.log.slice(0,5);render()}
+function start(){
+  // Order mirrors launchScript(): pre-checks run before StartScriptInteractor.
+  if(s.variant!=='C'){s.dialog='ai';log('Start pressed → AI warning');return}
+  if(s.noChannels){s.dialog='notif';log('Start pressed → notification warning');return}
+  log('Start pressed → script started (banner already warned)');
+}
+function afterAi(){ if(s.noChannels){s.dialog='notif';log('→ notification warning (2nd dialog in a row)')} else {s.dialog=null;log('→ script started')} }
+function act(a){
+  if(a==='cancel'){s.dialog=null;log('Cancel → back on configure dialog, form kept')}
+  if(a==='anyway'){afterAi()}
+  if(a==='settings'){s.dialog='left';log('Open AI settings → configure dialog CLOSED, Settings opened (no AI deep-link today), form lost')}
+  if(a==='notifOk'){s.dialog=null;log('→ script started')}
+  render();
+}
+function alertBox(title,body,btns){return `<div class="alert"><div class="box"><h3>${title}</h3><p>${body}</p><div class="btns">${btns}</div></div></div>`}
+function render(){
+  const v=s.variant;let banner='';
+  if(v==='C')banner=`<div class="banner"><div class="ic">⚠</div><div><b>${TITLE}</b><span>${BODY} </span><a onclick="act('settings')">Set up AI →</a></div></div>`;
+  let html=s.dialog==='left'?`<div class="scrim"><div class="cfg"><h2>Settings</h2><div class="form"><div class="field">… Notifications …</div><div class="field" style="border-color:var(--primary)">AI provider (user has to scroll here)</div><p class="note">Configure dialog is gone. <a style="color:var(--link);cursor:pointer" onclick="s.dialog=null;log('reset');">Reset</a></p></div></div></div>`:
+  `<div class="scrim"><div class="cfg"><h2>Add script</h2><div class="body">
+    <div class="list"><div class="item">Nike Monitor</div><div class="item sel">AI Browser Agent</div><div class="item">Proxy Tester</div></div>
+    <div class="form">${banner}<div class="field">Task prompt: “Buy the cheapest…”</div><div class="field">Concurrent tasks: 1</div></div>
+  </div><div class="footer"><button onclick="act('cancel')">Cancel</button><button class="filled" onclick="start()">Start script</button></div></div></div>`;
+  if(s.dialog==='ai'&&v==='A')html+=alertBox(TITLE,BODY,`<button onclick="act('cancel')">Cancel</button><button onclick="act('anyway')">Start anyway</button><button class="tonal" onclick="act('settings')">Open AI settings</button>`);
+  if(s.dialog==='ai'&&v==='B')html+=alertBox(TITLE,BODY_B,`<button onclick="act('cancel')">Cancel</button><button onclick="act('anyway')">Start anyway</button>`);
+  if(s.dialog==='notif')html+=alertBox("No Notification Channels","No external notification channels are configured for this script. You will only receive desktop notifications.",`<button onclick="act('cancel')">Cancel</button><button onclick="act('notifOk')">Continue Anyway</button>`);
+  document.getElementById('root').innerHTML=html;
+  document.getElementById('label').textContent=`${v} (${V[v]})`;
+  document.getElementById('state').innerHTML=`<label><input type="checkbox" ${s.noChannels?'checked':''} onchange="s.noChannels=this.checked;render()"> no notification channels either</label>variant=${v}<br>dialog=${s.dialog}<br>${s.log.map(l=>'• '+l).join('<br>')}`;
+}
+function cycle(d){s.variant=keys[(keys.indexOf(s.variant)+d+keys.length)%keys.length];s.dialog=null;history.replaceState(null,'','?variant='+s.variant);render()}
+addEventListener('keydown',e=>{if(e.target.closest('input,textarea,[contenteditable]'))return;if(e.key==='ArrowLeft')cycle(-1);if(e.key==='ArrowRight')cycle(1)});
+render();
+</script></body></html>
