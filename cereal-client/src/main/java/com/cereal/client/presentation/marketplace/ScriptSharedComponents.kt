@@ -283,10 +283,10 @@ internal fun RatingRow(rating: Double?) {
             imageVector = Icons.Default.Star,
             contentDescription = null,
             modifier = Modifier.size(14.dp),
-            tint = Color(0xFFF59E0B),
+            tint = CerealTheme.colorScheme.warning,
         )
         CerealText(
-            text = "${rating ?: "-"}",
+            text = rating?.let { "%.1f".format(it) } ?: "-",
             style = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.SemiBold),
             color = MaterialTheme.colorScheme.onSurface,
         )

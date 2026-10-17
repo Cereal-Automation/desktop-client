@@ -193,6 +193,7 @@
     <string name="marketplace_load_error">Failed to load scripts. Please check your connection and try again.</string>
     <string name="marketplace_new_badge">NEW</string>
     <string name="marketplace_status_operational">Operational</string>
+    <string name="marketplace_status_maintenance_short">Maintenance</string>
     <string name="marketplace_status_maintenance">Under Maintenance — this script may be temporarily unavailable</string>
     <string name="marketplace_no_release">No release available</string>
     <string name="marketplace_no_scripts_found">No scripts found. Try a different search query.</string>
