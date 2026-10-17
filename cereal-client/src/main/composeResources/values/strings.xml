@@ -154,7 +154,7 @@
     <string name="loading_script_configuration_files">Loading script configuration files</string>
     <string name="locked_features">Locked Features</string>
     <string name="login">Sign In</string>
-    <string name="login_action">Login</string>
+    <string name="login_action">Sign In</string>
     <string name="login_guest">Continue as Guest</string>
     <string name="login_google">Sign in with Google</string>
     <string name="login_discord">Sign in with Discord</string>
