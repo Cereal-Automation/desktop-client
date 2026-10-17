@@ -9,6 +9,7 @@ data class Manifest(
     val instructions: String? = null,
     val supportUrl: String? = null,
     val sdkVersion: String? = null,
+    val features: Set<ScriptFeature> = emptySet(),
 ) {
     init {
         if (packageName.isBlank()) throw InvalidManifestException("PackageName cannot be blank")

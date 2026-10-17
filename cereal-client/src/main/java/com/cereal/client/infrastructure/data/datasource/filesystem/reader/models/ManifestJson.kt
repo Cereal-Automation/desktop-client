@@ -22,4 +22,6 @@ data class ManifestJson(
     @SerialName("instructions") val instructions: String? = null,
     /** The SDK version this script was built against */
     @SerialName("sdk_version") val sdkVersion: String? = null,
+    /** Script features the script uses, as raw manifest values. Missing means none. */
+    @SerialName("features") val features: List<String> = emptyList(),
 )

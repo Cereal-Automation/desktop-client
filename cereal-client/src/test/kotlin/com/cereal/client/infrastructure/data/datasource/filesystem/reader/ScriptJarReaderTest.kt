@@ -80,6 +80,25 @@ class ScriptJarReaderTest {
         assertEquals("com.example.minimal", reader.manifest!!.packageName)
         assertEquals("Minimal Script", reader.manifest!!.name)
         assertEquals(1L, reader.manifest!!.versionCode)
+        assertEquals(emptyList(), reader.manifest!!.features)
+    }
+
+    @Test
+    fun `readManifest should parse declared features as raw values`() {
+        val manifestJson =
+            """
+            {
+                "package_name": "com.example.ai",
+                "name": "AI Script",
+                "version_code": 1,
+                "script": "com.example.TestScript",
+                "features": ["llm", "teleport"]
+            }
+            """.trimIndent()
+
+        val reader = ScriptJarReader(createJarWithManifest(manifestJson), testEncryptionKey, Encryption())
+
+        assertEquals(listOf("llm", "teleport"), reader.manifest!!.features)
     }
 
     @Test
