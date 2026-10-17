@@ -10,7 +10,6 @@ import com.cereal.client.presentation.view.fields.state.DropDownFieldState
 import com.cereal.client.presentation.view.fields.state.FileFieldState
 import com.cereal.client.presentation.view.fields.state.FormFieldState
 import com.cereal.client.presentation.view.fields.state.ListFieldState
-import com.cereal.client.presentation.view.fields.state.OptionsTextFieldState
 import com.cereal.client.presentation.view.fields.state.SecretTextFieldState
 import com.cereal.client.presentation.view.fields.state.SwitchFieldState
 import com.cereal.client.presentation.view.fields.state.TextFieldState
@@ -67,14 +66,7 @@ class ConfigurationItemsFormSection(
                 formFieldState.isRequired.value = isRequired
             }
         }
-
-        getFormFieldStates().filterIsInstance<OptionsTextFieldState>().forEach {
-            it.onDependsOnValues(dependsOnValues(it))
-        }
     }
-
-    /** The current values of the fields [state]'s options depend on — the only values its `load` sees. */
-    fun dependsOnValues(state: OptionsTextFieldState): ScriptConfigurationValues = getScriptConfigurationValues().filterKeys { it in state.fieldOptions.dependsOn }
 
     fun getScriptConfigurationValues(): ScriptConfigurationValues {
         val values = mutableMapOf<String, ConfigValue>()

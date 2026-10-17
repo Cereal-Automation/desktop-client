@@ -1,7 +1,5 @@
 package com.cereal.client.fixtures
 
-import com.cereal.client.application.task.TaskActionItem
-import com.cereal.client.application.task.TaskActionRunner
 import com.cereal.client.domain.model.script.MainScript
 import com.cereal.client.domain.model.script.MainScriptInstance
 import com.cereal.client.domain.model.script.ScriptPackage
@@ -16,28 +14,10 @@ import kotlin.reflect.KClass
 import kotlin.time.Clock
 import kotlin.time.ExperimentalTime
 
-/** Stands in for script code: lists [actions] and runs them through [onRun] (by action name). */
-class FakeTaskActionRunner(
-    var actions: List<TaskActionItem> = emptyList(),
-    var onRun: suspend (String) -> String? = { null },
-) : TaskActionRunner {
-    val runs = mutableListOf<String>()
-
-    override fun actions(task: JobTask): List<TaskActionItem> = actions
-
-    override suspend fun run(
-        task: JobTask,
-        actionName: String,
-    ): String? {
-        runs += actionName
-        return onRun(actionName)
-    }
-}
-
-/** A script package instance with one main-script task, as task actions need. */
+/** A script package instance with one main-script task. */
 @OptIn(ExperimentalTime::class)
 fun mainTaskFixture(
-    instanceId: String = "pkg-actions",
+    instanceId: String = "pkg",
     statusHistory: List<TaskStatus> = emptyList(),
     scriptClass: KClass<out com.cereal.sdk.Script<*>> = com.cereal.sdk.Script::class,
 ): JobTask {

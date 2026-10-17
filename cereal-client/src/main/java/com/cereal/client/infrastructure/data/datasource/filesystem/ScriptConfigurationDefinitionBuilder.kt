@@ -10,8 +10,6 @@ import com.cereal.client.domain.model.script.configuration.ConfigValue
 import com.cereal.client.domain.model.script.configuration.ScriptConfigurationDefinition
 import com.cereal.client.domain.model.script.configuration.ScriptConfigurationItemDefinition
 import com.cereal.client.domain.model.script.configuration.toConfigValue
-import com.cereal.sdk.FieldOptions
-import com.cereal.sdk.NoFieldOptions
 import com.cereal.sdk.ScriptConfiguration
 import com.cereal.sdk.ScriptConfigurationItem
 import com.cereal.sdk.ScriptConfigurationListItem
@@ -137,8 +135,6 @@ class ScriptConfigurationDefinitionBuilder {
                             " proguard rules to keep all Kotlin object singletons in your package.",
                     )
 
-            val fieldOptions = item.fieldOptions()
-
             // Extract default value from the interface method if it has a default implementation
             val defaultValue = extractDefaultValue(defaultValuesProxy, item)
 
@@ -154,7 +150,6 @@ class ScriptConfigurationDefinitionBuilder {
                     isScriptIdentifier = item.annotation.isScriptIdentifier,
                     defaultValue = defaultValue,
                     section = item.sectionIn(sections),
-                    fieldOptions = fieldOptions,
                 )
 
             if (item.annotation.valuePerTask) {
@@ -180,22 +175,6 @@ class ScriptConfigurationDefinitionBuilder {
         }
 
         return definitions
-    }
-
-    /** The options object of a combo-box field, or null. Only a top-level, non-per-task String may declare one. */
-    private fun ScriptConfigurationMethod.fieldOptions(): FieldOptions? {
-        if (annotation.options == NoFieldOptions::class) return null
-        if (returnType != String::class || annotation.valuePerTask) {
-            throw InvalidScriptConfigurationDefinitionException(
-                "The '${annotation.name}' config item declares options, but options are only supported on a " +
-                    "String config item that is not valuePerTask.",
-            )
-        }
-        return annotation.options.objectInstance
-            ?: throw InvalidScriptConfigurationDefinitionException(
-                "The '${annotation.name}' config item declares options which aren't an object. Declare the " +
-                    "options as an object instead of a class.",
-            )
     }
 
     private fun getSections(scriptConfigurationClass: KClass<ScriptConfiguration>): Map<String, ConfigSection> {
@@ -408,13 +387,6 @@ class ScriptConfigurationDefinitionBuilder {
                 "Field '${annotation.keyName}' of the record used by list '$listItemName' declares a " +
                     "stateModifier. Visibility and validation belong to the list item itself — move the " +
                     "stateModifier to '$listItemName'.",
-            )
-        }
-
-        if (annotation.options != NoFieldOptions::class) {
-            throw InvalidScriptConfigurationDefinitionException(
-                "Field '${annotation.keyName}' of the record used by list '$listItemName' declares " +
-                    "options, but options are only supported on a top-level String config item.",
             )
         }
 

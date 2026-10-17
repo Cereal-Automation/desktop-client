@@ -9,7 +9,6 @@ import com.cereal.client.application.interactor.files.ReadListFileInteractor
 import com.cereal.client.application.interactor.files.ReadProxyFileInteractor
 import com.cereal.client.application.interactor.script.GetScriptConfigDefinitionInteractor
 import com.cereal.client.application.interactor.script.GetScriptPackageInstancesByPackageNameInteractor
-import com.cereal.client.application.interactor.script.LoadFieldOptionsInteractor
 import com.cereal.client.domain.model.datasets.CustomDatasetGroup
 import com.cereal.client.domain.model.datasets.DatasetType
 import com.cereal.client.domain.model.proxy.ProxyGroup
@@ -31,10 +30,7 @@ import com.cereal.client.presentation.util.InteractorRunner
 import com.cereal.client.presentation.view.fields.state.DropDownFieldState
 import com.cereal.client.presentation.view.fields.state.FormFieldState
 import com.cereal.client.presentation.view.fields.state.ListFieldState
-import com.cereal.client.presentation.view.fields.state.OptionsLoadStatus
-import com.cereal.client.presentation.view.fields.state.OptionsTextFieldState
 import com.cereal.sdk.statemodifier.Visibility
-import com.github.kittinunf.result.coroutines.SuspendableResult
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
 import java.io.File
@@ -52,7 +48,6 @@ class ScriptConfigurationViewModel(
     private val readCustomDatasetFileInteractor: ReadCustomDatasetFileInteractor,
     private val readProxyFileInteractor: ReadProxyFileInteractor,
     private val readListFileInteractor: ReadListFileInteractor,
-    private val loadFieldOptionsInteractor: LoadFieldOptionsInteractor = LoadFieldOptionsInteractor(),
 ) {
     val scriptConfigurationForm: MutableState<ConfigurationItemsForm?> = mutableStateOf(null)
     val showConcurrentTasks: MutableState<Boolean> = mutableStateOf(false)
@@ -166,39 +161,6 @@ class ScriptConfigurationViewModel(
     }
 
     fun validate(): Boolean = validateConfigurationForm() && validateNotificationOverrides()
-
-    /**
-     * Runs the script's options `load` for [state] with the current values of its `dependsOn` fields.
-     * Called only when the dropdown opens ([refresh] false: a cached result is reused) or on refresh/retry.
-     * The call runs in [scope], so closing the form cancels it, as do a new trigger and a `dependsOn` edit.
-     */
-    fun loadOptions(
-        state: OptionsTextFieldState,
-        refresh: Boolean = false,
-    ) {
-        if (!refresh && (state.options != null || state.isLoading)) return
-        val section =
-            scriptConfigurationForm.value?.getAllFormSections()?.firstOrNull { state in it.getFormFieldStates() } ?: return
-        val config = RawScriptConfigValues(section.dependsOnValues(state))
-
-        state.loadJob?.cancel()
-        state.loadStatus = OptionsLoadStatus.Loading
-        state.loadJob =
-            scope.launch(dispatcherProvider.io) {
-                loadFieldOptionsInteractor(LoadFieldOptionsInteractor.Params(state.fieldOptions, config)) { result ->
-                    when (result) {
-                        is SuspendableResult.Success -> {
-                            state.options = result.value
-                            state.loadStatus = OptionsLoadStatus.Idle
-                        }
-
-                        is SuspendableResult.Failure -> {
-                            state.loadStatus = OptionsLoadStatus.Failed(result.error)
-                        }
-                    }
-                }
-            }
-    }
 
     /** Unsectioned fields first, then each declared section in order; fields keep their definition order. */
     fun fieldSections(): List<FieldSection> =

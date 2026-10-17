@@ -70,7 +70,6 @@ import androidx.compose.ui.unit.dp
 import com.cereal.client.presentation.theme.CerealTheme
 import com.cereal.client.presentation.theme.CerealTypography
 import com.cereal.client.presentation.util.initialsOf
-import com.cereal.client.presentation.view.CerealCircularProgressIndicator
 import com.cereal.client.presentation.view.CerealText
 import com.cereal.client.presentation.view.button.CerealSmallIconButton
 import com.cereal.client.presentation.view.chip.Pill
@@ -263,9 +262,6 @@ private fun <P, C> GroupSection(
                     child = child,
                     menuOptions = viewModel.childMenuOptions,
                     onMenuOptionClick = { option -> viewModel.onChildMenuOptionClick(child, option) },
-                    extraMenuItems = viewModel.childExtraMenuItems(child.content),
-                    onMenuOpened = { viewModel.onChildMenuOpened(child.content.id) },
-                    isBusy = viewModel.isChildBusy(child.content.id),
                     onClick = { viewModel.onChildClick(child) },
                     onLongClick = { onChildLongClick?.invoke(child) },
                 )
@@ -360,9 +356,6 @@ private fun <P, C> ScriptRow(
     child: HierarchicalListItem.Child<P, C>,
     menuOptions: List<com.cereal.client.presentation.tasks.MenuOption>,
     onMenuOptionClick: (com.cereal.client.presentation.tasks.MenuOption) -> Unit,
-    extraMenuItems: List<ExtraMenuItem>,
-    onMenuOpened: () -> Unit,
-    isBusy: Boolean,
     onClick: () -> Unit,
     onLongClick: () -> Unit,
 ) {
@@ -395,12 +388,7 @@ private fun <P, C> ScriptRow(
                     .background(if (selected) accentTint else Color.Transparent)
                     .onClick(
                         matcher = PointerMatcher.mouse(PointerButton.Secondary),
-                        onClick = {
-                            if (menuOptions.isNotEmpty()) {
-                                onMenuOpened()
-                                menuExpanded = true
-                            }
-                        },
+                        onClick = { if (menuOptions.isNotEmpty()) menuExpanded = true },
                         interactionSource = interactionSource,
                     ).combinedClickable(
                         onClick = onClick,
@@ -436,10 +424,6 @@ private fun <P, C> ScriptRow(
                 }
             }
 
-            if (isBusy) {
-                CerealCircularProgressIndicator(modifier = Modifier.size(12.dp), strokeWidth = 2.dp)
-            }
-
             if (child.content.isRunning) {
                 RunningDot()
             }
@@ -465,27 +449,6 @@ private fun <P, C> ScriptRow(
                                 text = { CerealText(stringResource(option.stringResource)) },
                                 onClick = {
                                     onMenuOptionClick(option)
-                                    menuExpanded = false
-                                },
-                            )
-                        }
-                        extraMenuItems.forEach { item ->
-                            DropdownMenuItem(
-                                text = {
-                                    Column {
-                                        CerealText(item.label)
-                                        if (!item.enabled && item.hint != null) {
-                                            CerealText(
-                                                text = stringResource(item.hint),
-                                                style = MaterialTheme.typography.labelMedium,
-                                                color = CerealTheme.colorScheme.contentSubtle,
-                                            )
-                                        }
-                                    }
-                                },
-                                enabled = item.enabled,
-                                onClick = {
-                                    item.onClick()
                                     menuExpanded = false
                                 },
                             )
