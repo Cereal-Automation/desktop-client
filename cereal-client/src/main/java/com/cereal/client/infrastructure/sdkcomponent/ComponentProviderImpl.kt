@@ -12,6 +12,7 @@ import com.cereal.sdk.component.preference.PreferenceComponent
 import com.cereal.sdk.component.script.ScriptLauncherComponent
 import com.cereal.sdk.component.userinteraction.UserInteractionComponent
 
+@Suppress("LongParameterList")
 class ComponentProviderImpl(
     private val loggerComponentImpl: LoggerComponent,
     private val licenseComponent: LicenseComponent,
