@@ -44,6 +44,9 @@ import com.cereal.client.presentation.view.VerticalDivider
 import com.cereal.client.presentation.view.button.SyncIconButton
 import com.cereal.client.presentation.view.group.GroupedListView
 import com.cereal_automation.cereal_client.generated.resources.Res
+import com.cereal_automation.cereal_client.generated.resources.ai_warning_continue
+import com.cereal_automation.cereal_client.generated.resources.ai_warning_message
+import com.cereal_automation.cereal_client.generated.resources.ai_warning_title
 import com.cereal_automation.cereal_client.generated.resources.cancel
 import com.cereal_automation.cereal_client.generated.resources.ic_play
 import com.cereal_automation.cereal_client.generated.resources.installed_scripts
@@ -189,6 +192,7 @@ fun ScriptSelectionDialog(
 
     errorView(viewModel.errorAction)
     StartScriptWarningConfirmationDialog(viewModel)
+    NoAiProviderWarningDialog(viewModel)
     NoNotificationChannelsWarningDialog(viewModel)
 }
 
@@ -216,6 +220,20 @@ private fun StartScriptWarningConfirmationDialog(viewModel: ScriptSelectionViewM
             onDismissRequest = {
                 viewModel.onStartScriptWarningConfirmationDenied()
             },
+        )
+    }
+}
+
+@Composable
+private fun NoAiProviderWarningDialog(viewModel: ScriptSelectionViewModel) {
+    if (viewModel.showNoAiProviderWarning.value) {
+        ConfirmationDialog(
+            title = stringResource(Res.string.ai_warning_title),
+            message = stringResource(Res.string.ai_warning_message),
+            confirmButtonText = stringResource(Res.string.ai_warning_continue),
+            dismissButtonText = stringResource(Res.string.cancel),
+            onConfirm = { viewModel.onNoAiProviderWarningAccepted() },
+            onDismiss = { viewModel.onNoAiProviderWarningDismissed() },
         )
     }
 }
