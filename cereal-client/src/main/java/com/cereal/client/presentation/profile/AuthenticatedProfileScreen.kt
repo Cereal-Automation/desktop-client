@@ -20,12 +20,12 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.layout.layout
-import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.cereal.client.application.ApplicationConfig
 import com.cereal.client.presentation.theme.CerealTheme
+import com.cereal.client.presentation.util.initialsOf
 import com.cereal.client.presentation.view.CerealButtonType
 import com.cereal.client.presentation.view.CerealOutlinedButton
 import com.cereal.client.presentation.view.CerealText
@@ -70,13 +70,7 @@ fun AuthenticatedProfileScreen(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalAlignment = Alignment.CenterHorizontally,
                     ) {
-                        val initials =
-                            vm.user.value
-                                ?.name
-                                ?.split(' ')
-                                ?.mapNotNull { it.firstOrNull()?.toString() }
-                                ?.joinToString("")
-                                .orEmpty()
+                        val initials = initialsOf(vm.user.value?.name)
 
                         val color = MaterialTheme.colorScheme.primary
 
@@ -98,16 +92,12 @@ fun AuthenticatedProfileScreen(
                                             radius = this.size.maxDimension / 2f,
                                         )
                                     }.padding(20.dp),
-                            text =
-                                if (initials.length >= 2) {
-                                    ("${initials.first()}${initials.last()}").uppercase()
-                                } else {
-                                    initials.uppercase()
-                                },
-                            style = TextStyle(color = MaterialTheme.colorScheme.onPrimary, fontSize = 20.sp),
+                            text = initials,
+                            style = MaterialTheme.typography.titleLarge.copy(fontSize = 20.sp),
+                            color = MaterialTheme.colorScheme.onPrimary,
                         )
 
-                        Spacer(modifier = Modifier.height(16.dp))
+                        Spacer(modifier = Modifier.height(CerealTheme.spacing.lg))
 
                         CerealText(
                             text =
@@ -127,13 +117,9 @@ fun AuthenticatedProfileScreen(
                                 vm.user.value
                                     ?.email
                                     .orEmpty(),
-                            style =
-                                MaterialTheme.typography.labelSmall.copy(
-                                    letterSpacing = 2.sp,
-                                    color = CerealTheme.colorScheme.contentTertiary,
-                                    fontWeight = FontWeight.Bold,
-                                ),
-                            modifier = Modifier.padding(top = 4.dp),
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = CerealTheme.colorScheme.contentSecondary,
+                            modifier = Modifier.padding(top = CerealTheme.spacing.xxs),
                         )
                     }
                 }
@@ -165,14 +151,18 @@ fun AuthenticatedProfileScreen(
                 item {
                     Box(
                         modifier = Modifier.fillMaxWidth(),
-                        contentAlignment = Alignment.CenterEnd,
+                        contentAlignment = Alignment.CenterStart,
                     ) {
                         CerealOutlinedButton(
                             onClick = { vm.logout() },
                             type = CerealButtonType.Primary,
                         ) {
-                            CerealText(stringResource(Res.string.logout))
-                            Spacer(modifier = Modifier.width(8.dp))
+                            // Fresh style so the theme's grey bodyLarge color doesn't override the button's content color.
+                            CerealText(
+                                text = stringResource(Res.string.logout),
+                                style = MaterialTheme.typography.labelLarge.copy(fontWeight = FontWeight.SemiBold),
+                            )
+                            Spacer(modifier = Modifier.width(CerealTheme.spacing.sm))
                             Icon(
                                 painter = painterResource(Res.drawable.ic_material_logout),
                                 contentDescription = null,

@@ -100,7 +100,7 @@ fun GuestProfileScreen(
                         modifier = Modifier.width(180.dp),
                     )
 
-                    Spacer(modifier = Modifier.width(16.dp))
+                    Spacer(modifier = Modifier.width(CerealTheme.spacing.lg))
 
                     CerealOutlinedButton(
                         onClick = onLoginClick,
@@ -151,7 +151,7 @@ private fun GuestProfileHeader() {
             )
         }
 
-        Spacer(modifier = Modifier.height(24.dp))
+        Spacer(modifier = Modifier.height(CerealTheme.spacing.xxl))
 
         // Title
         CerealText(
@@ -163,7 +163,7 @@ private fun GuestProfileHeader() {
                 ),
         )
 
-        Spacer(modifier = Modifier.height(12.dp))
+        Spacer(modifier = Modifier.height(CerealTheme.spacing.md))
 
         // Description
         CerealText(
@@ -266,11 +266,8 @@ private fun LockedFeaturesCard() {
         ) {
             CerealText(
                 text = stringResource(Res.string.guest_join_hint),
-                style =
-                    MaterialTheme.typography.labelSmall.copy(
-                        color = CerealTheme.colorScheme.contentTertiary,
-                        fontStyle = androidx.compose.ui.text.font.FontStyle.Italic,
-                    ),
+                style = MaterialTheme.typography.bodySmall.copy(fontSize = 13.sp),
+                color = CerealTheme.colorScheme.contentTertiary,
             )
         }
     }
@@ -307,7 +304,7 @@ private fun LockedFeatureItem(
             )
         }
 
-        Spacer(modifier = Modifier.width(16.dp))
+        Spacer(modifier = Modifier.width(CerealTheme.spacing.lg))
 
         Column(modifier = Modifier.weight(1f)) {
             CerealText(
@@ -319,7 +316,7 @@ private fun LockedFeatureItem(
                     ),
             )
 
-            Spacer(modifier = Modifier.height(4.dp))
+            Spacer(modifier = Modifier.height(CerealTheme.spacing.xxs))
 
             CerealText(
                 text = description,
