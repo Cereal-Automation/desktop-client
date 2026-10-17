@@ -44,6 +44,7 @@ class ScriptJarReader(
                     versionCode = json.versionCode,
                     instructions = json.instructions,
                     sdkVersion = json.sdkVersion,
+                    features = json.features,
                 )
             }
 

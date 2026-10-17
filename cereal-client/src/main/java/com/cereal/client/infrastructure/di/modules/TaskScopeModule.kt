@@ -49,6 +49,7 @@ object TaskScopeModule {
                         get(),
                         get(),
                         get(),
+                        manifest.features,
                     )
                 }
                 scoped<UserInteractionComponent> {

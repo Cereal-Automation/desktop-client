@@ -9,10 +9,13 @@ data class Manifest(
     val instructions: String? = null,
     val supportUrl: String? = null,
     val sdkVersion: String? = null,
+    val features: Set<ScriptFeature> = emptySet(),
 ) {
     init {
         if (packageName.isBlank()) throw InvalidManifestException("PackageName cannot be blank")
         if (name.isBlank()) throw InvalidManifestException("Name cannot be blank")
         if (versionCode < 0) throw InvalidManifestException("VersionCode cannot be negative")
     }
+
+    fun declares(feature: ScriptFeature): Boolean = feature in features
 }

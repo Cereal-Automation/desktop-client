@@ -11,7 +11,9 @@ import com.cereal.client.application.interactor.script.GetSdkVersionInteractor
 import com.cereal.client.application.interactor.script.NumberOfConcurrentTasksConflictException
 import com.cereal.client.application.interactor.script.StartScriptInteractor
 import com.cereal.client.application.interactor.script.SyncScriptsOnScriptSelectionInteractor
+import com.cereal.client.application.interactor.settings.ai.HasLlmProviderConfigInteractor
 import com.cereal.client.domain.model.script.ScriptCapacity
+import com.cereal.client.domain.model.script.ScriptFeature
 import com.cereal.client.domain.model.script.ScriptPackage
 import com.cereal.client.domain.model.script.ScriptPackageInstance
 import com.cereal.client.domain.model.script.isClientUpdateRequired
@@ -47,6 +49,7 @@ class ScriptSelectionViewModel(
     private val syncScriptsOnScriptSelectionInteractor: SyncScriptsOnScriptSelectionInteractor,
     private val startScriptInteractor: StartScriptInteractor,
     private val hasNotificationChannelsConfiguredInteractor: HasNotificationChannelsConfiguredInteractor,
+    private val hasLlmProviderConfigInteractor: HasLlmProviderConfigInteractor,
     private val errorResolver: ErrorResolver,
 ) {
     private val interactorRunner = InteractorRunner(scope, dispatcherProvider, errorResolver)
@@ -69,6 +72,7 @@ class ScriptSelectionViewModel(
     private var initialSelectionApplied = false
     val startScriptWarningConfirmation = mutableStateOf<String?>(null)
     val showNoNotificationChannelsWarning = mutableStateOf(false)
+    val showNoAiProviderWarning = mutableStateOf(false)
 
     /** True when the currently selected script requires a newer Cereal client; blocks launching. */
     val selectedScriptUpdateRequired = mutableStateOf(false)
@@ -190,7 +194,30 @@ class ScriptSelectionViewModel(
 
     fun validate(): Boolean = scriptConfigurationViewModel?.validate() ?: false
 
+    /**
+     * Runs the pre-launch checks, then starts the script. The AI provider check comes first because a
+     * missing provider breaks the script; the notification check follows.
+     */
     fun launchScript() {
+        if (scriptsListViewModel.selectedItem?.manifest?.declares(ScriptFeature.LLM) != true) {
+            checkNotificationChannelsThenLaunch()
+            return
+        }
+        interactorRunner.launch(hasLlmProviderConfigInteractor, Interactor.None()) { hasProvider ->
+            if (hasProvider) checkNotificationChannelsThenLaunch() else showNoAiProviderWarning.value = true
+        }
+    }
+
+    fun onNoAiProviderWarningAccepted() {
+        showNoAiProviderWarning.value = false
+        checkNotificationChannelsThenLaunch()
+    }
+
+    fun onNoAiProviderWarningDismissed() {
+        showNoAiProviderWarning.value = false
+    }
+
+    private fun checkNotificationChannelsThenLaunch() {
         // Check if notification channels are configured (considering script overrides)
         val scriptOverrides = scriptConfigurationViewModel?.notificationOverridesForm?.toOverrides()
         interactorRunner.launch(

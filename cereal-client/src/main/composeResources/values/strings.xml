@@ -248,6 +248,9 @@
     <string name="notification_warning_continue">Continue Anyway</string>
     <string name="notification_warning_message">No external notification channels are configured for this script. You will only receive desktop notifications.\n\nYou can configure notification channels in Settings or override them per-script in the Notification Overrides section.</string>
     <string name="notification_warning_title">No Notification Channels</string>
+    <string name="ai_warning_continue">Start anyway</string>
+    <string name="ai_warning_message">This script uses AI, but no AI provider is set up. It will fail as soon as it needs AI.\n\nYou can set up a provider in Settings → AI.</string>
+    <string name="ai_warning_title">AI provider not set up</string>
     <string name="notifications">Notifications</string>
     <string name="open">Open</string>
     <string name="output">Output</string>

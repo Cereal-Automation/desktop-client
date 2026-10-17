@@ -1,5 +1,7 @@
 package com.cereal.client.infrastructure.sdkcomponent
 
+import com.cereal.client.application.exception.ScriptFeatureNotDeclaredException
+import com.cereal.client.domain.model.script.ScriptFeature
 import com.cereal.sdk.component.ComponentProvider
 import com.cereal.sdk.component.artifact.ArtifactComponent
 import com.cereal.sdk.component.license.LicenseComponent
@@ -10,6 +12,7 @@ import com.cereal.sdk.component.preference.PreferenceComponent
 import com.cereal.sdk.component.script.ScriptLauncherComponent
 import com.cereal.sdk.component.userinteraction.UserInteractionComponent
 
+@Suppress("LongParameterList")
 class ComponentProviderImpl(
     private val loggerComponentImpl: LoggerComponent,
     private val licenseComponent: LicenseComponent,
@@ -19,6 +22,7 @@ class ComponentProviderImpl(
     private val userInteractionComponent: UserInteractionComponent,
     private val artifactComponent: ArtifactComponent,
     private val llmComponent: LlmComponent,
+    private val declaredFeatures: Set<ScriptFeature>,
 ) : ComponentProvider {
     override fun logger(): LoggerComponent = loggerComponentImpl
 
@@ -34,5 +38,8 @@ class ComponentProviderImpl(
 
     override fun artifact(): ArtifactComponent = artifactComponent
 
-    override fun llm(): LlmComponent = llmComponent
+    override fun llm(): LlmComponent {
+        if (ScriptFeature.LLM !in declaredFeatures) throw ScriptFeatureNotDeclaredException(ScriptFeature.LLM)
+        return llmComponent
+    }
 }
