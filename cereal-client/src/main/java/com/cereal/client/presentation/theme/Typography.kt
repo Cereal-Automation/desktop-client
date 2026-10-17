@@ -15,8 +15,16 @@ val MontserratFontFamily =
         Font(resource = "fonts/Montserrat-Bold.ttf", weight = FontWeight.Bold),
     )
 
+// Slots not customised below keep Material 3's sizes but must still use the brand font,
+// otherwise they silently fall back to the platform default typeface.
+private val m3Defaults = Typography()
+
 val typography =
     Typography(
+        displayLarge = m3Defaults.displayLarge.copy(fontFamily = MontserratFontFamily),
+        displayMedium = m3Defaults.displayMedium.copy(fontFamily = MontserratFontFamily),
+        displaySmall = m3Defaults.displaySmall.copy(fontFamily = MontserratFontFamily),
+        labelMedium = m3Defaults.labelMedium.copy(fontFamily = MontserratFontFamily),
         headlineLarge =
             TextStyle(
                 fontWeight = FontWeight.Bold,
