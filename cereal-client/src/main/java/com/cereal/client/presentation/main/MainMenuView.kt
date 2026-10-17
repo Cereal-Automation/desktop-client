@@ -145,7 +145,8 @@ private fun SidebarBrand(appVersion: String) {
             modifier =
                 Modifier
                     .clip(MaterialTheme.shapes.extraSmall)
-                    .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.10f))
+                    // Neutral metadata, not an alert: keep it off the red accent.
+                    .background(MaterialTheme.colorScheme.surfaceVariant)
                     .padding(horizontal = 6.dp, vertical = 1.dp),
             contentAlignment = Alignment.Center,
         ) {
@@ -153,10 +154,10 @@ private fun SidebarBrand(appVersion: String) {
                 text = "v$appVersion",
                 style =
                     MaterialTheme.typography.labelMedium.copy(
-                        fontWeight = FontWeight.Bold,
+                        fontWeight = FontWeight.Medium,
                         letterSpacing = TextUnit(0.04f, TextUnitType.Em),
                     ),
-                color = MaterialTheme.colorScheme.primary,
+                color = CerealTheme.colorScheme.contentTertiary,
             )
         }
     }
@@ -167,8 +168,9 @@ private fun MenuSectionLabel(label: String) {
     SectionLabel(
         text = label.uppercase(),
         modifier = Modifier.fillMaxWidth(),
-        color = MaterialTheme.colorScheme.outline,
-        contentPadding = PaddingValues(start = 18.dp, end = 18.dp, top = 16.dp, bottom = 4.dp),
+        color = CerealTheme.colorScheme.contentTertiary,
+        // Start aligns with the nav item icons (8dp item inset + 16dp item padding).
+        contentPadding = PaddingValues(start = 24.dp, end = 18.dp, top = 16.dp, bottom = 4.dp),
     )
 }
 
@@ -340,7 +342,7 @@ private fun UserCard(
             CerealText(
                 text = scriptCountLabel,
                 style = MaterialTheme.typography.labelSmall,
-                color = MaterialTheme.colorScheme.outline,
+                color = CerealTheme.colorScheme.contentTertiary,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
             )
