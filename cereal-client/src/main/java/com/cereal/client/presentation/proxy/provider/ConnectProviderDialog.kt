@@ -65,9 +65,11 @@ import com.cereal_automation.cereal_client.generated.resources.proxies_connect_s
 import com.cereal_automation.cereal_client.generated.resources.proxies_connect_step_connect
 import com.cereal_automation.cereal_client.generated.resources.proxies_connect_step_provider
 import com.cereal_automation.cereal_client.generated.resources.proxies_connect_title
+import com.cereal_automation.cereal_client.generated.resources.proxies_connect_token_hide
 import com.cereal_automation.cereal_client.generated.resources.proxies_connect_token_hint
 import com.cereal_automation.cereal_client.generated.resources.proxies_connect_token_label
 import com.cereal_automation.cereal_client.generated.resources.proxies_connect_token_placeholder
+import com.cereal_automation.cereal_client.generated.resources.proxies_connect_token_show
 import com.cereal_automation.cereal_client.generated.resources.proxies_connect_verifying
 import org.jetbrains.compose.resources.stringResource
 
@@ -96,7 +98,7 @@ fun ConnectProviderDialog(
         onDismissRequest = onClose,
     ) {
         Box(
-            modifier = Modifier.fillMaxSize().background(Color.Black.copy(alpha = 0.55f)),
+            modifier = Modifier.fillMaxSize().background(MaterialTheme.colorScheme.scrim.copy(alpha = 0.55f)),
             contentAlignment = Alignment.Center,
         ) {
             Column(
@@ -201,18 +203,18 @@ private fun StepChip(
                 Modifier
                     .size(20.dp)
                     .background(
-                        if (active || done) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surface,
+                        if (active || done) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceVariant,
                         CircleShape,
                     ),
             contentAlignment = Alignment.Center,
         ) {
             if (done) {
-                Icon(Icons.Outlined.Check, contentDescription = null, tint = Color.White, modifier = Modifier.size(12.dp))
+                Icon(Icons.Outlined.Check, contentDescription = null, tint = MaterialTheme.colorScheme.onPrimary, modifier = Modifier.size(12.dp))
             } else {
                 CerealText(
                     text = index.toString(),
                     style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold),
-                    color = if (active) Color.White else CerealTheme.colorScheme.contentTertiary,
+                    color = if (active) MaterialTheme.colorScheme.onPrimary else CerealTheme.colorScheme.contentTertiary,
                 )
             }
         }
@@ -278,7 +280,7 @@ private fun ProviderOptionRow(
                 modifier = Modifier.size(18.dp).background(MaterialTheme.colorScheme.primary, CircleShape),
                 contentAlignment = Alignment.Center,
             ) {
-                Icon(Icons.Outlined.Check, contentDescription = null, tint = Color.White, modifier = Modifier.size(11.dp))
+                Icon(Icons.Outlined.Check, contentDescription = null, tint = MaterialTheme.colorScheme.onPrimary, modifier = Modifier.size(11.dp))
             }
         }
     }
@@ -337,7 +339,10 @@ private fun ConnectStep(
                         CerealIconButton(onClick = onToggleTokenVisibility) {
                             Icon(
                                 if (state.showToken) Icons.Outlined.VisibilityOff else Icons.Outlined.Visibility,
-                                contentDescription = null,
+                                contentDescription =
+                                    stringResource(
+                                        if (state.showToken) Res.string.proxies_connect_token_hide else Res.string.proxies_connect_token_show,
+                                    ),
                                 tint = CerealTheme.colorScheme.contentTertiary,
                             )
                         }

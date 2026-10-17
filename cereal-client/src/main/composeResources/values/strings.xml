@@ -373,6 +373,8 @@
     <string name="proxies_connect_cancel">Cancel</string>
     <string name="proxies_connect_soon">Soon</string>
     <string name="proxies_connect_token_label">API token</string>
+    <string name="proxies_connect_token_show">Show token</string>
+    <string name="proxies_connect_token_hide">Hide token</string>
     <string name="proxies_connect_token_placeholder">mp_live_••••••••••••••••</string>
     <string name="proxies_connect_token_hint">Find this in your %1$s dashboard under API &amp; Integrations.</string>
     <string name="proxies_connect_verifying">Verifying token with %1$s…</string>
@@ -404,12 +406,14 @@
     <string name="proxies_sync_session_rotating">Rotating</string>
     <string name="proxies_sync_session_rotating_sub">New IP per request</string>
     <string name="proxies_sync_count_label">Endpoints to pull</string>
+    <string name="proxies_sync_count_decrease">Decrease endpoints</string>
+    <string name="proxies_sync_count_increase">Increase endpoints</string>
     <string name="proxies_sync_target_label">Sync into</string>
     <string name="proxies_sync_target_new">New group</string>
     <string name="proxies_sync_target_existing">Existing group</string>
     <string name="proxies_sync_target_new_placeholder">Group name</string>
     <string name="proxies_sync_target_select">Select a group</string>
-    <string name="proxies_sync_preview_label">What you\'ll pull</string>
+    <string name="proxies_sync_preview_label">What you'll pull</string>
     <string name="proxies_sync_preview_sticky">%1$s sticky endpoints from %2$s · %3$s</string>
     <string name="proxies_sync_preview_rotating">1 rotating endpoint from %1$s · %2$s</string>
     <string name="proxies_sync_preview_worldwide">Worldwide</string>
