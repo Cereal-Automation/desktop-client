@@ -58,6 +58,12 @@ _Avoid_: unread, new notification, pending notification
 A named, compile-time on/off switch that gates an in-progress or risky feature behind a branch in the code. Its default is chosen by build type (`IS_DEBUG` → typically on for local development, release → off in shipped builds), and it is read synchronously — flags never change while the app runs. **Temporary by intent**: a flag exists to hide a feature until it ships, then is deleted along with its dead branch. Distinct from a user **preference** (user-owned, persisted, reactive) and from a remote kill switch (none exists — flags are developer/build-time only).
 _Avoid_: toggle (collides with user-facing settings toggles), preference (user-owned, persisted via `ApplicationPreferenceRepository`), experiment / A-B test, remote config, kill switch
 
+## Script features
+
+**Script feature**:
+A platform capability a script declares, in its manifest's `features` list, that it uses — e.g. `llm` for the `LlmComponent`. A closed set of known values. Declaring it is mandatory for a script that uses the capability, and lets the client check the user's setup before a run starts. Unrelated to a feature flag: a script feature is declared by a script author, a feature flag is set by a client developer.
+_Avoid_: feature flag, permission, capability (as the type name), requirement
+
 ## Artifacts
 
 **Artifact**:
