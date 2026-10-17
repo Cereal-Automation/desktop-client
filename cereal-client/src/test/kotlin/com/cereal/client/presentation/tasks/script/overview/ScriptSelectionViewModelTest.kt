@@ -9,15 +9,20 @@ import com.cereal.client.application.interactor.script.GetScriptsInteractor
 import com.cereal.client.application.interactor.script.GetSdkVersionInteractor
 import com.cereal.client.application.interactor.script.StartScriptInteractor
 import com.cereal.client.application.interactor.script.SyncScriptsOnScriptSelectionInteractor
+import com.cereal.client.application.interactor.settings.ai.HasLlmProviderConfigInteractor
 import com.cereal.client.application.script.ScriptLicenseChecker
+import com.cereal.client.domain.model.llm.LlmProviderConfig
+import com.cereal.client.domain.model.llm.LlmProviderType
 import com.cereal.client.domain.model.script.Manifest
 import com.cereal.client.domain.model.script.ScriptCapacity
 import com.cereal.client.domain.model.script.ScriptEntitlement
+import com.cereal.client.domain.model.script.ScriptFeature
 import com.cereal.client.domain.model.script.ScriptPackage
 import com.cereal.client.domain.model.script.ScriptPackageInstance
 import com.cereal.client.domain.model.task.ScriptPackageGroup
 import com.cereal.client.domain.model.user.Subscription
 import com.cereal.client.infrastructure.data.repository.inmemory.InMemoryApplicationPreferenceRepository
+import com.cereal.client.infrastructure.data.repository.inmemory.InMemoryLlmProviderConfigRepository
 import com.cereal.client.infrastructure.provider.inmemory.InMemoryAuthProvider
 import com.cereal.client.presentation.error.ErrorResolver
 import com.cereal.client.presentation.model.LoadState
@@ -34,6 +39,7 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.flowOf
+import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.setMain
@@ -60,6 +66,7 @@ class ScriptSelectionViewModelTest {
     private val syncScriptsOnScriptSelectionInteractor: SyncScriptsOnScriptSelectionInteractor = mockk(relaxed = true)
     private val startScriptInteractor: StartScriptInteractor = mockk(relaxed = true)
     private val hasNotificationChannelsConfiguredInteractor: HasNotificationChannelsConfiguredInteractor = mockk(relaxed = true)
+    private val llmProviderConfigRepository = InMemoryLlmProviderConfigRepository()
     private val errorResolver: ErrorResolver = mockk(relaxed = true)
     private val configViewModel: ScriptConfigurationViewModel = mockk(relaxed = true)
 
@@ -109,6 +116,7 @@ class ScriptSelectionViewModelTest {
             syncScriptsOnScriptSelectionInteractor = syncScriptsOnScriptSelectionInteractor,
             startScriptInteractor = startScriptInteractor,
             hasNotificationChannelsConfiguredInteractor = hasNotificationChannelsConfiguredInteractor,
+            hasLlmProviderConfigInteractor = HasLlmProviderConfigInteractor(llmProviderConfigRepository),
             errorResolver = errorResolver,
         )
 
@@ -123,6 +131,7 @@ class ScriptSelectionViewModelTest {
         packageName: String,
         name: String,
         sdkVersion: String? = null,
+        features: Set<ScriptFeature> = emptySet(),
     ) = ScriptPackage(
         source = java.io.File("/tmp/$packageName.jar"),
         manifest =
@@ -131,6 +140,7 @@ class ScriptSelectionViewModelTest {
                 name = name,
                 versionCode = 1L,
                 sdkVersion = sdkVersion,
+                features = features,
             ),
         mainScript = mockk(relaxed = true),
         childScripts = emptyMap(),
@@ -244,6 +254,120 @@ class ScriptSelectionViewModelTest {
         dispatcher.scheduler.advanceUntilIdle()
 
         assertFalse(viewModel.showNoNotificationChannelsWarning.value)
+    }
+
+    private fun stubNotificationChannelsConfigured(configured: Boolean) {
+        coEvery { hasNotificationChannelsConfiguredInteractor(any(), any()) } coAnswers {
+            secondArg<suspend (SuspendableResult<Boolean, Exception>) -> Unit>()(SuspendableResult.Success(configured))
+        }
+    }
+
+    private fun stubStartScriptSucceeds() {
+        coEvery { startScriptInteractor(any(), any()) } coAnswers {
+            secondArg<suspend (SuspendableResult<ScriptPackageInstance, Exception>) -> Unit>()(
+                SuspendableResult.Success(mockk<ScriptPackageInstance>(relaxed = true)),
+            )
+        }
+    }
+
+    /** Creates the view model with one script selected and advances until its configuration is loaded. */
+    private fun createViewModelWithSelectedScript(features: Set<ScriptFeature>): ScriptSelectionViewModel {
+        coEvery { getScriptsInteractor(any()) } returns
+            flowOf(SuspendableResult.Success(listOf(aScriptPackage("com.example.ai", "AI", features = features))))
+        val viewModel = createViewModel(initialPublicIdentifier = "com.example.ai")
+        dispatcher.scheduler.advanceUntilIdle()
+        return viewModel
+    }
+
+    private fun launch(viewModel: ScriptSelectionViewModel) {
+        viewModel.launchScript()
+        dispatcher.scheduler.advanceUntilIdle()
+    }
+
+    @Test
+    fun `launchScript shows the AI warning and starts no task when an llm script has no provider set up`() {
+        stubNotificationChannelsConfigured(true)
+        stubStartScriptSucceeds()
+        val viewModel = createViewModelWithSelectedScript(setOf(ScriptFeature.LLM))
+
+        launch(viewModel)
+
+        assertTrue(viewModel.showNoAiProviderWarning.value)
+        coVerify(exactly = 0) { startScriptInteractor(any(), any()) }
+    }
+
+    @Test
+    fun `onNoAiProviderWarningAccepted starts the task when notifications are set up`() {
+        stubNotificationChannelsConfigured(true)
+        stubStartScriptSucceeds()
+        val viewModel = createViewModelWithSelectedScript(setOf(ScriptFeature.LLM))
+        launch(viewModel)
+
+        viewModel.onNoAiProviderWarningAccepted()
+        dispatcher.scheduler.advanceUntilIdle()
+
+        assertFalse(viewModel.showNoAiProviderWarning.value)
+        coVerify(exactly = 1) { startScriptInteractor(any(), any()) }
+        assertNotNull(viewModel.scriptInstanceStarted.value)
+    }
+
+    @Test
+    fun `onNoAiProviderWarningAccepted shows the notification warning next when notifications are unset`() {
+        stubNotificationChannelsConfigured(false)
+        stubStartScriptSucceeds()
+        val viewModel = createViewModelWithSelectedScript(setOf(ScriptFeature.LLM))
+        launch(viewModel)
+
+        viewModel.onNoAiProviderWarningAccepted()
+        dispatcher.scheduler.advanceUntilIdle()
+
+        assertFalse(viewModel.showNoAiProviderWarning.value)
+        assertTrue(viewModel.showNoNotificationChannelsWarning.value)
+        coVerify(exactly = 0) { startScriptInteractor(any(), any()) }
+    }
+
+    @Test
+    fun `onNoAiProviderWarningDismissed hides the warning, starts no task and keeps the form`() {
+        stubNotificationChannelsConfigured(true)
+        stubStartScriptSucceeds()
+        val viewModel = createViewModelWithSelectedScript(setOf(ScriptFeature.LLM))
+        launch(viewModel)
+
+        viewModel.onNoAiProviderWarningDismissed()
+        dispatcher.scheduler.advanceUntilIdle()
+
+        assertFalse(viewModel.showNoAiProviderWarning.value)
+        coVerify(exactly = 0) { startScriptInteractor(any(), any()) }
+        assertTrue(viewModel.configurationViewState.value is ScriptSelectionState.Config.Selected)
+    }
+
+    @Test
+    fun `launchScript shows no AI warning when an llm script has a provider saved`() {
+        runBlocking {
+            llmProviderConfigRepository.save(
+                LlmProviderConfig.of(LlmProviderType.OPENAI_COMPATIBLE, "http://localhost:11434/v1", "", "llama3"),
+            )
+        }
+        stubNotificationChannelsConfigured(true)
+        stubStartScriptSucceeds()
+        val viewModel = createViewModelWithSelectedScript(setOf(ScriptFeature.LLM))
+
+        launch(viewModel)
+
+        assertFalse(viewModel.showNoAiProviderWarning.value)
+        coVerify(exactly = 1) { startScriptInteractor(any(), any()) }
+    }
+
+    @Test
+    fun `launchScript shows no AI warning for a script without llm and no provider saved`() {
+        stubNotificationChannelsConfigured(true)
+        stubStartScriptSucceeds()
+        val viewModel = createViewModelWithSelectedScript(emptySet())
+
+        launch(viewModel)
+
+        assertFalse(viewModel.showNoAiProviderWarning.value)
+        coVerify(exactly = 1) { startScriptInteractor(any(), any()) }
     }
 
     @Test
