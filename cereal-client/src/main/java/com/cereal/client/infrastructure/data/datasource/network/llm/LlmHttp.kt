@@ -9,7 +9,9 @@ import kotlinx.coroutines.delay
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonElement
+import kotlinx.serialization.json.decodeFromJsonElement
 import okhttp3.Headers.Companion.toHeaders
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.OkHttpClient
@@ -18,6 +20,7 @@ import okhttp3.RequestBody.Companion.toRequestBody
 import okhttp3.Response
 import org.slf4j.LoggerFactory
 import java.io.IOException
+import java.net.HttpURLConnection.HTTP_BAD_REQUEST
 import java.net.HttpURLConnection.HTTP_CLIENT_TIMEOUT
 import java.net.HttpURLConnection.HTTP_FORBIDDEN
 import java.net.HttpURLConnection.HTTP_NOT_FOUND
@@ -34,7 +37,7 @@ import kotlin.time.toKotlinDuration
  * response JSON:
  * - one JSON POST, the response body back on 2xx; one `GET /models` read into [LlmModel]s;
  * - 408, 429 and 5xx retried after each of [retryDelays], then thrown;
- * - status mapping: 401/403 → [LlmCallException.Authentication], 429 → [LlmCallException.RateLimited]
+ * - status mapping: 401/403 (and Gemini's 400 naming the API key) → [LlmCallException.Authentication], 429 → [LlmCallException.RateLimited]
  *   (with `retry-after`, seconds or HTTP-date), 408/5xx/network/timeout → [LlmCallException.Unavailable],
  *   any other 4xx → [LlmCallException.InvalidRequest] with the provider's message (and
  *   [LlmCallException.InvalidRequest.missingModel] set when the datasource recognises a model-not-found error).
@@ -82,7 +85,11 @@ class LlmHttp(
     ): List<LlmModel> {
         val body =
             execute(request(url, headers).build()) { response ->
-                if (response.code == HTTP_NOT_FOUND) LlmCallException.InvalidRequest(NOT_FOUND_MESSAGE) else response.toFailure(null, null)
+                if (response.code == HTTP_NOT_FOUND) {
+                    LlmCallException.InvalidRequest(NOT_FOUND_MESSAGE)
+                } else {
+                    response.toFailure(response.errorDetail()?.message, null)
+                }
             }
         return readResponse { json.decodeFromString<ModelList>(body).data.map { LlmModel(it.id, it.displayName) } }
     }
@@ -115,14 +122,23 @@ class LlmHttp(
         }
     }
 
-    /** Bodies may be any text, or an array (some proxies), so this never throws. */
-    private fun Response.errorDetail(): ErrorDetail? = runCatching { json.decodeFromString<ErrorResponse>(body.string()).error }.getOrNull()
+    /** Bodies may be any text, or the error object wrapped in an array (Gemini), so this never throws. */
+    private fun Response.errorDetail(): ErrorDetail? =
+        runCatching {
+            val element = json.parseToJsonElement(body.string())
+            json.decodeFromJsonElement<ErrorResponse>((element as? JsonArray)?.first() ?: element).error
+        }.getOrNull()
 
     private fun Response.toFailure(
         providerMessage: String?,
         missingModel: String?,
-    ): LlmCallException =
-        when (code) {
+    ): LlmCallException {
+        // Gemini rejects a bad key with 400 INVALID_ARGUMENT "Please pass a valid API key".
+        // ponytail: message match; switch to the error's `status` if Google rewords it.
+        if (code == HTTP_BAD_REQUEST && providerMessage?.contains("api key", ignoreCase = true) == true) {
+            return LlmCallException.Authentication()
+        }
+        return when (code) {
             HTTP_UNAUTHORIZED, HTTP_FORBIDDEN -> {
                 LlmCallException.Authentication()
             }
@@ -142,6 +158,7 @@ class LlmHttp(
                 )
             }
         }
+    }
 
     /** `retry-after` is either delay-seconds or an HTTP-date (RFC 9110 §10.2.3); anything else is ignored. */
     private fun parseRetryAfter(value: String): Duration? =

@@ -204,7 +204,7 @@ class OpenAiCompatibleLlmComponentTest {
     @Test
     fun `a Gemini reply to an image keeps the thought signature on its tool call when sent back`() =
         runTest {
-            // Fixture from Google's OpenAI-compatibility docs (signature on tool_calls[].extra_content), not a live call.
+            // Signature on tool_calls[].extra_content: shape confirmed by a live Gemini call (gemini-chat-tool-calls.json).
             server.enqueue(fixture("gemini-chat-image-tool-call.json"))
             server.enqueue(fixture("chat-text.json"))
 
@@ -275,6 +275,72 @@ class OpenAiCompatibleLlmComponentTest {
             assertThrows<LlmException.Authentication> { component.complete(request) }
 
             assertEquals(1, server.requestCount)
+        }
+
+    @Test
+    fun `Gemini's 400 for a bad key fails as Authentication without retrying`() =
+        runTest {
+            // Recorded from Gemini's OpenAI layer: the error object comes wrapped in an array.
+            server.enqueue(fixture("gemini-error-invalid-key.json", code = 400))
+
+            assertThrows<LlmException.Authentication> { component.complete(request) }
+
+            assertEquals(1, server.requestCount)
+        }
+
+    @Test
+    fun `an array-wrapped error body still passes on the provider message`() =
+        runTest {
+            server.enqueue(
+                MockResponse()
+                    .setResponseCode(400)
+                    .setBody("""[{"error":{"code":400,"message":"Invalid value at 'tools'","status":"INVALID_ARGUMENT"}}]"""),
+            )
+
+            val e = assertThrows<LlmException.InvalidRequest> { component.complete(request) }
+
+            assertEquals("Invalid value at 'tools'", e.message)
+        }
+
+    @Test
+    fun `Gemini thinking tokens left out of completion_tokens count as output`() =
+        runTest {
+            // Recorded: prompt 16 + completion 2, total 128; the other 110 are billed thinking tokens.
+            server.enqueue(fixture("chat-gemini-signature.json"))
+
+            val response = component.complete(request)
+
+            assertEquals(LlmUsage(inputUncached = 16, cacheRead = 0, cacheWrite = 0, output = 112), response.usage)
+        }
+
+    @Test
+    fun `a recorded Gemini parallel tool call keeps its signature when sent back`() =
+        runTest {
+            server.enqueue(fixture("gemini-chat-tool-calls.json"))
+            server.enqueue(fixture("chat-text.json"))
+            val tool =
+                LlmTool(
+                    "get_price",
+                    "Price in EUR for a SKU.",
+                    """{"type":"object","properties":{"sku":{"type":"string"}},"required":["sku"],"additionalProperties":false}""",
+                )
+            val withTool = request.copy(tools = listOf(tool))
+
+            val first = component.complete(withTool)
+            val results = LlmTurn.User(first.toolCalls.map { UserPart.ToolResult(it.id, """{"price":1}""") })
+            component.complete(withTool.copy(turns = withTool.turns + first.assistantTurn + results))
+
+            assertEquals(StopReason.ToolUse, first.stopReason)
+            assertEquals(listOf("""{"sku":"A1"}""", """{"sku":"B2"}"""), first.toolCalls.map { it.argumentsJson })
+            server.takeRequest()
+            val messages = server.takeRequest().json()["messages"]!!.jsonArray
+            val original =
+                Json
+                    .parseToJsonElement(fixtureText("gemini-chat-tool-calls.json"))
+                    .jsonObject["choices"]!!
+                    .jsonArray[0]
+                    .jsonObject["message"]
+            assertEquals(original, messages[2])
         }
 
     @Test
@@ -435,7 +501,7 @@ class OpenAiCompatibleLlmComponentTest {
 
             val everything =
                 taskLog.lines + appLog.list.map { it.formattedMessage } + errors.map { it.messageChain() }
-            val secrets = listOf(API_KEY, "capital of France", "geography", "Paris", "CsQBAdHtim9", IMAGE_TEXT, IMAGE_BASE64)
+            val secrets = listOf(API_KEY, "capital of France", "geography", "Paris", "Red.", "EskDCsYD", IMAGE_TEXT, IMAGE_BASE64)
             everything.forEach { line -> secrets.forEach { assertFalse(line.contains(it), "\"$it\" leaked in: $line") } }
             assertTrue(appLog.list.isNotEmpty(), "retries should be logged")
         }

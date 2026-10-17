@@ -156,7 +156,7 @@ class OpenAiCompatibleLlmDataSource(
         val choice = choices.first()
         val message = choice.message
         val cached = usage.promptTokensDetails?.cachedTokens ?: 0
-        // Unverified (no live call): cache_write_tokens is assumed to be counted inside prompt_tokens, like cached_tokens.
+        // Unverified on OpenAI (Gemini sends neither): cache_write_tokens is assumed to be inside prompt_tokens, like cached_tokens.
         val cacheWrite = usage.promptTokensDetails?.cacheWriteTokens ?: 0
         return LlmCompletion(
             text =
@@ -180,7 +180,8 @@ class OpenAiCompatibleLlmDataSource(
                     inputUncached = usage.promptTokens - cached - cacheWrite,
                     cacheRead = cached,
                     cacheWrite = cacheWrite,
-                    output = usage.completionTokens,
+                    // Gemini leaves thinking tokens out of completion_tokens but counts them in total_tokens.
+                    output = maxOf(usage.completionTokens, (usage.totalTokens ?: 0) - usage.promptTokens),
                 ),
             model = model,
             // `annotations` is response-only on OpenAI; everything else goes back as received.
@@ -227,6 +228,7 @@ class OpenAiCompatibleLlmDataSource(
     private data class Usage(
         @SerialName("prompt_tokens") val promptTokens: Int,
         @SerialName("completion_tokens") val completionTokens: Int,
+        @SerialName("total_tokens") val totalTokens: Int? = null,
         @SerialName("prompt_tokens_details") val promptTokensDetails: PromptTokensDetails? = null,
     )
 

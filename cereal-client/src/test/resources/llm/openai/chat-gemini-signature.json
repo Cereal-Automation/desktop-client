@@ -1,26 +1,26 @@
 {
-  "id": "gemini-chatcmpl-example-0001",
-  "object": "chat.completion",
-  "created": 1792137600,
-  "model": "gemini-3-pro",
   "choices": [
     {
+      "finish_reason": "stop",
       "index": 0,
       "message": {
-        "role": "assistant",
-        "content": "Paris is the capital of France.",
+        "content": "Red.",
         "extra_content": {
           "google": {
-            "thought_signature": "CsQBAdHtim9GeminiSignatureExample0001"
+            "thought_signature": "EskDCsYDAWkUfRNboVaHE2/4HY8OJ7VklXEGhExyCDnBqsek2LL4oDfzdwCl8eTLu6OUrWwcd7PdyFkdssxZyoExPcJtLfHK/V2IhgRwiz0K2/V4nq+3BDgoGIHIoBBMw3f4wr/T9vd9ZRgP6bCyl9fcHwSEqu3qtfR00nDjQgBhwgp0zsNtqgAuP2Pnzt9b8cFpYdqiTtkVOdWwhL9PDXYKCAdbIaA2WN1dw7C9Uj9uzdjfR4ow9rWoi/lSFc/vTXQHlKg7QbviFAm1FdA03N2u91hBYHzsdnS0wagAhcP+QJnJxYUSOZd+hAYCXzQ40m0hlG2e7jUgvI19A+AndGyGjinMQEM6sBuNh8JkSycSL2m7MKnrloRI3A6vx8ZJxsVQjPKTIccXsYtRS0V4PcLmdFeaonRs988XHhqDF3facP2eBeq0bRWTNO/pp3wg9FBHqK+Rj+iAslrY2A+1s0OSfEx4tg/cgfMJLUfwJkTZ6kXy6pYnDMutw3b3QAttqsFjqEeZsy+o8l/k9UXUyJ5RAFo84zBZZbMaIXhq0N8u/jzIVPu7mtMs2R0yvsHrmL8qOsPqJzlOGAcSETvTPKoKg1rbD1OVetZWyA=="
           }
-        }
-      },
-      "finish_reason": "stop"
+        },
+        "role": "assistant"
+      }
     }
   ],
+  "created": 1792222687,
+  "id": "2CXTavTZNdKpkdUPr7mgoQo",
+  "model": "models/gemini-3-flash-preview",
+  "object": "chat.completion",
   "usage": {
-    "prompt_tokens": 21,
-    "completion_tokens": 9,
-    "total_tokens": 30
+    "completion_tokens": 2,
+    "prompt_tokens": 16,
+    "total_tokens": 128
   }
 }
