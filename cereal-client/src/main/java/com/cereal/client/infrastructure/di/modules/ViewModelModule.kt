@@ -110,10 +110,6 @@ object ViewModelModule {
                     get(),
                     get(),
                     get(),
-                    get(),
-                    get(),
-                    get(),
-                    get(),
                 )
             }
             factory { (scope: CoroutineScope) ->
@@ -238,7 +234,6 @@ object ViewModelModule {
                     scriptPackage,
                     initialScriptPackageInstance,
                     scope,
-                    get(),
                     get(),
                     get(),
                     get(),

@@ -17,7 +17,7 @@ class ErrorResolver {
         onDismiss: () -> Unit = {},
     ) {
         val message = ex.localizedMessage ?: DEFAULT_ERROR_MESSAGE
-        setError(message, onDismiss, ex)
+        setError(message, onDismiss)
     }
 
     /**
@@ -26,10 +26,9 @@ class ErrorResolver {
     fun setError(
         message: String,
         onDismiss: () -> Unit = {},
-        exception: Exception? = null,
     ) {
         val error =
-            ErrorAction.Message(message, exception) {
+            ErrorAction.Message(message) {
                 // Reset error on dismiss.
                 _errorAction.value = ErrorAction.None
                 onDismiss()

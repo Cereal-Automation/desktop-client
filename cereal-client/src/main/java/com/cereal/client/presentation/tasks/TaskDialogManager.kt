@@ -56,14 +56,6 @@ class TaskDialogManager {
         dialogState.value = TaskViewState.DialogState.ConfirmScriptInstanceDeletion(scriptPackageInstance)
     }
 
-    fun showConfirmTaskAction(
-        scriptPackageInstance: ScriptPackageInstance,
-        actionName: String,
-        text: String,
-    ) {
-        dialogState.value = TaskViewState.DialogState.ConfirmTaskAction(scriptPackageInstance, actionName, text)
-    }
-
     fun closeDialog() {
         dialogState.value = TaskViewState.DialogState.Hidden
     }
