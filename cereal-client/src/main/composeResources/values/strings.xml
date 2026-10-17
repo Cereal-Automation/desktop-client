@@ -228,7 +228,7 @@
     <string name="notification_center_unknown_task">Unknown task</string>
     <string name="notification_center_delivery_summary">%1$d/%2$d delivered</string>
     <string name="notification_center_recorded_only">Recorded only</string>
-    <string name="notification_center_couldnt_deliver">Couldn\'t deliver.</string>
+    <string name="notification_center_couldnt_deliver">Couldn't deliver.</string>
     <string name="notification_channel_discord">Discord</string>
     <string name="notification_channel_telegram">Telegram</string>
     <string name="notification_channel_email">Email</string>
