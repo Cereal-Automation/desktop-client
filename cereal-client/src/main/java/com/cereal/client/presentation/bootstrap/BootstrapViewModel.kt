@@ -105,7 +105,7 @@ class BootstrapViewModel(
 
                             is DownloadStatus.Finished -> {
                                 progress.value = 1f
-                                progressStatus.value = "Finished"
+                                progressStatus.value = "Download complete"
                                 pendingInstallerSha256 = it.sha256
                                 openInstaller.value = it.file
                                 cancelLoadingIndicatorTimer()
@@ -220,15 +220,15 @@ class BootstrapViewModel(
             BootstrapState.BootingUp -> "Booting"
             BootstrapState.CheckingApplicationFiles -> "Checking application files"
             BootstrapState.LoadingScriptConfigurationFiles -> "Loading script configuration files"
-            BootstrapState.InitializeDiscord -> "Initialize Discord RPC-connection"
+            BootstrapState.InitializeDiscord -> "Connecting to Discord"
             BootstrapState.ValidatingDirectories -> "Validating application files"
             BootstrapState.Finishing -> "Starting Cereal"
-            BootstrapState.Finished -> "Bootstrap finished"
+            BootstrapState.Finished -> "Ready"
             BootstrapState.RestoringTasks -> "Restoring tasks"
             BootstrapState.RestoreUser -> "Checking authentication"
             BootstrapState.SynchronizeScripts -> "Updating scripts"
             BootstrapState.CheckingForUpdates -> "Checking for updates"
-            is BootstrapState.Interrupted -> "Waiting user response..."
+            is BootstrapState.Interrupted -> "Waiting for your response…"
         }
 
     companion object {

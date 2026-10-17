@@ -25,6 +25,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.cereal.client.domain.model.datasets.CustomDatasetGroup
 import com.cereal.client.domain.model.datasets.CustomDatasetItem
@@ -72,6 +73,7 @@ import com.cereal_automation.cereal_client.generated.resources.datasets_meta_col
 import com.cereal_automation.cereal_client.generated.resources.datasets_meta_records
 import com.cereal_automation.cereal_client.generated.resources.datasets_meta_updated
 import com.cereal_automation.cereal_client.generated.resources.datasets_records_crumb
+import com.cereal_automation.cereal_client.generated.resources.datasets_records_empty
 import com.cereal_automation.cereal_client.generated.resources.datasets_schema_label
 import com.cereal_automation.cereal_client.generated.resources.datasets_script_origin_subtitle
 import com.cereal_automation.cereal_client.generated.resources.delete
@@ -183,20 +185,20 @@ private fun ScriptOriginHint() {
             Modifier
                 .fillMaxWidth()
                 .padding(horizontal = PaneTablePadding)
-                .padding(top = 4.dp, bottom = 16.dp),
+                .padding(top = CerealTheme.spacing.xxs, bottom = CerealTheme.spacing.lg),
         verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(8.dp),
+        horizontalArrangement = Arrangement.spacedBy(CerealTheme.spacing.sm),
     ) {
         Icon(
             imageVector = Icons.Outlined.Extension,
             contentDescription = null,
-            tint = CerealTheme.colorScheme.contentSubtle,
+            tint = CerealTheme.colorScheme.contentTertiary,
             modifier = Modifier.size(14.dp),
         )
         CerealText(
             text = stringResource(Res.string.datasets_script_origin_subtitle),
             style = MaterialTheme.typography.bodySmall,
-            color = CerealTheme.colorScheme.contentSubtle,
+            color = CerealTheme.colorScheme.contentTertiary,
         )
     }
 }
@@ -308,7 +310,7 @@ private fun DatasetDetailsView(
         }
 
         is DetailViewState.Empty -> {
-            EmptyListView(stringResource(Res.string.datasets_empty_placeholder))
+            EmptyListView(stringResource(Res.string.datasets_records_empty))
         }
 
         is DetailViewState.Filled -> {
@@ -367,7 +369,7 @@ private fun DatasetRecordRow(
                         CerealTheme.colorScheme.contentSecondary
                     },
                 maxLines = 1,
-                overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
+                overflow = TextOverflow.Ellipsis,
                 modifier = Modifier.weight(1f),
             )
         }

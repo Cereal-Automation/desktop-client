@@ -14,9 +14,11 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -88,8 +90,8 @@ fun BootstrapScreen(
                     .padding(paddingValues),
             contentAlignment = Alignment.Center,
         ) {
-            androidx.compose.runtime.CompositionLocalProvider(
-                androidx.compose.material3.LocalContentColor provides MaterialTheme.colorScheme.onBackground,
+            CompositionLocalProvider(
+                LocalContentColor provides MaterialTheme.colorScheme.onBackground,
             ) {
                 Column(
                     horizontalAlignment = Alignment.CenterHorizontally,
@@ -107,6 +109,9 @@ fun BootstrapScreen(
                     Row(
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
+                        // Mirrors the indicator slot on the right so the status text stays centred.
+                        Spacer(modifier = Modifier.width(24.dp))
+
                         CerealText(
                             text = bootstrapViewModel.progressStatus.value,
                             color = MaterialTheme.colorScheme.onSurface,
@@ -127,10 +132,14 @@ fun BootstrapScreen(
                         }
                     }
 
-                    Spacer(modifier = Modifier.height(8.dp))
+                    Spacer(modifier = Modifier.height(12.dp))
 
                     LinearProgressBar(
-                        modifier = Modifier.fillMaxWidth(0.7f),
+                        modifier =
+                            Modifier
+                                .padding(horizontal = 24.dp)
+                                .widthIn(max = 400.dp)
+                                .fillMaxWidth(),
                         progress = bootstrapViewModel.progress.value,
                     )
                 }

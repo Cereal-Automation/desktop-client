@@ -26,6 +26,9 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.input.pointer.PointerIcon
+import androidx.compose.ui.input.pointer.pointerHoverIcon
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
@@ -108,7 +111,7 @@ fun LoginFormContent(
             )
             CerealText(
                 text = stringResource(Res.string.forgot_password),
-                modifier = Modifier.clickable { onForgotPasswordClick() },
+                modifier = Modifier.clickable(role = Role.Button) { onForgotPasswordClick() }.pointerHoverIcon(PointerIcon.Hand),
                 style =
                     MaterialTheme.typography.labelSmall.copy(
                         color = MaterialTheme.colorScheme.primary,

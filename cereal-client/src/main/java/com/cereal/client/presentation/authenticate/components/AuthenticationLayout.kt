@@ -38,7 +38,10 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.input.pointer.PointerIcon
+import androidx.compose.ui.input.pointer.pointerHoverIcon
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
@@ -46,6 +49,7 @@ import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.cereal.client.presentation.theme.CerealTheme
+import com.cereal.client.presentation.theme.CerealTypography
 import com.cereal.client.presentation.view.CerealText
 import com.cereal_automation.cereal_client.generated.resources.Res
 import com.cereal_automation.cereal_client.generated.resources.application
@@ -141,7 +145,7 @@ private fun AuthLogoSection() {
 
         CerealText(
             text = stringResource(Res.string.introduction_title),
-            style = MaterialTheme.typography.displaySmall,
+            style = MaterialTheme.typography.headlineLarge,
         )
 
         Spacer(modifier = Modifier.height(8.dp))
@@ -224,7 +228,7 @@ private fun AuthFooterSection(
             )
             CerealText(
                 text = footerAction,
-                modifier = Modifier.clickable { onFooterActionClick() },
+                modifier = Modifier.clickable(role = Role.Button) { onFooterActionClick() }.pointerHoverIcon(PointerIcon.Hand),
                 style =
                     MaterialTheme.typography.bodyLarge.copy(
                         color = MaterialTheme.colorScheme.primary,
@@ -252,14 +256,9 @@ private fun FooterLink(
 ) {
     CerealText(
         text = text.uppercase(),
-        modifier = Modifier.clickable { onClick() },
-        style =
-            MaterialTheme.typography.labelSmall.copy(
-                color = CerealTheme.colorScheme.contentSubtle,
-                fontSize = 11.sp,
-                fontWeight = FontWeight.Bold,
-                letterSpacing = 1.5.sp,
-            ),
+        modifier = Modifier.clickable(role = Role.Button) { onClick() }.pointerHoverIcon(PointerIcon.Hand),
+        style = CerealTypography.sectionLabel,
+        color = CerealTheme.colorScheme.contentSubtle,
     )
 }
 

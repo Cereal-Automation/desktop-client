@@ -23,6 +23,7 @@ import androidx.compose.material.icons.outlined.Add
 import androidx.compose.material.icons.outlined.Cloud
 import androidx.compose.material.icons.outlined.Delete
 import androidx.compose.material.icons.outlined.DeleteSweep
+import androidx.compose.material.icons.outlined.Description
 import androidx.compose.material.icons.outlined.Download
 import androidx.compose.material.icons.outlined.Edit
 import androidx.compose.material.icons.outlined.Key
@@ -39,7 +40,6 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
@@ -447,8 +447,9 @@ private fun RowScope.ProxyGroupNameCell(
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(10.dp),
     ) {
+        // Leading glyph mirrors the source tag: cloud for provider-synced, document for file/manual groups.
         Icon(
-            imageVector = Icons.Outlined.Cloud,
+            imageVector = if (group.provider != null) Icons.Outlined.Cloud else Icons.Outlined.Description,
             contentDescription = null,
             tint = CerealTheme.colorScheme.contentSubtle,
             modifier = Modifier.size(PaneTableIconButtonGlyphSize),
@@ -495,7 +496,7 @@ private fun SourceTag(provider: ProxyVendor?) {
         if (isProvider) {
             MaterialTheme.colorScheme.primary.copy(alpha = 0.12f)
         } else {
-            Color.White.copy(alpha = 0.05f)
+            MaterialTheme.colorScheme.surfaceVariant
         }
     Row(
         modifier =

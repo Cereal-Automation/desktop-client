@@ -67,6 +67,8 @@ import com.cereal_automation.cereal_client.generated.resources.proxies_sync_back
 import com.cereal_automation.cereal_client.generated.resources.proxies_sync_cancel
 import com.cereal_automation.cereal_client.generated.resources.proxies_sync_city
 import com.cereal_automation.cereal_client.generated.resources.proxies_sync_city_placeholder
+import com.cereal_automation.cereal_client.generated.resources.proxies_sync_count_decrease
+import com.cereal_automation.cereal_client.generated.resources.proxies_sync_count_increase
 import com.cereal_automation.cereal_client.generated.resources.proxies_sync_count_label
 import com.cereal_automation.cereal_client.generated.resources.proxies_sync_country
 import com.cereal_automation.cereal_client.generated.resources.proxies_sync_done_health_check
@@ -142,7 +144,7 @@ fun SyncProxiesDialog(
         onDismissRequest = onClose,
     ) {
         Box(
-            modifier = Modifier.fillMaxSize().background(Color.Black.copy(alpha = 0.55f)),
+            modifier = Modifier.fillMaxSize().background(MaterialTheme.colorScheme.scrim.copy(alpha = 0.55f)),
             contentAlignment = Alignment.Center,
         ) {
             Column(
@@ -264,16 +266,16 @@ private fun SyncStepChip(
             modifier =
                 Modifier
                     .size(20.dp)
-                    .background(if (active || done) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surface, CircleShape),
+                    .background(if (active || done) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceVariant, CircleShape),
             contentAlignment = Alignment.Center,
         ) {
             if (done) {
-                Icon(Icons.Outlined.Check, contentDescription = null, tint = Color.White, modifier = Modifier.size(12.dp))
+                Icon(Icons.Outlined.Check, contentDescription = null, tint = MaterialTheme.colorScheme.onPrimary, modifier = Modifier.size(12.dp))
             } else {
                 CerealText(
                     text = index.toString(),
                     style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold),
-                    color = if (active) Color.White else CerealTheme.colorScheme.contentTertiary,
+                    color = if (active) MaterialTheme.colorScheme.onPrimary else CerealTheme.colorScheme.contentTertiary,
                 )
             }
         }
@@ -339,7 +341,7 @@ private fun ConfigureStep(
             CerealOutlinedTextField(
                 value = state.city ?: "",
                 onValueChange = onCityChanged,
-                modifier = Modifier.fillMaxWidth(),
+                modifier = Modifier.fillMaxWidth().border(1.dp, CerealTheme.colorScheme.border, MaterialTheme.shapes.large),
                 singleLine = true,
                 placeholder = { CerealText(stringResource(Res.string.proxies_sync_city_placeholder), color = CerealTheme.colorScheme.contentTertiary) },
             )
@@ -371,7 +373,7 @@ private fun ConfigureStep(
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 FieldLabel(Icons.Outlined.Layers, stringResource(Res.string.proxies_sync_count_label))
                 Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                    StepButton(Icons.Outlined.Remove) { onCountChanged(state.count - COUNT_STEP) }
+                    StepButton(Icons.Outlined.Remove, stringResource(Res.string.proxies_sync_count_decrease)) { onCountChanged(state.count - COUNT_STEP) }
                     Slider(
                         value = state.count.toFloat(),
                         onValueChange = { onCountChanged(it.toInt()) },
@@ -383,7 +385,7 @@ private fun ConfigureStep(
                             ),
                         modifier = Modifier.weight(1f),
                     )
-                    StepButton(Icons.Outlined.Add) { onCountChanged(state.count + COUNT_STEP) }
+                    StepButton(Icons.Outlined.Add, stringResource(Res.string.proxies_sync_count_increase)) { onCountChanged(state.count + COUNT_STEP) }
                     Box(
                         modifier =
                             Modifier
@@ -425,7 +427,7 @@ private fun ConfigureStep(
                     CerealOutlinedTextField(
                         value = state.newGroupName,
                         onValueChange = onNewGroupNameChanged,
-                        modifier = Modifier.fillMaxWidth(),
+                        modifier = Modifier.fillMaxWidth().border(1.dp, CerealTheme.colorScheme.border, MaterialTheme.shapes.large),
                         singleLine = true,
                         placeholder = { CerealText(stringResource(Res.string.proxies_sync_target_new_placeholder), color = CerealTheme.colorScheme.contentTertiary) },
                     )
@@ -718,7 +720,7 @@ private fun RadioOption(
                     RoundedCornerShape(8.dp),
                 ).background(if (selected) MaterialTheme.colorScheme.primary.copy(alpha = 0.06f) else Color.Transparent, RoundedCornerShape(8.dp))
                 .clickable(onClick = onClick)
-                .padding(horizontal = 13.dp, vertical = 11.dp),
+                .padding(horizontal = CerealTheme.spacing.md, vertical = 10.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(9.dp),
     ) {
@@ -744,6 +746,7 @@ private fun RadioOption(
 @Composable
 private fun StepButton(
     icon: ImageVector,
+    contentDescription: String,
     onClick: () -> Unit,
 ) {
     Box(
@@ -755,7 +758,7 @@ private fun StepButton(
                 .clickable(onClick = onClick),
         contentAlignment = Alignment.Center,
     ) {
-        Icon(icon, contentDescription = null, tint = MaterialTheme.colorScheme.onBackground, modifier = Modifier.size(16.dp))
+        Icon(icon, contentDescription = contentDescription, tint = MaterialTheme.colorScheme.onBackground, modifier = Modifier.size(16.dp))
     }
 }
 

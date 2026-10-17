@@ -48,7 +48,7 @@ class RegistrationScreenTest {
             // Submit button.
             onNodeWithText("Create account").assertIsDisplayed()
             // Footer navigation back to login.
-            onNodeWithText("Login").assertIsDisplayed()
+            onNodeWithText("Sign In").assertIsDisplayed()
         }
 
     @Test
@@ -98,7 +98,7 @@ class RegistrationScreenTest {
                 )
             }
 
-            onNodeWithText("Login").performClick()
+            onNodeWithText("Sign In").performClick()
             waitForIdle()
 
             assertTrue(navigatedToLogin)

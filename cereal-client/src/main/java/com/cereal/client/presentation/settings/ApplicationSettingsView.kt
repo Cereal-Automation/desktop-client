@@ -54,6 +54,7 @@ import com.cereal.client.presentation.view.ConfirmationDialog
 import com.cereal.client.presentation.view.SettingsActionRow
 import com.cereal.client.presentation.view.SettingsButtonVariant
 import com.cereal.client.presentation.view.SettingsSectionCard
+import com.cereal.client.presentation.view.SettingsSectionRow
 import com.cereal.client.presentation.view.SettingsSmallButton
 import com.cereal.client.presentation.view.SettingsToggleRow
 import com.cereal.client.presentation.view.TestButton
@@ -499,37 +500,12 @@ private fun ProxyHealthCheckIntervalRow(
     selected: com.cereal.client.domain.model.settings.ProxyHealthCheckInterval,
     onSelect: (com.cereal.client.domain.model.settings.ProxyHealthCheckInterval) -> Unit,
 ) {
-    androidx.compose.foundation.layout.Row(
-        modifier =
-            Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 22.dp, vertical = 18.dp),
-        verticalAlignment = Alignment.CenterVertically,
+    SettingsSectionRow(
+        title = stringResource(Res.string.settings_proxy_health_check_title),
+        description = stringResource(Res.string.settings_proxy_health_check_desc),
     ) {
-        Column(modifier = Modifier.weight(1f)) {
-            CerealText(
-                text = stringResource(Res.string.settings_proxy_health_check_title),
-                style =
-                    MaterialTheme.typography.bodyMedium.copy(
-                        fontSize = 16.sp,
-                        fontWeight = FontWeight.SemiBold,
-                        color = androidx.compose.ui.graphics.Color.White,
-                    ),
-            )
-            Spacer(modifier = Modifier.size(4.dp))
-            CerealText(
-                text = stringResource(Res.string.settings_proxy_health_check_desc),
-                color = CerealTheme.colorScheme.contentTertiary,
-                style =
-                    MaterialTheme.typography.bodySmall.copy(
-                        fontSize = 14.sp,
-                        lineHeight = 20.sp,
-                    ),
-            )
-        }
-        Spacer(modifier = Modifier.size(20.dp))
         androidx.compose.foundation.layout.Row(
-            horizontalArrangement = Arrangement.spacedBy(6.dp),
+            horizontalArrangement = Arrangement.spacedBy(CerealTheme.spacing.xs),
         ) {
             com.cereal.client.domain.model.settings.ProxyHealthCheckInterval.entries.forEach { option ->
                 SettingsSmallButton(

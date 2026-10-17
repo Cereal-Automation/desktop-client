@@ -180,6 +180,13 @@ fun TasksScreen(
 
                     val listState = rememberLazyListState()
                     Box(Modifier.weight(1.0f)) {
+                        if (detailsViewState is TaskViewState.DetailViewState.NoSelection ||
+                            detailsViewState is TaskViewState.DetailViewState.Empty
+                        ) {
+                            TasksDetailEmptyState(
+                                scriptSelected = viewModel.hierarchicalListViewModel.selectedChild != null,
+                            )
+                        }
                         filled?.let { filledState ->
                             // Pre-filter and group outside the LazyColumn content lambda so this
                             // only re-runs when the data or the filter actually changes, not on

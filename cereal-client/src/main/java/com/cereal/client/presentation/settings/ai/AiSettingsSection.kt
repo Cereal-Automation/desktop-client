@@ -4,10 +4,8 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowDropDown
 import androidx.compose.material3.DropdownMenu
@@ -23,9 +21,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.testTag
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.PopupProperties
@@ -36,6 +32,7 @@ import com.cereal.client.presentation.view.ConfigurationPanel
 import com.cereal.client.presentation.view.SettingsButtonVariant
 import com.cereal.client.presentation.view.SettingsFieldRow
 import com.cereal.client.presentation.view.SettingsSectionCard
+import com.cereal.client.presentation.view.SettingsSectionRow
 import com.cereal.client.presentation.view.SettingsSmallButton
 import com.cereal.client.presentation.view.SettingsTextInput
 import com.cereal.client.presentation.view.fields.state.TextFieldState
@@ -192,24 +189,11 @@ private fun ProviderRow(
     selected: LlmProviderType?,
     onSelect: (LlmProviderType?) -> Unit,
 ) {
-    Row(
-        modifier = Modifier.fillMaxWidth().padding(horizontal = 22.dp, vertical = 18.dp),
-        verticalAlignment = Alignment.CenterVertically,
+    SettingsSectionRow(
+        title = stringResource(Res.string.ai_provider),
+        description = stringResource(Res.string.ai_provider_desc),
     ) {
-        Column(modifier = Modifier.weight(1f)) {
-            CerealText(
-                text = stringResource(Res.string.ai_provider),
-                style = MaterialTheme.typography.bodyMedium.copy(fontSize = 16.sp, fontWeight = FontWeight.SemiBold, color = Color.White),
-            )
-            Spacer(modifier = Modifier.size(4.dp))
-            CerealText(
-                text = stringResource(Res.string.ai_provider_desc),
-                color = CerealTheme.colorScheme.contentTertiary,
-                style = MaterialTheme.typography.bodySmall.copy(fontSize = 14.sp, lineHeight = 20.sp),
-            )
-        }
-        Spacer(modifier = Modifier.size(20.dp))
-        Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+        Row(horizontalArrangement = Arrangement.spacedBy(CerealTheme.spacing.xs)) {
             (listOf(null) + LlmProviderType.entries).forEach { option ->
                 SettingsSmallButton(
                     text = stringResource(option.label()),

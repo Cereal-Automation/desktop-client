@@ -16,6 +16,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
@@ -45,6 +46,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.cereal.client.domain.model.notification.NotificationChannelType
@@ -73,6 +75,9 @@ import org.jetbrains.compose.resources.StringResource
 import org.jetbrains.compose.resources.stringResource
 import org.koin.core.parameter.parametersOf
 import org.koin.java.KoinJavaComponent
+
+/** Width of the unseen-dot column at the start of each row. */
+private val UnseenDotColumnWidth = 10.dp
 
 @Composable
 fun NotificationCenterScreen(onOpenTask: (taskId: String) -> Unit = {}) {
@@ -141,9 +146,9 @@ private fun NotificationCenterToolbar(
                 Modifier
                     .fillMaxWidth()
                     .height(64.dp)
-                    .padding(horizontal = 24.dp),
+                    .padding(horizontal = CerealTheme.spacing.xxl),
             verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(10.dp),
+            horizontalArrangement = Arrangement.spacedBy(CerealTheme.spacing.sm),
         ) {
             CerealText(
                 text = stringResource(Res.string.notifications),
@@ -164,7 +169,7 @@ private fun NotificationCenterToolbar(
 private fun NotificationCenterEmptyState() {
     Column(
         modifier = Modifier.fillMaxSize().padding(40.dp),
-        verticalArrangement = Arrangement.spacedBy(14.dp, Alignment.CenterVertically),
+        verticalArrangement = Arrangement.spacedBy(CerealTheme.spacing.md, Alignment.CenterVertically),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
         Box(
@@ -190,8 +195,10 @@ private fun NotificationCenterEmptyState() {
         )
         CerealText(
             text = stringResource(Res.string.notification_center_empty_message),
+            modifier = Modifier.widthIn(max = 360.dp),
             style = MaterialTheme.typography.bodyMedium,
             color = CerealTheme.colorScheme.contentSecondary,
+            textAlign = TextAlign.Center,
         )
     }
 }
@@ -220,10 +227,13 @@ private fun NotificationRow(
                 ),
     ) {
         Row(
-            modifier = Modifier.fillMaxWidth().padding(horizontal = 24.dp, vertical = 14.dp),
-            horizontalArrangement = Arrangement.spacedBy(12.dp),
+            modifier = Modifier.fillMaxWidth().padding(horizontal = CerealTheme.spacing.xxl, vertical = CerealTheme.spacing.md),
+            horizontalArrangement = Arrangement.spacedBy(CerealTheme.spacing.md),
         ) {
-            Box(modifier = Modifier.width(10.dp).padding(top = 6.dp), contentAlignment = Alignment.TopCenter) {
+            Box(
+                modifier = Modifier.width(UnseenDotColumnWidth).padding(top = CerealTheme.spacing.xs),
+                contentAlignment = Alignment.TopCenter,
+            ) {
                 if (item.unseen) {
                     Box(Modifier.size(8.dp).clip(CircleShape).background(MaterialTheme.colorScheme.primary))
                 }
@@ -232,7 +242,7 @@ private fun NotificationRow(
             Column(modifier = Modifier.weight(1f)) {
                 Row(
                     verticalAlignment = Alignment.Top,
-                    horizontalArrangement = Arrangement.spacedBy(12.dp),
+                    horizontalArrangement = Arrangement.spacedBy(CerealTheme.spacing.md),
                 ) {
                     CerealText(
                         text = titleLine,
@@ -245,12 +255,12 @@ private fun NotificationRow(
                     CerealText(
                         text = item.relativeTime,
                         style = MaterialTheme.typography.bodySmall,
-                        color = CerealTheme.colorScheme.contentSubtle,
+                        color = CerealTheme.colorScheme.contentTertiary,
                         maxLines = 1,
                     )
                 }
                 if (showMessageLine) {
-                    Spacer(Modifier.height(3.dp))
+                    Spacer(Modifier.height(CerealTheme.spacing.xxs))
                     CerealText(
                         text = item.message,
                         style = MaterialTheme.typography.bodyMedium,
@@ -259,8 +269,11 @@ private fun NotificationRow(
                         overflow = TextOverflow.Ellipsis,
                     )
                 }
-                Spacer(Modifier.height(9.dp))
-                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(5.dp)) {
+                Spacer(Modifier.height(CerealTheme.spacing.sm))
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(CerealTheme.spacing.xxs),
+                ) {
                     Icon(
                         imageVector = Icons.Filled.Bolt,
                         contentDescription = null,
@@ -301,30 +314,40 @@ fun NotificationDeliveryPanel(
     taskName: String,
     onOpenTask: () -> Unit,
 ) {
-    Column(modifier = Modifier.fillMaxWidth().padding(start = 46.dp, end = 24.dp, top = 4.dp, bottom = 20.dp)) {
+    // Indent the panel so it lines up with the row's title: row padding + dot column + gap.
+    val contentIndent = CerealTheme.spacing.xxl + UnseenDotColumnWidth + CerealTheme.spacing.md
+    Column(
+        modifier =
+            Modifier.fillMaxWidth().padding(
+                start = contentIndent,
+                end = CerealTheme.spacing.xxl,
+                top = CerealTheme.spacing.xxs,
+                bottom = CerealTheme.spacing.xl,
+            ),
+    ) {
         CerealText(
             text = stringResource(Res.string.notification_center_delivery_label).uppercase(),
             style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Bold),
             color = CerealTheme.colorScheme.contentTertiary,
-            modifier = Modifier.padding(vertical = 8.dp),
+            modifier = Modifier.padding(vertical = CerealTheme.spacing.sm),
         )
 
         if (attempts.isEmpty()) {
             NoChannelsNotice()
         } else {
-            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            Column(verticalArrangement = Arrangement.spacedBy(CerealTheme.spacing.sm)) {
                 attempts.forEach { DeliveryChannelRow(it) }
             }
         }
 
-        Spacer(Modifier.height(16.dp))
+        Spacer(Modifier.height(CerealTheme.spacing.lg))
         Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
             OpenTaskButton(taskName = taskName, onClick = onOpenTask)
             Spacer(Modifier.weight(1f))
             CerealText(
                 text = deliverySummary(attempts),
                 style = MaterialTheme.typography.bodySmall,
-                color = CerealTheme.colorScheme.contentSubtle,
+                color = CerealTheme.colorScheme.contentTertiary,
             )
         }
     }
@@ -339,8 +362,8 @@ private fun NoChannelsNotice() {
                 .clip(MaterialTheme.shapes.small)
                 .background(CerealTheme.colorScheme.cardDark)
                 .border(1.dp, CerealTheme.colorScheme.border, MaterialTheme.shapes.small)
-                .padding(horizontal = 14.dp, vertical = 12.dp),
-        horizontalArrangement = Arrangement.spacedBy(10.dp),
+                .padding(CerealTheme.spacing.md),
+        horizontalArrangement = Arrangement.spacedBy(CerealTheme.spacing.sm),
     ) {
         Icon(
             imageVector = Icons.Outlined.Info,
@@ -354,7 +377,7 @@ private fun NoChannelsNotice() {
                 style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.SemiBold),
                 color = CerealTheme.colorScheme.contentSecondary,
             )
-            Spacer(Modifier.height(3.dp))
+            Spacer(Modifier.height(CerealTheme.spacing.xxs))
             CerealText(
                 text = stringResource(Res.string.notification_center_no_channels_message),
                 style = MaterialTheme.typography.bodySmall,
@@ -373,8 +396,8 @@ private fun DeliveryChannelRow(attempt: NotificationDeliveryUiModel) {
                 .clip(MaterialTheme.shapes.medium)
                 .background(CerealTheme.colorScheme.backgroundDark)
                 .border(1.dp, CerealTheme.colorScheme.border, MaterialTheme.shapes.medium)
-                .padding(horizontal = 12.dp, vertical = 10.dp),
-        horizontalArrangement = Arrangement.spacedBy(12.dp),
+                .padding(horizontal = CerealTheme.spacing.md, vertical = CerealTheme.spacing.sm),
+        horizontalArrangement = Arrangement.spacedBy(CerealTheme.spacing.md),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Box(
@@ -399,7 +422,7 @@ private fun DeliveryChannelRow(attempt: NotificationDeliveryUiModel) {
                 color = MaterialTheme.colorScheme.onSurface,
             )
             if (!attempt.delivered && !attempt.errorMessage.isNullOrBlank()) {
-                Spacer(Modifier.height(3.dp))
+                Spacer(Modifier.height(CerealTheme.spacing.xxs))
                 CerealText(
                     text = "${stringResource(Res.string.notification_center_couldnt_deliver)} ${attempt.errorMessage}",
                     style = MaterialTheme.typography.bodySmall,
@@ -419,8 +442,8 @@ private fun DeliveryStatusChip(delivered: Boolean) {
             Modifier
                 .clip(CircleShape)
                 .background(color.copy(alpha = 0.15f))
-                .padding(horizontal = 10.dp, vertical = 4.dp),
-        horizontalArrangement = Arrangement.spacedBy(5.dp),
+                .padding(horizontal = CerealTheme.spacing.sm, vertical = CerealTheme.spacing.xxs),
+        horizontalArrangement = Arrangement.spacedBy(CerealTheme.spacing.xxs),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Icon(
@@ -454,8 +477,8 @@ private fun OpenTaskButton(
                 .clip(MaterialTheme.shapes.small)
                 .border(1.dp, CerealTheme.colorScheme.borderDark, MaterialTheme.shapes.small)
                 .clickable(onClick = onClick)
-                .padding(horizontal = 14.dp, vertical = 8.dp),
-        horizontalArrangement = Arrangement.spacedBy(7.dp),
+                .padding(horizontal = CerealTheme.spacing.md, vertical = CerealTheme.spacing.sm),
+        horizontalArrangement = Arrangement.spacedBy(CerealTheme.spacing.xs),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Icon(
