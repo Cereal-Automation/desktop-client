@@ -17,7 +17,7 @@
     <string name="app_outdated_version">You're using an outdated version of %1$s, do you want to install the latest version?</string>
     <string name="auto_scroll">Auto-scroll</string>
     <string name="booting">Booting</string>
-    <string name="bootstrap_finished">Bootstrap finished</string>
+    <string name="bootstrap_finished">Ready</string>
     <string name="bot_token">Bot Token</string>
     <string name="cancel">Cancel</string>
     <string name="chat_id">Chat ID</string>
@@ -144,7 +144,7 @@
     <string name="import_from_file_dialog_selected_file_label">Selected File:</string>
     <string name="import_proxies_hint">You can import proxies in the top right corner.</string>
     <string name="information">Information</string>
-    <string name="initialize_discord">Initialize Discord RPC-connection</string>
+    <string name="initialize_discord">Connecting to Discord</string>
     <string name="installed_scripts">Installed scripts</string>
     <string name="installer_timer">Installing update in %1$d seconds...</string>
     <string name="installer_manual_title">Your download is here</string>
