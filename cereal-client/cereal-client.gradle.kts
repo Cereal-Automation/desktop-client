@@ -226,7 +226,7 @@ compose.desktop {
             // 7.9.x fails on Kotlin 2.3 metadata ("can't find referenced class kotlin.RequiresOptIn.Level"
             // for the stdlib opt-in markers, NPE in KotlinReferenceFixer during obfuscation). Re-test on
             // the next ProGuard release before bumping — it also blocks the Kotlin 2.4 upgrade.
-            version.set("7.8.2")
+            version.set("7.10.0")
         }
 
         nativeDistributions {

@@ -8,7 +8,7 @@ import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
-import androidx.compose.ui.test.runDesktopComposeUiTest
+import androidx.compose.ui.test.v2.runDesktopComposeUiTest
 import com.cereal.client.domain.model.datasets.CustomDatasetGroup
 import com.cereal.client.domain.model.script.MainScript
 import com.cereal.client.domain.model.script.ScriptCapacity

@@ -3,7 +3,7 @@ package testutil
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.test.ComposeUiTest
 import androidx.compose.ui.test.ExperimentalTestApi
-import androidx.compose.ui.test.runDesktopComposeUiTest
+import androidx.compose.ui.test.v2.runDesktopComposeUiTest
 import com.cereal.client.infrastructure.di.Injector
 import com.cereal.client.infrastructure.di.modules.InMemoryProviderModule
 import com.cereal.client.infrastructure.di.modules.InMemoryRepositoryModule
