@@ -109,12 +109,23 @@ class MainViewModelTest {
     }
 
     @Test
+    fun `a white-label build keeps landing on Tasks and has no Home item`() {
+        every { applicationConfig.isBranded } returns true
+        val viewModel = createViewModel()
+        dispatcher.scheduler.advanceUntilIdle()
+
+        assertEquals(Root.Routing.Tasks(), viewModel.landingRoute)
+        assertTrue(viewModel.menuItems.value.none { it.route is Root.Routing.Home })
+        assertTrue(viewModel.menuItems.value.first { it.route is Root.Routing.Tasks }.selected)
+    }
+
+    @Test
     fun `a white-label build hides the ready-made scripts section`() {
         every { applicationConfig.isBranded } returns true
         val viewModel = createViewModel()
         dispatcher.scheduler.advanceUntilIdle()
 
-        assertEquals(7, viewModel.menuItems.value.size)
+        assertEquals(6, viewModel.menuItems.value.size)
         assertTrue(viewModel.menuItems.value.none { it.section == MenuSection.READY_MADE_SCRIPTS })
     }
 

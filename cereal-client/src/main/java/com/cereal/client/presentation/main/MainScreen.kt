@@ -114,7 +114,7 @@ fun MainScreen(
                     // Cereal passes straight through (see docs/adr/0004).
                     BrandEntitlementGate(brandPaywallViewModel) {
                         CompositionLocalProvider(LocalBackPressHandler provides backPressHandler) {
-                            Root.content(Root.Routing.Home, menuComposable = { backStack ->
+                            Root.content(viewModel.landingRoute, menuComposable = { backStack ->
                                 MainMenu(
                                     menuItems = viewModel.menuItems.value,
                                     appVersion = viewModel.appVersion,

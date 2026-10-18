@@ -60,8 +60,11 @@ class MainViewModel(
 ) {
     private val scope = CoroutineScope(SupervisorJob() + dispatcherProvider.main)
 
+    /** Where the app opens: Home, except white-label builds, which keep their own landing on Tasks (spec #141). */
+    val landingRoute: Root.Routing = if (applicationConfig.isBranded) Root.Routing.Tasks() else Root.Routing.Home
+
     // selectedRoute must be initialized before menuItems, since buildMenuItems() reads it.
-    private var selectedRoute: Root.Routing = Root.Routing.Home
+    private var selectedRoute: Root.Routing = landingRoute
     private var username: String? = null
     private var isUpdateAvailable: Boolean = false
     private var activeTaskCount: Int = 0
@@ -77,8 +80,8 @@ class MainViewModel(
                 withContext(dispatcherProvider.main) {
                     if (result is SuspendableResult.Success) {
                         username = result.value?.name
-                        // Logging out tears down the router; the next login lands on Home again.
-                        if (result.value == null) selectedRoute = Root.Routing.Home
+                        // Logging out tears down the router; the next login lands on the landing route again.
+                        if (result.value == null) selectedRoute = landingRoute
                     }
                     menuItems.value = buildMenuItems()
                 }
@@ -164,13 +167,15 @@ class MainViewModel(
 
     private fun buildMenuItems(): ImmutableList<MenuItemUiModel> =
         buildList {
-            this +=
-                createMenuItem(
-                    route = Root.Routing.Home,
-                    resourcePath = IconSource.Vector(Icons.Filled.Home),
-                    titleResource = Res.string.home,
-                    section = MenuSection.AGENT,
-                )
+            if (!applicationConfig.isBranded) {
+                this +=
+                    createMenuItem(
+                        route = Root.Routing.Home,
+                        resourcePath = IconSource.Vector(Icons.Filled.Home),
+                        titleResource = Res.string.home,
+                        section = MenuSection.AGENT,
+                    )
+            }
             this +=
                 createMenuItem(
                     route = Root.Routing.Tasks(),
