@@ -1,0 +1,204 @@
+<!doctype html>
+<!--
+  PROTOTYPE — throwaway. Wayfinder ticket "What does the agent home look like?" (desktop-client#134).
+  Three structurally different agent homes, switchable via ?variant=A|B|C (or ← / →).
+  Colours mirror cereal-client theme/Colors.kt; sidebar mirrors MainMenuView.kt. Nothing here is wired.
+-->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Agent Home Prototype</title>
+<style>
+  :root {
+    --bg: #1C1C1C; --surface: #161616; --variant: #222222; --border: #2A2A2A; --border-strong: #3E3E3E;
+    --on: #E6E1E5; --on-var: #B4AFB6; --tert: #8A8A8A; --subtle: #6A6A6A;
+    --primary: #E54848; --primary-c: #3E1212; --success: #2ECC71; --warning: #F5B73A; --info: #4F8CFF;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--on); font: 14px/1.45 Inter, system-ui, sans-serif; }
+  .app { display: flex; height: 100vh; min-width: 1000px; }
+  /* sidebar */
+  nav { width: 232px; background: var(--surface); padding: 12px 0 8px; display: flex; flex-direction: column; flex-shrink: 0; }
+  .brand { display: flex; align-items: center; gap: 10px; padding: 4px 16px 14px; font-weight: 600; }
+  .logo { width: 30px; height: 30px; border-radius: 6px; background: var(--on); color: var(--primary); display: grid; place-items: center; font-weight: 800; }
+  .ver { margin-left: auto; background: var(--variant); color: var(--tert); font-size: 11px; padding: 1px 6px; border-radius: 4px; }
+  .sec { color: var(--tert); font-size: 11px; letter-spacing: .08em; padding: 16px 18px 4px 24px; text-transform: uppercase; }
+  .item { position: relative; margin: 2px 8px; padding: 10px 16px; border-radius: 6px; color: var(--on-var); display: flex; gap: 11px; align-items: center; font-weight: 500; cursor: default; }
+  .item.sel { background: rgba(229,72,72,.10); color: var(--on); font-weight: 600; }
+  .item.sel::before { content: ""; position: absolute; left: -8px; width: 3px; height: 24px; background: var(--primary); border-radius: 0 2px 2px 0; }
+  .item .ic { width: 16px; text-align: center; color: inherit; }
+  .item.sel .ic { color: var(--primary); }
+  .badge { margin-left: auto; background: var(--primary); color: #fff; font-size: 11px; border-radius: 9px; padding: 0 6px; }
+  .user { margin: auto 8px 0; padding: 10px 12px; border: 1px solid var(--border); border-radius: 8px; display: flex; gap: 10px; align-items: center; }
+  .avatar { width: 28px; height: 28px; border-radius: 50%; background: var(--variant); display: grid; place-items: center; font-size: 12px; }
+  main { flex: 1; overflow: auto; }
+  /* shared bits */
+  h1 { font-size: 22px; margin: 0 0 4px; letter-spacing: -.01em; }
+  .muted { color: var(--on-var); } .tert { color: var(--tert); }
+  .card { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; }
+  textarea, input { width: 100%; background: var(--bg); border: 1px solid var(--border-strong); color: var(--on); border-radius: 8px; padding: 10px 12px; font: inherit; resize: none; }
+  textarea:focus, input:focus { outline: 1px solid var(--primary); border-color: var(--primary); }
+  .btn { background: var(--primary); color: #fff; border: 0; border-radius: 8px; padding: 9px 16px; font: inherit; font-weight: 600; cursor: pointer; }
+  .btn.ghost { background: transparent; border: 1px solid var(--border-strong); color: var(--on); font-weight: 500; }
+  .chips { display: inline-flex; background: var(--bg); border: 1px solid var(--border-strong); border-radius: 8px; padding: 2px; }
+  .chips span { padding: 5px 12px; border-radius: 6px; color: var(--on-var); font-size: 13px; }
+  .chips span.on { background: var(--variant); color: var(--on); }
+  .row { display: flex; gap: 10px; align-items: center; }
+  .pill { font-size: 11px; padding: 1px 7px; border-radius: 9px; border: 1px solid var(--border-strong); color: var(--tert); }
+  .free { color: var(--success); border-color: rgba(46,204,113,.35); }
+  .dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; }
+  .run { display: flex; align-items: center; gap: 12px; padding: 10px 14px; border-top: 1px solid var(--border); }
+  .run:first-child { border-top: 0; }
+  .run .goal { flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .script { display: flex; gap: 10px; align-items: center; padding: 10px 12px; }
+  .sicon { width: 32px; height: 32px; border-radius: 8px; background: var(--variant); display: grid; place-items: center; font-weight: 700; color: var(--on-var); flex-shrink: 0; }
+  .link { color: var(--primary); font-weight: 600; font-size: 13px; }
+  .examples span { font-size: 12px; border: 1px dashed var(--border-strong); border-radius: 14px; padding: 4px 10px; color: var(--on-var); }
+  /* prototype chrome */
+  .switcher { position: fixed; bottom: 18px; left: 50%; transform: translateX(-50%); background: #fff; color: #111; border-radius: 999px; padding: 6px 8px; display: flex; gap: 10px; align-items: center; box-shadow: 0 6px 24px rgba(0,0,0,.5); font: 600 13px system-ui; z-index: 10; }
+  .switcher button { border: 0; background: #eee; border-radius: 50%; width: 28px; height: 28px; cursor: pointer; font-size: 14px; }
+  .note { position: fixed; top: 10px; right: 12px; background: #fff3; color: #fff; font: 12px system-ui; padding: 4px 10px; border-radius: 6px; max-width: 360px; z-index: 10; }
+</style>
+</head>
+<body>
+<div class="app">
+  <nav id="nav"></nav>
+  <main id="main"></main>
+</div>
+<div class="note" id="note"></div>
+<div class="switcher"><button id="prev">←</button><span id="label"></span><button id="next">→</button></div>
+
+<script>
+// Fixture data: what a returning user with the agent installed would have.
+const runs = [
+  { goal: 'Tell me when the Knipex Cobra 250 is back in stock', site: 'toolstation.nl', mode: 'Repeat · 5 min', status: 'Watching', color: 'var(--info)', cost: 'replayed, $0' },
+  { goal: 'Log in and read my latest invoice number and total', site: 'kpn.com', mode: 'Once', status: 'Done', color: 'var(--success)', cost: '14 steps · $0.21' },
+  { goal: 'Buy one Bahco claw hammer, ask me before paying', site: 'gamma.nl', mode: 'Once', status: 'Waiting for your OK', color: 'var(--warning)', cost: '22 steps · $0.38' },
+];
+const scripts = [
+  { n: 'Nike SNKRS Monitor', i: 'N', free: false }, { n: 'Zalando Restock', i: 'Z', free: false },
+  { n: 'Bol.com Price Drop', i: 'B', free: true }, { n: 'Funko Drops', i: 'F', free: false },
+];
+
+const sidebars = {
+  // A/B: agent first, ready-made scripts get their own named section; My Scripts promoted out of Marketplace.
+  split: [
+    ['Agent', [['✦', 'Home', true], ['⚡', 'Tasks', false, 3], ['🔔', 'Notifications', false, 2]]],
+    ['Ready-made scripts', [['▤', 'My Scripts'], ['🏬', 'Marketplace']]],
+    ['Resources', [['⛓', 'Proxies'], ['🗄', 'Datasets']]],
+    ['System', [['⚙', 'Settings']]],
+  ],
+  // C: today's sidebar with one new item on top; Tasks becomes where goal runs live.
+  minimal: [
+    ['Workspace', [['✦', 'Agent', true], ['⚡', 'Tasks', false, 3], ['🔔', 'Notifications', false, 2], ['🏬', 'Marketplace'], ['⛓', 'Proxies'], ['🗄', 'Datasets']]],
+    ['System', [['⚙', 'Settings']]],
+  ],
+};
+
+function nav(kind) {
+  return `<div class="brand"><div class="logo">C</div>Cereal<span class="ver">v1.16.0</span></div>` +
+    sidebars[kind].map(([sec, items]) => `<div class="sec">${sec}</div>` + items.map(([ic, t, sel, b]) =>
+      `<div class="item ${sel ? 'sel' : ''}"><span class="ic">${ic}</span>${t}${b ? `<span class="badge">${b}</span>` : ''}</div>`).join('')).join('') +
+    `<div class="user"><div class="avatar">RD</div><div><div style="font-weight:600">rob</div><div class="tert" style="font-size:12px">3 scripts running</div></div></div>`;
+}
+const runRow = r => `<div class="run"><span class="dot" style="background:${r.color}"></span><div class="goal">${r.goal}<div class="tert" style="font-size:12px">${r.site} · ${r.mode} · ${r.cost}</div></div><span class="pill" style="color:${r.color}">${r.status}</span></div>`;
+const scriptRow = s => `<div class="script"><div class="sicon">${s.i}</div><div style="flex:1">${s.n}</div>${s.free ? '<span class="pill free">Free</span>' : ''}<span class="link">Run</span></div>`;
+const composer = (big) => `
+  <textarea rows="${big ? 3 : 2}" placeholder="Describe a goal, e.g. “Tell me when these pliers are back in stock”"></textarea>
+  <div class="row" style="margin-top:10px">
+    <input style="flex:1" placeholder="Start URL — https://…">
+    <div class="chips"><span class="on">Once</span><span>Repeat</span></div>
+    <button class="btn">Start</button>
+  </div>
+  <div class="row tert" style="margin-top:8px;font-size:12px">Runs in your own Chrome · asks before it buys or sends anything · <span class="link" style="font-size:12px">More options</span></div>`;
+
+const variants = {
+  A: {
+    name: 'Composer hero, everything below',
+    note: 'Home = centred composer + recent goal runs + installed scripts strip. Sidebar: Agent / Ready-made scripts / Resources / System.',
+    nav: 'split',
+    html: () => `<div style="max-width:760px;margin:0 auto;padding:56px 24px 90px">
+      <h1 style="text-align:center;font-size:28px">What should the agent do?</h1>
+      <p class="muted" style="text-align:center;margin:0 0 22px">A free AI browser agent that runs on your machine, with your model and your key.</p>
+      <div class="card" style="padding:16px">${composer(true)}</div>
+      <div class="row examples" style="margin-top:12px;flex-wrap:wrap;justify-content:center">
+        <span>Watch a product for restock</span><span>Read a value after logging in</span><span>Buy one item, ask me first</span></div>
+      <div class="row" style="margin:34px 0 8px"><b>Recent goal runs</b><span class="link" style="margin-left:auto">All in Tasks →</span></div>
+      <div class="card">${runs.map(runRow).join('')}</div>
+      <div class="row" style="margin:28px 0 8px"><b>Ready-made scripts</b><span class="link" style="margin-left:auto">Browse marketplace →</span></div>
+      <div class="card" style="display:grid;grid-template-columns:1fr 1fr">${scripts.map(scriptRow).join('')}</div>
+    </div>`,
+  },
+  B: {
+    name: 'Two pillars, side by side',
+    note: 'Home = two equal columns: agent (composer only) vs ready-made scripts. No recent runs on home; goal runs live in Tasks.',
+    nav: 'split',
+    html: () => `<div style="padding:32px 32px 90px">
+      <h1>Home</h1><p class="muted" style="margin:0 0 22px">Two ways to automate a site.</p>
+      <div style="display:grid;grid-template-columns:1.25fr 1fr;gap:20px;align-items:start">
+        <div class="card" style="padding:20px">
+          <div class="row" style="margin-bottom:4px"><b style="font-size:16px">AI browser agent</b><span class="pill free">Free</span></div>
+          <p class="muted" style="margin:0 0 14px">Describe what you want in plain language. No script needed.</p>
+          ${composer(true)}
+        </div>
+        <div class="card">
+          <div style="padding:20px 20px 6px"><div class="row"><b style="font-size:16px">Ready-made scripts</b><span class="tert" style="margin-left:auto;font-size:12px">4 installed</span></div>
+          <p class="muted" style="margin:4px 0 6px">Built for one site, tuned and maintained by their authors.</p></div>
+          ${scripts.map(scriptRow).join('')}
+          <div style="padding:12px 20px 18px"><button class="btn ghost" style="width:100%">Browse marketplace</button></div>
+        </div>
+      </div>
+    </div>`,
+  },
+  C: {
+    name: 'Prompt bar over a run feed',
+    note: 'Agent = feed of goal runs with the composer pinned at the bottom (chat-like). Ready-made scripts stay where they are today. Sidebar: one new "Agent" item on top.',
+    nav: 'minimal',
+    html: () => `<div style="display:flex;flex-direction:column;height:100%">
+      <div style="padding:24px 32px 12px;border-bottom:1px solid var(--border)" class="row">
+        <div><h1>Agent</h1><div class="muted">Your goal runs. Each one is also a task in Tasks.</div></div>
+        <button class="btn ghost" style="margin-left:auto">Ready-made scripts ▸</button>
+      </div>
+      <div style="flex:1;overflow:auto;padding:20px 32px">
+        <div style="max-width:820px;margin:0 auto;display:flex;flex-direction:column;gap:12px">
+          ${runs.map(r => `<div class="card" style="padding:14px 16px">
+            <div class="row"><span class="dot" style="background:${r.color}"></span><b style="flex:1">${r.goal}</b><span class="pill" style="color:${r.color}">${r.status}</span></div>
+            <div class="tert" style="font-size:12px;margin:6px 0 0 18px">${r.site} · ${r.mode} · ${r.cost}</div>
+            <div class="row" style="margin:10px 0 0 18px;gap:16px"><span class="link">Open log</span><span class="link">Run again</span><span class="link" style="color:var(--tert)">Edit</span></div>
+          </div>`).join('')}
+        </div>
+      </div>
+      <div style="border-top:1px solid var(--border);background:var(--surface);padding:16px 32px 74px">
+        <div style="max-width:820px;margin:0 auto">${composer(false)}</div>
+      </div>
+    </div>`,
+  },
+};
+
+const keys = Object.keys(variants);
+let current = new URLSearchParams(location.search).get('variant');
+if (!variants[current]) current = 'A';
+function render() {
+  const x = variants[current];
+  document.getElementById('nav').innerHTML = nav(x.nav);
+  document.getElementById('main').innerHTML = x.html();
+  document.getElementById('label').textContent = `${current} (${x.name})`;
+  document.getElementById('note').textContent = x.note;
+}
+function go(step) {
+  current = keys[(keys.indexOf(current) + step + keys.length) % keys.length];
+  try { history.replaceState(null, '', '?variant=' + current); } catch (e) { /* file/data URLs */ }
+  render();
+}
+document.getElementById('prev').onclick = () => go(-1);
+document.getElementById('next').onclick = () => go(1);
+addEventListener('keydown', e => {
+  if (e.target.closest('input, textarea, [contenteditable]')) return;
+  if (e.key === 'ArrowLeft') go(-1);
+  if (e.key === 'ArrowRight') go(1);
+});
+render();
+</script>
+</body>
+</html>
