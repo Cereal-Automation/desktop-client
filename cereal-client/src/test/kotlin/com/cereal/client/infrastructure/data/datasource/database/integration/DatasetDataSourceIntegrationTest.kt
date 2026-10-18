@@ -416,7 +416,7 @@ class DatasetDataSourceIntegrationTest {
                         assertEquals(0, counts.receive())
                         // Only the dataset/dataset_item tables are written here, never dataset_group.
                         datasetDataSource.createOrUpdateDataset(testUser, createTestDatasetItem(), datasetGroup.id)
-                        while (counts.receive() != 1) Unit
+                        while (counts.receive() != 1) continue
                     }
                 }
                 collector.cancel()
