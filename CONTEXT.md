@@ -2,6 +2,20 @@
 
 Domain language for the Cereal desktop client. Records project-specific terms so code, tests, and docs name the same concept the same way. Architecture vocabulary (module, seam, depth) lives in the architecture-review skill, not here.
 
+## Agent
+
+**AI browser agent**:
+The marketplace script `com.cereal.aibrowseragent` that works toward a goal typed in plain words, in the user's own browser, with the user's own model and key. Not a product name: lowercase in copy, and the app stays **Cereal**. Never bundled; installed through the normal marketplace sync.
+_Avoid_: Cereal Agent, the AI, assistant, bot
+
+**Ready-made script**:
+Any marketplace script other than the AI browser agent. A copy term only; code names (`ScriptPackage` etc.) don't change.
+_Avoid_: classic script, legacy script, bot
+
+**Goal run**:
+One Start from the agent home's goal composer, which creates one ordinary task in Tasks (there is no separate list). Within a goal run, the agent script's per-attempt unit is a **check** in client copy. The agent repo's `CONTEXT.md` uses "goal run" for one attempt; the client does not adopt that meaning.
+_Avoid_: agent task, job, session, attempt (for the whole run)
+
 ## White-label
 
 **White-label build**:

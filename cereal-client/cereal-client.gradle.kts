@@ -233,7 +233,7 @@ compose.desktop {
             // Brand-driven (see top-of-file `brand()`); defaults to stock Cereal when unbranded.
             packageName = brand("brand.packageName", "Cereal")
             packageVersion = "${project.properties["version"]}"
-            description = brand("brand.name", "Cereal") + " - Desktop Automation Client"
+            description = brand("brand.name", "Cereal") + " - AI browser automation"
             vendor = "Cereal Automation"
             copyright = "Cereal Automation"
 

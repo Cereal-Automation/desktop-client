@@ -122,9 +122,9 @@
     <string name="general">General</string>
     <string name="get_in_touch">Get in touch!</string>
     <string name="github">Github</string>
-    <string name="github_desc">Opens the Cereal's Github repository.</string>
+    <string name="github_desc">Opens Cereal's GitHub repository.</string>
     <string name="guest_join_hint">Joining is free and takes less than 60 seconds.</string>
-    <string name="guest_profile_description">You are currently exploring Cereal as a guest. Create an account to unlock the full potential of our automation platform.</string>
+    <string name="guest_profile_description">You're exploring Cereal as a guest. The AI browser agent and free scripts work without an account. Create one to keep your scripts after a reinstall and to get premium scripts.</string>
     <string name="guest_profile_title">Guest Profile</string>
     <string name="idle">Idle</string>
     <string name="ignore">Ignore</string>
@@ -149,7 +149,7 @@
     <string name="installer_timer">Installing update in %1$d seconds...</string>
     <string name="installer_manual_title">Your download is here</string>
     <string name="installer_manual_message">We could not start the installer automatically. We opened the folder that contains your download:\n\n%1$s\n\nOpen it from your file manager to finish installing.</string>
-    <string name="introduction_slogan">Monitoring, notifying and auto-checkout in one platform.</string>
+    <string name="introduction_slogan">A free AI browser agent that runs on your machine, with your model and your key.\nOr install ready-made scripts from the marketplace.</string>
     <string name="introduction_title">Welcome to Cereal</string>
     <string name="loading_script_configuration_files">Loading script configuration files</string>
     <string name="locked_features">Locked Features</string>
@@ -219,7 +219,7 @@
     <string name="notification_center_summary">%1$d unseen · %2$d total</string>
     <string name="notification_center_total">%1$d total</string>
     <string name="notification_center_empty_title">No notifications yet</string>
-    <string name="notification_center_empty_message">When your running tasks find items, hit a checkout, or need attention, those alerts collect here — newest first.</string>
+    <string name="notification_center_empty_message">When a task reports something or needs your attention, it shows up here.</string>
     <string name="notification_center_delivery_label">Delivery</string>
     <string name="notification_center_delivered">Delivered</string>
     <string name="notification_center_failed">Failed</string>
@@ -541,8 +541,8 @@
     <string name="my_scripts_empty_title">No scripts installed yet</string>
     <string name="my_scripts_empty_message">Scripts you install from the marketplace show up here.</string>
     <string name="my_scripts_empty_action_browse">Browse marketplace</string>
-    <string name="tasks_empty_title">No script groups yet</string>
-    <string name="tasks_empty_message">Create a group to organize your scripts, or add a script to get started.</string>
+    <string name="tasks_empty_title">No tasks yet</string>
+    <string name="tasks_empty_message">Describe a goal on Home, or add a ready-made script.</string>
     <string name="tasks_empty_action_create_group">Create group</string>
     <string name="tasks_empty_action_add_script">Add script</string>
     <string name="tasks_no_script_selected_title">No script selected</string>
