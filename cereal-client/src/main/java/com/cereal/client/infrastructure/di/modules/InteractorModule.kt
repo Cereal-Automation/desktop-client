@@ -1,6 +1,8 @@
 package com.cereal.client.infrastructure.di.modules
 
 import com.cereal.client.application.app.VersionCheckService
+import com.cereal.client.application.interactor.agent.GetAiBrowserAgentListingInteractor
+import com.cereal.client.application.interactor.agent.InstallAiBrowserAgentInteractor
 import com.cereal.client.application.interactor.agent.StartGoalRunInteractor
 import com.cereal.client.application.interactor.app.CheckForUpdatesInteractor
 import com.cereal.client.application.interactor.app.DownloadLatestAppVersionInteractor
@@ -121,6 +123,8 @@ object InteractorModule {
             factory { GetScriptPackageInstancesByPackageNameInteractor(get()) }
             factory { StartScriptInteractor(get(), get(), get(), get(), get()) }
             factory { StartGoalRunInteractor(get(), get(), get()) }
+            factory { GetAiBrowserAgentListingInteractor(get()) }
+            factory { InstallAiBrowserAgentInteractor(get(), get()) }
             factory { GetScriptsInGroupInteractor(get(), get()) }
             factory { SyncScriptsOnScriptSelectionInteractor(get()) }
             factory { StartChildScriptInteractor(get(), get(), get()) }

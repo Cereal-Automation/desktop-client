@@ -65,7 +65,7 @@ class MainMenuViewTest {
                 section = null,
             ),
             MenuItemUiModel(
-                route = Root.Routing.ApplicationSettings,
+                route = Root.Routing.ApplicationSettings(),
                 externalUrl = null,
                 resourcePath = IconSource.Vector(Icons.Filled.Settings),
                 titleResource = Res.string.settings,

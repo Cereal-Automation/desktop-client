@@ -26,6 +26,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
@@ -132,7 +133,9 @@ fun ApplicationSettingsScreen(
             )
         },
     aiVm: AiSettingsViewModel = rememberAiSettingsViewModel(),
+    checkForUpdatesOnOpen: Boolean = false,
 ) {
+    LaunchedEffect(Unit) { if (checkForUpdatesOnOpen) vm.checkForUpdates() }
     Scaffold { paddingValues ->
         Box(
             modifier =

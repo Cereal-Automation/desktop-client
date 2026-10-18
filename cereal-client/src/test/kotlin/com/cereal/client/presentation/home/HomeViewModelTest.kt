@@ -1,18 +1,30 @@
 package com.cereal.client.presentation.home
 
 import com.cereal.client.application.CoroutinesDispatcherProvider
+import com.cereal.client.application.exception.CerealException
+import com.cereal.client.application.interactor.agent.GetAiBrowserAgentListingInteractor
+import com.cereal.client.application.interactor.agent.InstallAiBrowserAgentInteractor
+import com.cereal.client.application.interactor.marketplace.InstallMarketplaceScriptInteractor
 import com.cereal.client.application.interactor.notification.HasNotificationChannelsConfiguredInteractor
 import com.cereal.client.application.interactor.script.GetScriptsInteractor
+import com.cereal.client.application.interactor.script.GetSdkVersionInteractor
+import com.cereal.client.domain.model.marketplace.MarketplaceScript
 import com.cereal.client.domain.model.script.ScriptPackage
 import com.cereal.client.domain.model.script.configuration.ConfigValue
 import com.cereal.client.domain.model.task.ScriptPackageGroup
+import com.cereal.client.infrastructure.data.repository.inmemory.InMemoryApplicationRepository
 import com.cereal.client.infrastructure.data.repository.inmemory.InMemoryNotificationSettingsRepository
 import com.cereal.client.infrastructure.data.repository.inmemory.InMemoryScriptRepository
+import com.cereal.client.infrastructure.provider.inmemory.InMemoryCheckoutProvider
+import com.cereal.client.infrastructure.provider.inmemory.InMemoryMarketplaceProvider
 import com.cereal.client.presentation.error.ErrorResolver
 import fixtures.FakeRunMode
+import fixtures.FakeScriptInstallProvider
 import fixtures.GoalRunWorld
 import fixtures.agentConfigurationItems
+import fixtures.anAgentListing
 import fixtures.anAgentPackage
+import fixtures.anAgentRequiringNewerClient
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.StandardTestDispatcher
@@ -31,15 +43,28 @@ class HomeViewModelTest {
     private val world = GoalRunWorld()
     private val scripts = InMemoryScriptRepository()
     private val notificationSettings = InMemoryNotificationSettingsRepository()
+    private val installProvider = FakeScriptInstallProvider(scripts)
 
-    private suspend fun TestScope.homeWith(agent: ScriptPackage = anAgentPackage()): HomeViewModel {
-        scripts.seed(listOf(agent))
+    private suspend fun TestScope.homeWith(
+        agent: ScriptPackage? = anAgentPackage(),
+        listing: MarketplaceScript = anAgentListing(),
+    ): HomeViewModel {
+        scripts.seed(listOfNotNull(agent))
         val dispatcher = StandardTestDispatcher(testScheduler)
+        val marketplace = InMemoryMarketplaceProvider(catalog = listOf(listing))
+        val getListing = GetAiBrowserAgentListingInteractor(marketplace)
         val vm =
             HomeViewModel(
                 scope = CoroutineScope(dispatcher),
                 dispatcherProvider = CoroutinesDispatcherProvider(dispatcher, dispatcher, dispatcher),
                 getScriptsInteractor = GetScriptsInteractor(scripts),
+                getSdkVersionInteractor = GetSdkVersionInteractor(InMemoryApplicationRepository()),
+                getAiBrowserAgentListingInteractor = getListing,
+                installAiBrowserAgentInteractor =
+                    InstallAiBrowserAgentInteractor(
+                        getListing,
+                        InstallMarketplaceScriptInteractor(installProvider, marketplace, InMemoryCheckoutProvider()),
+                    ),
                 hasNotificationChannelsConfiguredInteractor = HasNotificationChannelsConfiguredInteractor(notificationSettings),
                 getOrCreateDefaultTaskGroupInteractor = world.getOrCreateDefaultTaskGroupInteractor,
                 startGoalRunInteractor = world.startGoalRunInteractor,
@@ -48,6 +73,67 @@ class HomeViewModelTest {
         advanceUntilIdle()
         return vm
     }
+
+    @Test
+    fun `with the agent not installed the slot is the install card`() =
+        runTest {
+            val vm = homeWith(agent = null)
+
+            assertEquals(HomeComposerSlot.NotInstalled, vm.slot.value)
+        }
+
+    @Test
+    fun `with an agent that needs a newer client the slot is the update card`() =
+        runTest {
+            val vm = homeWith(agent = anAgentRequiringNewerClient())
+
+            assertEquals(HomeComposerSlot.UpdateRequired, vm.slot.value)
+        }
+
+    @Test
+    fun `install shows the composer once the agent lands`() =
+        runTest {
+            val vm = homeWith(agent = null)
+
+            vm.onInstall()
+            advanceUntilIdle()
+
+            assertEquals(HomeComposerSlot.Composer, vm.slot.value)
+            assertEquals(AgentInstallState.Idle, vm.installState.value)
+        }
+
+    @Test
+    fun `a failed install keeps the card and shows the error`() =
+        runTest {
+            installProvider.failWith = CerealException("Download failed")
+            val vm = homeWith(agent = null)
+
+            vm.onInstall()
+            advanceUntilIdle()
+
+            assertEquals(HomeComposerSlot.NotInstalled, vm.slot.value)
+            assertEquals(AgentInstallState.Failed("Download failed"), vm.installState.value)
+        }
+
+    @Test
+    fun `a background sync installing the agent shows the composer`() =
+        runTest {
+            val vm = homeWith(agent = null)
+
+            scripts.seed(listOf(anAgentPackage()))
+            advanceUntilIdle()
+
+            assertEquals(HomeComposerSlot.Composer, vm.slot.value)
+        }
+
+    @Test
+    fun `a listing in maintenance mode flags the composer`() =
+        runTest {
+            val vm = homeWith(listing = anAgentListing(maintenanceMode = true))
+
+            assertEquals(HomeComposerSlot.Composer, vm.slot.value)
+            assertTrue(vm.isUnderMaintenance.value)
+        }
 
     private fun HomeViewModel.fillIn() {
         onGoalChange("Tell me when the pliers are back in stock")

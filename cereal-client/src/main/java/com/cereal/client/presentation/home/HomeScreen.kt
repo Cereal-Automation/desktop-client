@@ -47,13 +47,20 @@ import com.cereal_automation.cereal_client.generated.resources.home_example_read
 import com.cereal_automation.cereal_client.generated.resources.home_example_restock
 import com.cereal_automation.cereal_client.generated.resources.home_example_restock_goal
 import com.cereal_automation.cereal_client.generated.resources.home_goal_placeholder
+import com.cereal_automation.cereal_client.generated.resources.home_install
+import com.cereal_automation.cereal_client.generated.resources.home_installing
+import com.cereal_automation.cereal_client.generated.resources.home_maintenance_banner
 import com.cereal_automation.cereal_client.generated.resources.home_more_options
+import com.cereal_automation.cereal_client.generated.resources.home_not_installed_title
 import com.cereal_automation.cereal_client.generated.resources.home_pitch
+import com.cereal_automation.cereal_client.generated.resources.home_retry
 import com.cereal_automation.cereal_client.generated.resources.home_run_once
 import com.cereal_automation.cereal_client.generated.resources.home_run_repeat
 import com.cereal_automation.cereal_client.generated.resources.home_safety_line
 import com.cereal_automation.cereal_client.generated.resources.home_start
 import com.cereal_automation.cereal_client.generated.resources.home_start_url_placeholder
+import com.cereal_automation.cereal_client.generated.resources.home_update_cereal
+import com.cereal_automation.cereal_client.generated.resources.home_update_required_title
 import com.cereal_automation.cereal_client.generated.resources.notification_warning_continue
 import com.cereal_automation.cereal_client.generated.resources.notification_warning_message
 import com.cereal_automation.cereal_client.generated.resources.notification_warning_title
@@ -78,7 +85,10 @@ private val examples: List<Pair<StringResource, StringResource>> =
  * below the slot.
  */
 @Composable
-fun HomeScreen(onNavigateToMarketplace: () -> Unit = {}) {
+fun HomeScreen(
+    onNavigateToMarketplace: () -> Unit = {},
+    onOpenClientUpdate: () -> Unit = {},
+) {
     val scope = rememberCoroutineScope()
     val viewModel =
         remember {
@@ -111,11 +121,81 @@ fun HomeScreen(onNavigateToMarketplace: () -> Unit = {}) {
                     color = MaterialTheme.colorScheme.onBackground,
                 )
                 when (viewModel.slot.value) {
-                    HomeComposerSlot.Composer -> GoalComposer(viewModel)
+                    HomeComposerSlot.NotInstalled -> {
+                        InstallCard(viewModel.installState.value, viewModel::onInstall)
+                    }
+
+                    HomeComposerSlot.UpdateRequired -> {
+                        UpdateRequiredCard(onOpenClientUpdate)
+                    }
+
+                    HomeComposerSlot.Composer -> {
+                        if (viewModel.isUnderMaintenance.value) MaintenanceBanner()
+                        GoalComposer(viewModel)
+                    }
                 }
             }
         }
     }
+}
+
+@Composable
+private fun SlotCard(
+    title: String,
+    content: @Composable () -> Unit,
+) {
+    CerealCard(modifier = Modifier.fillMaxWidth()) {
+        Column(
+            modifier = Modifier.padding(CerealTheme.spacing.xl),
+            verticalArrangement = Arrangement.spacedBy(CerealTheme.spacing.md),
+        ) {
+            CerealText(
+                text = title,
+                style = MaterialTheme.typography.titleSmall,
+                color = MaterialTheme.colorScheme.onSurface,
+            )
+            content()
+        }
+    }
+}
+
+@Composable
+private fun InstallCard(
+    state: AgentInstallState,
+    onInstall: () -> Unit,
+) {
+    SlotCard(stringResource(Res.string.home_not_installed_title)) {
+        if (state is AgentInstallState.Failed) {
+            CerealText(text = state.message, color = MaterialTheme.colorScheme.error)
+        }
+        CerealButton(
+            onClick = onInstall,
+            enabled = state != AgentInstallState.Installing,
+            text =
+                stringResource(
+                    when (state) {
+                        AgentInstallState.Idle -> Res.string.home_install
+                        AgentInstallState.Installing -> Res.string.home_installing
+                        is AgentInstallState.Failed -> Res.string.home_retry
+                    },
+                ),
+        )
+    }
+}
+
+@Composable
+private fun UpdateRequiredCard(onOpenClientUpdate: () -> Unit) {
+    SlotCard(stringResource(Res.string.home_update_required_title)) {
+        CerealButton(onClick = onOpenClientUpdate, text = stringResource(Res.string.home_update_cereal))
+    }
+}
+
+@Composable
+private fun MaintenanceBanner() {
+    CerealText(
+        text = "⚠ " + stringResource(Res.string.home_maintenance_banner),
+        color = CerealTheme.colorScheme.warning,
+    )
 }
 
 @Composable

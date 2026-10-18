@@ -237,7 +237,7 @@ class MainViewModel(
             )
             add(
                 createMenuItem(
-                    route = Root.Routing.ApplicationSettings,
+                    route = Root.Routing.ApplicationSettings(),
                     resourcePath = IconSource.Vector(Icons.Filled.Settings),
                     titleResource = Res.string.settings,
                     section = MenuSection.SYSTEM,

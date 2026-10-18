@@ -4,9 +4,12 @@ import androidx.compose.runtime.State
 import androidx.compose.runtime.mutableStateOf
 import com.cereal.client.application.CoroutinesDispatcherProvider
 import com.cereal.client.application.Interactor
+import com.cereal.client.application.interactor.agent.GetAiBrowserAgentListingInteractor
+import com.cereal.client.application.interactor.agent.InstallAiBrowserAgentInteractor
 import com.cereal.client.application.interactor.agent.StartGoalRunInteractor
 import com.cereal.client.application.interactor.notification.HasNotificationChannelsConfiguredInteractor
 import com.cereal.client.application.interactor.script.GetScriptsInteractor
+import com.cereal.client.application.interactor.script.GetSdkVersionInteractor
 import com.cereal.client.application.interactor.task.GetOrCreateDefaultTaskGroupInteractor
 import com.cereal.client.domain.model.agent.AI_BROWSER_AGENT_PACKAGE
 import com.cereal.client.domain.model.agent.GoalRunInput
@@ -15,6 +18,7 @@ import com.cereal.client.domain.model.script.ScriptPackage
 import com.cereal.client.domain.model.script.ScriptPackageInstance
 import com.cereal.client.domain.model.script.configuration.ConfigValue
 import com.cereal.client.domain.model.script.configuration.itemForKey
+import com.cereal.client.domain.model.script.isClientUpdateRequired
 import com.cereal.client.domain.model.task.ScriptPackageGroup
 import com.cereal.client.presentation.error.ErrorResolver
 import com.cereal.client.presentation.error.handleFailureOrElse
@@ -25,13 +29,39 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import net.swiftzer.semver.SemVer
 import java.util.UUID
 import kotlin.time.Clock
 import kotlin.time.ExperimentalTime
 
-/** What fills the composer slot on Home. Later states (not installed, update required, no AI provider) slot in here. */
+/** What fills the composer slot on Home: the first state in [homeComposerSlot]'s order that matches. */
 sealed interface HomeComposerSlot {
+    data object NotInstalled : HomeComposerSlot
+
+    data object UpdateRequired : HomeComposerSlot
+
     data object Composer : HomeComposerSlot
+}
+
+/** Ordered checks; the first match wins. */
+fun homeComposerSlot(
+    agent: ScriptPackage?,
+    sdkVersion: SemVer,
+): HomeComposerSlot =
+    when {
+        agent == null -> HomeComposerSlot.NotInstalled
+        agent.isClientUpdateRequired(sdkVersion) -> HomeComposerSlot.UpdateRequired
+        else -> HomeComposerSlot.Composer
+    }
+
+sealed interface AgentInstallState {
+    data object Idle : AgentInstallState
+
+    data object Installing : AgentInstallState
+
+    data class Failed(
+        val message: String,
+    ) : AgentInstallState
 }
 
 sealed interface HomeDialog {
@@ -44,10 +74,15 @@ sealed interface HomeDialog {
     ) : HomeDialog
 }
 
+// Constructor parameters are injected dependencies (interactors and the error resolver).
+@Suppress("LongParameterList")
 class HomeViewModel(
     private val scope: CoroutineScope,
     private val dispatcherProvider: CoroutinesDispatcherProvider,
     getScriptsInteractor: GetScriptsInteractor,
+    getSdkVersionInteractor: GetSdkVersionInteractor,
+    getAiBrowserAgentListingInteractor: GetAiBrowserAgentListingInteractor,
+    private val installAiBrowserAgentInteractor: InstallAiBrowserAgentInteractor,
     private val hasNotificationChannelsConfiguredInteractor: HasNotificationChannelsConfiguredInteractor,
     private val getOrCreateDefaultTaskGroupInteractor: GetOrCreateDefaultTaskGroupInteractor,
     private val startGoalRunInteractor: StartGoalRunInteractor,
@@ -55,6 +90,11 @@ class HomeViewModel(
 ) {
     private val _slot = mutableStateOf<HomeComposerSlot>(HomeComposerSlot.Composer)
     val slot: State<HomeComposerSlot> = _slot
+
+    val installState = mutableStateOf<AgentInstallState>(AgentInstallState.Idle)
+
+    /** The agent's marketplace listing is in maintenance mode: a non-blocking banner over the composer. */
+    val isUnderMaintenance = mutableStateOf(false)
 
     val goal = mutableStateOf("")
     val startUrl = mutableStateOf("")
@@ -71,12 +111,39 @@ class HomeViewModel(
 
     init {
         scope.launch(dispatcherProvider.io) {
+            var sdkVersion: SemVer? = null
+            getSdkVersionInteractor(Interactor.None()) { result -> sdkVersion = (result as? SuspendableResult.Success)?.value }
+            val clientSdk = sdkVersion ?: return@launch
             getScriptsInteractor(Interactor.None()).collectLatest { result ->
                 withContext(dispatcherProvider.main) {
                     if (result is SuspendableResult.Success) {
                         val installed = result.value.firstOrNull { it.manifest.packageName == AI_BROWSER_AGENT_PACKAGE }
                         if (agent == null && installed != null) applyDefaults(installed)
                         agent = installed
+                        _slot.value = homeComposerSlot(installed, clientSdk)
+                        if (installed != null) installState.value = AgentInstallState.Idle
+                    }
+                }
+            }
+        }
+        scope.launch(dispatcherProvider.io) {
+            // A failed lookup just means no banner; Install surfaces lookup errors itself.
+            getAiBrowserAgentListingInteractor(Interactor.None()) { result ->
+                if (result is SuspendableResult.Success) {
+                    withContext(dispatcherProvider.main) { isUnderMaintenance.value = result.value.maintenanceMode }
+                }
+            }
+        }
+    }
+
+    /** Runs the normal marketplace install; the composer appears once the installed agent shows up. */
+    fun onInstall() {
+        installState.value = AgentInstallState.Installing
+        scope.launch(dispatcherProvider.io) {
+            installAiBrowserAgentInteractor(Interactor.None()) { result ->
+                withContext(dispatcherProvider.main) {
+                    if (result is SuspendableResult.Failure) {
+                        installState.value = AgentInstallState.Failed(result.error.localizedMessage ?: INSTALL_FAILED_MESSAGE)
                     }
                 }
             }
@@ -196,5 +263,6 @@ class HomeViewModel(
         const val SECONDS_PER_MINUTE = 60
         const val DEFAULT_CHECK_EVERY_MINUTES = 5
         const val REQUIRED_MESSAGE = "This field is required."
+        const val INSTALL_FAILED_MESSAGE = "The install failed."
     }
 }

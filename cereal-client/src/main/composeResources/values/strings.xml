@@ -601,4 +601,11 @@
     <string name="home_example_read_value_goal">Log in and tell me the balance shown on my account page</string>
     <string name="home_example_buy">Buy one item, ask me first</string>
     <string name="home_example_buy_goal">Buy one of this item, and ask me before you pay</string>
+    <string name="home_not_installed_title">The AI browser agent isn't installed</string>
+    <string name="home_install">Install</string>
+    <string name="home_installing">Installing…</string>
+    <string name="home_retry">Retry</string>
+    <string name="home_update_required_title">Update Cereal to use the AI browser agent</string>
+    <string name="home_update_cereal">Update Cereal</string>
+    <string name="home_maintenance_banner">The AI browser agent is under maintenance. Runs may not work right now.</string>
 </resources>

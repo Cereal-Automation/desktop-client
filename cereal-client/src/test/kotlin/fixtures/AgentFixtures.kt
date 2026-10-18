@@ -1,11 +1,15 @@
 package fixtures
 
 import com.cereal.client.domain.model.agent.AI_BROWSER_AGENT_PACKAGE
+import com.cereal.client.domain.model.marketplace.MarketplaceScript
+import com.cereal.client.domain.model.script.Release
 import com.cereal.client.domain.model.script.ScriptPackage
 import com.cereal.client.domain.model.script.configuration.ConfigItemType
 import com.cereal.client.domain.model.script.configuration.ConfigValue
 import com.cereal.client.domain.model.script.configuration.ScriptConfigurationDefinition
 import com.cereal.client.domain.model.script.configuration.ScriptConfigurationItemDefinition
+import com.cereal.client.domain.provider.ScriptInstallProvider
+import com.cereal.client.infrastructure.data.repository.inmemory.InMemoryScriptRepository
 import com.cereal.sdk.ScriptConfiguration
 import com.cereal.sdk.statemodifier.ScriptConfig
 import com.cereal.sdk.statemodifier.ScriptConfigValue
@@ -67,4 +71,46 @@ fun anAgentPackage(items: List<ScriptConfigurationItemDefinition> = agentConfigu
                 configuration = ScriptConfigurationDefinition(ScriptConfiguration::class, items),
             ),
     )
+}
+
+/** An installed agent that declares an SDK newer than the client's (the in-memory client SDK is 1.0.0). */
+fun anAgentRequiringNewerClient(): ScriptPackage {
+    val agent = anAgentPackage()
+    return agent.copy(manifest = agent.manifest.copy(sdkVersion = "9.0.0"))
+}
+
+/** The agent's marketplace listing, installable. */
+fun anAgentListing(maintenanceMode: Boolean = false) =
+    MarketplaceScript(
+        id = "agent",
+        publicIdentifier = AI_BROWSER_AGENT_PACKAGE,
+        title = "AI Browser Agent",
+        isFree = true,
+        maintenanceMode = maintenanceMode,
+        latestRelease = Release(versionName = "1.0.0", versionCode = 1, releaseNotes = null),
+    )
+
+/**
+ * [ScriptInstallProvider] whose install lands in [scripts] (like a real install landing on disk), or
+ * throws [failWith] when set.
+ */
+class FakeScriptInstallProvider(
+    private val scripts: InMemoryScriptRepository,
+    private val installs: ScriptPackage = anAgentPackage(),
+) : ScriptInstallProvider {
+    var failWith: Exception? = null
+
+    override suspend fun updateScript(
+        scriptPackage: ScriptPackage,
+        release: Release,
+    ): ScriptPackage = scriptPackage
+
+    override suspend fun installScript(
+        packageName: String,
+        release: Release,
+    ): ScriptPackage {
+        failWith?.let { throw it }
+        scripts.seed(listOf(installs))
+        return installs
+    }
 }

@@ -38,7 +38,10 @@ interface Root {
 
         data object MyScripts : Routing()
 
-        data object ApplicationSettings : Routing()
+        /** [checkForUpdates] opens Settings straight into the client update flow. */
+        data class ApplicationSettings(
+            val checkForUpdates: Boolean = false,
+        ) : Routing()
     }
 
     companion object {
@@ -62,6 +65,10 @@ interface Root {
                                     onNavigateToMarketplace = {
                                         backStack.newRoot(Routing.Marketplace)
                                         onNavigateTo?.invoke(Routing.Marketplace)
+                                    },
+                                    onOpenClientUpdate = {
+                                        backStack.newRoot(Routing.ApplicationSettings(checkForUpdates = true))
+                                        onNavigateTo?.invoke(Routing.ApplicationSettings(checkForUpdates = true))
                                     },
                                 )
                             }
@@ -117,7 +124,9 @@ interface Root {
                             }
 
                             is Routing.ApplicationSettings -> {
-                                ApplicationSettingsScreen()
+                                ApplicationSettingsScreen(
+                                    checkForUpdatesOnOpen = (backStack.last() as Routing.ApplicationSettings).checkForUpdates,
+                                )
                             }
                         }
                     }
