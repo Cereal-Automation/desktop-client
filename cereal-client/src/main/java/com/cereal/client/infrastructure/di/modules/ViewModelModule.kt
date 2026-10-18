@@ -12,6 +12,7 @@ import com.cereal.client.presentation.bootstrap.BootstrapViewModel
 import com.cereal.client.presentation.brand.BrandPaywallViewModel
 import com.cereal.client.presentation.customdataset.CustomDatasetViewModel
 import com.cereal.client.presentation.error.ErrorResolver
+import com.cereal.client.presentation.home.HomeActivityViewModel
 import com.cereal.client.presentation.home.HomeViewModel
 import com.cereal.client.presentation.main.MainViewModel
 import com.cereal.client.presentation.marketplace.MarketplaceViewModel
@@ -60,6 +61,7 @@ object ViewModelModule {
                     errorResolver = get(),
                 )
             }
+            factory { (scope: CoroutineScope) -> HomeActivityViewModel(scope, get(), get(), get()) }
             factory { (scope: CoroutineScope) ->
                 MyScriptsViewModel(
                     scope = scope,

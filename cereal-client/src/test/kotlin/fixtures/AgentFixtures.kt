@@ -8,6 +8,8 @@ import com.cereal.client.domain.model.script.configuration.ConfigItemType
 import com.cereal.client.domain.model.script.configuration.ConfigValue
 import com.cereal.client.domain.model.script.configuration.ScriptConfigurationDefinition
 import com.cereal.client.domain.model.script.configuration.ScriptConfigurationItemDefinition
+import com.cereal.client.domain.model.task.JobTask
+import com.cereal.client.domain.model.task.TaskStatus
 import com.cereal.client.domain.provider.ScriptInstallProvider
 import com.cereal.client.infrastructure.data.repository.inmemory.InMemoryScriptRepository
 import com.cereal.sdk.ScriptConfiguration
@@ -16,6 +18,8 @@ import com.cereal.sdk.statemodifier.ScriptConfigValue
 import com.cereal.sdk.statemodifier.StateModifier
 import com.cereal.sdk.statemodifier.Visibility
 import kotlin.reflect.KClass
+import kotlin.time.ExperimentalTime
+import kotlin.time.Instant
 
 /** Mirrors the agent script's own `RunMode`, which lives in the script jar the client can't reference. */
 enum class FakeRunMode { Once, Repeat }
@@ -113,4 +117,32 @@ class FakeScriptInstallProvider(
         scripts.seed(listOf(installs))
         return installs
     }
+}
+
+/** A task of the agent (a goal run) whose instance carries the composer's values; the last status message is current. */
+@OptIn(ExperimentalTime::class)
+fun aGoalRun(
+    id: String,
+    goal: String,
+    startUrl: String = "https://example.com",
+    repeat: Boolean = false,
+    createdAtSeconds: Long = 0,
+    statusMessages: List<String> = listOf("Starting Chrome"),
+): JobTask {
+    val createdAt = Instant.fromEpochSeconds(createdAtSeconds)
+    val packageInstance =
+        aScriptPackageInstance("pkg-$id", AI_BROWSER_AGENT_PACKAGE).copy(
+            definition = anAgentPackage(),
+            createdAt = createdAt,
+            mainConfiguration =
+                mapOf(
+                    "goal" to ConfigValue.StringValue(goal),
+                    "startUrl" to ConfigValue.StringValue(startUrl),
+                    "runMode" to ConfigValue.EnumValue(if (repeat) FakeRunMode.Repeat else FakeRunMode.Once),
+                ),
+        )
+    return aTask(id, aScriptInstance(packageInstance), running = true).copy(
+        createdAt = createdAt,
+        statusHistory = statusMessages.map { TaskStatus.Running(message = it, timestamp = createdAt) },
+    )
 }

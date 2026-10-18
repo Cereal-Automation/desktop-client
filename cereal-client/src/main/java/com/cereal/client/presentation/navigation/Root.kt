@@ -70,6 +70,16 @@ interface Root {
                                         backStack.newRoot(Routing.ApplicationSettings(checkForUpdates = true))
                                         onNavigateTo?.invoke(Routing.ApplicationSettings(checkForUpdates = true))
                                     },
+                                    onOpenTasks = { taskId ->
+                                        val route = Routing.Tasks(focusTaskId = taskId)
+                                        backStack.newRoot(route)
+                                        onNavigateTo?.invoke(route)
+                                    },
+                                    onRunScript = { packageName ->
+                                        val route = Routing.Tasks(openScriptSelectionForPackage = packageName)
+                                        backStack.newRoot(route)
+                                        onNavigateTo?.invoke(route)
+                                    },
                                 )
                             }
 

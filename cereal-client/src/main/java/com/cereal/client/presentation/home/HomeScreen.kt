@@ -88,6 +88,8 @@ private val examples: List<Pair<StringResource, StringResource>> =
 fun HomeScreen(
     onNavigateToMarketplace: () -> Unit = {},
     onOpenClientUpdate: () -> Unit = {},
+    onOpenTasks: (focusTaskId: String?) -> Unit = {},
+    onRunScript: (packageName: String) -> Unit = {},
 ) {
     val scope = rememberCoroutineScope()
     val viewModel =
@@ -134,6 +136,7 @@ fun HomeScreen(
                         GoalComposer(viewModel)
                     }
                 }
+                HomeActivitySections(onOpenTasks, onRunScript, onNavigateToMarketplace)
             }
         }
     }
