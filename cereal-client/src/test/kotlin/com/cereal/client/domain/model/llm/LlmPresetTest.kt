@@ -1,0 +1,56 @@
+package com.cereal.client.domain.model.llm
+
+import org.junit.jupiter.api.Assertions.assertEquals
+import org.junit.jupiter.api.Test
+import org.junit.jupiter.params.ParameterizedTest
+import org.junit.jupiter.params.provider.CsvSource
+import org.junit.jupiter.params.provider.EnumSource
+
+class LlmPresetTest {
+    @ParameterizedTest
+    @EnumSource(LlmPreset::class, names = ["GEMINI", "ANTHROPIC", "OPENAI", "OPENROUTER"])
+    fun `a keyed preset round-trips through the stored config`(preset: LlmPreset) {
+        val config = LlmProviderConfig.of(preset.provider, preset.baseUrl, "key-1", preset.model)
+
+        assertEquals(preset, LlmPreset.of(config))
+    }
+
+    @ParameterizedTest
+    @CsvSource(
+        "GEMINI, OPENAI_COMPATIBLE, https://generativelanguage.googleapis.com/v1beta/openai, gemini-2.5-flash",
+        "ANTHROPIC, ANTHROPIC, https://api.anthropic.com/v1, claude-opus-5-5",
+        "OPENAI, OPENAI_COMPATIBLE, https://api.openai.com/v1, gpt-5",
+        "OPENROUTER, OPENAI_COMPATIBLE, https://openrouter.ai/api/v1, anthropic/claude-opus-5-5",
+        "LOCAL, OPENAI_COMPATIBLE, http://localhost:11434/v1, ''",
+        "OTHER, OPENAI_COMPATIBLE, '', ''",
+    )
+    fun `each preset prefills its provider type, base URL and model`(
+        preset: LlmPreset,
+        provider: LlmProviderType,
+        baseUrl: String,
+        model: String,
+    ) {
+        assertEquals(provider, preset.provider)
+        assertEquals(baseUrl, preset.baseUrl)
+        assertEquals(model, preset.model)
+    }
+
+    @ParameterizedTest
+    @CsvSource("http://localhost:11434/v1", "http://localhost:1234/v1", "http://127.0.0.1:8080/v1")
+    fun `a local server round-trips to Local`(baseUrl: String) {
+        assertEquals(LlmPreset.LOCAL, LlmPreset.of(LlmProviderConfig.of(LlmProviderType.OPENAI_COMPATIBLE, baseUrl, "", "llama3")))
+    }
+
+    @ParameterizedTest
+    @CsvSource("https://my-proxy.example.com/v1", "https://api.together.xyz/v1")
+    fun `an unknown OpenAI-compatible host round-trips to Other`(baseUrl: String) {
+        assertEquals(LlmPreset.OTHER, LlmPreset.of(LlmProviderConfig.of(LlmProviderType.OPENAI_COMPATIBLE, baseUrl, "k", "m")))
+    }
+
+    @Test
+    fun `Anthropic behind a proxy opens on Anthropic, the only preset of that type`() {
+        val config = LlmProviderConfig.of(LlmProviderType.ANTHROPIC, "https://proxy.example.com/v1", "k", "claude-opus-5-5")
+
+        assertEquals(LlmPreset.ANTHROPIC, LlmPreset.of(config))
+    }
+}

@@ -5,6 +5,8 @@ import androidx.compose.ui.test.ComposeUiTest
 import androidx.compose.ui.test.ExperimentalTestApi
 import androidx.compose.ui.test.SemanticsNodeInteraction
 import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.assertIsNotSelected
+import androidx.compose.ui.test.assertIsSelected
 import androidx.compose.ui.test.assertTextEquals
 import androidx.compose.ui.test.hasAnyAncestor
 import androidx.compose.ui.test.hasScrollAction
@@ -20,7 +22,6 @@ import androidx.compose.ui.test.performTextInput
 import com.cereal.client.domain.model.llm.LlmModel
 import com.cereal.client.domain.model.llm.LlmProviderConfig
 import com.cereal.client.domain.model.llm.LlmProviderType
-import com.cereal.client.domain.model.script.configuration.Secret
 import com.cereal.client.domain.provider.LlmProvider
 import com.cereal.client.domain.repository.LlmProviderConfigRepository
 import com.cereal.client.infrastructure.provider.inmemory.InMemoryLlmProvider
@@ -34,19 +35,24 @@ import kotlin.test.assertEquals
 import kotlin.test.assertNull
 
 /**
- * Settings → AI on the in-memory repository graph: what the form shows for each provider choice and
- * what Save persists. Self-skips on headless CI via the screen harness.
+ * Settings → AI on the in-memory repository graph: the preset tiles, what the form shows for each,
+ * and what Save persists. Self-skips on headless CI via the screen harness.
  */
 @OptIn(ExperimentalTestApi::class, ExperimentalFoundationApi::class)
 class AiSettingsSectionScreenTest {
     private val repository: LlmProviderConfigRepository
         get() = KoinJavaComponent.get(LlmProviderConfigRepository::class.java)
 
+    private val llmProvider: InMemoryLlmProvider
+        get() = KoinJavaComponent.get(LlmProvider::class.java) as InMemoryLlmProvider
+
     private fun savedConfig(): LlmProviderConfig? = runBlocking { repository.get() }
+
+    private fun save(config: LlmProviderConfig) = runBlocking { repository.save(config) }
 
     private fun ComposeUiTest.input(tag: String): SemanticsNodeInteraction = onNode(hasSetTextAction() and hasAnyAncestor(hasTestTag(tag)))
 
-    private fun ComposeUiTest.awaitText(text: String) = waitUntil(timeoutMillis = 5_000) { onAllNodes(hasText(text)).fetchSemanticsNodes().isNotEmpty() }
+    private fun ComposeUiTest.awaitText(text: String) = waitUntil(timeoutMillis = 5_000) { onAllNodes(hasText(text, substring = true)).fetchSemanticsNodes().isNotEmpty() }
 
     private fun ComposeUiTest.awaitSaved(predicate: (LlmProviderConfig?) -> Boolean) = waitUntil(timeoutMillis = 5_000) { predicate(savedConfig()) }
 
@@ -55,76 +61,140 @@ class AiSettingsSectionScreenTest {
         runScreenTest {
             setScreenContent { ApplicationSettingsScreen() }
 
-            onNode(hasScrollAction()).performScrollToNode(hasText("Choose the LLM provider scripts use."))
+            onNode(hasScrollAction()).performScrollToNode(hasText("Google Gemini"))
             onNodeWithText("AI").assertIsDisplayed()
         }
 
     @Test
-    fun noneHidesTheProviderFields() =
+    fun showsTheSixPresetTilesWithNoneSelected() =
         runScreenTest {
             setScreenContent { AiSettingsSection() }
 
-            onNodeWithText("None").assertIsDisplayed()
-            onNodeWithText("Base URL").assertDoesNotExist()
+            listOf("Google Gemini", "Anthropic", "OpenAI", "OpenRouter", "Local model", "Other").forEach {
+                onNodeWithText(it).assertIsDisplayed().assertIsNotSelected()
+            }
+            onNodeWithTag(AI_API_KEY_TAG).assertDoesNotExist()
         }
 
     @Test
-    fun anthropicRevealsFieldsWithItsDefaults() =
+    fun selectingAPresetShowsItsKeyLinkAndModelAndSavesItsBaseUrl() =
         runScreenTest {
             setScreenContent { AiSettingsSection() }
 
-            onNodeWithText("Anthropic").performClick()
+            onNodeWithText("OpenRouter").performClick()
 
-            onNodeWithText("Base URL").assertIsDisplayed()
-            input(AI_BASE_URL_TAG).assertTextEquals("https://api.anthropic.com/v1")
-            input(AI_MODEL_TAG).assertTextEquals("claude-opus-5-5")
-            onNodeWithText("console.anthropic.com", substring = true).assertIsDisplayed()
+            onNodeWithText("OpenRouter").assertIsSelected()
+            onNodeWithText("Get a key ↗").assertIsDisplayed()
+            onNodeWithText("anthropic/claude-opus-5-5", substring = true).assertIsDisplayed()
+            onNodeWithTag(AI_BASE_URL_TAG).assertDoesNotExist()
 
-            onNodeWithText("None").performClick()
-            onNodeWithText("Base URL").assertDoesNotExist()
-        }
-
-    @Test
-    fun openAiCompatiblePrefillsItsBaseUrl() =
-        runScreenTest {
-            setScreenContent { AiSettingsSection() }
-
-            onNodeWithText("OpenAI-compatible").performClick()
-
-            input(AI_BASE_URL_TAG).assertTextEquals("https://api.openai.com/v1")
-            input(AI_MODEL_TAG).assertTextEquals("")
-        }
-
-    @Test
-    fun switchingProviderResetsUrlAndClearsKeyAndModel() =
-        runScreenTest {
-            setScreenContent { AiSettingsSection() }
-            onNodeWithText("Anthropic").performClick()
-            input(AI_API_KEY_TAG).performTextInput("sk-ant-1")
-
-            onNodeWithText("OpenAI-compatible").performClick()
-
-            input(AI_BASE_URL_TAG).assertTextEquals("https://api.openai.com/v1")
-            input(AI_API_KEY_TAG).assertTextEquals("")
-            input(AI_MODEL_TAG).assertTextEquals("")
-        }
-
-    @Test
-    fun editingOnlyTheBaseUrlKeepsTheKey() =
-        runScreenTest {
-            setScreenContent { AiSettingsSection() }
-            onNodeWithText("OpenAI-compatible").performClick()
             input(AI_API_KEY_TAG).performTextInput("sk-or-1")
-            input(AI_MODEL_TAG).performTextInput("openai/gpt-5")
-
-            input(AI_BASE_URL_TAG).performTextClearance()
-            input(AI_BASE_URL_TAG).performTextInput("https://openrouter.ai/api/v1")
             onNodeWithText("Save").performClick()
 
             awaitSaved { it != null }
-            val saved = savedConfig()!!
-            assertEquals("https://openrouter.ai/api/v1", saved.baseUrl.value)
-            assertEquals(Secret("sk-or-1"), saved.apiKey)
+            assertEquals(
+                LlmProviderConfig.of(LlmProviderType.OPENAI_COMPATIBLE, "https://openrouter.ai/api/v1", "sk-or-1", "anthropic/claude-opus-5-5"),
+                savedConfig(),
+            )
+        }
+
+    @Test
+    fun changeRevealsTheModelField() =
+        runScreenTest {
+            setScreenContent { AiSettingsSection() }
+            onNodeWithText("Anthropic").performClick()
+            onNodeWithTag(AI_MODEL_TAG).assertDoesNotExist()
+
+            onNodeWithText("Change").performClick()
+
+            input(AI_MODEL_TAG).assertTextEquals("claude-opus-5-5")
+        }
+
+    @Test
+    fun localShowsAServerFieldAndNoKeyField() =
+        runScreenTest {
+            setScreenContent { AiSettingsSection() }
+
+            onNodeWithText("Local model").performClick()
+
+            onNodeWithText("Server").assertIsDisplayed()
+            input(AI_BASE_URL_TAG).assertTextEquals("http://localhost:11434/v1")
+            onNodeWithTag(AI_API_KEY_TAG).assertDoesNotExist()
+            onNodeWithText("Get a key ↗").assertDoesNotExist()
+        }
+
+    @Test
+    fun geminiShowsTheFreeTierCaveatAndThePrivacyLine() =
+        runScreenTest {
+            setScreenContent { AiSettingsSection() }
+
+            onNodeWithText("Google Gemini").performClick()
+
+            onNodeWithText("Free tiers may let the provider use your data", substring = true).assertIsDisplayed()
+            onNodeWithText("Nothing passes through Cereal", substring = true).assertIsDisplayed()
+
+            onNodeWithText("Anthropic").performClick()
+            onNodeWithText("Free tiers may let the provider use your data", substring = true).assertDoesNotExist()
+            onNodeWithText("Nothing passes through Cereal", substring = true).assertIsDisplayed()
+        }
+
+    @Test
+    fun switchingBetweenPresetsOfTheSameTypeClearsTheKey() =
+        runScreenTest {
+            setScreenContent { AiSettingsSection() }
+            onNodeWithText("OpenAI").performClick()
+            input(AI_API_KEY_TAG).performTextInput("sk-openai-1")
+
+            onNodeWithText("Google Gemini").performClick()
+
+            input(AI_API_KEY_TAG).assertTextEquals("")
+            input(AI_API_KEY_TAG).performTextInput("gemini-key")
+            onNodeWithText("Save").performClick()
+            awaitSaved { it != null }
+            assertEquals(
+                LlmProviderConfig.of(
+                    LlmProviderType.OPENAI_COMPATIBLE,
+                    "https://generativelanguage.googleapis.com/v1beta/openai",
+                    "gemini-key",
+                    "gemini-2.5-flash",
+                ),
+                savedConfig(),
+            )
+        }
+
+    @Test
+    fun aSavedConfigOpensOnItsMatchingPreset() =
+        runScreenTest {
+            save(LlmProviderConfig.of(LlmProviderType.OPENAI_COMPATIBLE, "http://localhost:1234/v1", "", "qwen3"))
+            setScreenContent { AiSettingsSection() }
+
+            awaitText("qwen3")
+            onNodeWithText("Local model").assertIsSelected()
+            input(AI_BASE_URL_TAG).assertTextEquals("http://localhost:1234/v1")
+        }
+
+    @Test
+    fun aSavedConfigWithAnUnknownHostOpensOnOther() =
+        runScreenTest {
+            save(LlmProviderConfig.of(LlmProviderType.OPENAI_COMPATIBLE, "https://proxy.example.com/v1", "k", "my-model"))
+            setScreenContent { AiSettingsSection() }
+
+            awaitText("my-model")
+            onNodeWithText("Other").assertIsSelected()
+            input(AI_BASE_URL_TAG).assertTextEquals("https://proxy.example.com/v1")
+        }
+
+    @Test
+    fun removeDeletesTheWholeConfig() =
+        runScreenTest {
+            save(LlmProviderConfig.of(LlmProviderType.ANTHROPIC, "https://api.anthropic.com/v1", "sk-ant-1", "claude-opus-5-5"))
+            setScreenContent { AiSettingsSection() }
+            awaitText("claude-opus-5-5")
+
+            onNodeWithText("Remove").performClick()
+
+            awaitSaved { it == null }
+            onNodeWithText("Anthropic").assertIsNotSelected()
         }
 
     @Test
@@ -140,12 +210,11 @@ class AiSettingsSectionScreenTest {
         }
 
     @Test
-    fun invalidBaseUrlShowsAnError() =
+    fun otherWithAnInvalidBaseUrlShowsAnError() =
         runScreenTest {
             setScreenContent { AiSettingsSection() }
-            onNodeWithText("OpenAI-compatible").performClick()
+            onNodeWithText("Other").performClick()
             input(AI_MODEL_TAG).performTextInput("llama3")
-            input(AI_BASE_URL_TAG).performTextClearance()
             input(AI_BASE_URL_TAG).performTextInput("localhost:11434")
 
             onNodeWithText("Save").performClick()
@@ -153,68 +222,6 @@ class AiSettingsSectionScreenTest {
             awaitText("Enter an http:// or https:// base URL.")
             assertNull(savedConfig())
         }
-
-    @Test
-    fun anthropicSaveWithKeyPersistsTheConfig() =
-        runScreenTest {
-            setScreenContent { AiSettingsSection() }
-            onNodeWithText("Anthropic").performClick()
-            input(AI_API_KEY_TAG).performTextInput("sk-ant-1")
-
-            onNodeWithText("Save").performClick()
-
-            awaitSaved { it != null }
-            assertEquals(
-                LlmProviderConfig.of(LlmProviderType.ANTHROPIC, "https://api.anthropic.com/v1", "sk-ant-1", "claude-opus-5-5"),
-                savedConfig(),
-            )
-        }
-
-    @Test
-    fun clearingTheKeyOnOpenAiCompatibleSaves() =
-        runScreenTest {
-            runBlocking {
-                repository.save(LlmProviderConfig.of(LlmProviderType.OPENAI_COMPATIBLE, "http://localhost:11434/v1", "old-key", "llama3"))
-            }
-            setScreenContent { AiSettingsSection() }
-            awaitText("llama3")
-
-            input(AI_API_KEY_TAG).performTextClearance()
-            onNodeWithText("Save").performClick()
-
-            awaitSaved { it?.apiKey == null }
-            assertEquals("http://localhost:11434/v1", savedConfig()!!.baseUrl.value)
-        }
-
-    @Test
-    fun noneAndSaveDeletesTheWholeConfig() =
-        runScreenTest {
-            runBlocking {
-                repository.save(LlmProviderConfig.of(LlmProviderType.ANTHROPIC, "https://api.anthropic.com/v1", "sk-ant-1", "claude-opus-5-5"))
-            }
-            setScreenContent { AiSettingsSection() }
-            awaitText("https://api.anthropic.com/v1")
-
-            onNodeWithText("None").performClick()
-            onNodeWithText("Save").performClick()
-
-            awaitSaved { it == null }
-        }
-
-    @Test
-    fun savedConfigIsShownOnOpen() =
-        runScreenTest {
-            runBlocking {
-                repository.save(LlmProviderConfig.of(LlmProviderType.OPENAI_COMPATIBLE, "http://localhost:1234/v1", "", "qwen3"))
-            }
-            setScreenContent { AiSettingsSection() }
-
-            awaitText("qwen3")
-            input(AI_BASE_URL_TAG).assertTextEquals("http://localhost:1234/v1")
-        }
-
-    private val llmProvider: InMemoryLlmProvider
-        get() = KoinJavaComponent.get(LlmProvider::class.java) as InMemoryLlmProvider
 
     @Test
     fun testConnectionReportsTheModelCountAndKeepsTheDefaultModel() =
@@ -227,7 +234,7 @@ class AiSettingsSectionScreenTest {
             onNodeWithText("Test connection").performClick()
 
             awaitText("Connected · 2 models")
-            input(AI_MODEL_TAG).assertTextEquals("claude-opus-5-5")
+            onNodeWithText("claude-opus-5-5", substring = true).assertIsDisplayed()
         }
 
     @Test
@@ -235,7 +242,7 @@ class AiSettingsSectionScreenTest {
         runScreenTest {
             llmProvider.models = listOf(LlmModel("gpt-5"), LlmModel("gpt-5-mini"), LlmModel("llama3"))
             setScreenContent { AiSettingsSection() }
-            onNodeWithText("OpenAI-compatible").performClick()
+            onNodeWithText("Local model").performClick()
             onNodeWithText("Test connection").performClick()
             awaitText("Connected · 3 models")
 
@@ -252,7 +259,7 @@ class AiSettingsSectionScreenTest {
     fun withoutAFetchedListTheModelIsPlainText() =
         runScreenTest {
             setScreenContent { AiSettingsSection() }
-            onNodeWithText("OpenAI-compatible").performClick()
+            onNodeWithText("Other").performClick()
 
             onNodeWithTag(AI_MODEL_OPEN_TAG).assertDoesNotExist()
             input(AI_MODEL_TAG).performTextInput("any-model-id")
@@ -263,9 +270,7 @@ class AiSettingsSectionScreenTest {
     fun openingASavedProviderFetchesTheListSilently() =
         runScreenTest {
             llmProvider.models = listOf(LlmModel("qwen3"), LlmModel("llama3"))
-            runBlocking {
-                repository.save(LlmProviderConfig.of(LlmProviderType.OPENAI_COMPATIBLE, "http://localhost:1234/v1", "", "qwen3"))
-            }
+            save(LlmProviderConfig.of(LlmProviderType.OPENAI_COMPATIBLE, "http://localhost:1234/v1", "", "qwen3"))
             setScreenContent { AiSettingsSection() }
 
             waitUntil(timeoutMillis = 5_000) { onAllNodes(hasTestTag(AI_MODEL_OPEN_TAG)).fetchSemanticsNodes().isNotEmpty() }
