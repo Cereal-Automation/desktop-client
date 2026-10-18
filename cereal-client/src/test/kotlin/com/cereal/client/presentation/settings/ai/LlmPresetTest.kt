@@ -22,7 +22,7 @@ class LlmPresetTest {
         "GEMINI, OPENAI_COMPATIBLE, https://generativelanguage.googleapis.com/v1beta/openai, gemini-2.5-flash",
         "ANTHROPIC, ANTHROPIC, https://api.anthropic.com/v1, claude-opus-5-5",
         "OPENAI, OPENAI_COMPATIBLE, https://api.openai.com/v1, gpt-5",
-        "OPENROUTER, OPENAI_COMPATIBLE, https://openrouter.ai/api/v1, anthropic/claude-opus-5-5",
+        "OPENROUTER, OPENAI_COMPATIBLE, https://openrouter.ai/api/v1, anthropic/claude-opus-5.5",
         "LOCAL, OPENAI_COMPATIBLE, http://localhost:11434/v1, ''",
         "OTHER, OPENAI_COMPATIBLE, '', ''",
     )
