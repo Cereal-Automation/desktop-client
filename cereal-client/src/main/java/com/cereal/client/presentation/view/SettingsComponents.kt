@@ -282,7 +282,7 @@ fun SettingsRowIcon(
 }
 
 @Composable
-private fun SettingsSectionRow(
+fun SettingsSectionRow(
     title: String,
     description: String,
     isLoading: Boolean = false,

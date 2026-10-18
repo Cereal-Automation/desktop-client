@@ -187,7 +187,7 @@ private fun ConnectHero(onConnect: () -> Unit) {
                 .fillMaxWidth()
                 .border(1.dp, CerealTheme.colorScheme.border, RoundedCornerShape(CardCornerRadius))
                 .background(CerealTheme.colorScheme.cardDark, RoundedCornerShape(CardCornerRadius))
-                .padding(22.dp),
+                .padding(CerealTheme.spacing.xl),
     ) {
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(16.dp)) {
             Box(

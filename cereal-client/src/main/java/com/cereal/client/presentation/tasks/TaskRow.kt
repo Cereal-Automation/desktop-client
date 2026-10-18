@@ -109,7 +109,7 @@ internal fun TaskRow(
             Column(modifier = Modifier.weight(1f)) {
                 CerealText(
                     text = taskItem.message,
-                    color = Color.White,
+                    color = MaterialTheme.colorScheme.onSurface,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
                     style =

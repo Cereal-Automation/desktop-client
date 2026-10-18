@@ -44,8 +44,8 @@ import com.cereal.client.presentation.theme.CerealTypography
 import com.cereal.client.presentation.theme.cerealColors
 import com.cereal.client.presentation.view.CerealText
 
-val PaneTablePadding = 25.dp
-val PaneTableToolbarMinHeight = 70.dp
+val PaneTablePadding = 24.dp
+val PaneTableToolbarMinHeight = 64.dp
 val PaneTableCornerRadius = 10.dp
 val PaneTableRowMinHeight = 52.dp
 val PaneTableRowPaddingHorizontal = 18.dp
@@ -231,7 +231,7 @@ fun PaneToolbar(
             Modifier
                 .fillMaxWidth()
                 .heightIn(min = PaneTableToolbarMinHeight)
-                .padding(horizontal = PaneTablePadding, vertical = 15.dp),
+                .padding(horizontal = PaneTablePadding, vertical = 12.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(12.dp),
     ) {
@@ -268,7 +268,7 @@ fun PaneDetailsHeader(
             Modifier
                 .fillMaxWidth()
                 .heightIn(min = PaneTableToolbarMinHeight)
-                .padding(horizontal = PaneTablePadding, vertical = 15.dp),
+                .padding(horizontal = PaneTablePadding, vertical = 12.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(12.dp),
     ) {

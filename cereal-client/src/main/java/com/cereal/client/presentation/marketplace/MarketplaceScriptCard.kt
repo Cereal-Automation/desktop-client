@@ -1,6 +1,8 @@
 package com.cereal.client.presentation.marketplace
 
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.TooltipArea
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.hoverable
@@ -26,12 +28,14 @@ import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Surface
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -44,11 +48,12 @@ import com.cereal.client.presentation.view.CerealText
 import com.cereal.client.presentation.view.button.CerealToolbarButton
 import com.cereal.client.presentation.view.button.CerealToolbarButtonVariant
 import com.cereal.client.presentation.view.chip.Pill
-import com.cereal.client.presentation.view.table.PaneTableMetaIconColor
 import com.cereal_automation.cereal_client.generated.resources.Res
 import com.cereal_automation.cereal_client.generated.resources.marketplace_free_badge
 import com.cereal_automation.cereal_client.generated.resources.marketplace_free_trial_days
 import com.cereal_automation.cereal_client.generated.resources.marketplace_install
+import com.cereal_automation.cereal_client.generated.resources.marketplace_status_maintenance
+import com.cereal_automation.cereal_client.generated.resources.marketplace_status_maintenance_short
 import org.jetbrains.compose.resources.stringResource
 
 private val PricePillBg = Color(0xFF232323)
@@ -121,7 +126,7 @@ internal fun ScriptCard(
                     horizontalArrangement = Arrangement.spacedBy(8.dp),
                 ) {
                     if (script.maintenanceMode) {
-                        ScriptStatusDot(maintenanceMode = true)
+                        MarketplaceMaintenanceBadge()
                     }
                     if (script.freeTrialEnabled) {
                         script.freeTrialDays?.takeIf { it > 0 }?.let { days ->
@@ -157,13 +162,18 @@ internal fun ScriptCard(
                     Icon(
                         imageVector = Icons.Default.Star,
                         contentDescription = null,
-                        tint = PaneTableMetaIconColor,
+                        tint =
+                            if (script.averageRating != null) {
+                                CerealTheme.colorScheme.warning
+                            } else {
+                                CerealTheme.colorScheme.contentSubtle
+                            },
                         modifier = Modifier.size(14.dp),
                     )
                     CerealText(
                         text = script.averageRating?.let { "%.1f".format(it) } ?: "—",
                         style = CerealTypography.controlLabel,
-                        color = CerealTheme.colorScheme.contentTertiary,
+                        color = CerealTheme.colorScheme.contentSecondary,
                     )
                 }
 
@@ -211,6 +221,36 @@ private fun MarketplaceTrialBadge(days: Int) {
         contentPadding = PaddingValues(horizontal = 9.dp, vertical = 3.dp),
         textStyle = CerealTypography.statusChipLabel.copy(fontWeight = FontWeight.SemiBold),
     )
+}
+
+@OptIn(ExperimentalFoundationApi::class)
+@Composable
+private fun MarketplaceMaintenanceBadge() {
+    val accent = CerealTheme.colorScheme.warning
+    TooltipArea(
+        tooltip = {
+            Surface(
+                modifier = Modifier.shadow(4.dp),
+                shape = MaterialTheme.shapes.extraSmall,
+            ) {
+                CerealText(
+                    text = stringResource(Res.string.marketplace_status_maintenance),
+                    modifier = Modifier.padding(CerealTheme.spacing.sm),
+                    style = MaterialTheme.typography.bodySmall,
+                )
+            }
+        },
+        delayMillis = 0,
+    ) {
+        Pill(
+            text = stringResource(Res.string.marketplace_status_maintenance_short),
+            contentColor = accent,
+            backgroundColor = accent.copy(alpha = 0.12f),
+            borderColor = accent.copy(alpha = 0.35f),
+            contentPadding = PaddingValues(horizontal = 9.dp, vertical = 3.dp),
+            textStyle = CerealTypography.statusChipLabel.copy(fontWeight = FontWeight.SemiBold),
+        )
+    }
 }
 
 @Composable

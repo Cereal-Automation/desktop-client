@@ -130,7 +130,7 @@ class BootstrapViewModelTest {
 
         assertNull(viewModel.showUserAction.value)
         assertEquals(1f, viewModel.progress.value)
-        assertEquals("Finished", viewModel.progressStatus.value)
+        assertEquals("Download complete", viewModel.progressStatus.value)
         assertNotNull(viewModel.openInstaller.value)
     }
 
