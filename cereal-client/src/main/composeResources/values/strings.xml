@@ -601,4 +601,10 @@
     <string name="home_example_read_value_goal">Log in and tell me the balance shown on my account page</string>
     <string name="home_example_buy">Buy one item, ask me first</string>
     <string name="home_example_buy_goal">Buy one of this item, and ask me before you pay</string>
+    <string name="home_ai_setup_title">First, connect an AI model</string>
+    <string name="home_ai_setup_subtitle">The agent uses a model you choose. Pick one. Gemini's free tier costs nothing.</string>
+    <string name="home_ai_connect">Connect</string>
+    <string name="home_ai_connect_hint">Checks the key with one call, then saves to Settings → AI.</string>
+    <string name="home_ai_using">Using %1$s (%2$s)</string>
+    <string name="home_ai_change">Change in Settings → AI</string>
 </resources>

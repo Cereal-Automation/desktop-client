@@ -255,7 +255,7 @@ private fun AiModelField(
     }
 }
 
-private fun LlmPreset.labels(): Pair<StringResource, StringResource> =
+internal fun LlmPreset.labels(): Pair<StringResource, StringResource> =
     when (this) {
         LlmPreset.GEMINI -> Res.string.ai_preset_gemini to Res.string.ai_preset_gemini_sub
         LlmPreset.ANTHROPIC -> Res.string.ai_preset_anthropic to Res.string.ai_preset_anthropic_sub

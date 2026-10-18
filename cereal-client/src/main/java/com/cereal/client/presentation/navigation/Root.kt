@@ -63,6 +63,10 @@ interface Root {
                                         backStack.newRoot(Routing.Marketplace)
                                         onNavigateTo?.invoke(Routing.Marketplace)
                                     },
+                                    onNavigateToAiSettings = {
+                                        backStack.newRoot(Routing.ApplicationSettings)
+                                        onNavigateTo?.invoke(Routing.ApplicationSettings)
+                                    },
                                 )
                             }
 

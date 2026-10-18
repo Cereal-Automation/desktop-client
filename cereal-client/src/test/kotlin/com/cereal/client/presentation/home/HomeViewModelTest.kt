@@ -3,11 +3,19 @@ package com.cereal.client.presentation.home
 import com.cereal.client.application.CoroutinesDispatcherProvider
 import com.cereal.client.application.interactor.notification.HasNotificationChannelsConfiguredInteractor
 import com.cereal.client.application.interactor.script.GetScriptsInteractor
+import com.cereal.client.application.interactor.settings.ai.ConnectLlmProviderInteractor
+import com.cereal.client.application.interactor.settings.ai.GetLlmProviderConfigInteractor
+import com.cereal.client.domain.model.exception.LlmCallException
+import com.cereal.client.domain.model.llm.LlmPreset
+import com.cereal.client.domain.model.llm.LlmProviderConfig
+import com.cereal.client.domain.model.llm.LlmProviderType
 import com.cereal.client.domain.model.script.ScriptPackage
 import com.cereal.client.domain.model.script.configuration.ConfigValue
 import com.cereal.client.domain.model.task.ScriptPackageGroup
+import com.cereal.client.infrastructure.data.repository.inmemory.InMemoryLlmProviderConfigRepository
 import com.cereal.client.infrastructure.data.repository.inmemory.InMemoryNotificationSettingsRepository
 import com.cereal.client.infrastructure.data.repository.inmemory.InMemoryScriptRepository
+import com.cereal.client.infrastructure.provider.inmemory.InMemoryLlmProvider
 import com.cereal.client.presentation.error.ErrorResolver
 import fixtures.FakeRunMode
 import fixtures.GoalRunWorld
@@ -31,6 +39,9 @@ class HomeViewModelTest {
     private val world = GoalRunWorld()
     private val scripts = InMemoryScriptRepository()
     private val notificationSettings = InMemoryNotificationSettingsRepository()
+    private val llmConfigs =
+        InMemoryLlmProviderConfigRepository(LlmProviderConfig.of(LlmProviderType.ANTHROPIC, "https://api.anthropic.com/v1", "key", "claude-opus-5-5"))
+    private val llmProvider = InMemoryLlmProvider()
 
     private suspend fun TestScope.homeWith(agent: ScriptPackage = anAgentPackage()): HomeViewModel {
         scripts.seed(listOf(agent))
@@ -43,6 +54,8 @@ class HomeViewModelTest {
                 hasNotificationChannelsConfiguredInteractor = HasNotificationChannelsConfiguredInteractor(notificationSettings),
                 getOrCreateDefaultTaskGroupInteractor = world.getOrCreateDefaultTaskGroupInteractor,
                 startGoalRunInteractor = world.startGoalRunInteractor,
+                getLlmProviderConfigInteractor = GetLlmProviderConfigInteractor(llmConfigs),
+                connectLlmProviderInteractor = ConnectLlmProviderInteractor(llmProvider, llmConfigs),
                 errorResolver = ErrorResolver(),
             )
         advanceUntilIdle()
@@ -142,5 +155,46 @@ class HomeViewModelTest {
             val dialog = assertInstanceOf(HomeDialog.MoreOptions::class.java, vm.dialog.value)
             assertEquals(ConfigValue.StringValue("Tell me when the pliers are back in stock"), dialog.prefill.mainConfiguration["goal"])
             assertTrue(world.scriptInstances.getScriptPackageInstances().isEmpty())
+        }
+
+    @Test
+    fun `with no AI provider the setup card shows with Gemini pre-selected`() =
+        runTest {
+            llmConfigs.clear()
+            val vm = homeWith()
+
+            assertEquals(HomeComposerSlot.NoAiProvider, vm.slot.value)
+            assertEquals(LlmPreset.GEMINI, vm.aiSetup.preset.value)
+        }
+
+    @Test
+    fun `a failing Connect saves nothing and keeps the card with the error`() =
+        runTest {
+            llmConfigs.clear()
+            llmProvider.listModelsError = LlmCallException.Authentication()
+            val vm = homeWith()
+            vm.aiSetup.apiKeyState.text = "bad-key"
+
+            vm.onConnect()
+            advanceUntilIdle()
+
+            assertEquals(HomeComposerSlot.NoAiProvider, vm.slot.value)
+            assertEquals("Bad API key: the provider rejected it.", vm.connectError.value)
+            assertNull(llmConfigs.get())
+        }
+
+    @Test
+    fun `a passing Connect saves the config and shows the composer`() =
+        runTest {
+            llmConfigs.clear()
+            val vm = homeWith()
+            vm.aiSetup.apiKeyState.text = "good-key"
+
+            vm.onConnect()
+            advanceUntilIdle()
+
+            assertEquals(HomeComposerSlot.Composer, vm.slot.value)
+            assertEquals("gemini-2.5-flash", llmConfigs.get()?.model)
+            assertEquals(llmConfigs.get(), vm.aiProvider.value)
         }
 }
