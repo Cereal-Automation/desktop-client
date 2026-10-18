@@ -11,6 +11,7 @@ import androidx.compose.ui.test.hasTestTag
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.performTextInput
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertTrue
@@ -48,7 +49,7 @@ class RegistrationScreenTest {
             // Submit button.
             onNodeWithText("Create account").assertIsDisplayed()
             // Footer navigation back to login.
-            onNodeWithText("Sign In").assertIsDisplayed()
+            onNodeWithText("Sign In").performScrollTo().assertIsDisplayed()
         }
 
     @Test
@@ -98,7 +99,7 @@ class RegistrationScreenTest {
                 )
             }
 
-            onNodeWithText("Sign In").performClick()
+            onNodeWithText("Sign In").performScrollTo().performClick()
             waitForIdle()
 
             assertTrue(navigatedToLogin)
