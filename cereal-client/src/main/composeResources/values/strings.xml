@@ -584,6 +584,13 @@
     <string name="ai_spend_limits_anthropic">Your provider bills you directly for tokens. Set a spend limit in the Anthropic Console (console.anthropic.com → Settings → Limits).</string>
     <string name="ai_spend_limits_openai_compatible">Your provider bills you directly for tokens. Set a spend limit in your provider dashboard, e.g. OpenAI usage limits (platform.openai.com → Settings → Limits).</string>
     <string name="home">Home</string>
+    <string name="home_recent_runs">Recent goal runs</string>
+    <string name="home_all_in_tasks">All in Tasks →</string>
+    <string name="home_recent_runs_empty">No goal runs yet. Describe a goal above to start one.</string>
+    <string name="home_ready_made_scripts">Ready-made scripts</string>
+    <string name="home_browse_marketplace">Browse marketplace →</string>
+    <string name="home_ready_made_scripts_empty">No ready-made scripts installed yet.</string>
+    <string name="home_run_script">Run</string>
     <string name="home_pitch">A free AI browser agent that runs on your machine, with your model and your key.</string>
     <string name="home_composer_title">What should the agent do?</string>
     <string name="home_goal_placeholder">Describe a goal, e.g. "Tell me when these pliers are back in stock"</string>

@@ -63,6 +63,16 @@ interface Root {
                                         backStack.newRoot(Routing.Marketplace)
                                         onNavigateTo?.invoke(Routing.Marketplace)
                                     },
+                                    onOpenTasks = { taskId ->
+                                        val route = Routing.Tasks(focusTaskId = taskId)
+                                        backStack.newRoot(route)
+                                        onNavigateTo?.invoke(route)
+                                    },
+                                    onRunScript = { packageName ->
+                                        val route = Routing.Tasks(openScriptSelectionForPackage = packageName)
+                                        backStack.newRoot(route)
+                                        onNavigateTo?.invoke(route)
+                                    },
                                 )
                             }
 

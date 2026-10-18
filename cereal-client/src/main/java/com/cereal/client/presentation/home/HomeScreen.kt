@@ -78,7 +78,11 @@ private val examples: List<Pair<StringResource, StringResource>> =
  * below the slot.
  */
 @Composable
-fun HomeScreen(onNavigateToMarketplace: () -> Unit = {}) {
+fun HomeScreen(
+    onNavigateToMarketplace: () -> Unit = {},
+    onOpenTasks: (focusTaskId: String?) -> Unit = {},
+    onRunScript: (packageName: String) -> Unit = {},
+) {
     val scope = rememberCoroutineScope()
     val viewModel =
         remember {
@@ -113,6 +117,7 @@ fun HomeScreen(onNavigateToMarketplace: () -> Unit = {}) {
                 when (viewModel.slot.value) {
                     HomeComposerSlot.Composer -> GoalComposer(viewModel)
                 }
+                HomeActivitySections(onOpenTasks, onRunScript, onNavigateToMarketplace)
             }
         }
     }
