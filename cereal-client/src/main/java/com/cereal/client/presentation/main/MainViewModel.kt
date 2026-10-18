@@ -4,6 +4,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AccountTree
 import androidx.compose.material.icons.filled.Bolt
 import androidx.compose.material.icons.filled.Code
+import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Storage
@@ -23,6 +24,7 @@ import com.cereal.client.domain.model.task.TaskStatus
 import com.cereal.client.presentation.navigation.MenuReselectionCoordinator
 import com.cereal.client.presentation.navigation.Root
 import com.cereal_automation.cereal_client.generated.resources.Res
+import com.cereal_automation.cereal_client.generated.resources.home
 import com.cereal_automation.cereal_client.generated.resources.marketplace
 import com.cereal_automation.cereal_client.generated.resources.my_scripts
 import com.cereal_automation.cereal_client.generated.resources.notifications
@@ -59,7 +61,7 @@ class MainViewModel(
     private val scope = CoroutineScope(SupervisorJob() + dispatcherProvider.main)
 
     // selectedRoute must be initialized before menuItems, since buildMenuItems() reads it.
-    private var selectedRoute: Root.Routing = Root.Routing.Tasks()
+    private var selectedRoute: Root.Routing = Root.Routing.Home
     private var username: String? = null
     private var isUpdateAvailable: Boolean = false
     private var activeTaskCount: Int = 0
@@ -75,8 +77,8 @@ class MainViewModel(
                 withContext(dispatcherProvider.main) {
                     if (result is SuspendableResult.Success) {
                         username = result.value?.name
-                        // Logging out tears down the router; the next login lands on Tasks again.
-                        if (result.value == null) selectedRoute = Root.Routing.Tasks()
+                        // Logging out tears down the router; the next login lands on Home again.
+                        if (result.value == null) selectedRoute = Root.Routing.Home
                     }
                     menuItems.value = buildMenuItems()
                 }
@@ -162,6 +164,14 @@ class MainViewModel(
 
     private fun buildMenuItems(): ImmutableList<MenuItemUiModel> =
         buildList {
+            add(
+                createMenuItem(
+                    route = Root.Routing.Home,
+                    resourcePath = IconSource.Vector(Icons.Filled.Home),
+                    titleResource = Res.string.home,
+                    section = MenuSection.AGENT,
+                ),
+            )
             add(
                 createMenuItem(
                     route = Root.Routing.Tasks(),

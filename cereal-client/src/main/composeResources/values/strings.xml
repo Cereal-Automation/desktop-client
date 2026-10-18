@@ -567,4 +567,22 @@
     <string name="ai_test_connection">Test connection</string>
     <string name="ai_spend_limits_anthropic">Your provider bills you directly for tokens. Set a spend limit in the Anthropic Console (console.anthropic.com → Settings → Limits).</string>
     <string name="ai_spend_limits_openai_compatible">Your provider bills you directly for tokens. Set a spend limit in your provider dashboard, e.g. OpenAI usage limits (platform.openai.com → Settings → Limits).</string>
+    <string name="home">Home</string>
+    <string name="home_pitch">A free AI browser agent that runs on your machine, with your model and your key.</string>
+    <string name="home_composer_title">What should the agent do?</string>
+    <string name="home_goal_placeholder">Describe a goal, e.g. "Tell me when these pliers are back in stock"</string>
+    <string name="home_start_url_placeholder">Start URL, e.g. https://example.com</string>
+    <string name="home_run_once">Once</string>
+    <string name="home_run_repeat">Repeat</string>
+    <string name="home_check_every">Check every</string>
+    <string name="home_check_every_minutes">minutes</string>
+    <string name="home_start">Start</string>
+    <string name="home_more_options">More options</string>
+    <string name="home_safety_line">Runs in your own Chrome and asks before it buys or sends anything.</string>
+    <string name="home_example_restock">Watch a product for restock</string>
+    <string name="home_example_restock_goal">Tell me when this product is back in stock</string>
+    <string name="home_example_read_value">Read a value after logging in</string>
+    <string name="home_example_read_value_goal">Log in and tell me the balance shown on my account page</string>
+    <string name="home_example_buy">Buy one item, ask me first</string>
+    <string name="home_example_buy_goal">Buy one of this item, and ask me before you pay</string>
 </resources>

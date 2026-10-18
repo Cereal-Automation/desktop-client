@@ -5,6 +5,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.runtime.Composable
 import com.cereal.client.presentation.customdataset.CustomDatasetsScreen
+import com.cereal.client.presentation.home.HomeScreen
 import com.cereal.client.presentation.marketplace.MarketplaceScreen
 import com.cereal.client.presentation.myscripts.MyScriptsScreen
 import com.cereal.client.presentation.navigation.router.BackStack
@@ -18,6 +19,8 @@ import com.cereal.client.presentation.view.VerticalDivider
 
 interface Root {
     sealed class Routing {
+        data object Home : Routing()
+
         data class Tasks(
             val openScriptSelectionForPackage: String? = null,
             val focusTaskId: String? = null,
@@ -54,6 +57,15 @@ interface Root {
 
                     Column {
                         when (backStack.last()) {
+                            is Routing.Home -> {
+                                HomeScreen(
+                                    onNavigateToMarketplace = {
+                                        backStack.newRoot(Routing.Marketplace)
+                                        onNavigateTo?.invoke(Routing.Marketplace)
+                                    },
+                                )
+                            }
+
                             is Routing.Tasks -> {
                                 TasksScreen(
                                     onNavigateToMarketplace = {

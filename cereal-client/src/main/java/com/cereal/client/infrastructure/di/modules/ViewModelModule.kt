@@ -12,6 +12,7 @@ import com.cereal.client.presentation.bootstrap.BootstrapViewModel
 import com.cereal.client.presentation.brand.BrandPaywallViewModel
 import com.cereal.client.presentation.customdataset.CustomDatasetViewModel
 import com.cereal.client.presentation.error.ErrorResolver
+import com.cereal.client.presentation.home.HomeViewModel
 import com.cereal.client.presentation.main.MainViewModel
 import com.cereal.client.presentation.marketplace.MarketplaceViewModel
 import com.cereal.client.presentation.marketplace.ScriptDetailViewModel
@@ -44,6 +45,17 @@ object ViewModelModule {
             }
             factory { (scope: CoroutineScope, onStartNewInstance: Function1<String, Unit>) ->
                 ScriptDetailViewModel(scope, get(), get(), get(), get(), get(), get(), get(), get(), get(), onStartNewInstance)
+            }
+            factory { (scope: CoroutineScope) ->
+                HomeViewModel(
+                    scope = scope,
+                    dispatcherProvider = get(),
+                    getScriptsInteractor = get(),
+                    hasNotificationChannelsConfiguredInteractor = get(),
+                    getOrCreateDefaultTaskGroupInteractor = get(),
+                    startGoalRunInteractor = get(),
+                    errorResolver = get(),
+                )
             }
             factory { (scope: CoroutineScope) ->
                 MyScriptsViewModel(

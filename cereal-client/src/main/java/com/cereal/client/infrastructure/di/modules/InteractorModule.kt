@@ -1,6 +1,7 @@
 package com.cereal.client.infrastructure.di.modules
 
 import com.cereal.client.application.app.VersionCheckService
+import com.cereal.client.application.interactor.agent.StartGoalRunInteractor
 import com.cereal.client.application.interactor.app.CheckForUpdatesInteractor
 import com.cereal.client.application.interactor.app.DownloadLatestAppVersionInteractor
 import com.cereal.client.application.interactor.app.InstallUpdateInteractor
@@ -119,6 +120,7 @@ object InteractorModule {
             factory { GetScriptConfigDefinitionInteractor(get(), get()) }
             factory { GetScriptPackageInstancesByPackageNameInteractor(get()) }
             factory { StartScriptInteractor(get(), get(), get(), get(), get()) }
+            factory { StartGoalRunInteractor(get(), get(), get()) }
             factory { GetScriptsInGroupInteractor(get(), get()) }
             factory { SyncScriptsOnScriptSelectionInteractor(get()) }
             factory { StartChildScriptInteractor(get(), get(), get()) }
