@@ -80,6 +80,10 @@ interface Root {
                                         backStack.newRoot(route)
                                         onNavigateTo?.invoke(route)
                                     },
+                                    onNavigateToAiSettings = {
+                                        backStack.newRoot(Routing.ApplicationSettings())
+                                        onNavigateTo?.invoke(Routing.ApplicationSettings())
+                                    },
                                 )
                             }
 

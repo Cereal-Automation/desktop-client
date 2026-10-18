@@ -1,29 +1,48 @@
 package com.cereal.client.presentation.home
 
+import androidx.compose.ui.test.ComposeUiTest
 import androidx.compose.ui.test.ExperimentalTestApi
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsEnabled
+import androidx.compose.ui.test.assertIsSelected
 import androidx.compose.ui.test.assertTextContains
+import androidx.compose.ui.test.hasAnyAncestor
+import androidx.compose.ui.test.hasSetTextAction
+import androidx.compose.ui.test.hasTestTag
+import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performTextInput
 import com.cereal.client.application.exception.CerealException
+import com.cereal.client.domain.model.exception.LlmCallException
+import com.cereal.client.domain.model.llm.LlmProviderConfig
+import com.cereal.client.domain.model.llm.LlmProviderType
 import com.cereal.client.domain.model.marketplace.MarketplaceScript
 import com.cereal.client.domain.model.script.ScriptPackage
+import com.cereal.client.domain.provider.LlmProvider
 import com.cereal.client.domain.provider.MarketplaceProvider
 import com.cereal.client.domain.provider.ScriptInstallProvider
+import com.cereal.client.domain.repository.LlmProviderConfigRepository
 import com.cereal.client.domain.repository.ScriptRepository
+import com.cereal.client.infrastructure.data.repository.inmemory.InMemoryLlmProviderConfigRepository
 import com.cereal.client.infrastructure.data.repository.inmemory.InMemoryScriptRepository
+import com.cereal.client.infrastructure.provider.inmemory.InMemoryLlmProvider
 import com.cereal.client.infrastructure.provider.inmemory.InMemoryMarketplaceProvider
+import com.cereal.client.presentation.settings.ai.AI_API_KEY_TAG
 import fixtures.FakeScriptInstallProvider
 import fixtures.anAgentListing
 import fixtures.anAgentPackage
 import fixtures.anAgentRequiringNewerClient
+import kotlinx.coroutines.runBlocking
 import org.koin.dsl.module
+import org.koin.java.KoinJavaComponent
 import testutil.runScreenTest
 import testutil.setScreenContent
 import kotlin.test.Test
+import kotlin.test.assertEquals
+import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
 /** Renders [HomeScreen] with the AI browser agent installed on the in-memory graph. Self-skips where skiko is unavailable. */
@@ -31,10 +50,23 @@ import kotlin.test.assertTrue
 class HomeScreenTest {
     private val agentInstalled =
         module { single<ScriptRepository> { InMemoryScriptRepository().apply { seed(listOf(anAgentPackage())) } } }
+    private val providerConfigured =
+        module {
+            single<LlmProviderConfigRepository> {
+                InMemoryLlmProviderConfigRepository(LlmProviderConfig.of(LlmProviderType.ANTHROPIC, "https://api.anthropic.com/v1", "key", "claude-opus-5-5"))
+            }
+        }
+    private val ready = listOf(agentInstalled, providerConfigured)
+
+    private fun savedConfig(): LlmProviderConfig? = runBlocking { KoinJavaComponent.get<LlmProviderConfigRepository>(LlmProviderConfigRepository::class.java).get() }
+
+    private fun ComposeUiTest.awaitText(text: String) = waitUntil(timeoutMillis = 5_000) { onAllNodes(hasText(text, substring = true)).fetchSemanticsNodes().isNotEmpty() }
+
+    private fun ComposeUiTest.enterApiKey(key: String) = onNode(hasSetTextAction() and hasAnyAncestor(hasTestTag(AI_API_KEY_TAG))).performTextInput(key)
 
     @Test
     fun `renders the pitch and the goal composer`() =
-        runScreenTest(overrides = listOf(agentInstalled)) {
+        runScreenTest(overrides = ready) {
             setScreenContent { HomeScreen() }
 
             onNodeWithText("A free AI browser agent that runs on your machine, with your model and your key.").assertIsDisplayed()
@@ -42,11 +74,13 @@ class HomeScreenTest {
             onNodeWithText("Start").assertIsDisplayed()
             onNodeWithText("More options").assertIsDisplayed()
             onNodeWithText("Runs in your own Chrome and asks before it buys or sends anything.").assertIsDisplayed()
+            onNodeWithText("Using Anthropic (claude-opus-5-5) ·").assertIsDisplayed()
+            onNodeWithText("First, connect an AI model").assertDoesNotExist()
         }
 
     @Test
     fun `check every appears only in Repeat`() =
-        runScreenTest(overrides = listOf(agentInstalled)) {
+        runScreenTest(overrides = ready) {
             setScreenContent { HomeScreen() }
 
             onNodeWithText("Check every").assertDoesNotExist()
@@ -58,12 +92,53 @@ class HomeScreenTest {
 
     @Test
     fun `an example chip fills the goal`() =
-        runScreenTest(overrides = listOf(agentInstalled)) {
+        runScreenTest(overrides = ready) {
             setScreenContent { HomeScreen() }
 
             onNodeWithText("Watch a product for restock").performClick()
 
             onNodeWithTag(HomeTestTags.GOAL).assertTextContains("Tell me when this product is back in stock")
+        }
+
+    @Test
+    fun `with no AI provider the setup card replaces the composer with Gemini pre-selected`() =
+        runScreenTest(overrides = listOf(agentInstalled)) {
+            setScreenContent { HomeScreen() }
+
+            awaitText("First, connect an AI model")
+            onNodeWithText("Google Gemini").assertIsSelected()
+            onNodeWithText("What should the agent do?").assertDoesNotExist()
+        }
+
+    @Test
+    fun `a failing Connect shows the error and saves nothing`() =
+        runScreenTest(overrides = listOf(agentInstalled)) {
+            (KoinJavaComponent.get<LlmProvider>(LlmProvider::class.java) as InMemoryLlmProvider).listModelsError = LlmCallException.Authentication()
+            setScreenContent { HomeScreen() }
+            awaitText("First, connect an AI model")
+
+            enterApiKey("bad-key")
+            onNodeWithText("Connect").performClick()
+
+            awaitText("Bad API key: the provider rejected it.")
+            onNodeWithText("First, connect an AI model").assertIsDisplayed()
+            assertNull(savedConfig())
+        }
+
+    @Test
+    fun `a passing Connect saves the config and swaps the card for the composer`() =
+        runScreenTest(overrides = listOf(agentInstalled)) {
+            setScreenContent { HomeScreen() }
+            awaitText("First, connect an AI model")
+
+            enterApiKey("good-key")
+            onNodeWithText("Connect").performClick()
+
+            awaitText("What should the agent do?")
+            onNodeWithText("First, connect an AI model").assertDoesNotExist()
+            onNodeWithText("Using Google Gemini (gemini-2.5-flash) ·").assertIsDisplayed()
+            onNodeWithText("Change in Settings → AI").assertIsDisplayed()
+            assertEquals("gemini-2.5-flash", savedConfig()?.model)
         }
 }
 
@@ -81,6 +156,9 @@ class HomeSlotCardsScreenTest {
         single<ScriptRepository> { scripts }
         single<ScriptInstallProvider> { installProvider }
         single<MarketplaceProvider> { InMemoryMarketplaceProvider(catalog = listOf(listing)) }
+        single<LlmProviderConfigRepository> {
+            InMemoryLlmProviderConfigRepository(LlmProviderConfig.of(LlmProviderType.ANTHROPIC, "https://api.anthropic.com/v1", "key", "claude-opus-5-5"))
+        }
     }
 
     @Test

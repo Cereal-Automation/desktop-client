@@ -3,6 +3,7 @@ package com.cereal.client.presentation.home
 import androidx.compose.runtime.State
 import androidx.compose.runtime.mutableStateOf
 import com.cereal.client.application.CoroutinesDispatcherProvider
+import com.cereal.client.application.FlowInteractor
 import com.cereal.client.application.Interactor
 import com.cereal.client.application.interactor.agent.GetAiBrowserAgentListingInteractor
 import com.cereal.client.application.interactor.agent.InstallAiBrowserAgentInteractor
@@ -10,10 +11,15 @@ import com.cereal.client.application.interactor.agent.StartGoalRunInteractor
 import com.cereal.client.application.interactor.notification.HasNotificationChannelsConfiguredInteractor
 import com.cereal.client.application.interactor.script.GetScriptsInteractor
 import com.cereal.client.application.interactor.script.GetSdkVersionInteractor
+import com.cereal.client.application.interactor.settings.ai.ConnectLlmProviderInteractor
+import com.cereal.client.application.interactor.settings.ai.GetLlmProviderConfigInteractor
 import com.cereal.client.application.interactor.task.GetOrCreateDefaultTaskGroupInteractor
 import com.cereal.client.domain.model.agent.AI_BROWSER_AGENT_PACKAGE
 import com.cereal.client.domain.model.agent.GoalRunInput
 import com.cereal.client.domain.model.agent.supportsGoalComposer
+import com.cereal.client.domain.model.exception.InvalidLlmProviderConfigException
+import com.cereal.client.domain.model.llm.LlmPreset
+import com.cereal.client.domain.model.llm.LlmProviderConfig
 import com.cereal.client.domain.model.script.ScriptPackage
 import com.cereal.client.domain.model.script.ScriptPackageInstance
 import com.cereal.client.domain.model.script.configuration.ConfigValue
@@ -22,11 +28,15 @@ import com.cereal.client.domain.model.script.isClientUpdateRequired
 import com.cereal.client.domain.model.task.ScriptPackageGroup
 import com.cereal.client.presentation.error.ErrorResolver
 import com.cereal.client.presentation.error.handleFailureOrElse
+import com.cereal.client.presentation.settings.ai.LlmPresetFormState
+import com.cereal.client.presentation.settings.ai.connectionFailureMessage
 import com.cereal.client.presentation.tasks.script.overview.configuration.RawScriptConfigValues
 import com.cereal.client.presentation.tasks.script.overview.configuration.validate
 import com.github.kittinunf.result.coroutines.SuspendableResult
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import net.swiftzer.semver.SemVer
@@ -41,16 +51,21 @@ sealed interface HomeComposerSlot {
     data object UpdateRequired : HomeComposerSlot
 
     data object Composer : HomeComposerSlot
+
+    /** No AI provider configured: the "connect an AI model" card, over a greyed-out composer. */
+    data object NoAiProvider : HomeComposerSlot
 }
 
 /** Ordered checks; the first match wins. */
 fun homeComposerSlot(
     agent: ScriptPackage?,
     sdkVersion: SemVer,
+    hasAiProvider: Boolean,
 ): HomeComposerSlot =
     when {
         agent == null -> HomeComposerSlot.NotInstalled
         agent.isClientUpdateRequired(sdkVersion) -> HomeComposerSlot.UpdateRequired
+        !hasAiProvider -> HomeComposerSlot.NoAiProvider
         else -> HomeComposerSlot.Composer
     }
 
@@ -86,6 +101,8 @@ class HomeViewModel(
     private val hasNotificationChannelsConfiguredInteractor: HasNotificationChannelsConfiguredInteractor,
     private val getOrCreateDefaultTaskGroupInteractor: GetOrCreateDefaultTaskGroupInteractor,
     private val startGoalRunInteractor: StartGoalRunInteractor,
+    getLlmProviderConfigInteractor: GetLlmProviderConfigInteractor,
+    private val connectLlmProviderInteractor: ConnectLlmProviderInteractor,
     private val errorResolver: ErrorResolver,
 ) {
     private val _slot = mutableStateOf<HomeComposerSlot>(HomeComposerSlot.Composer)
@@ -107,9 +124,25 @@ class HomeViewModel(
     val isStarting = mutableStateOf(false)
     val errorAction = errorResolver.errorAction
 
+    /** The configured AI provider; null shows the setup card. Read when Home opens, so a removal in Settings shows on return. */
+    private val _aiProvider = mutableStateOf<LlmProviderConfig?>(null)
+    val aiProvider: State<LlmProviderConfig?> = _aiProvider
+
+    /** The setup card's preset form; Gemini's free tier is pre-selected. */
+    val aiSetup = LlmPresetFormState(initial = LlmPreset.GEMINI)
+    val connectError = mutableStateOf<String?>(null)
+    val isConnecting = mutableStateOf(false)
+
     private var agent: ScriptPackage? = null
 
+    /** Set once the installed scripts have loaded; the slot stays on the composer until then. */
+    private var clientSdk: SemVer? = null
+
+    /** Until the AI config has been read, assume one exists so the setup card doesn't flash. */
+    private var aiProviderLoaded = false
+
     init {
+        loadAiProvider(getLlmProviderConfigInteractor)
         scope.launch(dispatcherProvider.io) {
             var sdkVersion: SemVer? = null
             getSdkVersionInteractor(Interactor.None()) { result -> sdkVersion = (result as? SuspendableResult.Success)?.value }
@@ -120,7 +153,8 @@ class HomeViewModel(
                         val installed = result.value.firstOrNull { it.manifest.packageName == AI_BROWSER_AGENT_PACKAGE }
                         if (agent == null && installed != null) applyDefaults(installed)
                         agent = installed
-                        _slot.value = homeComposerSlot(installed, clientSdk)
+                        this@HomeViewModel.clientSdk = clientSdk
+                        updateSlot()
                         if (installed != null) installState.value = AgentInstallState.Idle
                     }
                 }
@@ -144,6 +178,63 @@ class HomeViewModel(
                 withContext(dispatcherProvider.main) {
                     if (result is SuspendableResult.Failure) {
                         installState.value = AgentInstallState.Failed(result.error.localizedMessage ?: INSTALL_FAILED_MESSAGE)
+                    }
+                }
+            }
+        }
+    }
+
+    @OptIn(FlowPreview::class)
+    private fun loadAiProvider(getLlmProviderConfigInteractor: GetLlmProviderConfigInteractor) {
+        scope.launch(dispatcherProvider.io) {
+            val result = getLlmProviderConfigInteractor(FlowInteractor.None()).first()
+            withContext(dispatcherProvider.main) {
+                when (result) {
+                    is SuspendableResult.Success -> showAiProvider(result.value)
+                    is SuspendableResult.Failure -> errorResolver.setError(result.error)
+                }
+            }
+        }
+    }
+
+    private fun showAiProvider(config: LlmProviderConfig?) {
+        _aiProvider.value = config
+        aiProviderLoaded = true
+        updateSlot()
+    }
+
+    private fun updateSlot() {
+        val sdk = clientSdk ?: return
+        _slot.value = homeComposerSlot(agent, sdk, hasAiProvider = !aiProviderLoaded || _aiProvider.value != null)
+    }
+
+    fun onSelectAiPreset(preset: LlmPreset) {
+        if (aiSetup.select(preset)) connectError.value = null
+    }
+
+    /** Tests the connection, then saves; nothing is saved when the test fails. */
+    fun onConnect() {
+        val params = aiSetup.saveParams() ?: return
+        aiSetup.clearFieldErrors()
+        connectError.value = null
+        isConnecting.value = true
+        scope.launch(dispatcherProvider.io) {
+            connectLlmProviderInteractor(params) { result ->
+                withContext(dispatcherProvider.main) {
+                    isConnecting.value = false
+                    when (result) {
+                        is SuspendableResult.Success -> {
+                            showAiProvider(result.value)
+                        }
+
+                        is SuspendableResult.Failure -> {
+                            val error = result.error
+                            if (error is InvalidLlmProviderConfigException) {
+                                aiSetup.showError(error.field, error.message)
+                            } else {
+                                connectError.value = connectionFailureMessage(error)
+                            }
+                        }
                     }
                 }
             }

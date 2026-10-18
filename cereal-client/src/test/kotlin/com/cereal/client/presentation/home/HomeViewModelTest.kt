@@ -8,14 +8,22 @@ import com.cereal.client.application.interactor.marketplace.InstallMarketplaceSc
 import com.cereal.client.application.interactor.notification.HasNotificationChannelsConfiguredInteractor
 import com.cereal.client.application.interactor.script.GetScriptsInteractor
 import com.cereal.client.application.interactor.script.GetSdkVersionInteractor
+import com.cereal.client.application.interactor.settings.ai.ConnectLlmProviderInteractor
+import com.cereal.client.application.interactor.settings.ai.GetLlmProviderConfigInteractor
+import com.cereal.client.domain.model.exception.LlmCallException
+import com.cereal.client.domain.model.llm.LlmPreset
+import com.cereal.client.domain.model.llm.LlmProviderConfig
+import com.cereal.client.domain.model.llm.LlmProviderType
 import com.cereal.client.domain.model.marketplace.MarketplaceScript
 import com.cereal.client.domain.model.script.ScriptPackage
 import com.cereal.client.domain.model.script.configuration.ConfigValue
 import com.cereal.client.domain.model.task.ScriptPackageGroup
 import com.cereal.client.infrastructure.data.repository.inmemory.InMemoryApplicationRepository
+import com.cereal.client.infrastructure.data.repository.inmemory.InMemoryLlmProviderConfigRepository
 import com.cereal.client.infrastructure.data.repository.inmemory.InMemoryNotificationSettingsRepository
 import com.cereal.client.infrastructure.data.repository.inmemory.InMemoryScriptRepository
 import com.cereal.client.infrastructure.provider.inmemory.InMemoryCheckoutProvider
+import com.cereal.client.infrastructure.provider.inmemory.InMemoryLlmProvider
 import com.cereal.client.infrastructure.provider.inmemory.InMemoryMarketplaceProvider
 import com.cereal.client.presentation.error.ErrorResolver
 import fixtures.FakeRunMode
@@ -31,6 +39,7 @@ import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.runTest
+import net.swiftzer.semver.SemVer
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertInstanceOf
 import org.junit.jupiter.api.Assertions.assertNull
@@ -44,6 +53,9 @@ class HomeViewModelTest {
     private val scripts = InMemoryScriptRepository()
     private val notificationSettings = InMemoryNotificationSettingsRepository()
     private val installProvider = FakeScriptInstallProvider(scripts)
+    private val llmConfigs =
+        InMemoryLlmProviderConfigRepository(LlmProviderConfig.of(LlmProviderType.ANTHROPIC, "https://api.anthropic.com/v1", "key", "claude-opus-5-5"))
+    private val llmProvider = InMemoryLlmProvider()
 
     private suspend fun TestScope.homeWith(
         agent: ScriptPackage? = anAgentPackage(),
@@ -68,6 +80,8 @@ class HomeViewModelTest {
                 hasNotificationChannelsConfiguredInteractor = HasNotificationChannelsConfiguredInteractor(notificationSettings),
                 getOrCreateDefaultTaskGroupInteractor = world.getOrCreateDefaultTaskGroupInteractor,
                 startGoalRunInteractor = world.startGoalRunInteractor,
+                getLlmProviderConfigInteractor = GetLlmProviderConfigInteractor(llmConfigs),
+                connectLlmProviderInteractor = ConnectLlmProviderInteractor(llmProvider, llmConfigs),
                 errorResolver = ErrorResolver(),
             )
         advanceUntilIdle()
@@ -125,6 +139,16 @@ class HomeViewModelTest {
 
             assertEquals(HomeComposerSlot.Composer, vm.slot.value)
         }
+
+    @Test
+    fun `a missing AI provider loses to a missing or outdated agent`() {
+        val sdk = SemVer(1, 0, 0)
+
+        assertEquals(HomeComposerSlot.NotInstalled, homeComposerSlot(null, sdk, hasAiProvider = false))
+        assertEquals(HomeComposerSlot.UpdateRequired, homeComposerSlot(anAgentRequiringNewerClient(), sdk, hasAiProvider = false))
+        assertEquals(HomeComposerSlot.NoAiProvider, homeComposerSlot(anAgentPackage(), sdk, hasAiProvider = false))
+        assertEquals(HomeComposerSlot.Composer, homeComposerSlot(anAgentPackage(), sdk, hasAiProvider = true))
+    }
 
     @Test
     fun `a listing in maintenance mode flags the composer`() =
@@ -228,5 +252,46 @@ class HomeViewModelTest {
             val dialog = assertInstanceOf(HomeDialog.MoreOptions::class.java, vm.dialog.value)
             assertEquals(ConfigValue.StringValue("Tell me when the pliers are back in stock"), dialog.prefill.mainConfiguration["goal"])
             assertTrue(world.scriptInstances.getScriptPackageInstances().isEmpty())
+        }
+
+    @Test
+    fun `with no AI provider the setup card shows with Gemini pre-selected`() =
+        runTest {
+            llmConfigs.clear()
+            val vm = homeWith()
+
+            assertEquals(HomeComposerSlot.NoAiProvider, vm.slot.value)
+            assertEquals(LlmPreset.GEMINI, vm.aiSetup.preset.value)
+        }
+
+    @Test
+    fun `a failing Connect saves nothing and keeps the card with the error`() =
+        runTest {
+            llmConfigs.clear()
+            llmProvider.listModelsError = LlmCallException.Authentication()
+            val vm = homeWith()
+            vm.aiSetup.apiKeyState.text = "bad-key"
+
+            vm.onConnect()
+            advanceUntilIdle()
+
+            assertEquals(HomeComposerSlot.NoAiProvider, vm.slot.value)
+            assertEquals("Bad API key: the provider rejected it.", vm.connectError.value)
+            assertNull(llmConfigs.get())
+        }
+
+    @Test
+    fun `a passing Connect saves the config and shows the composer`() =
+        runTest {
+            llmConfigs.clear()
+            val vm = homeWith()
+            vm.aiSetup.apiKeyState.text = "good-key"
+
+            vm.onConnect()
+            advanceUntilIdle()
+
+            assertEquals(HomeComposerSlot.Composer, vm.slot.value)
+            assertEquals("gemini-2.5-flash", llmConfigs.get()?.model)
+            assertEquals(llmConfigs.get(), vm.aiProvider.value)
         }
 }

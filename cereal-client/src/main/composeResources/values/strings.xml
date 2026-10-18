@@ -615,4 +615,10 @@
     <string name="home_update_required_title">Update Cereal to use the AI browser agent</string>
     <string name="home_update_cereal">Update Cereal</string>
     <string name="home_maintenance_banner">The AI browser agent is under maintenance. Runs may not work right now.</string>
+    <string name="home_ai_setup_title">First, connect an AI model</string>
+    <string name="home_ai_setup_subtitle">The agent uses a model you choose. Pick one. Gemini's free tier costs nothing.</string>
+    <string name="home_ai_connect">Connect</string>
+    <string name="home_ai_connect_hint">Checks the key with one call, then saves to Settings → AI.</string>
+    <string name="home_ai_using">Using %1$s (%2$s)</string>
+    <string name="home_ai_change">Change in Settings → AI</string>
 </resources>

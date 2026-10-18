@@ -1,6 +1,8 @@
 package com.cereal.client.presentation.home
 
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
@@ -19,10 +21,19 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.input.pointer.PointerEventPass
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.unit.dp
 import com.cereal.client.domain.model.agent.GoalRunInput
+import com.cereal.client.domain.model.llm.LlmPreset
+import com.cereal.client.domain.model.llm.LlmProviderConfig
 import com.cereal.client.presentation.error.errorView
+import com.cereal.client.presentation.settings.ai.LlmPresetForm
+import com.cereal.client.presentation.settings.ai.labels
 import com.cereal.client.presentation.tasks.script.overview.ScriptSelectionDialog
 import com.cereal.client.presentation.theme.CerealTheme
 import com.cereal.client.presentation.view.CerealButton
@@ -37,6 +48,12 @@ import com.cereal.client.presentation.view.table.PaneToolbar
 import com.cereal_automation.cereal_client.generated.resources.Res
 import com.cereal_automation.cereal_client.generated.resources.cancel
 import com.cereal_automation.cereal_client.generated.resources.home
+import com.cereal_automation.cereal_client.generated.resources.home_ai_change
+import com.cereal_automation.cereal_client.generated.resources.home_ai_connect
+import com.cereal_automation.cereal_client.generated.resources.home_ai_connect_hint
+import com.cereal_automation.cereal_client.generated.resources.home_ai_setup_subtitle
+import com.cereal_automation.cereal_client.generated.resources.home_ai_setup_title
+import com.cereal_automation.cereal_client.generated.resources.home_ai_using
 import com.cereal_automation.cereal_client.generated.resources.home_check_every
 import com.cereal_automation.cereal_client.generated.resources.home_check_every_minutes
 import com.cereal_automation.cereal_client.generated.resources.home_composer_title
@@ -90,6 +107,7 @@ fun HomeScreen(
     onOpenClientUpdate: () -> Unit = {},
     onOpenTasks: (focusTaskId: String?) -> Unit = {},
     onRunScript: (packageName: String) -> Unit = {},
+    onNavigateToAiSettings: () -> Unit = {},
 ) {
     val scope = rememberCoroutineScope()
     val viewModel =
@@ -134,6 +152,12 @@ fun HomeScreen(
                     HomeComposerSlot.Composer -> {
                         if (viewModel.isUnderMaintenance.value) MaintenanceBanner()
                         GoalComposer(viewModel)
+                        viewModel.aiProvider.value?.let { AiProviderLine(it, onNavigateToAiSettings) }
+                    }
+
+                    HomeComposerSlot.NoAiProvider -> {
+                        AiSetupCard(viewModel)
+                        DisabledComposer(viewModel)
                     }
                 }
                 HomeActivitySections(onOpenTasks, onRunScript, onNavigateToMarketplace)
@@ -293,6 +317,91 @@ private fun GoalComposer(viewModel: HomeViewModel) {
         color = CerealTheme.colorScheme.contentTertiary,
     )
 }
+
+@Composable
+private fun AiSetupCard(viewModel: HomeViewModel) {
+    CerealCard(modifier = Modifier.fillMaxWidth()) {
+        Column(verticalArrangement = Arrangement.spacedBy(CerealTheme.spacing.sm)) {
+            Column(
+                modifier = Modifier.padding(start = CerealTheme.spacing.xl, top = CerealTheme.spacing.xl, end = CerealTheme.spacing.xl),
+                verticalArrangement = Arrangement.spacedBy(CerealTheme.spacing.xs),
+            ) {
+                CerealText(
+                    text = stringResource(Res.string.home_ai_setup_title),
+                    style = MaterialTheme.typography.titleSmall,
+                    color = MaterialTheme.colorScheme.onSurface,
+                )
+                CerealText(
+                    text = stringResource(Res.string.home_ai_setup_subtitle),
+                    color = CerealTheme.colorScheme.contentSecondary,
+                )
+            }
+            LlmPresetForm(form = viewModel.aiSetup, onSelectPreset = viewModel::onSelectAiPreset)
+            Row(
+                modifier = Modifier.padding(start = CerealTheme.spacing.xl, end = CerealTheme.spacing.xl, bottom = CerealTheme.spacing.xl),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(CerealTheme.spacing.md),
+            ) {
+                CerealButton(
+                    onClick = viewModel::onConnect,
+                    text = stringResource(Res.string.home_ai_connect),
+                    enabled = !viewModel.isConnecting.value,
+                )
+                val error = viewModel.connectError.value
+                CerealText(
+                    text = error ?: stringResource(Res.string.home_ai_connect_hint),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = if (error != null) MaterialTheme.colorScheme.error else CerealTheme.colorScheme.contentTertiary,
+                )
+            }
+        }
+    }
+}
+
+/** The composer greyed out under the setup card: visible, but not interactive. */
+@Composable
+private fun DisabledComposer(viewModel: HomeViewModel) {
+    Box {
+        Column(
+            modifier = Modifier.alpha(DISABLED_ALPHA).clearAndSetSemantics {},
+            verticalArrangement = Arrangement.spacedBy(CerealTheme.spacing.lg),
+        ) {
+            GoalComposer(viewModel)
+        }
+        // Swallows clicks so nothing underneath reacts.
+        Box(
+            modifier =
+                Modifier.matchParentSize().pointerInput(Unit) {
+                    awaitPointerEventScope {
+                        while (true) awaitPointerEvent(PointerEventPass.Initial).changes.forEach { it.consume() }
+                    }
+                },
+        )
+    }
+}
+
+@Composable
+private fun AiProviderLine(
+    config: LlmProviderConfig,
+    onNavigateToAiSettings: () -> Unit,
+) {
+    Row(horizontalArrangement = Arrangement.spacedBy(CerealTheme.spacing.xs)) {
+        val style = MaterialTheme.typography.bodySmall
+        CerealText(
+            text = stringResource(Res.string.home_ai_using, stringResource(LlmPreset.of(config).labels().first), config.model) + " ·",
+            style = style,
+            color = CerealTheme.colorScheme.contentTertiary,
+        )
+        CerealText(
+            text = stringResource(Res.string.home_ai_change),
+            modifier = Modifier.clickable(role = Role.Button, onClick = onNavigateToAiSettings),
+            style = style,
+            color = CerealTheme.colorScheme.link,
+        )
+    }
+}
+
+private const val DISABLED_ALPHA = 0.4f
 
 @Composable
 private fun ComposerField(

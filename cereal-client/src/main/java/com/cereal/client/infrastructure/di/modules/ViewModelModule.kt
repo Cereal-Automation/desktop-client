@@ -58,6 +58,8 @@ object ViewModelModule {
                     hasNotificationChannelsConfiguredInteractor = get(),
                     getOrCreateDefaultTaskGroupInteractor = get(),
                     startGoalRunInteractor = get(),
+                    getLlmProviderConfigInteractor = get(),
+                    connectLlmProviderInteractor = get(),
                     errorResolver = get(),
                 )
             }

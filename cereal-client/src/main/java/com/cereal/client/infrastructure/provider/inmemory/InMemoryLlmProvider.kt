@@ -12,17 +12,19 @@ import com.cereal.client.domain.provider.LlmProvider
 /**
  * In-memory [LlmProvider] for the `mock` flavor and tests: no network. Records every call in
  * [requests]; [responder] decides the answer (default: a fixed sandbox reply from the configured model).
+ * Set [listModelsError] to make the connection test ([listModels]) fail.
  */
 class InMemoryLlmProvider(
     var models: List<LlmModel> = listOf(LlmModel("sandbox-model")),
     var responder: suspend (LlmProviderConfig, LlmCompletionRequest) -> LlmCompletion = { config, _ -> sandboxReply(config.model) },
+    var listModelsError: Exception? = null,
 ) : LlmProvider {
     private val recorded = mutableListOf<Pair<LlmProviderConfig, LlmCompletionRequest>>()
 
     /** Every [complete] call in order, with the config it was made with. */
     val requests: List<Pair<LlmProviderConfig, LlmCompletionRequest>> get() = recorded.toList()
 
-    override suspend fun listModels(connection: LlmConnection): List<LlmModel> = models
+    override suspend fun listModels(connection: LlmConnection): List<LlmModel> = listModelsError?.let { throw it } ?: models
 
     override suspend fun complete(
         config: LlmProviderConfig,

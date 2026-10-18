@@ -72,6 +72,7 @@ import com.cereal.client.application.interactor.settings.GetApplicationPreferenc
 import com.cereal.client.application.interactor.settings.OpenFileInteractor
 import com.cereal.client.application.interactor.settings.OpenUrlInteractor
 import com.cereal.client.application.interactor.settings.ai.ClearLlmProviderConfigInteractor
+import com.cereal.client.application.interactor.settings.ai.ConnectLlmProviderInteractor
 import com.cereal.client.application.interactor.settings.ai.GetLlmProviderConfigInteractor
 import com.cereal.client.application.interactor.settings.ai.HasLlmProviderConfigInteractor
 import com.cereal.client.application.interactor.settings.ai.ListLlmModelsInteractor
@@ -179,6 +180,7 @@ object InteractorModule {
             factory { SaveLlmProviderConfigInteractor(get()) }
             factory { ClearLlmProviderConfigInteractor(get()) }
             factory { ListLlmModelsInteractor(get()) }
+            factory { ConnectLlmProviderInteractor(get(), get()) }
             factory { HasNotificationChannelsConfiguredInteractor(get()) }
             // Notification center
             factory { ObserveNotificationCenterInteractor(get()) }
