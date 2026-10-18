@@ -125,6 +125,26 @@ class AiSettingsSectionScreenTest {
         }
 
     @Test
+    fun eachPresetShowsItsOwnSpendLimitHintAndLocalShowsNone() =
+        runScreenTest {
+            setScreenContent { AiSettingsSection() }
+
+            onNodeWithText("Google Gemini").performClick()
+            onNodeWithText("Google Cloud Billing", substring = true).assertIsDisplayed()
+
+            onNodeWithText("OpenAI").performClick()
+            onNodeWithText("OpenAI usage limits", substring = true).assertIsDisplayed()
+            onNodeWithText("Google Cloud Billing", substring = true).assertDoesNotExist()
+
+            onNodeWithText("OpenRouter").performClick()
+            onNodeWithText("OpenRouter keys", substring = true).assertIsDisplayed()
+
+            onNodeWithText("Local model").performClick()
+            onNodeWithText("spend limit", substring = true).assertDoesNotExist()
+            onNodeWithText("OpenRouter keys", substring = true).assertDoesNotExist()
+        }
+
+    @Test
     fun geminiShowsTheFreeTierCaveatAndThePrivacyLine() =
         runScreenTest {
             setScreenContent { AiSettingsSection() }

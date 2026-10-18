@@ -36,7 +36,6 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.PopupProperties
-import com.cereal.client.domain.model.llm.LlmProviderType
 import com.cereal.client.presentation.theme.CerealTheme
 import com.cereal.client.presentation.view.CerealText
 import com.cereal.client.presentation.view.ClickableUrlText
@@ -72,7 +71,10 @@ import com.cereal_automation.cereal_client.generated.resources.ai_privacy_line
 import com.cereal_automation.cereal_client.generated.resources.ai_server
 import com.cereal_automation.cereal_client.generated.resources.ai_server_desc
 import com.cereal_automation.cereal_client.generated.resources.ai_spend_limits_anthropic
-import com.cereal_automation.cereal_client.generated.resources.ai_spend_limits_openai_compatible
+import com.cereal_automation.cereal_client.generated.resources.ai_spend_limits_gemini
+import com.cereal_automation.cereal_client.generated.resources.ai_spend_limits_openai
+import com.cereal_automation.cereal_client.generated.resources.ai_spend_limits_openrouter
+import com.cereal_automation.cereal_client.generated.resources.ai_spend_limits_other
 import org.jetbrains.compose.resources.StringResource
 import org.jetbrains.compose.resources.stringResource
 
@@ -100,9 +102,7 @@ fun LlmPresetForm(
             if (preset == LlmPreset.GEMINI) {
                 CerealText("⚠ " + stringResource(Res.string.ai_free_tier_caveat), color = CerealTheme.colorScheme.warning, style = smallText)
             }
-            if (preset != LlmPreset.LOCAL) {
-                CerealText(stringResource(preset.provider.spendLimitsHelp()), color = CerealTheme.colorScheme.contentTertiary, style = smallText)
-            }
+            preset.spendLimitsHelp()?.let { ClickableUrlText(stringResource(it), style = smallText) }
         }
     }
     CerealText(
@@ -278,8 +278,13 @@ internal fun LlmPreset.labels(): Pair<StringResource, StringResource> =
         LlmPreset.OTHER -> Res.string.ai_preset_other to Res.string.ai_preset_other_sub
     }
 
-private fun LlmProviderType.spendLimitsHelp(): StringResource =
+/** Where to cap spend for [this] preset; null for [LlmPreset.LOCAL], which costs nothing. */
+private fun LlmPreset.spendLimitsHelp(): StringResource? =
     when (this) {
-        LlmProviderType.ANTHROPIC -> Res.string.ai_spend_limits_anthropic
-        LlmProviderType.OPENAI_COMPATIBLE -> Res.string.ai_spend_limits_openai_compatible
+        LlmPreset.GEMINI -> Res.string.ai_spend_limits_gemini
+        LlmPreset.ANTHROPIC -> Res.string.ai_spend_limits_anthropic
+        LlmPreset.OPENAI -> Res.string.ai_spend_limits_openai
+        LlmPreset.OPENROUTER -> Res.string.ai_spend_limits_openrouter
+        LlmPreset.LOCAL -> null
+        LlmPreset.OTHER -> Res.string.ai_spend_limits_other
     }
