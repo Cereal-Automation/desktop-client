@@ -1,5 +1,7 @@
-package com.cereal.client.domain.model.llm
+package com.cereal.client.presentation.settings.ai
 
+import com.cereal.client.domain.model.llm.LlmProviderConfig
+import com.cereal.client.domain.model.llm.LlmProviderType
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.params.ParameterizedTest

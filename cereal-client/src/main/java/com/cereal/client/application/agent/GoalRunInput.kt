@@ -1,13 +1,19 @@
-package com.cereal.client.domain.model.agent
+package com.cereal.client.application.agent
 
 import com.cereal.client.domain.model.script.ScriptConfigurationValues
+import com.cereal.client.domain.model.script.ScriptPackage
 import com.cereal.client.domain.model.script.configuration.ConfigItemType
 import com.cereal.client.domain.model.script.configuration.ConfigValue
 import com.cereal.client.domain.model.script.configuration.ScriptConfigurationDefinition
 import com.cereal.client.domain.model.script.configuration.itemForKey
+import com.cereal.client.domain.model.task.Task
 
 /** Package name of the AI browser agent marketplace script. */
 const val AI_BROWSER_AGENT_PACKAGE = "com.cereal.aibrowseragent"
+
+/** Whether this is the AI browser agent, the script Home's goal composer starts. */
+val ScriptPackage.isAiBrowserAgent: Boolean
+    get() = manifest.packageName == AI_BROWSER_AGENT_PACKAGE
 
 /**
  * What the Home goal composer edits: the only four config keys of the AI browser agent it owns.
@@ -24,8 +30,8 @@ data class GoalRunInput(
         const val KEY_START_URL = "startUrl"
         const val KEY_RUN_MODE = "runMode"
         const val KEY_REPEAT_INTERVAL = "repeatInterval"
-        private const val ONCE = "Once"
-        private const val REPEAT = "Repeat"
+        internal const val ONCE = "Once"
+        internal const val REPEAT = "Repeat"
 
         val KEYS = listOf(KEY_GOAL, KEY_START_URL, KEY_RUN_MODE, KEY_REPEAT_INTERVAL)
     }
@@ -49,9 +55,32 @@ data class GoalRunInput(
 fun ScriptConfigurationDefinition.supportsGoalComposer(): Boolean =
     hasType(GoalRunInput.KEY_GOAL, ConfigItemType.StringConfigItem) &&
         hasType(GoalRunInput.KEY_START_URL, ConfigItemType.StringConfigItem) &&
-        runModeConstant("Once") != null &&
-        runModeConstant("Repeat") != null &&
+        runModeConstant(GoalRunInput.ONCE) != null &&
+        runModeConstant(GoalRunInput.REPEAT) != null &&
         hasType(GoalRunInput.KEY_REPEAT_INTERVAL, ConfigItemType.IntConfigItem)
+
+/** A goal run read back from its task: what it was started with, and the latest cost it reported. */
+data class GoalRunDetails(
+    val goal: String,
+    val startUrl: String,
+    /** The run mode constant's name ("Once"/"Repeat"); empty if unset. */
+    val mode: String,
+    /** Latest "Cost: $x" the agent reported in a status message; null until it reports one. */
+    val cost: String?,
+)
+
+fun Task.goalRunDetails(): GoalRunDetails {
+    val config = scriptInstance.packageInstance.mainConfiguration
+    return GoalRunDetails(
+        goal = (config[GoalRunInput.KEY_GOAL] as? ConfigValue.StringValue)?.raw.orEmpty(),
+        startUrl = (config[GoalRunInput.KEY_START_URL] as? ConfigValue.StringValue)?.raw.orEmpty(),
+        mode = (config[GoalRunInput.KEY_RUN_MODE] as? ConfigValue.EnumValue)?.raw?.name.orEmpty(),
+        cost = statusHistory.asReversed().firstNotNullOfOrNull { s -> s.message?.let { COST.find(it)?.groupValues?.get(1) } },
+    )
+}
+
+// ponytail: the agent has no structured cost; parse its "Cost: $x" status text until it reports one.
+private val COST = Regex("""Cost: (\$\d+(?:\.\d+)?)""")
 
 private fun ScriptConfigurationDefinition.hasType(
     key: String,

@@ -5,6 +5,9 @@ import androidx.compose.runtime.mutableStateOf
 import com.cereal.client.application.CoroutinesDispatcherProvider
 import com.cereal.client.application.FlowInteractor
 import com.cereal.client.application.Interactor
+import com.cereal.client.application.agent.GoalRunInput
+import com.cereal.client.application.agent.isAiBrowserAgent
+import com.cereal.client.application.agent.supportsGoalComposer
 import com.cereal.client.application.interactor.agent.GetAiBrowserAgentListingInteractor
 import com.cereal.client.application.interactor.agent.InstallAiBrowserAgentInteractor
 import com.cereal.client.application.interactor.agent.StartGoalRunInteractor
@@ -14,11 +17,7 @@ import com.cereal.client.application.interactor.script.GetSdkVersionInteractor
 import com.cereal.client.application.interactor.settings.ai.ConnectLlmProviderInteractor
 import com.cereal.client.application.interactor.settings.ai.GetLlmProviderConfigInteractor
 import com.cereal.client.application.interactor.task.GetOrCreateDefaultTaskGroupInteractor
-import com.cereal.client.domain.model.agent.AI_BROWSER_AGENT_PACKAGE
-import com.cereal.client.domain.model.agent.GoalRunInput
-import com.cereal.client.domain.model.agent.supportsGoalComposer
 import com.cereal.client.domain.model.exception.InvalidLlmProviderConfigException
-import com.cereal.client.domain.model.llm.LlmPreset
 import com.cereal.client.domain.model.llm.LlmProviderConfig
 import com.cereal.client.domain.model.script.ScriptPackage
 import com.cereal.client.domain.model.script.ScriptPackageInstance
@@ -28,6 +27,7 @@ import com.cereal.client.domain.model.script.isClientUpdateRequired
 import com.cereal.client.domain.model.task.ScriptPackageGroup
 import com.cereal.client.presentation.error.ErrorResolver
 import com.cereal.client.presentation.error.handleFailureOrElse
+import com.cereal.client.presentation.settings.ai.LlmPreset
 import com.cereal.client.presentation.settings.ai.LlmPresetFormState
 import com.cereal.client.presentation.settings.ai.connectionFailureMessage
 import com.cereal.client.presentation.tasks.script.overview.configuration.RawScriptConfigValues
@@ -150,7 +150,7 @@ class HomeViewModel(
             getScriptsInteractor(Interactor.None()).collectLatest { result ->
                 withContext(dispatcherProvider.main) {
                     if (result is SuspendableResult.Success) {
-                        val installed = result.value.firstOrNull { it.manifest.packageName == AI_BROWSER_AGENT_PACKAGE }
+                        val installed = result.value.firstOrNull { it.isAiBrowserAgent }
                         if (agent == null && installed != null) applyDefaults(installed)
                         agent = installed
                         this@HomeViewModel.clientSdk = clientSdk

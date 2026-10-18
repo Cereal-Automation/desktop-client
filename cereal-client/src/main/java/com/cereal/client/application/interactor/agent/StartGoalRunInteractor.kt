@@ -1,12 +1,12 @@
 package com.cereal.client.application.interactor.agent
 
 import com.cereal.client.application.Interactor
+import com.cereal.client.application.agent.GoalRunInput
+import com.cereal.client.application.agent.supportsGoalComposer
 import com.cereal.client.application.exception.CerealException
 import com.cereal.client.application.interactor.script.StartScriptInteractor
 import com.cereal.client.application.interactor.task.GetOrCreateDefaultTaskGroupInteractor
 import com.cereal.client.application.interactor.task.StartAllTasksInScriptPackageInstanceInteractor
-import com.cereal.client.domain.model.agent.GoalRunInput
-import com.cereal.client.domain.model.agent.supportsGoalComposer
 import com.cereal.client.domain.model.script.ScriptPackage
 import com.cereal.client.domain.model.script.ScriptPackageInstance
 

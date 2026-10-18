@@ -4,7 +4,6 @@ import androidx.compose.runtime.State
 import androidx.compose.runtime.mutableStateOf
 import com.cereal.client.application.interactor.settings.ai.ListLlmModelsInteractor
 import com.cereal.client.application.interactor.settings.ai.SaveLlmProviderConfigInteractor
-import com.cereal.client.domain.model.llm.LlmPreset
 import com.cereal.client.domain.model.llm.LlmProviderConfig
 import com.cereal.client.presentation.view.fields.state.StringTextFieldState
 

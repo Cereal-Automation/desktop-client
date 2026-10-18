@@ -4,11 +4,10 @@ import androidx.compose.runtime.State
 import androidx.compose.runtime.mutableStateOf
 import com.cereal.client.application.CoroutinesDispatcherProvider
 import com.cereal.client.application.Interactor
+import com.cereal.client.application.agent.goalRunDetails
+import com.cereal.client.application.agent.isAiBrowserAgent
 import com.cereal.client.application.interactor.script.GetScriptsInteractor
 import com.cereal.client.application.interactor.task.ObserveTasksInteractor
-import com.cereal.client.domain.model.agent.AI_BROWSER_AGENT_PACKAGE
-import com.cereal.client.domain.model.agent.GoalRunInput
-import com.cereal.client.domain.model.script.configuration.ConfigValue
 import com.cereal.client.domain.model.task.Task
 import com.cereal.client.presentation.tasks.mappers.toDisplayStatus
 import com.github.kittinunf.result.coroutines.SuspendableResult
@@ -52,7 +51,7 @@ class HomeActivityViewModel(
                 if (result is SuspendableResult.Success) {
                     val runs =
                         result.value
-                            .filter { it.scriptInstance.packageInstance.definition.manifest.packageName == AI_BROWSER_AGENT_PACKAGE }
+                            .filter { it.scriptInstance.packageInstance.definition.isAiBrowserAgent }
                             .sortedByDescending { it.createdAt }
                             .take(RECENT_RUNS)
                             .map { it.toRecentRun() }
@@ -65,7 +64,7 @@ class HomeActivityViewModel(
                 if (result is SuspendableResult.Success) {
                     val scripts =
                         result.value
-                            .filter { it.manifest.packageName != AI_BROWSER_AGENT_PACKAGE }
+                            .filterNot { it.isAiBrowserAgent }
                             .map { ReadyMadeScriptUiModel(it.manifest.packageName, it.manifest.name) }
                     withContext(dispatcherProvider.main) { _readyMadeScripts.value = scripts }
                 }
@@ -74,22 +73,18 @@ class HomeActivityViewModel(
     }
 
     private fun Task.toRecentRun(): RecentRunUiModel {
-        val config = scriptInstance.packageInstance.mainConfiguration
-        val startUrl = (config[GoalRunInput.KEY_START_URL] as? ConfigValue.StringValue)?.raw.orEmpty()
+        val details = goalRunDetails()
         return RecentRunUiModel(
             taskId = id,
             status = status.toDisplayStatus(),
-            goal = (config[GoalRunInput.KEY_GOAL] as? ConfigValue.StringValue)?.raw.orEmpty(),
-            site = runCatching { URI(startUrl).host }.getOrNull() ?: startUrl,
-            mode = (config[GoalRunInput.KEY_RUN_MODE] as? ConfigValue.EnumValue)?.raw?.name.orEmpty(),
-            cost = statusHistory.asReversed().firstNotNullOfOrNull { s -> s.message?.let { COST.find(it)?.groupValues?.get(1) } },
+            goal = details.goal,
+            site = runCatching { URI(details.startUrl).host }.getOrNull() ?: details.startUrl,
+            mode = details.mode,
+            cost = details.cost,
         )
     }
 
     private companion object {
         const val RECENT_RUNS = 3
-
-        // ponytail: the agent has no structured cost; parse its "Cost: $x" status text until it reports one.
-        val COST = Regex("""Cost: (\$\d+(?:\.\d+)?)""")
     }
 }

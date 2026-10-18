@@ -5,7 +5,6 @@ import com.cereal.client.application.interactor.settings.ai.ClearLlmProviderConf
 import com.cereal.client.application.interactor.settings.ai.GetLlmProviderConfigInteractor
 import com.cereal.client.application.interactor.settings.ai.ListLlmModelsInteractor
 import com.cereal.client.application.interactor.settings.ai.SaveLlmProviderConfigInteractor
-import com.cereal.client.domain.model.llm.LlmPreset
 import com.cereal.client.domain.model.llm.LlmProviderConfig
 import com.cereal.client.domain.model.llm.LlmProviderType
 import com.cereal.client.infrastructure.data.repository.inmemory.InMemoryLlmProviderConfigRepository

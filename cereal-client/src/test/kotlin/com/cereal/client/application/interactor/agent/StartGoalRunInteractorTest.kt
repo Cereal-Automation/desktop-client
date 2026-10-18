@@ -1,6 +1,6 @@
 package com.cereal.client.application.interactor.agent
 
-import com.cereal.client.domain.model.agent.GoalRunInput
+import com.cereal.client.application.agent.GoalRunInput
 import com.cereal.client.domain.model.script.configuration.ConfigItemType
 import com.cereal.client.domain.model.script.configuration.ConfigValue
 import com.cereal.client.domain.model.task.ScriptPackageGroup

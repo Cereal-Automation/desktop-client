@@ -11,7 +11,6 @@ import com.cereal.client.application.interactor.script.GetSdkVersionInteractor
 import com.cereal.client.application.interactor.settings.ai.ConnectLlmProviderInteractor
 import com.cereal.client.application.interactor.settings.ai.GetLlmProviderConfigInteractor
 import com.cereal.client.domain.model.exception.LlmCallException
-import com.cereal.client.domain.model.llm.LlmPreset
 import com.cereal.client.domain.model.llm.LlmProviderConfig
 import com.cereal.client.domain.model.llm.LlmProviderType
 import com.cereal.client.domain.model.marketplace.MarketplaceScript
@@ -26,6 +25,7 @@ import com.cereal.client.infrastructure.provider.inmemory.InMemoryCheckoutProvid
 import com.cereal.client.infrastructure.provider.inmemory.InMemoryLlmProvider
 import com.cereal.client.infrastructure.provider.inmemory.InMemoryMarketplaceProvider
 import com.cereal.client.presentation.error.ErrorResolver
+import com.cereal.client.presentation.settings.ai.LlmPreset
 import fixtures.FakeRunMode
 import fixtures.FakeScriptInstallProvider
 import fixtures.GoalRunWorld

@@ -1,6 +1,6 @@
 package fixtures
 
-import com.cereal.client.domain.model.agent.AI_BROWSER_AGENT_PACKAGE
+import com.cereal.client.application.agent.AI_BROWSER_AGENT_PACKAGE
 import com.cereal.client.domain.model.marketplace.MarketplaceScript
 import com.cereal.client.domain.model.script.Release
 import com.cereal.client.domain.model.script.ScriptPackage

@@ -11,7 +11,6 @@ import com.cereal.client.application.interactor.settings.ai.ListLlmModelsInterac
 import com.cereal.client.application.interactor.settings.ai.SaveLlmProviderConfigInteractor
 import com.cereal.client.domain.model.exception.InvalidLlmProviderConfigException
 import com.cereal.client.domain.model.exception.LlmCallException
-import com.cereal.client.domain.model.llm.LlmPreset
 import com.cereal.client.presentation.error.ErrorAction
 import com.cereal.client.presentation.error.ErrorResolver
 import com.cereal.client.presentation.feedback.FeedbackAction

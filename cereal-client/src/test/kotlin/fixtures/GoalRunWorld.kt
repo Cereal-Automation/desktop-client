@@ -1,5 +1,6 @@
 package fixtures
 
+import com.cereal.client.application.agent.AI_BROWSER_AGENT_PACKAGE
 import com.cereal.client.application.interactor.agent.StartGoalRunInteractor
 import com.cereal.client.application.interactor.script.StartScriptInteractor
 import com.cereal.client.application.interactor.task.GetOrCreateDefaultTaskGroupInteractor
@@ -8,7 +9,6 @@ import com.cereal.client.application.script.ScriptInstanceFactory
 import com.cereal.client.application.script.ScriptLicenseChecker
 import com.cereal.client.application.task.TaskManager
 import com.cereal.client.domain.model.ScopeLinker
-import com.cereal.client.domain.model.agent.AI_BROWSER_AGENT_PACKAGE
 import com.cereal.client.domain.model.script.MainScriptInstance
 import com.cereal.client.domain.model.script.ScriptCapacity
 import com.cereal.client.domain.model.script.ScriptEntitlement

@@ -1,8 +1,8 @@
 package com.cereal.client.application.interactor.agent
 
 import com.cereal.client.application.Interactor
+import com.cereal.client.application.agent.AI_BROWSER_AGENT_PACKAGE
 import com.cereal.client.application.exception.CerealException
-import com.cereal.client.domain.model.agent.AI_BROWSER_AGENT_PACKAGE
 import com.cereal.client.domain.model.marketplace.MarketplaceScript
 import com.cereal.client.domain.provider.MarketplaceProvider
 

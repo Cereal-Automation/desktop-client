@@ -33,7 +33,6 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.PopupProperties
-import com.cereal.client.domain.model.llm.LlmPreset
 import com.cereal.client.domain.model.llm.LlmProviderType
 import com.cereal.client.presentation.theme.CerealTheme
 import com.cereal.client.presentation.view.CerealText

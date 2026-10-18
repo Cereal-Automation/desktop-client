@@ -28,10 +28,10 @@ import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.unit.dp
-import com.cereal.client.domain.model.agent.GoalRunInput
-import com.cereal.client.domain.model.llm.LlmPreset
+import com.cereal.client.application.agent.GoalRunInput
 import com.cereal.client.domain.model.llm.LlmProviderConfig
 import com.cereal.client.presentation.error.errorView
+import com.cereal.client.presentation.settings.ai.LlmPreset
 import com.cereal.client.presentation.settings.ai.LlmPresetForm
 import com.cereal.client.presentation.settings.ai.labels
 import com.cereal.client.presentation.tasks.script.overview.ScriptSelectionDialog
