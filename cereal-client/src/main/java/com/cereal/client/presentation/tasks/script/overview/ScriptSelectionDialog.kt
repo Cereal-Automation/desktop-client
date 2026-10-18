@@ -154,21 +154,26 @@ fun ScriptSelectionDialog(
             val overviewViewState by remember { viewModel.overviewViewState }
 
             Row(Modifier.fillMaxSize().padding(innerPadding)) {
-                Column(modifier = Modifier.weight(0.35f)) {
-                    when (val state = overviewViewState) {
-                        is ScriptSelectionState.Overview.Filled -> {
+                when (val state = overviewViewState) {
+                    is ScriptSelectionState.Overview.Filled -> {
+                        Column(modifier = Modifier.weight(0.35f)) {
                             GroupedListView(
                                 viewModel = state.viewModel,
                             )
                         }
+                        VerticalDivider()
+                    }
 
-                        is ScriptSelectionState.Overview.Empty -> {
+                    is ScriptSelectionState.Overview.Empty -> {
+                        Column(modifier = Modifier.weight(0.35f)) {
                             NoScriptsAvailableView(onNavigateToMarketplace)
                         }
+                        VerticalDivider()
                     }
-                }
 
-                VerticalDivider()
+                    // Nothing to choose from, so the configuration takes the full width.
+                    is ScriptSelectionState.Overview.Single -> {}
+                }
 
                 Column(Modifier.fillMaxHeight().weight(0.65f)) {
                     when (val viewState = viewModel.configurationViewState.value) {

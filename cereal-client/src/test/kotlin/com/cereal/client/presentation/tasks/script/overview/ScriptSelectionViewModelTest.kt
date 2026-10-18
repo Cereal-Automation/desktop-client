@@ -167,13 +167,25 @@ class ScriptSelectionViewModelTest {
     }
 
     @Test
-    fun `loadInstalledScripts shows the filled state when scripts exist`() {
+    fun `loadInstalledScripts shows the filled state when several scripts exist`() {
         coEvery { getScriptsInteractor(any()) } returns
-            flowOf(SuspendableResult.Success(listOf(mockk<ScriptPackage>(relaxed = true))))
+            flowOf(SuspendableResult.Success(listOf(aScriptPackage("com.example.a", "A"), aScriptPackage("com.example.b", "B"))))
         val viewModel = createViewModel()
         dispatcher.scheduler.advanceUntilIdle()
 
         assertTrue(viewModel.overviewViewState.value is ScriptSelectionState.Overview.Filled)
+        assertTrue(viewModel.configurationViewState.value is ScriptSelectionState.Config.None)
+    }
+
+    @Test
+    fun `loadInstalledScripts hides the list and selects the script when exactly one exists`() {
+        coEvery { getScriptsInteractor(any()) } returns
+            flowOf(SuspendableResult.Success(listOf(aScriptPackage("com.example.a", "A"))))
+        val viewModel = createViewModel()
+        dispatcher.scheduler.advanceUntilIdle()
+
+        assertTrue(viewModel.overviewViewState.value is ScriptSelectionState.Overview.Single)
+        assertTrue(viewModel.configurationViewState.value is ScriptSelectionState.Config.Selected)
     }
 
     @Test

@@ -57,8 +57,16 @@ class ScriptSelectionCapacityScreenTest {
     fun `shows no capacity row when the selected script has no capacity concept`() =
         runCapacityScreenTest(ScriptCapacity.None) {
             // The script is entitled but uncapped, so no capacity label or amount is rendered.
-            waitForText("Test")
+            waitForText("Notification Overrides")
             onNodeWithText("Capacity").assertDoesNotExist()
+        }
+
+    @Test
+    fun `hides the script list when only one script is installed`() =
+        runCapacityScreenTest(ScriptCapacity.None) {
+            waitForText("Notification Overrides")
+            // "Test" is the installed script's name; it would only render as a list row.
+            onNodeWithText("Test").assertDoesNotExist()
         }
 
     /**

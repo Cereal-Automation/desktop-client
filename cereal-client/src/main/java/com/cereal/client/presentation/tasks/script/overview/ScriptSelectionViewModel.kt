@@ -114,9 +114,16 @@ class ScriptSelectionViewModel(
                         if (items.isEmpty()) {
                             overviewViewState.value = ScriptSelectionState.Overview.Empty
                         } else {
-                            scriptsListViewModel.updateItems(items, false)
+                            // A single installed script needs no choosing: select it and hide the list.
+                            val single = items.size == 1
+                            scriptsListViewModel.updateItems(items, selectFirstWhenNoSelection = single)
 
-                            overviewViewState.value = ScriptSelectionState.Overview.Filled(scriptsListViewModel)
+                            overviewViewState.value =
+                                if (single) {
+                                    ScriptSelectionState.Overview.Single
+                                } else {
+                                    ScriptSelectionState.Overview.Filled(scriptsListViewModel)
+                                }
 
                             // Auto-select the script if duplicating from an existing instance.
                             initialScriptPackageInstance?.takeUnless { initialSelectionApplied }?.let { instance ->
