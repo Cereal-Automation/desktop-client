@@ -23,7 +23,7 @@ class TasksEmptyStateTest {
                 TasksEmptyState(onCreateGroup = {}, onAddScript = {})
             }
 
-            onNodeWithText("No script groups yet").assertIsDisplayed()
+            onNodeWithText("No tasks yet").assertIsDisplayed()
             onNodeWithText("Create group").assertIsDisplayed()
             onNodeWithText("Add script").assertIsDisplayed()
         }
