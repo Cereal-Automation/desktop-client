@@ -213,8 +213,10 @@
     <string name="script_capacity_unlimited">Unlimited %1$s</string>
     <string name="marketplace_view_details">VIEW DETAILS</string>
     <string name="more_options">More options</string>
+    <string name="nav_section_agent">Agent</string>
+    <string name="nav_section_ready_made_scripts">Ready-made scripts</string>
+    <string name="nav_section_resources">Resources</string>
     <string name="nav_section_system">System</string>
-    <string name="nav_section_workspace">Workspace</string>
     <string name="nav_user_fallback">User</string>
     <string name="notification_center_summary">%1$d unseen · %2$d total</string>
     <string name="notification_center_total">%1$d total</string>
@@ -537,7 +539,6 @@
     <string name="website_desc">Opens Cereal's Official website.</string>
     <string name="your_profile">Profile</string>
     <string name="my_scripts">My Scripts</string>
-    <string name="my_scripts_desc">View and manage your installed scripts.</string>
     <string name="my_scripts_empty_title">No scripts installed yet</string>
     <string name="my_scripts_empty_message">Scripts you install from the marketplace show up here.</string>
     <string name="my_scripts_empty_action_browse">Browse marketplace</string>

@@ -105,12 +105,7 @@ interface Root {
                             }
 
                             is Routing.ApplicationSettings -> {
-                                ApplicationSettingsScreen(
-                                    onNavigateToMyScripts = {
-                                        backStack.push(Routing.MyScripts)
-                                        onNavigateTo?.invoke(Routing.MyScripts)
-                                    },
-                                )
+                                ApplicationSettingsScreen()
                             }
                         }
                     }

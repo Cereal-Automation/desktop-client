@@ -49,8 +49,6 @@ import com.cereal_automation.cereal_client.generated.resources.Res
 import com.cereal_automation.cereal_client.generated.resources.app_icon
 import com.cereal_automation.cereal_client.generated.resources.app_name
 import com.cereal_automation.cereal_client.generated.resources.application
-import com.cereal_automation.cereal_client.generated.resources.nav_section_system
-import com.cereal_automation.cereal_client.generated.resources.nav_section_workspace
 import com.cereal_automation.cereal_client.generated.resources.nav_user_fallback
 import com.cereal_automation.cereal_client.generated.resources.scripts_count
 import kotlinx.collections.immutable.ImmutableList
@@ -65,16 +63,9 @@ fun MainMenu(
     activeScriptCount: Int,
     onClick: (MenuItemUiModel) -> Unit,
 ) {
-    val partitioned =
-        remember(menuItems) {
-            val (main, bottom) = menuItems.partition { it.mainItem }
-            val profile = bottom.firstOrNull { it.titleOverride != null }
-            val accountItems = bottom.filter { it !== profile }
-            Triple(main, accountItems, profile)
-        }
-    val mainItems = partitioned.first
-    val bottomItems = partitioned.second
-    val profileItem = partitioned.third
+    // Empty sections (e.g. a Brand build without the Marketplace) are simply absent from the map.
+    val sections = remember(menuItems) { menuItems.filter { it.section != null }.groupBy { it.section!! } }
+    val profileItem = menuItems.firstOrNull { it.section == null }
     val username = profileItem?.titleOverride
 
     Column(
@@ -87,14 +78,12 @@ fun MainMenu(
     ) {
         SidebarBrand(appVersion = appVersion)
 
-        MenuSectionLabel(stringResource(Res.string.nav_section_workspace))
-        mainItems.forEach { item ->
-            MenuNavItem(item = item, onClick = { onClick(item) })
-        }
-
-        MenuSectionLabel(stringResource(Res.string.nav_section_system))
-        bottomItems.forEach { item ->
-            MenuNavItem(item = item, onClick = { onClick(item) })
+        MenuSection.entries.forEach { section ->
+            val items = sections[section] ?: return@forEach
+            MenuSectionLabel(stringResource(section.titleResource))
+            items.forEach { item ->
+                MenuNavItem(item = item, onClick = { onClick(item) })
+            }
         }
 
         Spacer(Modifier.weight(1f))
