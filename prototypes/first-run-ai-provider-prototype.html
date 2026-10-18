@@ -1,0 +1,226 @@
+<!doctype html>
+<!--
+  PROTOTYPE — throwaway. Wayfinder ticket "How does first run get the user to a working AI provider?" (desktop-client#137).
+  Three first-run flows, switchable via ?variant=A|B|C (or ← / →); each flow has steps (click them, or ↑ / ↓).
+  Look and sidebar copied from the agent-home prototype (#134, variant A). Nothing here is wired.
+  Preset tiles are clickable: they map onto today's two LlmProviderType values (Anthropic / OpenAI-compatible) + base URL + model.
+-->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>First Run Prototype</title>
+<style>
+  :root {
+    --bg: #1C1C1C; --surface: #161616; --variant: #222222; --border: #2A2A2A; --border-strong: #3E3E3E;
+    --on: #E6E1E5; --on-var: #B4AFB6; --tert: #8A8A8A; --subtle: #6A6A6A;
+    --primary: #E54848; --primary-c: #3E1212; --success: #2ECC71; --warning: #F5B73A; --info: #4F8CFF;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--on); font: 14px/1.45 Inter, system-ui, sans-serif; }
+  .app { display: flex; height: 100vh; min-width: 1000px; }
+  /* sidebar */
+  nav { width: 232px; background: var(--surface); padding: 12px 0 8px; display: flex; flex-direction: column; flex-shrink: 0; }
+  .brand { display: flex; align-items: center; gap: 10px; padding: 4px 16px 14px; font-weight: 600; }
+  .logo { width: 30px; height: 30px; border-radius: 6px; background: var(--on); color: var(--primary); display: grid; place-items: center; font-weight: 800; }
+  .ver { margin-left: auto; background: var(--variant); color: var(--tert); font-size: 11px; padding: 1px 6px; border-radius: 4px; }
+  .sec { color: var(--tert); font-size: 11px; letter-spacing: .08em; padding: 16px 18px 4px 24px; text-transform: uppercase; }
+  .item { position: relative; margin: 2px 8px; padding: 10px 16px; border-radius: 6px; color: var(--on-var); display: flex; gap: 11px; align-items: center; font-weight: 500; cursor: default; }
+  .item.sel { background: rgba(229,72,72,.10); color: var(--on); font-weight: 600; }
+  .item.sel::before { content: ""; position: absolute; left: -8px; width: 3px; height: 24px; background: var(--primary); border-radius: 0 2px 2px 0; }
+  .item .ic { width: 16px; text-align: center; color: inherit; }
+  .item.sel .ic { color: var(--primary); }
+  .badge { margin-left: auto; background: var(--primary); color: #fff; font-size: 11px; border-radius: 9px; padding: 0 6px; }
+  .user { margin: auto 8px 0; padding: 10px 12px; border: 1px solid var(--border); border-radius: 8px; display: flex; gap: 10px; align-items: center; }
+  .avatar { width: 28px; height: 28px; border-radius: 50%; background: var(--variant); display: grid; place-items: center; font-size: 12px; }
+  main { flex: 1; overflow: auto; }
+  /* shared bits */
+  h1 { font-size: 22px; margin: 0 0 4px; letter-spacing: -.01em; }
+  .muted { color: var(--on-var); } .tert { color: var(--tert); }
+  .card { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; }
+  textarea, input { width: 100%; background: var(--bg); border: 1px solid var(--border-strong); color: var(--on); border-radius: 8px; padding: 10px 12px; font: inherit; resize: none; }
+  textarea:focus, input:focus { outline: 1px solid var(--primary); border-color: var(--primary); }
+  .btn { background: var(--primary); color: #fff; border: 0; border-radius: 8px; padding: 9px 16px; font: inherit; font-weight: 600; cursor: pointer; }
+  .btn.ghost { background: transparent; border: 1px solid var(--border-strong); color: var(--on); font-weight: 500; }
+  .chips { display: inline-flex; background: var(--bg); border: 1px solid var(--border-strong); border-radius: 8px; padding: 2px; }
+  .chips span { padding: 5px 12px; border-radius: 6px; color: var(--on-var); font-size: 13px; }
+  .chips span.on { background: var(--variant); color: var(--on); }
+  .row { display: flex; gap: 10px; align-items: center; }
+  .pill { font-size: 11px; padding: 1px 7px; border-radius: 9px; border: 1px solid var(--border-strong); color: var(--tert); }
+  .free { color: var(--success); border-color: rgba(46,204,113,.35); }
+  .dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; }
+  .run { display: flex; align-items: center; gap: 12px; padding: 10px 14px; border-top: 1px solid var(--border); }
+  .run:first-child { border-top: 0; }
+  .run .goal { flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .script { display: flex; gap: 10px; align-items: center; padding: 10px 12px; }
+  .sicon { width: 32px; height: 32px; border-radius: 8px; background: var(--variant); display: grid; place-items: center; font-weight: 700; color: var(--on-var); flex-shrink: 0; }
+  .link { color: var(--primary); font-weight: 600; font-size: 13px; }
+  .examples span { font-size: 12px; border: 1px dashed var(--border-strong); border-radius: 14px; padding: 4px 10px; color: var(--on-var); }
+  /* prototype chrome */
+  .switcher { position: fixed; bottom: 18px; left: 50%; transform: translateX(-50%); background: #fff; color: #111; border-radius: 999px; padding: 6px 8px; display: flex; gap: 10px; align-items: center; box-shadow: 0 6px 24px rgba(0,0,0,.5); font: 600 13px system-ui; z-index: 10; }
+  .switcher button { border: 0; background: #eee; border-radius: 50%; width: 28px; height: 28px; cursor: pointer; font-size: 14px; }
+  .note { position: fixed; top: 10px; right: 12px; background: #fff3; color: #fff; font: 12px system-ui; padding: 4px 10px; border-radius: 6px; max-width: 360px; z-index: 10; }
+  .tiles { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+  .tile { border: 1px solid var(--border-strong); border-radius: 8px; padding: 10px 12px; cursor: pointer; background: var(--bg); }
+  .tile.on { border-color: var(--primary); background: rgba(229,72,72,.08); }
+  .tile b { display: block; font-size: 13px; } .tile span { font-size: 12px; color: var(--tert); }
+  label { display: block; font-size: 12px; color: var(--on-var); margin: 12px 0 4px; }
+  .steps { display: flex; gap: 4px; } .steps button { width: auto !important; white-space: nowrap; border-radius: 999px !important; padding: 0 10px; font: 600 12px system-ui; }
+  .steps button.on { background: #111 !important; color: #fff; }
+  .overlay { position: fixed; inset: 0; z-index: 5; background: rgba(0,0,0,.6); display: grid; place-items: center; }
+  .banner { border: 1px solid rgba(245,183,58,.35); background: rgba(245,183,58,.08); border-radius: 8px; padding: 10px 14px; display: flex; gap: 10px; align-items: center; }
+  .ok { color: var(--success); font-size: 12px; }
+</style>
+</head>
+<body>
+<div class="app" id="app"><nav id="nav"></nav><main id="main"></main></div>
+<div id="modal"></div>
+<div class="note" id="note"></div>
+<div class="switcher"><button id="prev">←</button><span id="label"></span><button id="next">→</button><div class="steps" id="steps"></div></div>
+<script>
+const sidebars = {
+  // A/B: agent first, ready-made scripts get their own named section; My Scripts promoted out of Marketplace.
+  split: [
+    ['Agent', [['✦', 'Home', true], ['⚡', 'Tasks', false, 3], ['🔔', 'Notifications', false, 2]]],
+    ['Ready-made scripts', [['▤', 'My Scripts'], ['🏬', 'Marketplace']]],
+    ['Resources', [['⛓', 'Proxies'], ['🗄', 'Datasets']]],
+    ['System', [['⚙', 'Settings']]],
+  ],
+  // C: today's sidebar with one new item on top; Tasks becomes where goal runs live.
+  minimal: [
+    ['Workspace', [['✦', 'Agent', true], ['⚡', 'Tasks', false, 3], ['🔔', 'Notifications', false, 2], ['🏬', 'Marketplace'], ['⛓', 'Proxies'], ['🗄', 'Datasets']]],
+    ['System', [['⚙', 'Settings']]],
+  ],
+};
+
+function nav(kind) {
+  return `<div class="brand"><div class="logo">C</div>Cereal<span class="ver">v1.16.0</span></div>` +
+    sidebars[kind].map(([sec, items]) => `<div class="sec">${sec}</div>` + items.map(([ic, t, sel, b]) =>
+      `<div class="item ${sel ? 'sel' : ''}"><span class="ic">${ic}</span>${t}${b ? `<span class="badge">${b}</span>` : ''}</div>`).join('')).join('') +
+    `<div class="user"><div class="avatar">RD</div><div><div style="font-weight:600">rob</div><div class="tert" style="font-size:12px">3 scripts running</div></div></div>`;
+}
+const runRow = r => `<div class="run"><span class="dot" style="background:${r.color}"></span><div class="goal">${r.goal}<div class="tert" style="font-size:12px">${r.site} · ${r.mode} · ${r.cost}</div></div><span class="pill" style="color:${r.color}">${r.status}</span></div>`;
+const scriptRow = s => `<div class="script"><div class="sicon">${s.i}</div><div style="flex:1">${s.n}</div>${s.free ? '<span class="pill free">Free</span>' : ''}<span class="link">Run</span></div>`;
+
+const PITCH = 'A free AI browser agent that runs on your machine, with your model and your key.';
+const PRIVACY = 'Nothing passes through Cereal: your key and pages go only to the model provider you pick, or stay on your machine with a local model.';
+const CAVEAT = 'Free tiers may let the provider use your data; a paid key or local model keeps it private.';
+
+// Presets = today's provider types with a base URL + model filled in. "Other" shows the raw fields.
+const presets = [
+  { id: 'gemini', name: 'Google Gemini', sub: 'Free tier', type: 'OpenAI-compatible', url: 'https://generativelanguage.googleapis.com/v1beta/openai', model: 'gemini-2.5-flash', key: 'Get a free key at aistudio.google.com ↗', caveat: true },
+  { id: 'anthropic', name: 'Anthropic', sub: 'Claude · tested', type: 'Anthropic', url: 'https://api.anthropic.com/v1', model: 'claude-opus-5-5', key: 'Get a key at console.anthropic.com ↗' },
+  { id: 'openai', name: 'OpenAI', sub: 'Paid key', type: 'OpenAI-compatible', url: 'https://api.openai.com/v1', model: 'gpt-5', key: 'Get a key at platform.openai.com ↗' },
+  { id: 'openrouter', name: 'OpenRouter', sub: 'Many models', type: 'OpenAI-compatible', url: 'https://openrouter.ai/api/v1', model: 'anthropic/claude-opus-5-5', key: 'Get a key at openrouter.ai ↗' },
+  { id: 'local', name: 'Local model', sub: 'Ollama / LM Studio', type: 'OpenAI-compatible', url: 'http://localhost:11434/v1', model: 'pick after connecting', key: null },
+  { id: 'other', name: 'Other', sub: 'OpenAI-compatible URL', type: 'OpenAI-compatible', url: '', model: '', key: 'API key (optional)' },
+];
+let preset = 'gemini';
+
+function setupForm(cta) {
+  const p = presets.find(x => x.id === preset);
+  return `<div class="tiles">${presets.map(x => `<div class="tile ${x.id === preset ? 'on' : ''}" onclick="preset='${x.id}';render()"><b>${x.name}</b><span>${x.sub}</span></div>`).join('')}</div>
+    ${p.key ? `<label>API key <span class="link" style="float:right;font-size:12px">${p.key}</span></label><input type="password" placeholder="Paste your key">` :
+      `<label>Server</label><input value="${p.url}"><div class="tert" style="font-size:12px;margin-top:4px">No key needed. Start Ollama or LM Studio first.</div>`}
+    ${p.id === 'other' ? `<label>Base URL</label><input placeholder="https://…/v1"><label>Model</label><input placeholder="model id">` :
+      `<div class="tert" style="font-size:12px;margin-top:8px">Model: <span class="muted">${p.model}</span> · <span class="link" style="font-size:12px">Change</span> &nbsp;·&nbsp; saved as ${p.type}</div>`}
+    ${p.caveat ? `<div class="tert" style="font-size:12px;margin-top:8px">⚠ ${CAVEAT}</div>` : ''}
+    <div class="row" style="margin-top:14px"><button class="btn">${cta}</button><span class="tert" style="font-size:12px">Checks the key with one call, then saves to Settings → AI.</span></div>
+    <div class="tert" style="font-size:12px;margin-top:12px">${PRIVACY}</div>`;
+}
+
+const login = () => `<div style="height:100vh;display:grid;place-items:center;width:100vw"><div style="width:380px;text-align:center">
+  <div class="logo" style="margin:0 auto 14px;width:48px;height:48px;font-size:22px">C</div>
+  <h1>Welcome to Cereal</h1><p class="muted" style="margin:0 0 6px">${PITCH}</p>
+  <p class="tert" style="margin:0 0 20px;font-size:12px">Plus ready-made scripts from the marketplace.</p>
+  <div class="card" style="padding:18px;text-align:left"><label style="margin-top:0">Email</label><input><label>Password</label><input type="password">
+  <button class="btn" style="width:100%;margin-top:14px">Sign in</button><button class="btn ghost" style="width:100%;margin-top:8px">Continue as Guest</button></div>
+  <p class="tert" style="font-size:12px;margin-top:10px">Replaces "Monitoring, notifying and auto-checkout in one platform." (introduction_slogan)</p></div></div>`;
+
+const composer = (goal, disabled) => `<div style="${disabled ? 'opacity:.4;pointer-events:none' : ''}">
+  <textarea rows="3" placeholder="Describe a goal, e.g. “Tell me when these pliers are back in stock”">${goal || ''}</textarea>
+  <div class="row" style="margin-top:10px"><input style="flex:1" placeholder="Start URL — https://…" value="${goal ? 'https://www.toolstation.nl/knipex-cobra-250' : ''}">
+  <div class="chips"><span>Once</span><span class="on">Repeat</span></div><button class="btn">Start</button></div>
+  <div class="row tert" style="margin-top:8px;font-size:12px">Runs in your own Chrome · asks before it buys or sends anything · <span class="link" style="font-size:12px">More options</span></div></div>`;
+const scriptsStrip = () => `<div class="row" style="margin:28px 0 8px"><b>Ready-made scripts</b><span class="link" style="margin-left:auto">Browse marketplace →</span></div>
+  <div class="card" style="padding:16px" class="muted"><span class="muted">No scripts installed yet. </span><span class="link">Browse marketplace →</span></div>`;
+const noRuns = `<div class="row" style="margin:34px 0 8px"><b>Recent goal runs</b><span class="link" style="margin-left:auto">All in Tasks →</span></div><div class="card tert" style="padding:16px">Your goal runs show up here.</div>`;
+const oneRun = `<div class="row" style="margin:34px 0 8px"><b>Recent goal runs</b><span class="link" style="margin-left:auto">All in Tasks →</span></div><div class="card">${runRow({ goal: 'Tell me when the Knipex Cobra 250 is back in stock', site: 'toolstation.nl', mode: 'Repeat · 5 min', status: 'Running', color: 'var(--info)', cost: 'first check' })}</div>`;
+const home = (inner, below) => `<div style="max-width:760px;margin:0 auto;padding:56px 24px 110px">
+  <h1 style="text-align:center;font-size:28px">What should the agent do?</h1><p class="muted" style="text-align:center;margin:0 0 22px">${PITCH}</p>${inner}${below ?? noRuns + scriptsStrip()}</div>`;
+const GOAL = 'Tell me when the Knipex Cobra 250 is back in stock';
+const connected = `<div class="ok" style="margin-top:8px;text-align:center">● Using Google Gemini (gemini-2.5-flash) · <span class="link" style="font-size:12px">Change in Settings → AI</span></div>`;
+
+const variants = {
+  A: {
+    name: 'Setup card in place of the composer',
+    note: 'No provider → the home hero is the setup card; the composer is greyed out under it. Saving swaps them. Same card any time the config is removed. No first-run flag.',
+    steps: [
+      ['Sign in', () => [null, login()]],
+      ['Home, no provider', () => ['split', home(`<div class="card" style="padding:18px"><b style="font-size:16px">First, connect an AI model</b><p class="muted" style="margin:4px 0 14px">The agent uses a model you choose. Pick one. Gemini's free tier costs nothing.</p>${setupForm('Connect')}</div><div style="margin-top:18px">${composer('', true)}</div>`)]],
+      ['Connected', () => ['split', home(`<div class="card" style="padding:16px">${composer()}</div>${connected}`)]],
+    ],
+  },
+  B: {
+    name: 'One onboarding step after sign-in',
+    note: 'First sign-in on this device shows a full-screen "Connect your AI model" step (per-user flag), with Skip. If skipped, Home shows a banner over a live composer; Start still warns.',
+    steps: [
+      ['Sign in', () => [null, login()]],
+      ['Onboarding step', () => [null, `<div style="width:100vw;min-height:100vh;display:grid;place-items:center;padding:30px 0 90px"><div style="width:620px">
+        <div class="row" style="margin-bottom:18px"><div class="logo">C</div><span class="tert" style="margin-left:auto">Skip for now →</span></div>
+        <h1 style="font-size:26px">Connect your AI model</h1><p class="muted" style="margin:0 0 18px">The AI browser agent works with a model you choose and a key you own. You can change this any time in Settings → AI.</p>
+        <div class="card" style="padding:18px">${setupForm('Connect and continue')}</div></div></div>`]],
+      ['Home, skipped', () => ['split', home(`<div class="banner" style="margin-bottom:12px"><span>⚠</span><span style="flex:1">No AI model connected yet. Goals can't run without one.</span><span class="link">Connect →</span></div><div class="card" style="padding:16px">${composer()}</div>`)]],
+      ['Home, connected', () => ['split', home(`<div class="card" style="padding:16px">${composer()}</div>${connected}`)]],
+    ],
+  },
+  C: {
+    name: 'Ask at Start',
+    note: 'Home looks normal; the user types a goal first. Start with no provider opens the setup as a dialog; "Connect and start" saves, then starts the goal run. Replaces "Start anyway" for the agent only.',
+    steps: [
+      ['Sign in', () => [null, login()]],
+      ['Home, goal typed', () => ['split', home(`<div class="card" style="padding:16px">${composer(GOAL)}</div><div class="examples row" style="margin-top:12px;justify-content:center"><span>Watch a product for restock</span><span>Read a value after logging in</span><span>Buy one item, ask me first</span></div>`)]],
+      ['Start → dialog', () => ['split', home(`<div class="card" style="padding:16px">${composer(GOAL)}</div>`), `<div class="overlay"><div class="card" style="width:620px;padding:20px">
+        <div class="row"><b style="font-size:16px">Connect an AI model to run this goal</b><span class="tert" style="margin-left:auto">✕</span></div>
+        <p class="muted" style="margin:4px 0 14px">One-time setup. Your goal is kept and starts as soon as the model is connected.</p>${setupForm('Connect and start')}</div></div>`]],
+      ['Running', () => ['split', home(`<div class="card" style="padding:16px">${composer(GOAL)}</div>${connected}`, oneRun + scriptsStrip())]],
+    ],
+  },
+};
+
+const keys = Object.keys(variants);
+const q = new URLSearchParams(location.search);
+let current = variants[q.get('variant')] ? q.get('variant') : 'A';
+let step = 1;
+function render() {
+  const x = variants[current];
+  step = Math.min(step, x.steps.length - 1);
+  const [navKind, html, modal] = x.steps[step][1]();
+  const n = document.getElementById('nav');
+  n.style.display = navKind ? '' : 'none';
+  if (navKind) n.innerHTML = nav(navKind);
+  document.getElementById('main').innerHTML = html;
+  document.getElementById('modal').innerHTML = modal || '';
+  document.getElementById('label').textContent = `${current} (${x.name})`;
+  document.getElementById('note').textContent = x.note;
+  document.getElementById('steps').innerHTML = x.steps.map(([t], i) => `<button class="${i === step ? 'on' : ''}" onclick="step=${i};render()">${i + 1}. ${t}</button>`).join('');
+}
+function go(d) {
+  current = keys[(keys.indexOf(current) + d + keys.length) % keys.length];
+  step = 1;
+  try { history.replaceState(null, '', '?variant=' + current); } catch (e) { /* file URLs */ }
+  render();
+}
+document.getElementById('prev').onclick = () => go(-1);
+document.getElementById('next').onclick = () => go(1);
+addEventListener('keydown', e => {
+  if (e.target.closest('input, textarea')) return;
+  if (e.key === 'ArrowLeft') go(-1);
+  if (e.key === 'ArrowRight') go(1);
+  if (e.key === 'ArrowUp') { step = Math.max(0, step - 1); render(); }
+  if (e.key === 'ArrowDown') { step = Math.min(variants[current].steps.length - 1, step + 1); render(); }
+});
+render();
+</script>
+</body>
+</html>
