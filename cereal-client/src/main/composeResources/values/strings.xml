@@ -621,4 +621,13 @@
     <string name="home_ai_connect_hint">Checks the key with one call, then saves to Settings → AI.</string>
     <string name="home_ai_using">Using %1$s (%2$s)</string>
     <string name="home_ai_change">Change in Settings → AI</string>
+    <string name="home_field_required">This field is required.</string>
+    <string name="home_install_failed">The install failed.</string>
+    <string name="ai_connection_testing">Testing…</string>
+    <plurals name="ai_connection_connected">
+        <item quantity="one">Connected · %1$d model</item>
+        <item quantity="other">Connected · %1$d models</item>
+    </plurals>
+    <string name="ai_connection_bad_key">Bad API key: the provider rejected it.</string>
+    <string name="ai_connection_unreachable">Unreachable: check the base URL and your connection.</string>
 </resources>

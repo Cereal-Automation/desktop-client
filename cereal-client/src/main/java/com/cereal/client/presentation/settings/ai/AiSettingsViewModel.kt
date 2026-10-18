@@ -14,6 +14,10 @@ import com.cereal.client.domain.model.exception.LlmCallException
 import com.cereal.client.presentation.error.ErrorAction
 import com.cereal.client.presentation.error.ErrorResolver
 import com.cereal.client.presentation.feedback.FeedbackAction
+import com.cereal.client.presentation.view.UiText
+import com.cereal_automation.cereal_client.generated.resources.Res
+import com.cereal_automation.cereal_client.generated.resources.ai_connection_bad_key
+import com.cereal_automation.cereal_client.generated.resources.ai_connection_unreachable
 import com.github.kittinunf.result.coroutines.SuspendableResult
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.FlowPreview
@@ -163,26 +167,24 @@ class AiSettingsViewModel(
 }
 
 /** The inline message for a failed `/models` call; shared with the Home setup card's Connect. */
-fun connectionFailureMessage(error: Exception): String =
+fun connectionFailureMessage(error: Exception): UiText =
     when (error) {
-        is LlmCallException.Authentication -> "Bad API key: the provider rejected it."
-        is LlmCallException.Unavailable -> "Unreachable: check the base URL and your connection."
-        else -> error.message.orEmpty()
+        is LlmCallException.Authentication -> UiText.Resource(Res.string.ai_connection_bad_key)
+        is LlmCallException.Unavailable -> UiText.Resource(Res.string.ai_connection_unreachable)
+        else -> UiText.Raw(error.message.orEmpty())
     }
 
-/** Where Settings → AI's Test connection stands; [message] is what the form shows. */
-sealed class ConnectionStatus(
-    val message: String,
-) {
-    data object Idle : ConnectionStatus("")
+/** Where Settings → AI's Test connection stands. */
+sealed interface ConnectionStatus {
+    data object Idle : ConnectionStatus
 
-    data object Testing : ConnectionStatus("Testing…")
+    data object Testing : ConnectionStatus
 
-    class Connected(
-        count: Int,
-    ) : ConnectionStatus("Connected · $count ${if (count == 1) "model" else "models"}")
+    data class Connected(
+        val count: Int,
+    ) : ConnectionStatus
 
-    class Failed(
-        message: String,
-    ) : ConnectionStatus(message)
+    data class Failed(
+        val message: UiText,
+    ) : ConnectionStatus
 }

@@ -14,10 +14,10 @@ import org.junit.jupiter.api.assertThrows
 class ConnectLlmProviderInteractorTest {
     private val repository = InMemoryLlmProviderConfigRepository()
     private val llmProvider = InMemoryLlmProvider()
-    private val interactor = ConnectLlmProviderInteractor(llmProvider, repository)
+    private val interactor = ConnectLlmProviderInteractor(llmProvider, SaveLlmProviderConfigInteractor(repository))
 
     private val gemini =
-        SaveLlmProviderConfigInteractor.Params(
+        ConnectLlmProviderInteractor.Params(
             provider = LlmProviderType.OPENAI_COMPATIBLE,
             baseUrl = "https://generativelanguage.googleapis.com/v1beta/openai",
             apiKey = "key",

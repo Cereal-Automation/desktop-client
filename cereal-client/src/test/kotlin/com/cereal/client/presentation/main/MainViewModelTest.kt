@@ -116,7 +116,11 @@ class MainViewModelTest {
 
         assertEquals(Root.Routing.Tasks(), viewModel.landingRoute)
         assertTrue(viewModel.menuItems.value.none { it.route is Root.Routing.Home })
-        assertTrue(viewModel.menuItems.value.first { it.route is Root.Routing.Tasks }.selected)
+        assertTrue(
+            viewModel.menuItems.value
+                .first { it.route is Root.Routing.Tasks }
+                .selected,
+        )
     }
 
     @Test

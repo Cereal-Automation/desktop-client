@@ -12,7 +12,9 @@ import com.cereal.client.presentation.bootstrap.BootstrapViewModel
 import com.cereal.client.presentation.brand.BrandPaywallViewModel
 import com.cereal.client.presentation.customdataset.CustomDatasetViewModel
 import com.cereal.client.presentation.error.ErrorResolver
+import com.cereal.client.presentation.home.AgentInstallViewModel
 import com.cereal.client.presentation.home.HomeActivityViewModel
+import com.cereal.client.presentation.home.HomeAiProviderViewModel
 import com.cereal.client.presentation.home.HomeViewModel
 import com.cereal.client.presentation.main.MainViewModel
 import com.cereal.client.presentation.marketplace.MarketplaceViewModel
@@ -53,16 +55,14 @@ object ViewModelModule {
                     dispatcherProvider = get(),
                     getScriptsInteractor = get(),
                     getSdkVersionInteractor = get(),
-                    getAiBrowserAgentListingInteractor = get(),
-                    installAiBrowserAgentInteractor = get(),
-                    hasNotificationChannelsConfiguredInteractor = get(),
-                    getOrCreateDefaultTaskGroupInteractor = get(),
+                    prefillGoalRunFormInteractor = get(),
                     startGoalRunInteractor = get(),
-                    getLlmProviderConfigInteractor = get(),
-                    connectLlmProviderInteractor = get(),
+                    startAllTasksInScriptPackageInstanceInteractor = get(),
                     errorResolver = get(),
                 )
             }
+            factory { (scope: CoroutineScope) -> HomeAiProviderViewModel(scope, get(), get(), get(), get()) }
+            factory { (scope: CoroutineScope) -> AgentInstallViewModel(scope, get(), get(), get()) }
             factory { (scope: CoroutineScope) -> HomeActivityViewModel(scope, get(), get(), get()) }
             factory { (scope: CoroutineScope) ->
                 MyScriptsViewModel(

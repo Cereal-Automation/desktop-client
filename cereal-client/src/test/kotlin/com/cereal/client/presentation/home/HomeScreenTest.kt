@@ -4,6 +4,7 @@ import androidx.compose.ui.test.ComposeUiTest
 import androidx.compose.ui.test.ExperimentalTestApi
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsEnabled
+import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.assertIsSelected
 import androidx.compose.ui.test.assertTextContains
 import androidx.compose.ui.test.hasAnyAncestor
@@ -107,7 +108,18 @@ class HomeScreenTest {
 
             awaitText("First, connect an AI model")
             onNodeWithText("Google Gemini").assertIsSelected()
-            onNodeWithText("What should the agent do?").assertDoesNotExist()
+        }
+
+    @Test
+    fun `the greyed composer under the setup card can't be focused or used`() =
+        runScreenTest(overrides = listOf(agentInstalled)) {
+            setScreenContent { HomeScreen() }
+            awaitText("First, connect an AI model")
+
+            onNodeWithTag(HomeTestTags.GOAL).assertIsNotEnabled()
+            onNodeWithText("Start").assertIsNotEnabled()
+            onNodeWithText("More options").assertIsNotEnabled()
+            onNodeWithText("Repeat").assertIsNotEnabled()
         }
 
     @Test
@@ -134,8 +146,8 @@ class HomeScreenTest {
             enterApiKey("good-key")
             onNodeWithText("Connect").performClick()
 
-            awaitText("What should the agent do?")
-            onNodeWithText("First, connect an AI model").assertDoesNotExist()
+            waitUntil(timeoutMillis = 5_000) { onAllNodesWithText("First, connect an AI model").fetchSemanticsNodes().isEmpty() }
+            onNodeWithTag(HomeTestTags.GOAL).assertIsEnabled()
             onNodeWithText("Using Google Gemini (gemini-2.5-flash) ·").assertIsDisplayed()
             onNodeWithText("Change in Settings → AI").assertIsDisplayed()
             assertEquals("gemini-2.5-flash", savedConfig()?.model)

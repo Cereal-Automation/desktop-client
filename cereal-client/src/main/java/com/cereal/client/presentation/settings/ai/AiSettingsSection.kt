@@ -17,11 +17,15 @@ import com.cereal.client.presentation.view.CerealText
 import com.cereal.client.presentation.view.SettingsButtonVariant
 import com.cereal.client.presentation.view.SettingsSectionCard
 import com.cereal.client.presentation.view.SettingsSmallButton
+import com.cereal.client.presentation.view.text
 import com.cereal_automation.cereal_client.generated.resources.Res
 import com.cereal_automation.cereal_client.generated.resources.ai
+import com.cereal_automation.cereal_client.generated.resources.ai_connection_connected
+import com.cereal_automation.cereal_client.generated.resources.ai_connection_testing
 import com.cereal_automation.cereal_client.generated.resources.ai_remove
 import com.cereal_automation.cereal_client.generated.resources.ai_test_connection
 import com.cereal_automation.cereal_client.generated.resources.save
+import org.jetbrains.compose.resources.pluralStringResource
 import org.jetbrains.compose.resources.stringResource
 import org.koin.core.parameter.parametersOf
 import org.koin.java.KoinJavaComponent
@@ -39,7 +43,7 @@ fun AiSettingsSection(vm: AiSettingsViewModel = rememberAiSettingsViewModel()) {
         ) {
             val status = vm.connectionStatus.value
             CerealText(
-                text = status.message,
+                text = status.text(),
                 modifier = Modifier.weight(1f),
                 color = if (status is ConnectionStatus.Failed) MaterialTheme.colorScheme.error else CerealTheme.colorScheme.contentTertiary,
                 style = MaterialTheme.typography.bodySmall.copy(fontSize = 14.sp, lineHeight = 20.sp),
@@ -68,3 +72,12 @@ fun rememberAiSettingsViewModel(): AiSettingsViewModel {
         KoinJavaComponent.get(AiSettingsViewModel::class.java, parameters = { parametersOf(coroutineScope) })
     }
 }
+
+@Composable
+private fun ConnectionStatus.text(): String =
+    when (this) {
+        ConnectionStatus.Idle -> ""
+        ConnectionStatus.Testing -> stringResource(Res.string.ai_connection_testing)
+        is ConnectionStatus.Connected -> pluralStringResource(Res.plurals.ai_connection_connected, count, count)
+        is ConnectionStatus.Failed -> message.text()
+    }

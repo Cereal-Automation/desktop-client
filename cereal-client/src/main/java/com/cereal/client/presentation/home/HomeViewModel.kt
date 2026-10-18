@@ -3,46 +3,35 @@ package com.cereal.client.presentation.home
 import androidx.compose.runtime.State
 import androidx.compose.runtime.mutableStateOf
 import com.cereal.client.application.CoroutinesDispatcherProvider
-import com.cereal.client.application.FlowInteractor
 import com.cereal.client.application.Interactor
 import com.cereal.client.application.agent.GoalRunInput
 import com.cereal.client.application.agent.isAiBrowserAgent
 import com.cereal.client.application.agent.supportsGoalComposer
-import com.cereal.client.application.interactor.agent.GetAiBrowserAgentListingInteractor
-import com.cereal.client.application.interactor.agent.InstallAiBrowserAgentInteractor
+import com.cereal.client.application.interactor.agent.GoalRunFormPrefill
+import com.cereal.client.application.interactor.agent.NoNotificationChannelsException
+import com.cereal.client.application.interactor.agent.PrefillGoalRunFormInteractor
 import com.cereal.client.application.interactor.agent.StartGoalRunInteractor
-import com.cereal.client.application.interactor.notification.HasNotificationChannelsConfiguredInteractor
 import com.cereal.client.application.interactor.script.GetScriptsInteractor
 import com.cereal.client.application.interactor.script.GetSdkVersionInteractor
-import com.cereal.client.application.interactor.settings.ai.ConnectLlmProviderInteractor
-import com.cereal.client.application.interactor.settings.ai.GetLlmProviderConfigInteractor
-import com.cereal.client.application.interactor.task.GetOrCreateDefaultTaskGroupInteractor
-import com.cereal.client.domain.model.exception.InvalidLlmProviderConfigException
-import com.cereal.client.domain.model.llm.LlmProviderConfig
+import com.cereal.client.application.interactor.task.StartAllTasksInScriptPackageInstanceInteractor
 import com.cereal.client.domain.model.script.ScriptPackage
 import com.cereal.client.domain.model.script.ScriptPackageInstance
 import com.cereal.client.domain.model.script.configuration.ConfigValue
 import com.cereal.client.domain.model.script.configuration.itemForKey
 import com.cereal.client.domain.model.script.isClientUpdateRequired
-import com.cereal.client.domain.model.task.ScriptPackageGroup
 import com.cereal.client.presentation.error.ErrorResolver
 import com.cereal.client.presentation.error.handleFailureOrElse
-import com.cereal.client.presentation.settings.ai.LlmPreset
-import com.cereal.client.presentation.settings.ai.LlmPresetFormState
-import com.cereal.client.presentation.settings.ai.connectionFailureMessage
 import com.cereal.client.presentation.tasks.script.overview.configuration.RawScriptConfigValues
 import com.cereal.client.presentation.tasks.script.overview.configuration.validate
+import com.cereal.client.presentation.view.UiText
+import com.cereal_automation.cereal_client.generated.resources.Res
+import com.cereal_automation.cereal_client.generated.resources.home_field_required
 import com.github.kittinunf.result.coroutines.SuspendableResult
 import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.flow.collectLatest
-import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import net.swiftzer.semver.SemVer
-import java.util.UUID
-import kotlin.time.Clock
-import kotlin.time.ExperimentalTime
 
 /** What fills the composer slot on Home: the first state in [homeComposerSlot]'s order that matches. */
 sealed interface HomeComposerSlot {
@@ -69,80 +58,62 @@ fun homeComposerSlot(
         else -> HomeComposerSlot.Composer
     }
 
-sealed interface AgentInstallState {
-    data object Idle : AgentInstallState
-
-    data object Installing : AgentInstallState
-
-    data class Failed(
-        val message: String,
-    ) : AgentInstallState
+/** The composer's fields, for routing validation messages. */
+enum class ComposerField(
+    val key: String,
+) {
+    GOAL(GoalRunInput.KEY_GOAL),
+    START_URL(GoalRunInput.KEY_START_URL),
+    CHECK_EVERY(GoalRunInput.KEY_REPEAT_INTERVAL),
 }
 
 sealed interface HomeDialog {
     data object NoNotificationChannelsWarning : HomeDialog
 
-    /** The agent's generic script config form, prefilled from the composer. */
+    /**
+     * The agent's generic script config form, prefilled from the composer. [startOnCreate] when Start fell
+     * back to it, so launching the form still leaves a running goal run.
+     */
     data class MoreOptions(
-        val group: ScriptPackageGroup,
-        val prefill: ScriptPackageInstance,
+        val prefill: GoalRunFormPrefill,
+        val startOnCreate: Boolean,
     ) : HomeDialog
 }
 
-// Constructor parameters are injected dependencies (interactors and the error resolver).
-@Suppress("LongParameterList")
+/** Home's composer slot and the goal composer. The AI setup card and the install card have their own ViewModels. */
 class HomeViewModel(
     private val scope: CoroutineScope,
     private val dispatcherProvider: CoroutinesDispatcherProvider,
     getScriptsInteractor: GetScriptsInteractor,
     getSdkVersionInteractor: GetSdkVersionInteractor,
-    getAiBrowserAgentListingInteractor: GetAiBrowserAgentListingInteractor,
-    private val installAiBrowserAgentInteractor: InstallAiBrowserAgentInteractor,
-    private val hasNotificationChannelsConfiguredInteractor: HasNotificationChannelsConfiguredInteractor,
-    private val getOrCreateDefaultTaskGroupInteractor: GetOrCreateDefaultTaskGroupInteractor,
+    private val prefillGoalRunFormInteractor: PrefillGoalRunFormInteractor,
     private val startGoalRunInteractor: StartGoalRunInteractor,
-    getLlmProviderConfigInteractor: GetLlmProviderConfigInteractor,
-    private val connectLlmProviderInteractor: ConnectLlmProviderInteractor,
+    private val startAllTasksInScriptPackageInstanceInteractor: StartAllTasksInScriptPackageInstanceInteractor,
     private val errorResolver: ErrorResolver,
 ) {
     private val _slot = mutableStateOf<HomeComposerSlot>(HomeComposerSlot.Composer)
     val slot: State<HomeComposerSlot> = _slot
-
-    val installState = mutableStateOf<AgentInstallState>(AgentInstallState.Idle)
-
-    /** The agent's marketplace listing is in maintenance mode: a non-blocking banner over the composer. */
-    val isUnderMaintenance = mutableStateOf(false)
 
     val goal = mutableStateOf("")
     val startUrl = mutableStateOf("")
     val repeat = mutableStateOf(false)
     val checkEveryMinutes = mutableStateOf(DEFAULT_CHECK_EVERY_MINUTES.toString())
 
-    /** Validation messages from the script's own validators, by config key. */
-    val fieldErrors = mutableStateOf<Map<String, String>>(emptyMap())
+    /** Validation messages from the script's own validators, by field. */
+    val fieldErrors = mutableStateOf<Map<ComposerField, UiText>>(emptyMap())
     val dialog = mutableStateOf<HomeDialog?>(null)
     val isStarting = mutableStateOf(false)
     val errorAction = errorResolver.errorAction
-
-    /** The configured AI provider; null shows the setup card. Read when Home opens, so a removal in Settings shows on return. */
-    private val _aiProvider = mutableStateOf<LlmProviderConfig?>(null)
-    val aiProvider: State<LlmProviderConfig?> = _aiProvider
-
-    /** The setup card's preset form; Gemini's free tier is pre-selected. */
-    val aiSetup = LlmPresetFormState(initial = LlmPreset.GEMINI)
-    val connectError = mutableStateOf<String?>(null)
-    val isConnecting = mutableStateOf(false)
 
     private var agent: ScriptPackage? = null
 
     /** Set once the installed scripts have loaded; the slot stays on the composer until then. */
     private var clientSdk: SemVer? = null
 
-    /** Until the AI config has been read, assume one exists so the setup card doesn't flash. */
-    private var aiProviderLoaded = false
+    /** Whether an AI provider is configured; null until known, which keeps the composer so the setup card doesn't flash. */
+    private var hasAiProvider: Boolean? = null
 
     init {
-        loadAiProvider(getLlmProviderConfigInteractor)
         scope.launch(dispatcherProvider.io) {
             var sdkVersion: SemVer? = null
             getSdkVersionInteractor(Interactor.None()) { result -> sdkVersion = (result as? SuspendableResult.Success)?.value }
@@ -155,90 +126,21 @@ class HomeViewModel(
                         agent = installed
                         this@HomeViewModel.clientSdk = clientSdk
                         updateSlot()
-                        if (installed != null) installState.value = AgentInstallState.Idle
-                    }
-                }
-            }
-        }
-        scope.launch(dispatcherProvider.io) {
-            // A failed lookup just means no banner; Install surfaces lookup errors itself.
-            getAiBrowserAgentListingInteractor(Interactor.None()) { result ->
-                if (result is SuspendableResult.Success) {
-                    withContext(dispatcherProvider.main) { isUnderMaintenance.value = result.value.maintenanceMode }
-                }
-            }
-        }
-    }
-
-    /** Runs the normal marketplace install; the composer appears once the installed agent shows up. */
-    fun onInstall() {
-        installState.value = AgentInstallState.Installing
-        scope.launch(dispatcherProvider.io) {
-            installAiBrowserAgentInteractor(Interactor.None()) { result ->
-                withContext(dispatcherProvider.main) {
-                    if (result is SuspendableResult.Failure) {
-                        installState.value = AgentInstallState.Failed(result.error.localizedMessage ?: INSTALL_FAILED_MESSAGE)
                     }
                 }
             }
         }
     }
 
-    @OptIn(FlowPreview::class)
-    private fun loadAiProvider(getLlmProviderConfigInteractor: GetLlmProviderConfigInteractor) {
-        scope.launch(dispatcherProvider.io) {
-            val result = getLlmProviderConfigInteractor(FlowInteractor.None()).first()
-            withContext(dispatcherProvider.main) {
-                when (result) {
-                    is SuspendableResult.Success -> showAiProvider(result.value)
-                    is SuspendableResult.Failure -> errorResolver.setError(result.error)
-                }
-            }
-        }
-    }
-
-    private fun showAiProvider(config: LlmProviderConfig?) {
-        _aiProvider.value = config
-        aiProviderLoaded = true
+    /** Fed from Home's AI provider state: whether a provider is configured now. */
+    fun onAiProviderChanged(configured: Boolean) {
+        hasAiProvider = configured
         updateSlot()
     }
 
     private fun updateSlot() {
         val sdk = clientSdk ?: return
-        _slot.value = homeComposerSlot(agent, sdk, hasAiProvider = !aiProviderLoaded || _aiProvider.value != null)
-    }
-
-    fun onSelectAiPreset(preset: LlmPreset) {
-        if (aiSetup.select(preset)) connectError.value = null
-    }
-
-    /** Tests the connection, then saves; nothing is saved when the test fails. */
-    fun onConnect() {
-        val params = aiSetup.saveParams() ?: return
-        aiSetup.clearFieldErrors()
-        connectError.value = null
-        isConnecting.value = true
-        scope.launch(dispatcherProvider.io) {
-            connectLlmProviderInteractor(params) { result ->
-                withContext(dispatcherProvider.main) {
-                    isConnecting.value = false
-                    when (result) {
-                        is SuspendableResult.Success -> {
-                            showAiProvider(result.value)
-                        }
-
-                        is SuspendableResult.Failure -> {
-                            val error = result.error
-                            if (error is InvalidLlmProviderConfigException) {
-                                aiSetup.showError(error.field, error.message)
-                            } else {
-                                connectError.value = connectionFailureMessage(error)
-                            }
-                        }
-                    }
-                }
-            }
-        }
+        _slot.value = homeComposerSlot(agent, sdk, hasAiProvider = hasAiProvider != false)
     }
 
     private fun applyDefaults(agent: ScriptPackage) {
@@ -265,65 +167,76 @@ class HomeViewModel(
         checkEveryMinutes.value = value
     }
 
+    /** Only the live composer starts runs: never the greyed one under the AI setup card. */
+    private fun canStart(): Boolean = _slot.value == HomeComposerSlot.Composer && hasAiProvider == true
+
     fun onStart() {
         val agent = agent ?: return
+        if (!canStart()) return
         if (!agent.mainScript.configuration.supportsGoalComposer()) {
-            onMoreOptions()
+            openMoreOptions(agent, startOnCreate = true)
             return
         }
         if (!validate(agent)) return
-
-        scope.launch(dispatcherProvider.io) {
-            hasNotificationChannelsConfiguredInteractor(HasNotificationChannelsConfiguredInteractor.Params(null)) { result ->
-                withContext(dispatcherProvider.main) {
-                    result.handleFailureOrElse(errorResolver) { configured ->
-                        if (configured) startGoalRun(agent) else dialog.value = HomeDialog.NoNotificationChannelsWarning
-                    }
-                }
-            }
-        }
+        startGoalRun(agent, ignoreMissingNotificationChannels = false)
     }
 
     fun onNoNotificationChannelsWarningAccepted() {
         dialog.value = null
-        agent?.let { startGoalRun(it) }
+        agent?.let { startGoalRun(it, ignoreMissingNotificationChannels = true) }
     }
 
     fun onDialogDismissed() {
         dialog.value = null
     }
 
-    @OptIn(ExperimentalTime::class)
     fun onMoreOptions() {
         val agent = agent ?: return
+        if (!canStart()) return
+        openMoreOptions(agent, startOnCreate = false)
+    }
+
+    /** The generic form created [instance]; when Start fell back to the form, run it right away. */
+    fun onMoreOptionsInstanceCreated(instance: ScriptPackageInstance) {
+        val startOnCreate = (dialog.value as? HomeDialog.MoreOptions)?.startOnCreate == true
+        if (!startOnCreate) return
         scope.launch(dispatcherProvider.io) {
-            getOrCreateDefaultTaskGroupInteractor(Interactor.None()) { result ->
+            startAllTasksInScriptPackageInstanceInteractor(StartAllTasksInScriptPackageInstanceInteractor.Params(instance)) { result ->
+                withContext(dispatcherProvider.main) { result.handleFailureOrElse(errorResolver) { } }
+            }
+        }
+    }
+
+    private fun openMoreOptions(
+        agent: ScriptPackage,
+        startOnCreate: Boolean,
+    ) {
+        scope.launch(dispatcherProvider.io) {
+            prefillGoalRunFormInteractor(PrefillGoalRunFormInteractor.Params(agent, input())) { result ->
                 withContext(dispatcherProvider.main) {
-                    result.handleFailureOrElse(errorResolver) { group ->
-                        val prefill =
-                            ScriptPackageInstance(
-                                id = UUID.randomUUID().toString(),
-                                mainConfiguration = input().toConfiguration(agent.mainScript.configuration),
-                                childConfigurations = emptyMap(),
-                                definition = agent,
-                                createdAt = Clock.System.now(),
-                                numberOfConcurrentTasks = 1,
-                            )
-                        dialog.value = HomeDialog.MoreOptions(group, prefill)
+                    result.handleFailureOrElse(errorResolver) { prefill ->
+                        dialog.value = HomeDialog.MoreOptions(prefill, startOnCreate)
                     }
                 }
             }
         }
     }
 
-    private fun startGoalRun(agent: ScriptPackage) {
+    private fun startGoalRun(
+        agent: ScriptPackage,
+        ignoreMissingNotificationChannels: Boolean,
+    ) {
         isStarting.value = true
         scope.launch(dispatcherProvider.io) {
-            startGoalRunInteractor(StartGoalRunInteractor.Params(agent, input())) { result ->
+            startGoalRunInteractor(StartGoalRunInteractor.Params(agent, input(), ignoreMissingNotificationChannels)) { result ->
                 withContext(dispatcherProvider.main) {
                     isStarting.value = false
                     // The composer keeps its text so the user can tweak it and run again.
-                    result.handleFailureOrElse(errorResolver) { }
+                    if (result is SuspendableResult.Failure && result.error is NoNotificationChannelsException) {
+                        dialog.value = HomeDialog.NoNotificationChannelsWarning
+                    } else {
+                        result.handleFailureOrElse(errorResolver) { }
+                    }
                 }
             }
         }
@@ -333,12 +246,16 @@ class HomeViewModel(
     private fun validate(agent: ScriptPackage): Boolean {
         val definition = agent.mainScript.configuration
         val values = input().toConfiguration(definition)
-        val visibleKeys = if (repeat.value) GoalRunInput.KEYS else GoalRunInput.KEYS - GoalRunInput.KEY_REPEAT_INTERVAL
+        val visible = if (repeat.value) ComposerField.entries else ComposerField.entries - ComposerField.CHECK_EVERY
+        val invalid = definition.validate(values).associateBy { it.key }
         fieldErrors.value =
-            definition
-                .validate(values)
-                .filter { it.key in visibleKeys }
-                .associate { it.key to (it.stateModifier?.getError(RawScriptConfigValues(values)) ?: REQUIRED_MESSAGE) }
+            visible
+                .mapNotNull { field ->
+                    invalid[field.key]?.let { item ->
+                        val message = item.stateModifier?.getError(RawScriptConfigValues(values))
+                        field to (message?.let { UiText.Raw(it) } ?: UiText.Resource(Res.string.home_field_required))
+                    }
+                }.toMap()
         return fieldErrors.value.isEmpty()
     }
 
@@ -353,7 +270,5 @@ class HomeViewModel(
     private companion object {
         const val SECONDS_PER_MINUTE = 60
         const val DEFAULT_CHECK_EVERY_MINUTES = 5
-        const val REQUIRED_MESSAGE = "This field is required."
-        const val INSTALL_FAILED_MESSAGE = "The install failed."
     }
 }

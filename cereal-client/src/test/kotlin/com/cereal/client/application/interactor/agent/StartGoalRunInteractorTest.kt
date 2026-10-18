@@ -11,6 +11,7 @@ import fixtures.anAgentItem
 import fixtures.anAgentPackage
 import io.mockk.coVerify
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.test.runTest
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertTrue
@@ -18,7 +19,7 @@ import org.junit.jupiter.api.Test
 import kotlin.test.assertFailsWith
 
 class StartGoalRunInteractorTest {
-    private val world = GoalRunWorld()
+    private val world = GoalRunWorld().apply { runBlocking { notificationSettings.setDiscordWebhookEnabled(true) } }
 
     private val repeatInput =
         GoalRunInput(
@@ -93,5 +94,21 @@ class StartGoalRunInteractorTest {
             assertFailsWith<GoalComposerUnsupportedException> {
                 world.startGoalRunInteractor.run(StartGoalRunInteractor.Params(retyped, repeatInput))
             }
+        }
+
+    @Test
+    fun `without a notification channel the start is refused until the user accepts the warning`() =
+        runTest {
+            world.notificationSettings.setDiscordWebhookEnabled(false)
+
+            assertFailsWith<NoNotificationChannelsException> {
+                world.startGoalRunInteractor.run(StartGoalRunInteractor.Params(anAgentPackage(), repeatInput))
+            }
+            assertTrue(world.scriptInstances.getScriptPackageInstances().isEmpty())
+
+            world.startGoalRunInteractor.run(
+                StartGoalRunInteractor.Params(anAgentPackage(), repeatInput, ignoreMissingNotificationChannels = true),
+            )
+            assertEquals(1, world.scriptInstances.getScriptPackageInstances().size)
         }
 }

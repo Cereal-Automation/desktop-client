@@ -10,6 +10,10 @@ import com.cereal.client.domain.model.llm.LlmProviderType
 import com.cereal.client.infrastructure.data.repository.inmemory.InMemoryLlmProviderConfigRepository
 import com.cereal.client.infrastructure.provider.fixtures.llmProviderOverHttp
 import com.cereal.client.presentation.error.ErrorResolver
+import com.cereal.client.presentation.view.UiText
+import com.cereal_automation.cereal_client.generated.resources.Res
+import com.cereal_automation.cereal_client.generated.resources.ai_connection_bad_key
+import com.cereal_automation.cereal_client.generated.resources.ai_connection_unreachable
 import io.mockk.mockk
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -77,7 +81,7 @@ class AiSettingsViewModelTest {
         vm.testConnection()
 
         await { vm.connectionStatus.value is ConnectionStatus.Connected }
-        assertEquals("Connected · 2 models", vm.connectionStatus.value.message)
+        assertEquals(ConnectionStatus.Connected(2), vm.connectionStatus.value)
         assertEquals(listOf("claude-opus-5-5", "claude-haiku-4-5-20251001"), vm.form.models.value)
         assertEquals("claude-opus-5-5", vm.form.modelState.text)
     }
@@ -97,7 +101,7 @@ class AiSettingsViewModelTest {
         vm.testConnection()
 
         await { vm.connectionStatus.value is ConnectionStatus.Failed }
-        assertEquals("Bad API key: the provider rejected it.", vm.connectionStatus.value.message)
+        assertEquals(ConnectionStatus.Failed(UiText.Resource(Res.string.ai_connection_bad_key)), vm.connectionStatus.value)
         assertEquals(emptyList<String>(), vm.form.models.value)
     }
 
@@ -110,7 +114,7 @@ class AiSettingsViewModelTest {
         vm.testConnection()
 
         await { vm.connectionStatus.value is ConnectionStatus.Failed }
-        assertEquals("Unreachable: check the base URL and your connection.", vm.connectionStatus.value.message)
+        assertEquals(ConnectionStatus.Failed(UiText.Resource(Res.string.ai_connection_unreachable)), vm.connectionStatus.value)
     }
 
     @Test
@@ -123,8 +127,10 @@ class AiSettingsViewModelTest {
 
         await { vm.connectionStatus.value is ConnectionStatus.Failed }
         assertEquals(
-            "Not found: there are no models at this base URL. Check it, including the version path (for example /v1).",
-            vm.connectionStatus.value.message,
+            ConnectionStatus.Failed(
+                UiText.Raw("Not found: there are no models at this base URL. Check it, including the version path (for example /v1)."),
+            ),
+            vm.connectionStatus.value,
         )
     }
 

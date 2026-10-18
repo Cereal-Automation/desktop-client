@@ -2,7 +2,6 @@ package com.cereal.client.presentation.home
 
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
@@ -17,21 +16,16 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
-import androidx.compose.ui.input.pointer.PointerEventPass
-import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.Role
-import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.unit.dp
-import com.cereal.client.application.agent.GoalRunInput
-import com.cereal.client.domain.model.llm.LlmProviderConfig
 import com.cereal.client.presentation.error.errorView
-import com.cereal.client.presentation.settings.ai.LlmPreset
 import com.cereal.client.presentation.settings.ai.LlmPresetForm
 import com.cereal.client.presentation.settings.ai.labels
 import com.cereal.client.presentation.tasks.script.overview.ScriptSelectionDialog
@@ -45,6 +39,7 @@ import com.cereal.client.presentation.view.SettingsButtonVariant
 import com.cereal.client.presentation.view.SettingsSmallButton
 import com.cereal.client.presentation.view.chip.Pill
 import com.cereal.client.presentation.view.table.PaneToolbar
+import com.cereal.client.presentation.view.text
 import com.cereal_automation.cereal_client.generated.resources.Res
 import com.cereal_automation.cereal_client.generated.resources.cancel
 import com.cereal_automation.cereal_client.generated.resources.home
@@ -110,13 +105,20 @@ fun HomeScreen(
     onNavigateToAiSettings: () -> Unit = {},
 ) {
     val scope = rememberCoroutineScope()
-    val viewModel =
-        remember {
-            KoinJavaComponent.get<HomeViewModel>(HomeViewModel::class.java, parameters = { parametersOf(scope) })
-        }
+    val viewModel = remember { KoinJavaComponent.get<HomeViewModel>(HomeViewModel::class.java, parameters = { parametersOf(scope) }) }
+    val aiViewModel =
+        remember { KoinJavaComponent.get<HomeAiProviderViewModel>(HomeAiProviderViewModel::class.java, parameters = { parametersOf(scope) }) }
+    val installViewModel =
+        remember { KoinJavaComponent.get<AgentInstallViewModel>(AgentInstallViewModel::class.java, parameters = { parametersOf(scope) }) }
+
+    val aiState = aiViewModel.state.value
+    LaunchedEffect(aiState) {
+        if (aiState != HomeAiProviderState.Loading) viewModel.onAiProviderChanged(aiState is HomeAiProviderState.Configured)
+    }
 
     HomeDialogs(viewModel, onNavigateToMarketplace)
     errorView(viewModel.errorAction)
+    errorView(aiViewModel.errorAction)
 
     Column(modifier = Modifier.fillMaxSize()) {
         PaneToolbar(title = stringResource(Res.string.home))
@@ -142,7 +144,7 @@ fun HomeScreen(
                 )
                 when (viewModel.slot.value) {
                     HomeComposerSlot.NotInstalled -> {
-                        InstallCard(viewModel.installState.value, viewModel::onInstall)
+                        InstallCard(installViewModel.installState.value, installViewModel::onInstall)
                     }
 
                     HomeComposerSlot.UpdateRequired -> {
@@ -150,13 +152,13 @@ fun HomeScreen(
                     }
 
                     HomeComposerSlot.Composer -> {
-                        if (viewModel.isUnderMaintenance.value) MaintenanceBanner()
-                        GoalComposer(viewModel)
-                        viewModel.aiProvider.value?.let { AiProviderLine(it, onNavigateToAiSettings) }
+                        if (installViewModel.isUnderMaintenance.value) MaintenanceBanner()
+                        GoalComposer(viewModel, enabled = true)
+                        (aiState as? HomeAiProviderState.Configured)?.let { AiProviderLine(it.provider, onNavigateToAiSettings) }
                     }
 
                     HomeComposerSlot.NoAiProvider -> {
-                        AiSetupCard(viewModel)
+                        AiSetupCard(aiViewModel)
                         DisabledComposer(viewModel)
                     }
                 }
@@ -193,7 +195,7 @@ private fun InstallCard(
 ) {
     SlotCard(stringResource(Res.string.home_not_installed_title)) {
         if (state is AgentInstallState.Failed) {
-            CerealText(text = state.message, color = MaterialTheme.colorScheme.error)
+            CerealText(text = state.message.text(), color = MaterialTheme.colorScheme.error)
         }
         CerealButton(
             onClick = onInstall,
@@ -226,7 +228,10 @@ private fun MaintenanceBanner() {
 }
 
 @Composable
-private fun GoalComposer(viewModel: HomeViewModel) {
+private fun GoalComposer(
+    viewModel: HomeViewModel,
+    enabled: Boolean,
+) {
     val errors = viewModel.fieldErrors.value
     CerealCard(modifier = Modifier.fillMaxWidth()) {
         Column(
@@ -242,7 +247,8 @@ private fun GoalComposer(viewModel: HomeViewModel) {
                 value = viewModel.goal.value,
                 onValueChange = viewModel::onGoalChange,
                 placeholder = stringResource(Res.string.home_goal_placeholder),
-                error = errors[GoalRunInput.KEY_GOAL],
+                error = errors[ComposerField.GOAL]?.text(),
+                enabled = enabled,
                 singleLine = false,
                 modifier = Modifier.fillMaxWidth().testTag(HomeTestTags.GOAL),
             )
@@ -250,7 +256,8 @@ private fun GoalComposer(viewModel: HomeViewModel) {
                 value = viewModel.startUrl.value,
                 onValueChange = viewModel::onStartUrlChange,
                 placeholder = stringResource(Res.string.home_start_url_placeholder),
-                error = errors[GoalRunInput.KEY_START_URL],
+                error = errors[ComposerField.START_URL]?.text(),
+                enabled = enabled,
                 modifier = Modifier.fillMaxWidth(),
             )
             Row(
@@ -261,11 +268,13 @@ private fun GoalComposer(viewModel: HomeViewModel) {
                 SettingsSmallButton(
                     text = stringResource(Res.string.home_run_once),
                     onClick = { viewModel.onRepeatChange(false) },
+                    enabled = enabled,
                     variant = if (repeat) SettingsButtonVariant.Flat else SettingsButtonVariant.Primary,
                 )
                 SettingsSmallButton(
                     text = stringResource(Res.string.home_run_repeat),
                     onClick = { viewModel.onRepeatChange(true) },
+                    enabled = enabled,
                     variant = if (repeat) SettingsButtonVariant.Primary else SettingsButtonVariant.Flat,
                 )
                 if (repeat) {
@@ -276,7 +285,8 @@ private fun GoalComposer(viewModel: HomeViewModel) {
                     ComposerField(
                         value = viewModel.checkEveryMinutes.value,
                         onValueChange = viewModel::onCheckEveryMinutesChange,
-                        error = errors[GoalRunInput.KEY_REPEAT_INTERVAL],
+                        error = errors[ComposerField.CHECK_EVERY]?.text(),
+                        enabled = enabled,
                         modifier = Modifier.width(120.dp),
                     )
                     CerealText(text = stringResource(Res.string.home_check_every_minutes))
@@ -289,11 +299,12 @@ private fun GoalComposer(viewModel: HomeViewModel) {
                 CerealButton(
                     onClick = viewModel::onStart,
                     text = stringResource(Res.string.home_start),
-                    enabled = !viewModel.isStarting.value,
+                    enabled = enabled && !viewModel.isStarting.value,
                 )
                 CerealButton(
                     onClick = viewModel::onMoreOptions,
                     text = stringResource(Res.string.home_more_options),
+                    enabled = enabled,
                     type = CerealButtonType.Surface,
                 )
             }
@@ -307,7 +318,7 @@ private fun GoalComposer(viewModel: HomeViewModel) {
                 contentColor = CerealTheme.colorScheme.contentSecondary,
                 backgroundColor = CerealTheme.colorScheme.cardDark,
                 borderColor = CerealTheme.colorScheme.border,
-                onClick = { viewModel.onGoalChange(goalText) },
+                onClick = if (enabled) ({ viewModel.onGoalChange(goalText) }) else null,
             )
         }
     }
@@ -319,7 +330,7 @@ private fun GoalComposer(viewModel: HomeViewModel) {
 }
 
 @Composable
-private fun AiSetupCard(viewModel: HomeViewModel) {
+private fun AiSetupCard(viewModel: HomeAiProviderViewModel) {
     CerealCard(modifier = Modifier.fillMaxWidth()) {
         Column(verticalArrangement = Arrangement.spacedBy(CerealTheme.spacing.sm)) {
             Column(
@@ -336,7 +347,7 @@ private fun AiSetupCard(viewModel: HomeViewModel) {
                     color = CerealTheme.colorScheme.contentSecondary,
                 )
             }
-            LlmPresetForm(form = viewModel.aiSetup, onSelectPreset = viewModel::onSelectAiPreset)
+            LlmPresetForm(form = viewModel.setup, onSelectPreset = viewModel::onSelectPreset)
             Row(
                 modifier = Modifier.padding(start = CerealTheme.spacing.xl, end = CerealTheme.spacing.xl, bottom = CerealTheme.spacing.xl),
                 verticalAlignment = Alignment.CenterVertically,
@@ -347,7 +358,7 @@ private fun AiSetupCard(viewModel: HomeViewModel) {
                     text = stringResource(Res.string.home_ai_connect),
                     enabled = !viewModel.isConnecting.value,
                 )
-                val error = viewModel.connectError.value
+                val error = viewModel.connectError.value?.text()
                 CerealText(
                     text = error ?: stringResource(Res.string.home_ai_connect_hint),
                     style = MaterialTheme.typography.bodySmall,
@@ -358,37 +369,26 @@ private fun AiSetupCard(viewModel: HomeViewModel) {
     }
 }
 
-/** The composer greyed out under the setup card: visible, but not interactive. */
+/** The composer greyed out under the setup card: visible, but disabled, so neither mouse nor keyboard reaches it. */
 @Composable
 private fun DisabledComposer(viewModel: HomeViewModel) {
-    Box {
-        Column(
-            modifier = Modifier.alpha(DISABLED_ALPHA).clearAndSetSemantics {},
-            verticalArrangement = Arrangement.spacedBy(CerealTheme.spacing.lg),
-        ) {
-            GoalComposer(viewModel)
-        }
-        // Swallows clicks so nothing underneath reacts.
-        Box(
-            modifier =
-                Modifier.matchParentSize().pointerInput(Unit) {
-                    awaitPointerEventScope {
-                        while (true) awaitPointerEvent(PointerEventPass.Initial).changes.forEach { it.consume() }
-                    }
-                },
-        )
+    Column(
+        modifier = Modifier.alpha(DISABLED_ALPHA),
+        verticalArrangement = Arrangement.spacedBy(CerealTheme.spacing.lg),
+    ) {
+        GoalComposer(viewModel, enabled = false)
     }
 }
 
 @Composable
 private fun AiProviderLine(
-    config: LlmProviderConfig,
+    provider: AiProviderUiModel,
     onNavigateToAiSettings: () -> Unit,
 ) {
     Row(horizontalArrangement = Arrangement.spacedBy(CerealTheme.spacing.xs)) {
         val style = MaterialTheme.typography.bodySmall
         CerealText(
-            text = stringResource(Res.string.home_ai_using, stringResource(LlmPreset.of(config).labels().first), config.model) + " ·",
+            text = stringResource(Res.string.home_ai_using, stringResource(provider.preset.labels().first), provider.model) + " ·",
             style = style,
             color = CerealTheme.colorScheme.contentTertiary,
         )
@@ -408,6 +408,7 @@ private fun ComposerField(
     value: String,
     onValueChange: (String) -> Unit,
     error: String?,
+    enabled: Boolean,
     modifier: Modifier = Modifier,
     placeholder: String? = null,
     singleLine: Boolean = true,
@@ -416,6 +417,7 @@ private fun ComposerField(
         value = value,
         onValueChange = onValueChange,
         modifier = modifier,
+        enabled = enabled,
         placeholder = placeholder?.let { { Text(it) } },
         singleLine = singleLine,
         minLines = if (singleLine) 1 else 3,
@@ -445,9 +447,9 @@ private fun HomeDialogs(
 
         is HomeDialog.MoreOptions -> {
             ScriptSelectionDialog(
-                scriptPackageGroup = dialog.group,
-                initialScriptPackageInstance = dialog.prefill,
-                onScriptInstanceCreated = {},
+                scriptPackageGroup = dialog.prefill.group,
+                initialScriptPackageInstance = dialog.prefill.instance,
+                onScriptInstanceCreated = viewModel::onMoreOptionsInstanceCreated,
                 onDismissRequest = viewModel::onDialogDismissed,
                 onNavigateToMarketplace = {
                     viewModel.onDialogDismissed()
