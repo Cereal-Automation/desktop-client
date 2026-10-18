@@ -98,7 +98,7 @@ class HomeScreenTest {
 
             onNodeWithText("Watch a product for restock").performClick()
 
-            onNodeWithTag(HomeTestTags.GOAL).assertTextContains("Tell me when this product is back in stock")
+            onNodeWithTag(HomeTestTags.GOAL).assertTextContains("Check this product page and tell me when it's back in stock")
         }
 
     @Test

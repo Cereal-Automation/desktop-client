@@ -603,11 +603,11 @@
     <string name="home_more_options">More options</string>
     <string name="home_safety_line">Runs in your own Chrome and asks before it buys or sends anything.</string>
     <string name="home_example_restock">Watch a product for restock</string>
-    <string name="home_example_restock_goal">Tell me when this product is back in stock</string>
+    <string name="home_example_restock_goal">Check this product page and tell me when it's back in stock</string>
     <string name="home_example_read_value">Read a value after logging in</string>
-    <string name="home_example_read_value_goal">Log in and tell me the balance shown on my account page</string>
+    <string name="home_example_read_value_goal">Sign in with my sign-in secrets and tell me the status of my latest order</string>
     <string name="home_example_buy">Buy one item, ask me first</string>
-    <string name="home_example_buy_goal">Buy one of this item, and ask me before you pay</string>
+    <string name="home_example_buy_goal">Buy one of this item, and ask for my OK before you pay</string>
     <string name="home_not_installed_title">The AI browser agent isn't installed</string>
     <string name="home_install">Install</string>
     <string name="home_installing">Installing…</string>
