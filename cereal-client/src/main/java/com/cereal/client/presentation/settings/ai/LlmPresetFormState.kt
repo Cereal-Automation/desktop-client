@@ -18,6 +18,14 @@ class LlmPresetFormState(
     private val _preset = mutableStateOf<LlmPreset?>(null)
     val preset: State<LlmPreset?> = _preset
 
+    private val _customBaseUrl = mutableStateOf(false)
+
+    /**
+     * Presets with a fixed host hide the base URL; a saved config whose base URL differs from its preset's
+     * (e.g. Anthropic behind a proxy) shows it, so it can be seen and edited.
+     */
+    val customBaseUrl: State<Boolean> = _customBaseUrl
+
     val baseUrlState = StringTextFieldState()
     val apiKeyState = StringTextFieldState()
     val modelState = StringTextFieldState()
@@ -37,6 +45,7 @@ class LlmPresetFormState(
     fun select(preset: LlmPreset?): Boolean {
         if (preset == _preset.value) return false
         _preset.value = preset
+        _customBaseUrl.value = false
         baseUrlState.text = preset?.baseUrl.orEmpty()
         apiKeyState.text = ""
         modelState.text = preset?.model.orEmpty()
@@ -46,7 +55,9 @@ class LlmPresetFormState(
     }
 
     fun show(config: LlmProviderConfig) {
-        _preset.value = LlmPreset.of(config)
+        val preset = LlmPreset.of(config)
+        _preset.value = preset
+        _customBaseUrl.value = config.baseUrl.value != preset.baseUrl
         baseUrlState.text = config.baseUrl.value
         apiKeyState.text = config.apiKey?.reveal().orEmpty()
         modelState.text = config.model

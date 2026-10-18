@@ -128,6 +128,9 @@ private fun PresetFields(
         }
 
         else -> {
+            if (form.customBaseUrl.value) {
+                AiTextField(AI_BASE_URL_TAG, Res.string.ai_base_url, Res.string.ai_base_url_desc, form.baseUrlState)
+            }
             AiTextField(AI_API_KEY_TAG, Res.string.ai_api_key, Res.string.ai_api_key_desc_required, form.apiKeyState, isPassword = true, keyUrl = preset.keyUrl)
             var changingModel by remember(preset) { mutableStateOf(false) }
             if (changingModel) {

@@ -19,6 +19,7 @@ import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollToNode
 import androidx.compose.ui.test.performTextClearance
 import androidx.compose.ui.test.performTextInput
+import androidx.compose.ui.test.performTextReplacement
 import com.cereal.client.domain.model.llm.LlmModel
 import com.cereal.client.domain.model.llm.LlmProviderConfig
 import com.cereal.client.domain.model.llm.LlmProviderType
@@ -182,6 +183,36 @@ class AiSettingsSectionScreenTest {
             awaitText("my-model")
             onNodeWithText("Other").assertIsSelected()
             input(AI_BASE_URL_TAG).assertTextEquals("https://proxy.example.com/v1")
+        }
+
+    @Test
+    fun anthropicBehindAProxyShowsItsBaseUrlAndSavesTheEdit() =
+        runScreenTest {
+            save(LlmProviderConfig.of(LlmProviderType.ANTHROPIC, "https://proxy.example.com/v1", "sk-ant-1", "claude-opus-5-5"))
+            setScreenContent { AiSettingsSection() }
+            awaitText("claude-opus-5-5")
+
+            onNodeWithText("Anthropic").assertIsSelected()
+            input(AI_BASE_URL_TAG).assertTextEquals("https://proxy.example.com/v1")
+
+            input(AI_BASE_URL_TAG).performTextReplacement("https://proxy2.example.com/v1")
+            onNodeWithText("Save").performClick()
+
+            awaitSaved { it?.baseUrl?.value == "https://proxy2.example.com/v1" }
+            assertEquals(
+                LlmProviderConfig.of(LlmProviderType.ANTHROPIC, "https://proxy2.example.com/v1", "sk-ant-1", "claude-opus-5-5"),
+                savedConfig(),
+            )
+        }
+
+    @Test
+    fun anthropicOnItsOwnHostHidesTheBaseUrl() =
+        runScreenTest {
+            save(LlmProviderConfig.of(LlmProviderType.ANTHROPIC, "https://api.anthropic.com/v1", "sk-ant-1", "claude-opus-5-5"))
+            setScreenContent { AiSettingsSection() }
+            awaitText("claude-opus-5-5")
+
+            onNodeWithTag(AI_BASE_URL_TAG).assertDoesNotExist()
         }
 
     @Test
