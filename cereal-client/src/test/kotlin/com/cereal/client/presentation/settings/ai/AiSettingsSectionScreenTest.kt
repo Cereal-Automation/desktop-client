@@ -85,7 +85,7 @@ class AiSettingsSectionScreenTest {
 
             onNodeWithText("OpenRouter").assertIsSelected()
             onNodeWithText("Get a key ↗").assertIsDisplayed()
-            onNodeWithText("anthropic/claude-opus-5-5", substring = true).assertIsDisplayed()
+            onNodeWithText("anthropic/claude-opus-5.5", substring = true).assertIsDisplayed()
             onNodeWithTag(AI_BASE_URL_TAG).assertDoesNotExist()
 
             input(AI_API_KEY_TAG).performTextInput("sk-or-1")
@@ -93,7 +93,7 @@ class AiSettingsSectionScreenTest {
 
             awaitSaved { it != null }
             assertEquals(
-                LlmProviderConfig.of(LlmProviderType.OPENAI_COMPATIBLE, "https://openrouter.ai/api/v1", "sk-or-1", "anthropic/claude-opus-5-5"),
+                LlmProviderConfig.of(LlmProviderType.OPENAI_COMPATIBLE, "https://openrouter.ai/api/v1", "sk-or-1", "anthropic/claude-opus-5.5"),
                 savedConfig(),
             )
         }
