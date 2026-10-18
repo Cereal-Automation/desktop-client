@@ -164,86 +164,77 @@ class MainViewModel(
 
     private fun buildMenuItems(): ImmutableList<MenuItemUiModel> =
         buildList {
-            add(
+            this +=
                 createMenuItem(
                     route = Root.Routing.Home,
                     resourcePath = IconSource.Vector(Icons.Filled.Home),
                     titleResource = Res.string.home,
                     section = MenuSection.AGENT,
-                ),
-            )
-            add(
+                )
+            this +=
                 createMenuItem(
                     route = Root.Routing.Tasks(),
                     resourcePath = IconSource.Vector(Icons.Filled.Bolt),
                     titleResource = Res.string.tasks,
                     section = MenuSection.AGENT,
                     badge = activeTaskCount.takeIf { it > 0 },
-                ),
-            )
-            add(
+                )
+            this +=
                 createMenuItem(
                     route = Root.Routing.NotificationCenter,
                     resourcePath = IconSource.Vector(Icons.Filled.Notifications),
                     titleResource = Res.string.notifications,
                     section = MenuSection.AGENT,
                     badge = unseenNotificationCount.takeIf { it > 0 },
-                ),
-            )
+                )
             // Ready-made scripts are hidden in white-label builds: the appliance is locked to its
             // Brand scripts, with no browsing or installing of others (see docs/adr/0003).
             if (!applicationConfig.isBranded) {
-                add(
+                this +=
                     createMenuItem(
                         route = Root.Routing.MyScripts,
                         resourcePath = IconSource.Vector(Icons.Filled.Code),
                         titleResource = Res.string.my_scripts,
                         section = MenuSection.READY_MADE_SCRIPTS,
-                    ),
-                )
-                add(
+                    )
+                this +=
                     createMenuItem(
                         route = Root.Routing.Marketplace,
                         resourcePath = IconSource.Vector(Icons.Filled.Storefront),
                         titleResource = Res.string.marketplace,
                         section = MenuSection.READY_MADE_SCRIPTS,
-                    ),
-                )
+                    )
             }
-            add(
+            this +=
                 createMenuItem(
                     route = Root.Routing.ProxyManager,
                     resourcePath = IconSource.Vector(Icons.Filled.AccountTree),
                     titleResource = Res.string.proxies,
                     section = MenuSection.RESOURCES,
-                ),
-            )
-            add(
+                )
+            this +=
                 createMenuItem(
                     route = Root.Routing.CustomDatasetsManager,
                     resourcePath = IconSource.Vector(Icons.Filled.Storage),
                     titleResource = Res.string.script_datasets,
                     section = MenuSection.RESOURCES,
-                ),
-            )
-            add(
+                )
+            this +=
                 createMenuItem(
                     route = Root.Routing.Profile,
                     resourcePath = IconSource.Vector(Icons.Filled.VerifiedUser),
                     titleResource = Res.string.your_profile,
                     section = null,
                     titleOverride = username,
-                ),
-            )
-            add(
+                )
+            this +=
                 createMenuItem(
                     route = Root.Routing.ApplicationSettings,
                     resourcePath = IconSource.Vector(Icons.Filled.Settings),
                     titleResource = Res.string.settings,
                     section = MenuSection.SYSTEM,
                     hasNotificationDot = isUpdateAvailable,
-                ),
-            )
+                )
         }.toImmutableList()
 
     private fun createMenuItem(
