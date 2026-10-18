@@ -85,7 +85,9 @@ class HomeScreenTest {
             setScreenContent { HomeScreen() }
 
             onNodeWithText("Check every").assertDoesNotExist()
+            onNodeWithText("Once").assertIsSelected()
             onNodeWithText("Repeat").performClick()
+            onNodeWithText("Repeat").assertIsSelected()
             onNodeWithText("Check every").assertIsDisplayed()
             onNodeWithText("Once").performClick()
             onNodeWithText("Check every").assertDoesNotExist()

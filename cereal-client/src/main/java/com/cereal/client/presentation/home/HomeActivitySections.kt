@@ -6,13 +6,16 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.dp
 import com.cereal.client.presentation.theme.CerealTheme
 import com.cereal.client.presentation.view.CerealCard
 import com.cereal.client.presentation.view.CerealText
@@ -49,12 +52,13 @@ fun HomeActivitySections(
         onAction = { onOpenTasks(null) },
         empty = stringResource(Res.string.home_recent_runs_empty).takeIf { viewModel.recentRuns.value.isEmpty() },
     ) {
-        viewModel.recentRuns.value.forEach { run ->
+        viewModel.recentRuns.value.forEachIndexed { index, run ->
+            if (index > 0) RowDivider()
             Column(
                 modifier =
                     Modifier
                         .fillMaxWidth()
-                        .clickable { onOpenTasks(run.taskId) }
+                        .clickable(role = Role.Button) { onOpenTasks(run.taskId) }
                         .padding(CerealTheme.spacing.md),
             ) {
                 CerealText(
@@ -67,6 +71,8 @@ fun HomeActivitySections(
                     text = listOfNotNull(run.status, run.mode, run.site, run.cost).filter { it.isNotEmpty() }.joinToString(" · "),
                     style = MaterialTheme.typography.bodySmall,
                     color = CerealTheme.colorScheme.contentSecondary,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
                 )
             }
         }
@@ -78,7 +84,8 @@ fun HomeActivitySections(
         onAction = onNavigateToMarketplace,
         empty = stringResource(Res.string.home_ready_made_scripts_empty).takeIf { viewModel.readyMadeScripts.value.isEmpty() },
     ) {
-        viewModel.readyMadeScripts.value.forEach { script ->
+        viewModel.readyMadeScripts.value.forEachIndexed { index, script ->
+            if (index > 0) RowDivider()
             Row(
                 modifier = Modifier.fillMaxWidth().padding(CerealTheme.spacing.md),
                 verticalAlignment = Alignment.CenterVertically,
@@ -86,12 +93,13 @@ fun HomeActivitySections(
                 CerealText(
                     text = script.name,
                     color = MaterialTheme.colorScheme.onSurface,
-                    modifier = Modifier.weight(1f),
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.weight(1f).padding(end = CerealTheme.spacing.md),
                 )
                 SettingsSmallButton(
                     text = stringResource(Res.string.home_run_script),
                     onClick = { onRunScript(script.packageName) },
-                    variant = SettingsButtonVariant.Primary,
                 )
             }
         }
@@ -110,7 +118,7 @@ private fun Section(
         Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
             CerealText(
                 text = title,
-                style = MaterialTheme.typography.titleSmall,
+                style = MaterialTheme.typography.titleMedium,
                 color = MaterialTheme.colorScheme.onBackground,
                 modifier = Modifier.weight(1f),
             )
@@ -131,3 +139,6 @@ private fun Section(
         }
     }
 }
+
+@Composable
+private fun RowDivider() = HorizontalDivider(thickness = 1.dp, color = CerealTheme.colorScheme.border)

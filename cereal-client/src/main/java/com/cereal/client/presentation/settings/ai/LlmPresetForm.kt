@@ -1,5 +1,6 @@
 package com.cereal.client.presentation.settings.ai
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -10,8 +11,8 @@ import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.selection.selectable
+import androidx.compose.foundation.selection.selectableGroup
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowDropDown
@@ -27,6 +28,8 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
@@ -148,10 +151,12 @@ private fun PresetTiles(
     selected: LlmPreset?,
     onSelect: (LlmPreset) -> Unit,
 ) {
+    // A 3-column grid that fills the card, whatever its width.
     FlowRow(
-        modifier = Modifier.fillMaxWidth().padding(horizontal = 22.dp, vertical = 18.dp),
+        modifier = Modifier.fillMaxWidth().padding(horizontal = 22.dp, vertical = 18.dp).selectableGroup(),
         horizontalArrangement = Arrangement.spacedBy(CerealTheme.spacing.xs),
         verticalArrangement = Arrangement.spacedBy(CerealTheme.spacing.xs),
+        maxItemsInEachRow = TILES_PER_ROW,
     ) {
         LlmPreset.entries.forEach { preset ->
             val isSelected = preset == selected
@@ -159,11 +164,13 @@ private fun PresetTiles(
             Column(
                 modifier =
                     Modifier
-                        .width(180.dp)
+                        .weight(1f)
+                        .clip(TileShape)
+                        .background(if (isSelected) MaterialTheme.colorScheme.primary.copy(alpha = SELECTED_TILE_TINT) else Color.Transparent)
                         .border(
                             width = 1.dp,
                             color = if (isSelected) MaterialTheme.colorScheme.primary else CerealTheme.colorScheme.border,
-                            shape = RoundedCornerShape(8.dp),
+                            shape = TileShape,
                         ).selectable(selected = isSelected, role = Role.RadioButton, onClick = { onSelect(preset) })
                         .padding(horizontal = 14.dp, vertical = 10.dp),
             ) {
@@ -256,6 +263,10 @@ private fun AiModelField(
         }
     }
 }
+
+private const val TILES_PER_ROW = 3
+private const val SELECTED_TILE_TINT = 0.08f
+private val TileShape = RoundedCornerShape(8.dp)
 
 internal fun LlmPreset.labels(): Pair<StringResource, StringResource> =
     when (this) {

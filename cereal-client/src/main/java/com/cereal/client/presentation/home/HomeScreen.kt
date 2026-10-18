@@ -3,13 +3,18 @@ package com.cereal.client.presentation.home
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.selection.selectableGroup
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
@@ -24,6 +29,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.role
+import androidx.compose.ui.semantics.selected
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import com.cereal.client.presentation.error.errorView
 import com.cereal.client.presentation.settings.ai.LlmPresetForm
@@ -37,6 +45,7 @@ import com.cereal.client.presentation.view.CerealText
 import com.cereal.client.presentation.view.ConfirmationDialog
 import com.cereal.client.presentation.view.SettingsButtonVariant
 import com.cereal.client.presentation.view.SettingsSmallButton
+import com.cereal.client.presentation.view.WarningBox
 import com.cereal.client.presentation.view.chip.Pill
 import com.cereal.client.presentation.view.table.PaneToolbar
 import com.cereal.client.presentation.view.text
@@ -162,6 +171,7 @@ fun HomeScreen(
                         DisabledComposer(viewModel)
                     }
                 }
+                Spacer(Modifier.height(CerealTheme.spacing.md))
                 HomeActivitySections(onOpenTasks, onRunScript, onNavigateToMarketplace)
             }
         }
@@ -180,7 +190,7 @@ private fun SlotCard(
         ) {
             CerealText(
                 text = title,
-                style = MaterialTheme.typography.titleSmall,
+                style = MaterialTheme.typography.titleMedium,
                 color = MaterialTheme.colorScheme.onSurface,
             )
             content()
@@ -221,12 +231,10 @@ private fun UpdateRequiredCard(onOpenClientUpdate: () -> Unit) {
 
 @Composable
 private fun MaintenanceBanner() {
-    CerealText(
-        text = "⚠ " + stringResource(Res.string.home_maintenance_banner),
-        color = CerealTheme.colorScheme.warning,
-    )
+    WarningBox(text = stringResource(Res.string.home_maintenance_banner))
 }
 
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 private fun GoalComposer(
     viewModel: HomeViewModel,
@@ -240,7 +248,7 @@ private fun GoalComposer(
         ) {
             CerealText(
                 text = stringResource(Res.string.home_composer_title),
-                style = MaterialTheme.typography.titleSmall,
+                style = MaterialTheme.typography.titleMedium,
                 color = MaterialTheme.colorScheme.onSurface,
             )
             ComposerField(
@@ -261,22 +269,13 @@ private fun GoalComposer(
                 modifier = Modifier.fillMaxWidth(),
             )
             Row(
+                modifier = Modifier.selectableGroup(),
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(CerealTheme.spacing.sm),
             ) {
                 val repeat = viewModel.repeat.value
-                SettingsSmallButton(
-                    text = stringResource(Res.string.home_run_once),
-                    onClick = { viewModel.onRepeatChange(false) },
-                    enabled = enabled,
-                    variant = if (repeat) SettingsButtonVariant.Flat else SettingsButtonVariant.Primary,
-                )
-                SettingsSmallButton(
-                    text = stringResource(Res.string.home_run_repeat),
-                    onClick = { viewModel.onRepeatChange(true) },
-                    enabled = enabled,
-                    variant = if (repeat) SettingsButtonVariant.Primary else SettingsButtonVariant.Flat,
-                )
+                RunModeOption(stringResource(Res.string.home_run_once), selected = !repeat, enabled = enabled) { viewModel.onRepeatChange(false) }
+                RunModeOption(stringResource(Res.string.home_run_repeat), selected = repeat, enabled = enabled) { viewModel.onRepeatChange(true) }
                 if (repeat) {
                     CerealText(
                         text = stringResource(Res.string.home_check_every),
@@ -310,7 +309,10 @@ private fun GoalComposer(
             }
         }
     }
-    Row(horizontalArrangement = Arrangement.spacedBy(CerealTheme.spacing.sm)) {
+    FlowRow(
+        horizontalArrangement = Arrangement.spacedBy(CerealTheme.spacing.sm),
+        verticalArrangement = Arrangement.spacedBy(CerealTheme.spacing.sm),
+    ) {
         examples.forEach { (label, goal) ->
             val goalText = stringResource(goal)
             Pill(
@@ -339,11 +341,12 @@ private fun AiSetupCard(viewModel: HomeAiProviderViewModel) {
             ) {
                 CerealText(
                     text = stringResource(Res.string.home_ai_setup_title),
-                    style = MaterialTheme.typography.titleSmall,
+                    style = MaterialTheme.typography.titleMedium,
                     color = MaterialTheme.colorScheme.onSurface,
                 )
                 CerealText(
                     text = stringResource(Res.string.home_ai_setup_subtitle),
+                    style = MaterialTheme.typography.bodyMedium,
                     color = CerealTheme.colorScheme.contentSecondary,
                 )
             }
@@ -403,6 +406,27 @@ private fun AiProviderLine(
 
 private const val DISABLED_ALPHA = 0.4f
 
+/** One option of the Once/Repeat radio group: filled when selected; red stays reserved for Start. */
+@Composable
+private fun RunModeOption(
+    text: String,
+    selected: Boolean,
+    enabled: Boolean,
+    onClick: () -> Unit,
+) {
+    SettingsSmallButton(
+        text = text,
+        onClick = onClick,
+        enabled = enabled,
+        variant = if (selected) SettingsButtonVariant.Flat else SettingsButtonVariant.Ghost,
+        modifier =
+            Modifier.semantics {
+                this.selected = selected
+                role = Role.RadioButton
+            },
+    )
+}
+
 @Composable
 private fun ComposerField(
     value: String,
@@ -422,7 +446,7 @@ private fun ComposerField(
         singleLine = singleLine,
         minLines = if (singleLine) 1 else 3,
         isError = error != null,
-        supportingText = error?.let { { Text(it) } },
+        supportingText = error?.let { { Text(it, color = MaterialTheme.colorScheme.error) } },
     )
 }
 
