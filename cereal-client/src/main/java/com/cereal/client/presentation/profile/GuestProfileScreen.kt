@@ -39,6 +39,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.cereal.client.presentation.theme.CerealTheme
+import com.cereal.client.presentation.theme.CerealTypography
 import com.cereal.client.presentation.view.CerealButton
 import com.cereal.client.presentation.view.CerealButtonSize
 import com.cereal.client.presentation.view.CerealButtonType
@@ -206,11 +207,7 @@ private fun LockedFeaturesCard() {
             CerealText(
                 text = stringResource(Res.string.locked_features).uppercase(),
                 style =
-                    MaterialTheme.typography.labelSmall.copy(
-                        fontWeight = FontWeight.Bold,
-                        letterSpacing = 1.sp,
-                        color = CerealTheme.colorScheme.contentTertiary,
-                    ),
+                    CerealTypography.sectionLabel.copy(color = CerealTheme.colorScheme.contentTertiary),
             )
             Icon(
                 imageVector = Icons.Default.Lock,
@@ -266,7 +263,7 @@ private fun LockedFeaturesCard() {
         ) {
             CerealText(
                 text = stringResource(Res.string.guest_join_hint),
-                style = MaterialTheme.typography.bodySmall.copy(fontSize = 13.sp),
+                style = MaterialTheme.typography.bodySmall,
                 color = CerealTheme.colorScheme.contentTertiary,
             )
         }

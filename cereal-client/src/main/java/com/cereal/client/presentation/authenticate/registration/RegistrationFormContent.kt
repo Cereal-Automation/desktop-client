@@ -33,6 +33,7 @@ import com.cereal.client.presentation.authenticate.components.PasswordStrengthIn
 import com.cereal.client.presentation.model.AuthType
 import com.cereal.client.presentation.model.LoadState
 import com.cereal.client.presentation.theme.CerealTheme
+import com.cereal.client.presentation.theme.CerealTypography
 import com.cereal.client.presentation.view.CerealButton
 import com.cereal.client.presentation.view.CerealButtonSize
 import com.cereal.client.presentation.view.CerealButtonType
@@ -100,12 +101,7 @@ fun RegistrationFormContent(
             text = stringResource(Res.string.password).uppercase(),
             modifier = Modifier.padding(horizontal = 4.dp),
             style =
-                MaterialTheme.typography.labelSmall.copy(
-                    color = CerealTheme.colorScheme.contentTertiary,
-                    fontSize = 12.sp,
-                    fontWeight = FontWeight.Bold,
-                    letterSpacing = 1.5.sp,
-                ),
+                CerealTypography.sectionLabel.copy(color = CerealTheme.colorScheme.contentTertiary),
         )
 
         Spacer(modifier = Modifier.height(8.dp))

@@ -87,7 +87,6 @@ internal fun TasksToolbar(
                 CerealText(
                     text = "·  $subtitle",
                     style = MaterialTheme.typography.bodyMedium,
-                    fontSize = 13.sp,
                     color = CerealTheme.colorScheme.contentTertiary,
                 )
             }
@@ -198,8 +197,6 @@ private fun StatTile(
             text = value.toString(),
             style =
                 MaterialTheme.typography.headlineMedium.copy(
-                    fontWeight = FontWeight.Bold,
-                    fontSize = 26.sp,
                     letterSpacing = TextUnit(-0.025f, TextUnitType.Em),
                 ),
             color = MaterialTheme.colorScheme.onSurface,

@@ -98,10 +98,9 @@ internal fun TaskRow(
                 modifier = Modifier.width(40.dp),
                 color = accent,
                 style =
-                    MaterialTheme.typography.labelSmall.copy(
+                    MaterialTheme.typography.labelMedium.copy(
                         fontFamily = FontFamily.Monospace,
                         fontWeight = FontWeight.Bold,
-                        fontSize = 12.sp,
                     ),
                 textAlign = TextAlign.End,
             )
@@ -124,9 +123,8 @@ internal fun TaskRow(
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
                         style =
-                            MaterialTheme.typography.labelSmall.copy(
+                            MaterialTheme.typography.labelMedium.copy(
                                 fontFamily = FontFamily.Monospace,
-                                fontSize = 12.sp,
                             ),
                         modifier = Modifier.padding(top = 2.dp),
                     )

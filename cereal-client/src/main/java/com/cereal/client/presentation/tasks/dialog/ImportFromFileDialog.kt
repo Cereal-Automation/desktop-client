@@ -210,7 +210,6 @@ fun ImportFromFileDialog(
                 ) {
                     CerealText(
                         text = stringResource(Res.string.import),
-                        fontSize = 16.sp,
                     )
                 }
             }
@@ -300,7 +299,6 @@ private fun FieldHintItem(
                     append(details)
                 },
             style = MaterialTheme.typography.bodyLarge,
-            fontSize = 16.sp,
         )
     }
 }

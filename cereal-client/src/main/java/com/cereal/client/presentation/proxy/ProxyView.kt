@@ -472,7 +472,7 @@ private fun RowScope.ProxyGroupNameCell(
                     group.geoLabel?.takeIf { it.isNotBlank() }?.let { geo ->
                         CerealText(
                             text = geo,
-                            style = MaterialTheme.typography.labelSmall.copy(fontSize = 12.sp),
+                            style = MaterialTheme.typography.labelMedium,
                             color = CerealTheme.colorScheme.contentSubtle,
                             maxLines = 1,
                             overflow = TextOverflow.Ellipsis,
@@ -510,12 +510,12 @@ private fun SourceTag(provider: ProxyVendor?) {
         if (provider != null) {
             CerealText(
                 text = provider.display.brandMark,
-                style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.ExtraBold, fontSize = 10.sp),
+                style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.ExtraBold),
                 color = contentColor,
             )
             CerealText(
                 text = provider.display.displayName,
-                style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold, fontSize = 11.sp),
+                style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Bold),
                 color = contentColor,
             )
         } else {
@@ -527,7 +527,7 @@ private fun SourceTag(provider: ProxyVendor?) {
             )
             CerealText(
                 text = stringResource(Res.string.proxies_source_file),
-                style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold, fontSize = 11.sp),
+                style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Bold),
                 color = contentColor,
             )
         }

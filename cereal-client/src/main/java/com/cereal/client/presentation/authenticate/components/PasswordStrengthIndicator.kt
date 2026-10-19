@@ -25,6 +25,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.cereal.client.domain.model.auth.PasswordStrength
 import com.cereal.client.presentation.theme.CerealTheme
+import com.cereal.client.presentation.theme.CerealTypography
 import com.cereal.client.presentation.view.CerealText
 import com.cereal_automation.cereal_client.generated.resources.Res
 import com.cereal_automation.cereal_client.generated.resources.password_requirement_length
@@ -55,12 +56,7 @@ fun PasswordStrengthIndicator(
             CerealText(
                 text = stringResource(Res.string.password_strength),
                 style =
-                    MaterialTheme.typography.labelSmall.copy(
-                        color = CerealTheme.colorScheme.contentTertiary,
-                        fontSize = 11.sp,
-                        fontWeight = FontWeight.Bold,
-                        letterSpacing = 1.2.sp,
-                    ),
+                    CerealTypography.sectionLabel.copy(color = CerealTheme.colorScheme.contentTertiary),
             )
 
             val strengthText =
@@ -82,12 +78,7 @@ fun PasswordStrengthIndicator(
             CerealText(
                 text = strengthText,
                 style =
-                    MaterialTheme.typography.labelSmall.copy(
-                        color = strengthColor,
-                        fontSize = 11.sp,
-                        fontWeight = FontWeight.Bold,
-                        letterSpacing = 1.2.sp,
-                    ),
+                    CerealTypography.sectionLabel.copy(color = strengthColor),
             )
         }
 
@@ -170,9 +161,8 @@ private fun PasswordRequirement(
         CerealText(
             text = text,
             style =
-                CerealTheme.typography.labelSmall.copy(
+                CerealTheme.typography.labelMedium.copy(
                     color = if (isMet) MaterialTheme.colorScheme.onSurface.copy(alpha = 0.9f) else CerealTheme.colorScheme.contentTertiary,
-                    fontSize = 12.sp,
                 ),
         )
     }

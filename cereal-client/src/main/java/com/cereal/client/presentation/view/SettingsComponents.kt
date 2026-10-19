@@ -39,6 +39,7 @@ import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.cereal.client.presentation.theme.CerealTheme
+import com.cereal.client.presentation.theme.CerealTypography
 import com.cereal.client.presentation.theme.cerealColors
 import com.cereal.client.presentation.view.fields.FormField
 import com.cereal.client.presentation.view.fields.state.TextFieldState
@@ -101,9 +102,7 @@ fun SettingsSmallButton(
         CerealText(
             text = text,
             style =
-                MaterialTheme.typography.labelMedium.copy(
-                    fontSize = 14.sp, // 11px × 1.25
-                    fontWeight = FontWeight.SemiBold,
+                CerealTypography.controlLabel.copy(
                     color = content.copy(alpha = content.alpha * alpha),
                 ),
         )
@@ -169,9 +168,7 @@ fun SettingsSectionCard(
                 CerealText(
                     text = title,
                     style =
-                        MaterialTheme.typography.labelMedium.copy(
-                            fontSize = 16.sp, // 12.5px × 1.25
-                            fontWeight = FontWeight.Bold,
+                        MaterialTheme.typography.titleMedium.copy(
                             letterSpacing = 0.3.sp,
                             color = Color.White,
                         ),
@@ -201,9 +198,7 @@ fun SettingsSectionCard(
                 CerealText(
                     text = title,
                     style =
-                        MaterialTheme.typography.labelMedium.copy(
-                            fontSize = 16.sp, // 12.5px × 1.25
-                            fontWeight = FontWeight.Bold,
+                        MaterialTheme.typography.titleMedium.copy(
                             letterSpacing = 0.3.sp,
                             color = Color.White,
                         ),
@@ -314,8 +309,7 @@ fun SettingsSectionRow(
                 CerealText(
                     text = title,
                     style =
-                        MaterialTheme.typography.bodyMedium.copy(
-                            fontSize = 16.sp, // 13px × 1.25
+                        MaterialTheme.typography.bodyLarge.copy(
                             fontWeight = FontWeight.SemiBold,
                             color = Color.White,
                         ),
@@ -348,7 +342,6 @@ fun SettingsSectionRow(
                 color = CerealTheme.colorScheme.contentTertiary,
                 style =
                     MaterialTheme.typography.bodySmall.copy(
-                        fontSize = 14.sp, // 11.5px × 1.25
                         lineHeight = 20.sp, // 16px × 1.25
                     ),
             )
@@ -465,8 +458,7 @@ fun SettingsFieldRow(
                 CerealText(
                     text = label,
                     style =
-                        MaterialTheme.typography.labelMedium.copy(
-                            fontSize = 16.sp, // 12.5px × 1.25
+                        MaterialTheme.typography.bodyLarge.copy(
                             fontWeight = FontWeight.SemiBold,
                             color = FieldLabel,
                         ),
@@ -481,7 +473,6 @@ fun SettingsFieldRow(
                 text = description,
                 style =
                     MaterialTheme.typography.bodySmall.copy(
-                        fontSize = 14.sp, // 11px × 1.25
                         lineHeight = 20.sp, // 16.5px × 1.25 ≈ 20
                         color = FieldDesc,
                     ),
@@ -521,8 +512,7 @@ fun SettingsTextInput(
                 enabled = enabled,
                 singleLine = true,
                 textStyle =
-                    MaterialTheme.typography.bodyMedium.copy(
-                        fontSize = 16.sp, // 12.5px × 1.25
+                    MaterialTheme.typography.bodyLarge.copy(
                         color = Color.White,
                     ),
                 cursorBrush = SolidColor(MaterialTheme.colorScheme.primary),
@@ -535,8 +525,7 @@ fun SettingsTextInput(
                         CerealText(
                             text = placeholder,
                             style =
-                                MaterialTheme.typography.bodyMedium.copy(
-                                    fontSize = 16.sp,
+                                MaterialTheme.typography.bodyLarge.copy(
                                     color = InputPlaceholder,
                                 ),
                         )

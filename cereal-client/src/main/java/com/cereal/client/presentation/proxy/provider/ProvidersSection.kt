@@ -240,14 +240,14 @@ private fun StatCell(
             Icon(icon, contentDescription = null, tint = CerealTheme.colorScheme.contentSubtle, modifier = Modifier.size(12.dp))
             CerealText(
                 text = label,
-                style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.SemiBold, fontSize = 11.sp),
+                style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.SemiBold),
                 color = CerealTheme.colorScheme.contentSubtle,
             )
         }
         CerealText(
             text = value,
             modifier = Modifier.padding(top = 5.dp),
-            style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold, fontSize = 15.sp),
+            style = MaterialTheme.typography.titleMedium,
             color = MaterialTheme.colorScheme.onBackground,
         )
     }

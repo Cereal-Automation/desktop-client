@@ -428,7 +428,6 @@ fun CerealOutlinedButton(
             CerealButtonSize.Small -> {
                 MaterialTheme.typography.labelLarge.copy(
                     fontWeight = androidx.compose.ui.text.font.FontWeight.Bold,
-                    fontSize = 14.sp,
                 )
             }
 
@@ -482,7 +481,6 @@ private fun cerealButtonTextStyle(size: CerealButtonSize) =
         CerealButtonSize.Small -> {
             MaterialTheme.typography.labelLarge.copy(
                 fontWeight = androidx.compose.ui.text.font.FontWeight.Bold,
-                fontSize = 14.sp,
             )
         }
 
