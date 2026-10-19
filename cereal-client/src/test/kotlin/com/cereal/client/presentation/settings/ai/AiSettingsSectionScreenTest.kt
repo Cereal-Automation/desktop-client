@@ -145,17 +145,15 @@ class AiSettingsSectionScreenTest {
         }
 
     @Test
-    fun geminiShowsTheFreeTierCaveatAndThePrivacyLine() =
+    fun presetsShowThePrivacyLine() =
         runScreenTest {
             setScreenContent { AiSettingsSection() }
 
             onNodeWithText("Google Gemini").performClick()
 
-            onNodeWithText("Free tiers may let the provider use your data", substring = true).assertIsDisplayed()
             onNodeWithText("Nothing passes through Cereal", substring = true).assertIsDisplayed()
 
             onNodeWithText("Anthropic").performClick()
-            onNodeWithText("Free tiers may let the provider use your data", substring = true).assertDoesNotExist()
             onNodeWithText("Nothing passes through Cereal", substring = true).assertIsDisplayed()
         }
 
@@ -177,7 +175,7 @@ class AiSettingsSectionScreenTest {
                     LlmProviderType.OPENAI_COMPATIBLE,
                     "https://generativelanguage.googleapis.com/v1beta/openai",
                     "gemini-key",
-                    "gemini-2.5-flash",
+                    "gemini-3.8-flash",
                 ),
                 savedConfig(),
             )

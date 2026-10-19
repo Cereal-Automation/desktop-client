@@ -49,24 +49,17 @@ import com.cereal_automation.cereal_client.generated.resources.ai_api_key_desc_o
 import com.cereal_automation.cereal_client.generated.resources.ai_api_key_desc_required
 import com.cereal_automation.cereal_client.generated.resources.ai_base_url
 import com.cereal_automation.cereal_client.generated.resources.ai_base_url_desc
-import com.cereal_automation.cereal_client.generated.resources.ai_free_tier_caveat
 import com.cereal_automation.cereal_client.generated.resources.ai_get_key
 import com.cereal_automation.cereal_client.generated.resources.ai_model
 import com.cereal_automation.cereal_client.generated.resources.ai_model_change
 import com.cereal_automation.cereal_client.generated.resources.ai_model_desc
 import com.cereal_automation.cereal_client.generated.resources.ai_model_open
 import com.cereal_automation.cereal_client.generated.resources.ai_preset_anthropic
-import com.cereal_automation.cereal_client.generated.resources.ai_preset_anthropic_sub
 import com.cereal_automation.cereal_client.generated.resources.ai_preset_gemini
-import com.cereal_automation.cereal_client.generated.resources.ai_preset_gemini_sub
 import com.cereal_automation.cereal_client.generated.resources.ai_preset_local
-import com.cereal_automation.cereal_client.generated.resources.ai_preset_local_sub
 import com.cereal_automation.cereal_client.generated.resources.ai_preset_openai
-import com.cereal_automation.cereal_client.generated.resources.ai_preset_openai_sub
 import com.cereal_automation.cereal_client.generated.resources.ai_preset_openrouter
-import com.cereal_automation.cereal_client.generated.resources.ai_preset_openrouter_sub
 import com.cereal_automation.cereal_client.generated.resources.ai_preset_other
-import com.cereal_automation.cereal_client.generated.resources.ai_preset_other_sub
 import com.cereal_automation.cereal_client.generated.resources.ai_privacy_line
 import com.cereal_automation.cereal_client.generated.resources.ai_server
 import com.cereal_automation.cereal_client.generated.resources.ai_server_desc
@@ -86,7 +79,7 @@ internal const val AI_MODEL_OPEN_TAG = "ai_model_open"
 private val smallText @Composable get() = MaterialTheme.typography.bodyMedium.copy(lineHeight = 20.sp)
 
 /**
- * The preset tiles plus the chosen preset's connection fields, free-tier caveat and privacy line. The
+ * The preset tiles plus the chosen preset's connection fields and privacy line. The
  * host adds its own actions (Save, Connect) below and routes tile clicks through [onSelectPreset].
  */
 @Composable
@@ -99,9 +92,6 @@ fun LlmPresetForm(
     if (preset != null) {
         ConfigurationPanel {
             PresetFields(preset, form)
-            if (preset == LlmPreset.GEMINI) {
-                CerealText("⚠ " + stringResource(Res.string.ai_free_tier_caveat), color = CerealTheme.colorScheme.warning, style = smallText)
-            }
             preset.spendLimitsHelp()?.let { ClickableUrlText(stringResource(it), style = smallText) }
         }
     }
@@ -160,7 +150,7 @@ private fun PresetTiles(
     ) {
         LlmPreset.entries.forEach { preset ->
             val isSelected = preset == selected
-            val (name, sub) = preset.labels()
+            val name = preset.label()
             Column(
                 modifier =
                     Modifier
@@ -175,7 +165,6 @@ private fun PresetTiles(
                         .padding(horizontal = 14.dp, vertical = 10.dp),
             ) {
                 CerealText(stringResource(name), style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.SemiBold))
-                CerealText(stringResource(sub), color = CerealTheme.colorScheme.contentTertiary, style = smallText)
             }
         }
     }
@@ -268,14 +257,14 @@ private const val TILES_PER_ROW = 3
 private const val SELECTED_TILE_TINT = 0.08f
 private val TileShape = RoundedCornerShape(8.dp)
 
-internal fun LlmPreset.labels(): Pair<StringResource, StringResource> =
+internal fun LlmPreset.label(): StringResource =
     when (this) {
-        LlmPreset.GEMINI -> Res.string.ai_preset_gemini to Res.string.ai_preset_gemini_sub
-        LlmPreset.ANTHROPIC -> Res.string.ai_preset_anthropic to Res.string.ai_preset_anthropic_sub
-        LlmPreset.OPENAI -> Res.string.ai_preset_openai to Res.string.ai_preset_openai_sub
-        LlmPreset.OPENROUTER -> Res.string.ai_preset_openrouter to Res.string.ai_preset_openrouter_sub
-        LlmPreset.LOCAL -> Res.string.ai_preset_local to Res.string.ai_preset_local_sub
-        LlmPreset.OTHER -> Res.string.ai_preset_other to Res.string.ai_preset_other_sub
+        LlmPreset.GEMINI -> Res.string.ai_preset_gemini
+        LlmPreset.ANTHROPIC -> Res.string.ai_preset_anthropic
+        LlmPreset.OPENAI -> Res.string.ai_preset_openai
+        LlmPreset.OPENROUTER -> Res.string.ai_preset_openrouter
+        LlmPreset.LOCAL -> Res.string.ai_preset_local
+        LlmPreset.OTHER -> Res.string.ai_preset_other
     }
 
 /** Where to cap spend for [this] preset; null for [LlmPreset.LOCAL], which costs nothing. */

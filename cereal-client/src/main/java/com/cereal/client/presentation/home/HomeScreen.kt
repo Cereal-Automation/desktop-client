@@ -35,7 +35,7 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import com.cereal.client.presentation.error.errorView
 import com.cereal.client.presentation.settings.ai.LlmPresetForm
-import com.cereal.client.presentation.settings.ai.labels
+import com.cereal.client.presentation.settings.ai.label
 import com.cereal.client.presentation.tasks.script.overview.ScriptSelectionDialog
 import com.cereal.client.presentation.theme.CerealTheme
 import com.cereal.client.presentation.view.CerealButton
@@ -391,7 +391,7 @@ private fun AiProviderLine(
     Row(horizontalArrangement = Arrangement.spacedBy(CerealTheme.spacing.xs)) {
         val style = MaterialTheme.typography.bodySmall
         CerealText(
-            text = stringResource(Res.string.home_ai_using, stringResource(provider.preset.labels().first), provider.model) + " ·",
+            text = stringResource(Res.string.home_ai_using, stringResource(provider.preset.label()), provider.model) + " ·",
             style = style,
             color = CerealTheme.colorScheme.contentTertiary,
         )

@@ -150,9 +150,9 @@ class HomeScreenTest {
 
             waitUntil(timeoutMillis = 5_000) { onAllNodesWithText("First, connect an AI model").fetchSemanticsNodes().isEmpty() }
             onNodeWithTag(HomeTestTags.GOAL).assertIsEnabled()
-            onNodeWithText("Using Google Gemini (gemini-2.5-flash) ·").assertIsDisplayed()
+            onNodeWithText("Using Google Gemini (gemini-3.8-flash) ·").assertIsDisplayed()
             onNodeWithText("Change in Settings → AI").assertIsDisplayed()
-            assertEquals("gemini-2.5-flash", savedConfig()?.model)
+            assertEquals("gemini-3.8-flash", savedConfig()?.model)
         }
 }
 
