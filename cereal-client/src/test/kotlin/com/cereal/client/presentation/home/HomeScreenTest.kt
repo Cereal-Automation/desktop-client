@@ -4,9 +4,7 @@ import androidx.compose.ui.test.ComposeUiTest
 import androidx.compose.ui.test.ExperimentalTestApi
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsEnabled
-import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.assertIsSelected
-import androidx.compose.ui.test.assertTextContains
 import androidx.compose.ui.test.hasAnyAncestor
 import androidx.compose.ui.test.hasSetTextAction
 import androidx.compose.ui.test.hasTestTag
@@ -71,12 +69,13 @@ class HomeScreenTest {
             setScreenContent { HomeScreen() }
 
             onNodeWithText("A free AI browser agent that runs on your machine, with your model and your key.").assertIsDisplayed()
-            onNodeWithText("What should the agent do?").assertIsDisplayed()
+            onNodeWithText("Tell the agent what to do").assertIsDisplayed()
             onNodeWithText("Start").assertIsDisplayed()
             onNodeWithText("More options").assertIsDisplayed()
-            onNodeWithText("Runs in your own Chrome and asks before it buys or sends anything.").assertIsDisplayed()
-            onNodeWithText("Using Anthropic (claude-opus-5-5) ·").assertIsDisplayed()
-            onNodeWithText("First, connect an AI model").assertDoesNotExist()
+            onNodeWithText("Ready when you are").assertIsDisplayed()
+            onNodeWithText("Model connected").assertIsDisplayed()
+            onNodeWithText("claude-opus-5-5").assertIsDisplayed()
+            onNodeWithText("Connect an AI model").assertDoesNotExist()
         }
 
     @Test
@@ -94,34 +93,23 @@ class HomeScreenTest {
         }
 
     @Test
-    fun `an example chip fills the goal`() =
-        runScreenTest(overrides = ready) {
-            setScreenContent { HomeScreen() }
-
-            onNodeWithText("Watch a product for restock").performClick()
-
-            onNodeWithTag(HomeTestTags.GOAL).assertTextContains("Check this product page and tell me when it's back in stock")
-        }
-
-    @Test
     fun `with no AI provider the setup card replaces the composer with Gemini pre-selected`() =
         runScreenTest(overrides = listOf(agentInstalled)) {
             setScreenContent { HomeScreen() }
 
-            awaitText("First, connect an AI model")
+            awaitText("Connect an AI model")
             onNodeWithText("Google Gemini").assertIsSelected()
         }
 
     @Test
-    fun `the greyed composer under the setup card can't be focused or used`() =
+    fun `the goal step stays locked until a model is connected`() =
         runScreenTest(overrides = listOf(agentInstalled)) {
             setScreenContent { HomeScreen() }
-            awaitText("First, connect an AI model")
+            awaitText("Connect an AI model")
 
-            onNodeWithTag(HomeTestTags.GOAL).assertIsNotEnabled()
-            onNodeWithText("Start").assertIsNotEnabled()
-            onNodeWithText("More options").assertIsNotEnabled()
-            onNodeWithText("Repeat").assertIsNotEnabled()
+            onNodeWithText("Available once a model is connected.").assertIsDisplayed()
+            onNodeWithTag(HomeTestTags.GOAL).assertDoesNotExist()
+            onNodeWithText("Start").assertDoesNotExist()
         }
 
     @Test
@@ -129,13 +117,13 @@ class HomeScreenTest {
         runScreenTest(overrides = listOf(agentInstalled)) {
             (KoinJavaComponent.get<LlmProvider>(LlmProvider::class.java) as InMemoryLlmProvider).listModelsError = LlmCallException.Authentication()
             setScreenContent { HomeScreen() }
-            awaitText("First, connect an AI model")
+            awaitText("Connect an AI model")
 
             enterApiKey("bad-key")
             onNodeWithText("Connect").performClick()
 
             awaitText("Bad API key: the provider rejected it.")
-            onNodeWithText("First, connect an AI model").assertIsDisplayed()
+            onNodeWithText("Connect an AI model").assertIsDisplayed()
             assertNull(savedConfig())
         }
 
@@ -143,15 +131,15 @@ class HomeScreenTest {
     fun `a passing Connect saves the config and swaps the card for the composer`() =
         runScreenTest(overrides = listOf(agentInstalled)) {
             setScreenContent { HomeScreen() }
-            awaitText("First, connect an AI model")
+            awaitText("Connect an AI model")
 
             enterApiKey("good-key")
             onNodeWithText("Connect").performClick()
 
-            waitUntil(timeoutMillis = 5_000) { onAllNodesWithText("First, connect an AI model").fetchSemanticsNodes().isEmpty() }
+            waitUntil(timeoutMillis = 5_000) { onAllNodesWithText("Connect an AI model").fetchSemanticsNodes().isEmpty() }
             onNodeWithTag(HomeTestTags.GOAL).assertIsEnabled()
-            onNodeWithText("Using Google Gemini (gemini-3.8-flash) ·").assertIsDisplayed()
-            onNodeWithText("Change in Settings → AI").assertIsDisplayed()
+            onNodeWithText("gemini-3.8-flash").assertIsDisplayed()
+            onNodeWithText("Change").assertIsDisplayed()
             assertEquals("gemini-3.8-flash", savedConfig()?.model)
         }
 }
@@ -181,10 +169,10 @@ class HomeSlotCardsScreenTest {
             setScreenContent { HomeScreen() }
 
             onNodeWithText("The AI browser agent isn't installed").assertIsDisplayed()
-            onNodeWithText("What should the agent do?").assertDoesNotExist()
+            onNodeWithText("Tell the agent what to do").assertDoesNotExist()
             onNodeWithText("Install").performClick()
 
-            waitUntil { onAllNodesWithText("What should the agent do?").fetchSemanticsNodes().isNotEmpty() }
+            waitUntil { onAllNodesWithText("Tell the agent what to do").fetchSemanticsNodes().isNotEmpty() }
             onNodeWithText("The AI browser agent isn't installed").assertDoesNotExist()
         }
 
@@ -207,7 +195,7 @@ class HomeSlotCardsScreenTest {
             setScreenContent { HomeScreen(onOpenClientUpdate = { opened = true }) }
 
             onNodeWithText("Update Cereal to use the AI browser agent").assertIsDisplayed()
-            onNodeWithText("What should the agent do?").assertDoesNotExist()
+            onNodeWithText("Tell the agent what to do").assertDoesNotExist()
             onNodeWithText("Update Cereal").performClick()
 
             assertTrue(opened)
