@@ -360,7 +360,7 @@ class HomeViewModelTest {
             vm.onConnect()
             advanceUntilIdle()
 
-            assertEquals("gemini-2.5-flash", llmConfigs.get()?.model)
-            assertEquals(HomeAiProviderState.Configured(AiProviderUiModel(LlmPreset.GEMINI, "gemini-2.5-flash")), vm.state.value)
+            assertEquals("gemini-3.8-flash", llmConfigs.get()?.model)
+            assertEquals(HomeAiProviderState.Configured(AiProviderUiModel(LlmPreset.GEMINI, "gemini-3.8-flash")), vm.state.value)
         }
 }

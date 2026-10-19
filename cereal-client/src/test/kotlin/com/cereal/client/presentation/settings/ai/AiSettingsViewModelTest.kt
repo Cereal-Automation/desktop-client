@@ -220,7 +220,7 @@ class AiSettingsViewModelTest {
 
         assertEquals("", vm.form.apiKeyState.text)
         assertEquals("https://generativelanguage.googleapis.com/v1beta/openai", vm.form.baseUrlState.text)
-        assertEquals("gemini-2.5-flash", vm.form.modelState.text)
+        assertEquals("gemini-3.8-flash", vm.form.modelState.text)
     }
 
     @Test

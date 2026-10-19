@@ -21,7 +21,7 @@ class ConnectLlmProviderInteractorTest {
             provider = LlmProviderType.OPENAI_COMPATIBLE,
             baseUrl = "https://generativelanguage.googleapis.com/v1beta/openai",
             apiKey = "key",
-            model = "gemini-2.5-flash",
+            model = "gemini-3.8-flash",
         )
 
     @Test
@@ -29,7 +29,7 @@ class ConnectLlmProviderInteractorTest {
         runTest {
             val saved = interactor.run(gemini)
 
-            assertEquals("gemini-2.5-flash", repository.get()?.model)
+            assertEquals("gemini-3.8-flash", repository.get()?.model)
             assertEquals(repository.get(), saved)
         }
 
