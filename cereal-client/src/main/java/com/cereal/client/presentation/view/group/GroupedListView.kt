@@ -164,7 +164,7 @@ private fun ScriptItemContent(
             if (!item.subTitle.isNullOrEmpty()) {
                 CerealText(
                     text = item.subTitle,
-                    style = MaterialTheme.typography.labelMedium,
+                    style = MaterialTheme.typography.bodySmall,
                     modifier =
                         Modifier
                             .padding(vertical = 4.dp),

@@ -341,7 +341,7 @@ fun SettingsSectionRow(
                 text = description,
                 color = CerealTheme.colorScheme.contentTertiary,
                 style =
-                    MaterialTheme.typography.bodySmall.copy(
+                    MaterialTheme.typography.bodyMedium.copy(
                         lineHeight = 20.sp, // 16px × 1.25
                     ),
             )
@@ -472,7 +472,7 @@ fun SettingsFieldRow(
             CerealText(
                 text = description,
                 style =
-                    MaterialTheme.typography.bodySmall.copy(
+                    MaterialTheme.typography.bodyMedium.copy(
                         lineHeight = 20.sp, // 16.5px × 1.25 ≈ 20
                         color = FieldDesc,
                     ),

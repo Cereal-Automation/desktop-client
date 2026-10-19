@@ -83,13 +83,13 @@ val typography =
         bodySmall =
             TextStyle(
                 fontWeight = FontWeight.Normal,
-                fontSize = 14.sp,
+                fontSize = 12.sp,
                 fontFamily = MontserratFontFamily,
             ),
         labelSmall =
             TextStyle(
                 fontWeight = FontWeight.Normal,
-                fontSize = 10.sp,
+                fontSize = 11.sp,
                 fontFamily = MontserratFontFamily,
             ),
     )
