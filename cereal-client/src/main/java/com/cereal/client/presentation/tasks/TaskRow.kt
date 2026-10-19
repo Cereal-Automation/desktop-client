@@ -13,6 +13,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ripple
@@ -163,7 +164,7 @@ internal fun TaskRow(
                     Icon(
                         painterResource(Res.drawable.ic_play),
                         contentDescription = stringResource(Res.string.continue_task),
-                        modifier = Modifier.size(14.dp),
+                        modifier = Modifier.size(ButtonDefaults.IconSize),
                     )
                     CerealText(text = stringResource(Res.string.continue_action))
                 }

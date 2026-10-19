@@ -314,7 +314,7 @@ private fun TaskFilterControl(
                 Icon(
                     imageVector = Icons.Filled.KeyboardArrowDown,
                     contentDescription = null,
-                    modifier = Modifier.size(14.dp),
+                    modifier = Modifier.size(ButtonDefaults.IconSize),
                 )
             }
             DropdownMenu(
