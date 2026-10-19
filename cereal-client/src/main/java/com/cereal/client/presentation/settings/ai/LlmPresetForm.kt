@@ -19,7 +19,6 @@ import androidx.compose.material.icons.filled.ArrowDropDown
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -37,6 +36,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.PopupProperties
 import com.cereal.client.presentation.theme.CerealTheme
+import com.cereal.client.presentation.view.CerealIconButton
 import com.cereal.client.presentation.view.CerealText
 import com.cereal.client.presentation.view.ClickableUrlText
 import com.cereal.client.presentation.view.ConfigurationPanel
@@ -237,7 +237,7 @@ private fun AiModelField(
                     SettingsTextInput(state = state)
                 }
                 if (models.isNotEmpty()) {
-                    IconButton(onClick = { expanded = !expanded }, modifier = Modifier.testTag(AI_MODEL_OPEN_TAG)) {
+                    CerealIconButton(onClick = { expanded = !expanded }, modifier = Modifier.testTag(AI_MODEL_OPEN_TAG)) {
                         Icon(Icons.Default.ArrowDropDown, contentDescription = stringResource(Res.string.ai_model_open))
                     }
                 }

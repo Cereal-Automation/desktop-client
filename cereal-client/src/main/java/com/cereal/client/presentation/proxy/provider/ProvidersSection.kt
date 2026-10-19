@@ -159,7 +159,6 @@ private fun ConnectedProviderCard(
                     CerealText(
                         text = stringResource(Res.string.proxies_provider_manage),
                         modifier = Modifier.padding(start = 8.dp),
-                        style = CerealTypography.controlLabel,
                     )
                 },
             )
@@ -171,7 +170,6 @@ private fun ConnectedProviderCard(
                     CerealText(
                         text = stringResource(Res.string.proxies_provider_sync),
                         modifier = Modifier.padding(start = 8.dp),
-                        style = CerealTypography.controlLabel,
                     )
                 },
             )
@@ -221,7 +219,6 @@ private fun ConnectHero(onConnect: () -> Unit) {
                     CerealText(
                         text = stringResource(Res.string.proxies_connect_provider),
                         modifier = Modifier.padding(start = 8.dp),
-                        style = CerealTypography.controlLabel,
                     )
                 },
             )

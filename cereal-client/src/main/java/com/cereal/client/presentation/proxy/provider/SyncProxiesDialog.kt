@@ -608,7 +608,7 @@ private fun SyncFooter(
         when (state.step) {
             SyncWizardStep.CONFIGURE -> {
                 CerealTextButton(onClick = onClose, type = CerealButtonType.Surface) {
-                    CerealText(stringResource(Res.string.proxies_sync_back), style = CerealTypography.controlLabel)
+                    CerealText(stringResource(Res.string.proxies_sync_back))
                 }
                 Spacer(modifier = Modifier.weight(1f))
                 CerealButton(
@@ -629,14 +629,14 @@ private fun SyncFooter(
             SyncWizardStep.SYNCING -> {
                 Spacer(modifier = Modifier.weight(1f))
                 CerealTextButton(onClick = onRunInBackground, type = CerealButtonType.Surface) {
-                    CerealText(stringResource(Res.string.proxies_sync_run_in_background), style = CerealTypography.controlLabel)
+                    CerealText(stringResource(Res.string.proxies_sync_run_in_background))
                 }
             }
 
             SyncWizardStep.DONE -> {
                 CerealTextButton(onClick = onSyncMore, type = CerealButtonType.Surface) {
                     Icon(Icons.Outlined.Add, contentDescription = null, modifier = Modifier.size(14.dp))
-                    CerealText(stringResource(Res.string.proxies_sync_done_more), modifier = Modifier.padding(start = 6.dp), style = CerealTypography.controlLabel)
+                    CerealText(stringResource(Res.string.proxies_sync_done_more), modifier = Modifier.padding(start = 6.dp))
                 }
                 Spacer(modifier = Modifier.weight(1f))
                 CerealButton(onClick = onClose, text = stringResource(Res.string.proxies_sync_done_view), type = CerealButtonType.Primary)
