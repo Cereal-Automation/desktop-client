@@ -84,7 +84,7 @@ fun GroupNameDialog(
                     CerealButton(
                         type = CerealButtonType.Surface,
                         content = {
-                            CerealText(stringResource(Res.string.delete), style = MaterialTheme.typography.titleMedium)
+                            CerealText(stringResource(Res.string.delete))
                         },
                         onClick = {
                             onDeleteClicked()
@@ -96,10 +96,7 @@ fun GroupNameDialog(
 
                 CerealButton(
                     content = {
-                        CerealText(
-                            stringResource(if (isEditMode) Res.string.edit else Res.string.create),
-                            style = MaterialTheme.typography.titleMedium,
-                        )
+                        CerealText(stringResource(if (isEditMode) Res.string.edit else Res.string.create))
                     },
                     onClick = {
                         onConfirmClicked(textFieldState.text)

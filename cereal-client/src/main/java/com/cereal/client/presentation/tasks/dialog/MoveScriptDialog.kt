@@ -69,7 +69,7 @@ fun MoveScriptDialog(
                 CerealButton(
                     type = CerealButtonType.Surface,
                     content = {
-                        CerealText(stringResource(Res.string.cancel), style = MaterialTheme.typography.titleMedium)
+                        CerealText(stringResource(Res.string.cancel))
                     },
                     onClick = onDismissRequest,
                 )
@@ -78,7 +78,7 @@ fun MoveScriptDialog(
 
                 CerealButton(
                     content = {
-                        CerealText(stringResource(Res.string.move), style = MaterialTheme.typography.titleMedium)
+                        CerealText(stringResource(Res.string.move))
                     },
                     onClick = {
                         val selectedGroup = state.selectedValue?.group

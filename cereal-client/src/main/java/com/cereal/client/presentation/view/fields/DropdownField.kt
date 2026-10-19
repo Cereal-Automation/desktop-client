@@ -13,7 +13,6 @@ import androidx.compose.material.icons.filled.Clear
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.runtime.Composable
@@ -23,6 +22,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
+import com.cereal.client.presentation.view.CerealIconButton
 import com.cereal.client.presentation.view.CerealText
 import com.cereal.client.presentation.view.fields.state.DropDownFieldState
 import com.cereal_automation.cereal_client.generated.resources.Res
@@ -66,7 +66,7 @@ fun <T : Any> DropdownTextField(
                     trailingIcon =
                         if (state.showClearButton()) {
                             {
-                                IconButton(onClick = { state.onClear() }) {
+                                CerealIconButton(onClick = { state.onClear() }) {
                                     Icon(
                                         imageVector = Icons.Default.Clear,
                                         contentDescription = stringResource(Res.string.clear),

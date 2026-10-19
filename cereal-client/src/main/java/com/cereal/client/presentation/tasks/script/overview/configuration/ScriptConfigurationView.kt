@@ -19,7 +19,6 @@ import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.KeyboardArrowUp
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
@@ -42,6 +41,7 @@ import com.cereal.client.presentation.view.Body2Text
 import com.cereal.client.presentation.view.CaptionText
 import com.cereal.client.presentation.view.CerealButton
 import com.cereal.client.presentation.view.CerealCard
+import com.cereal.client.presentation.view.CerealIconButton
 import com.cereal.client.presentation.view.ClickableUrlText
 import com.cereal.client.presentation.view.ConfirmationDialog
 import com.cereal.client.presentation.view.InfoBox
@@ -433,7 +433,7 @@ private fun ListSingleFieldRow(
         Column(modifier = Modifier.weight(1f)) {
             ListRowField(fieldDefinition, fieldState, showLabel = false)
         }
-        IconButton(onClick = { state.removeRow(index) }) {
+        CerealIconButton(onClick = { state.removeRow(index) }) {
             Icon(
                 imageVector = Icons.Filled.Close,
                 contentDescription = stringResource(Res.string.remove_entry),
@@ -460,7 +460,7 @@ private fun ListRowCard(
                     color = CerealTheme.colorScheme.contentTertiary,
                     modifier = Modifier.weight(1f),
                 )
-                IconButton(onClick = { state.removeRow(index) }) {
+                CerealIconButton(onClick = { state.removeRow(index) }) {
                     Icon(
                         imageVector = Icons.Filled.Close,
                         contentDescription = stringResource(Res.string.remove_entry),

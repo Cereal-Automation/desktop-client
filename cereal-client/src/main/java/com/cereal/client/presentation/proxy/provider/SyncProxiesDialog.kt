@@ -31,6 +31,7 @@ import androidx.compose.material.icons.outlined.Place
 import androidx.compose.material.icons.outlined.Remove
 import androidx.compose.material.icons.outlined.Storage
 import androidx.compose.material.icons.outlined.Sync
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.LinearProgressIndicator
@@ -59,6 +60,7 @@ import com.cereal.client.presentation.theme.CerealTypography
 import com.cereal.client.presentation.view.CerealButton
 import com.cereal.client.presentation.view.CerealButtonType
 import com.cereal.client.presentation.view.CerealIconButton
+import com.cereal.client.presentation.view.CerealOutlinedIconButton
 import com.cereal.client.presentation.view.CerealOutlinedTextField
 import com.cereal.client.presentation.view.CerealText
 import com.cereal.client.presentation.view.CerealTextButton
@@ -608,7 +610,7 @@ private fun SyncFooter(
         when (state.step) {
             SyncWizardStep.CONFIGURE -> {
                 CerealTextButton(onClick = onClose, type = CerealButtonType.Surface) {
-                    CerealText(stringResource(Res.string.proxies_sync_back), style = CerealTypography.controlLabel)
+                    CerealText(stringResource(Res.string.proxies_sync_back))
                 }
                 Spacer(modifier = Modifier.weight(1f))
                 CerealButton(
@@ -629,14 +631,18 @@ private fun SyncFooter(
             SyncWizardStep.SYNCING -> {
                 Spacer(modifier = Modifier.weight(1f))
                 CerealTextButton(onClick = onRunInBackground, type = CerealButtonType.Surface) {
-                    CerealText(stringResource(Res.string.proxies_sync_run_in_background), style = CerealTypography.controlLabel)
+                    CerealText(stringResource(Res.string.proxies_sync_run_in_background))
                 }
             }
 
             SyncWizardStep.DONE -> {
-                CerealTextButton(onClick = onSyncMore, type = CerealButtonType.Surface) {
-                    Icon(Icons.Outlined.Add, contentDescription = null, modifier = Modifier.size(14.dp))
-                    CerealText(stringResource(Res.string.proxies_sync_done_more), modifier = Modifier.padding(start = 6.dp), style = CerealTypography.controlLabel)
+                CerealTextButton(
+                    onClick = onSyncMore,
+                    type = CerealButtonType.Surface,
+                    contentPadding = ButtonDefaults.TextButtonWithIconContentPadding,
+                ) {
+                    Icon(Icons.Outlined.Add, contentDescription = null, modifier = Modifier.size(ButtonDefaults.IconSize))
+                    CerealText(stringResource(Res.string.proxies_sync_done_more), modifier = Modifier.padding(start = ButtonDefaults.IconSpacing))
                 }
                 Spacer(modifier = Modifier.weight(1f))
                 CerealButton(onClick = onClose, text = stringResource(Res.string.proxies_sync_done_view), type = CerealButtonType.Primary)
@@ -749,16 +755,8 @@ private fun StepButton(
     contentDescription: String,
     onClick: () -> Unit,
 ) {
-    Box(
-        modifier =
-            Modifier
-                .size(40.dp)
-                .border(1.dp, CerealTheme.colorScheme.border, RoundedCornerShape(8.dp))
-                .background(MaterialTheme.colorScheme.surface, RoundedCornerShape(8.dp))
-                .clickable(onClick = onClick),
-        contentAlignment = Alignment.Center,
-    ) {
-        Icon(icon, contentDescription = contentDescription, tint = MaterialTheme.colorScheme.onBackground, modifier = Modifier.size(16.dp))
+    CerealOutlinedIconButton(onClick = onClick) {
+        Icon(icon, contentDescription = contentDescription, modifier = Modifier.size(16.dp))
     }
 }
 

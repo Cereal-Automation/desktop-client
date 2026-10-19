@@ -108,10 +108,7 @@ fun GuestProfileScreen(
                         size = CerealButtonSize.Small,
                         modifier = Modifier.width(180.dp),
                     ) {
-                        CerealText(
-                            text = stringResource(Res.string.login),
-                            style = MaterialTheme.typography.labelLarge.copy(fontWeight = FontWeight.SemiBold),
-                        )
+                        CerealText(text = stringResource(Res.string.login))
                     }
                 }
 

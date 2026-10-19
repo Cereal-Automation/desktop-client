@@ -17,6 +17,7 @@ import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.material.icons.filled.AlternateEmail
 import androidx.compose.material.icons.filled.LockOpen
 import androidx.compose.material.icons.filled.Visibility
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -171,13 +172,12 @@ fun LoginFormContent(
                 ) {
                     CerealText(
                         text = stringResource(Res.string.login),
-                        style = MaterialTheme.typography.labelLarge.copy(fontWeight = FontWeight.SemiBold),
                     )
 
                     Icon(
                         imageVector = Icons.AutoMirrored.Filled.ArrowForward,
                         contentDescription = null,
-                        modifier = Modifier.size(20.dp),
+                        modifier = Modifier.size(ButtonDefaults.IconSize),
                     )
                 }
             }
@@ -210,11 +210,10 @@ fun LoginFormContent(
                         Image(
                             painter = painterResource(Res.drawable.ic_google),
                             contentDescription = null,
-                            modifier = Modifier.size(20.dp),
+                            modifier = Modifier.size(ButtonDefaults.IconSize),
                         )
                         CerealText(
                             text = stringResource(Res.string.login_google),
-                            style = MaterialTheme.typography.labelLarge.copy(fontWeight = FontWeight.SemiBold),
                         )
                     }
                 }
@@ -248,11 +247,10 @@ fun LoginFormContent(
                         Image(
                             painter = painterResource(Res.drawable.ic_discord),
                             contentDescription = null,
-                            modifier = Modifier.size(20.dp),
+                            modifier = Modifier.size(ButtonDefaults.IconSize),
                         )
                         CerealText(
                             text = stringResource(Res.string.login_discord),
-                            style = MaterialTheme.typography.labelLarge.copy(fontWeight = FontWeight.SemiBold),
                         )
                     }
                 }
@@ -311,11 +309,10 @@ fun LoginFormContent(
                         Icon(
                             imageVector = Icons.Default.Visibility,
                             contentDescription = null,
-                            modifier = Modifier.size(20.dp),
+                            modifier = Modifier.size(ButtonDefaults.IconSize),
                         )
                         CerealText(
                             text = stringResource(Res.string.login_guest),
-                            style = MaterialTheme.typography.labelLarge.copy(fontWeight = FontWeight.SemiBold),
                         )
                     }
                 }

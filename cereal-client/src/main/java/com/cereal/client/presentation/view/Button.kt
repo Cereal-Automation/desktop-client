@@ -6,7 +6,7 @@ import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.material3.Button
@@ -25,17 +25,19 @@ import androidx.compose.material3.IconButtonDefaults
 import androidx.compose.material3.IconToggleButton
 import androidx.compose.material3.IconToggleButtonColors
 import androidx.compose.material3.LocalContentColor
+import androidx.compose.material3.LocalTextStyle
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedIconButton
 import androidx.compose.material3.OutlinedIconToggleButton
-import androidx.compose.material3.ProvideTextStyle
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.contentColorFor
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -48,6 +50,9 @@ enum class CerealButtonType {
     Secondary,
     Surface,
     Success,
+
+    /** Neutral grey: filled with a subtle border, or outlined in the subtle border color. */
+    Neutral,
 }
 
 enum class CerealButtonSize {
@@ -73,6 +78,8 @@ fun CerealButton(
     enabled: Boolean = true,
     type: CerealButtonType = CerealButtonType.Primary,
     size: CerealButtonSize = CerealButtonSize.Small,
+    contentPadding: PaddingValues =
+        if (leadingIcon != null) ButtonDefaults.ButtonWithIconContentPadding else ButtonDefaults.ContentPadding,
     interactionSource: MutableInteractionSource = remember { MutableInteractionSource() },
     content: (@Composable RowScope.() -> Unit)? = null,
 ) {
@@ -98,29 +105,37 @@ fun CerealButton(
             CerealButtonType.Success -> {
                 ButtonDefaults.buttonColors(
                     containerColor = CerealTheme.colorScheme.success,
+                    contentColor = CerealTheme.colorScheme.onSuccess,
                     disabledContainerColor = CerealTheme.colorScheme.success.copy(alpha = 0.5f),
+                )
+            }
+
+            CerealButtonType.Neutral -> {
+                ButtonDefaults.buttonColors(
+                    containerColor = MaterialTheme.colorScheme.surfaceVariant,
+                    contentColor = MaterialTheme.colorScheme.onSurface,
                 )
             }
         }
 
     val shape = MaterialTheme.shapes.small
     val elevation = ButtonDefaults.buttonElevation()
-    val border: BorderStroke? = null
+    val border = if (type == CerealButtonType.Neutral) BorderStroke(1.dp, CerealTheme.colorScheme.border) else null
 
     val textStyle = cerealButtonTextStyle(size)
 
     Button(
         onClick = onClick,
-        modifier = modifier.height(size.height),
+        modifier = modifier.heightIn(min = size.height),
         enabled = enabled,
         colors = colors,
         interactionSource = interactionSource,
         elevation = elevation,
         shape = shape,
         border = border,
-        contentPadding = ButtonDefaults.ContentPadding,
+        contentPadding = contentPadding,
         content = {
-            ProvideTextStyle(value = textStyle) {
+            ProvideButtonTextStyle(size) {
                 if (content != null) {
                     content()
                 } else {
@@ -128,10 +143,10 @@ fun CerealButton(
                         Icon(
                             painterResource(leadingIcon),
                             contentDescription = iconContentDescription,
-                            modifier = Modifier.size(20.dp),
+                            modifier = Modifier.size(ButtonDefaults.IconSize),
                         )
                         if (!text.isNullOrBlank()) {
-                            Spacer(modifier = Modifier.width(8.dp))
+                            Spacer(modifier = Modifier.width(ButtonDefaults.IconSpacing))
                         }
                     }
 
@@ -144,7 +159,7 @@ fun CerealButton(
 
                     if (trailingIcon != null) {
                         if (!text.isNullOrBlank()) {
-                            Spacer(modifier = Modifier.width(8.dp))
+                            Spacer(modifier = Modifier.width(ButtonDefaults.IconSpacing))
                         }
                         Image(
                             painterResource(trailingIcon),
@@ -152,7 +167,7 @@ fun CerealButton(
                             colorFilter =
                                 androidx.compose.ui.graphics.ColorFilter
                                     .tint(LocalContentColor.current),
-                            modifier = Modifier.size(20.dp),
+                            modifier = Modifier.size(ButtonDefaults.IconSize),
                         )
                     }
                 }
@@ -167,6 +182,7 @@ fun CerealTextButton(
     modifier: Modifier = Modifier,
     enabled: Boolean = true,
     type: CerealButtonType = CerealButtonType.Primary,
+    size: CerealButtonSize = CerealButtonSize.Small,
     contentPadding: PaddingValues = ButtonDefaults.TextButtonContentPadding,
     interactionSource: MutableInteractionSource = remember { MutableInteractionSource() },
     content: @Composable RowScope.() -> Unit,
@@ -177,17 +193,18 @@ fun CerealTextButton(
             CerealButtonType.Secondary -> ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.secondary)
             CerealButtonType.Surface -> ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.onSurface)
             CerealButtonType.Success -> ButtonDefaults.textButtonColors(contentColor = CerealTheme.colorScheme.success)
+            CerealButtonType.Neutral -> ButtonDefaults.textButtonColors(contentColor = CerealTheme.colorScheme.contentSecondary)
         }
 
     TextButton(
         onClick = onClick,
-        modifier = modifier,
+        modifier = modifier.heightIn(min = size.height),
         enabled = enabled,
         shape = MaterialTheme.shapes.small,
         colors = colors,
         contentPadding = contentPadding,
         interactionSource = interactionSource,
-        content = content,
+        content = { ProvideButtonTextStyle(size) { content() } },
     )
 }
 
@@ -323,8 +340,8 @@ fun CerealOutlinedIconButton(
         modifier = modifier,
         enabled = enabled,
         shape = MaterialTheme.shapes.small,
-        colors = IconButtonDefaults.outlinedIconButtonColors(),
-        border = IconButtonDefaults.outlinedIconButtonBorder(enabled),
+        colors = IconButtonDefaults.outlinedIconButtonColors(contentColor = CerealTheme.colorScheme.contentSecondary),
+        border = BorderStroke(1.dp, CerealTheme.colorScheme.border.copy(alpha = if (enabled) 1f else 0.4f)),
         interactionSource = interactionSource,
         content = content,
     )
@@ -357,18 +374,19 @@ fun CerealElevatedButton(
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
     enabled: Boolean = true,
+    size: CerealButtonSize = CerealButtonSize.Small,
     contentPadding: PaddingValues = ButtonDefaults.ContentPadding,
     interactionSource: MutableInteractionSource = remember { MutableInteractionSource() },
     content: @Composable RowScope.() -> Unit,
 ) {
     ElevatedButton(
         onClick = onClick,
-        modifier = modifier,
+        modifier = modifier.heightIn(min = size.height),
         enabled = enabled,
         shape = MaterialTheme.shapes.small,
         contentPadding = contentPadding,
         interactionSource = interactionSource,
-        content = content,
+        content = { ProvideButtonTextStyle(size) { content() } },
     )
 }
 
@@ -377,18 +395,19 @@ fun CerealFilledTonalButton(
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
     enabled: Boolean = true,
+    size: CerealButtonSize = CerealButtonSize.Small,
     contentPadding: PaddingValues = ButtonDefaults.ContentPadding,
     interactionSource: MutableInteractionSource = remember { MutableInteractionSource() },
     content: @Composable RowScope.() -> Unit,
 ) {
     FilledTonalButton(
         onClick = onClick,
-        modifier = modifier,
+        modifier = modifier.heightIn(min = size.height),
         enabled = enabled,
         shape = MaterialTheme.shapes.small,
         contentPadding = contentPadding,
         interactionSource = interactionSource,
-        content = content,
+        content = { ProvideButtonTextStyle(size) { content() } },
     )
 }
 
@@ -421,25 +440,16 @@ fun CerealOutlinedButton(
                 ButtonDefaults.outlinedButtonColors(contentColor = CerealTheme.colorScheme.success) to
                     CerealTheme.colorScheme.success
             }
-        }
 
-    val textStyle =
-        when (size) {
-            CerealButtonSize.Small -> {
-                MaterialTheme.typography.labelLarge.copy(
-                    fontWeight = androidx.compose.ui.text.font.FontWeight.Bold,
-                    fontSize = 14.sp,
-                )
-            }
-
-            CerealButtonSize.Large -> {
-                MaterialTheme.typography.headlineSmall
+            CerealButtonType.Neutral -> {
+                ButtonDefaults.outlinedButtonColors(contentColor = CerealTheme.colorScheme.contentSecondary) to
+                    CerealTheme.colorScheme.border
             }
         }
 
     OutlinedButton(
         onClick = onClick,
-        modifier = modifier.height(size.height),
+        modifier = modifier.heightIn(min = size.height),
         enabled = enabled,
         shape = MaterialTheme.shapes.small,
         colors = colors,
@@ -447,11 +457,7 @@ fun CerealOutlinedButton(
         border = BorderStroke(1.dp, borderColor),
         contentPadding = contentPadding,
         interactionSource = interactionSource,
-        content = {
-            ProvideTextStyle(value = textStyle) {
-                content()
-            }
-        },
+        content = { ProvideButtonTextStyle(size) { content() } },
     )
 }
 
@@ -476,17 +482,21 @@ fun CerealFloatingActionButton(
     )
 }
 
+/**
+ * Replaces (rather than merges) the ambient text style, so labels never pick up the theme's
+ * body text color and always follow the button's content color.
+ */
+@Composable
+private fun ProvideButtonTextStyle(
+    size: CerealButtonSize,
+    content: @Composable () -> Unit,
+) {
+    CompositionLocalProvider(LocalTextStyle provides cerealButtonTextStyle(size), content = content)
+}
+
 @Composable
 private fun cerealButtonTextStyle(size: CerealButtonSize) =
     when (size) {
-        CerealButtonSize.Small -> {
-            MaterialTheme.typography.labelLarge.copy(
-                fontWeight = androidx.compose.ui.text.font.FontWeight.Bold,
-                fontSize = 14.sp,
-            )
-        }
-
-        CerealButtonSize.Large -> {
-            MaterialTheme.typography.headlineSmall
-        }
+        CerealButtonSize.Small -> MaterialTheme.typography.labelLarge.copy(fontWeight = FontWeight.Medium)
+        CerealButtonSize.Large -> MaterialTheme.typography.labelLarge.copy(fontWeight = FontWeight.Medium, fontSize = 16.sp)
     }

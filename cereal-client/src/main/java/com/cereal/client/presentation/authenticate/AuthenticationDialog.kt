@@ -226,11 +226,7 @@ private fun AuthDialogFooter(
             color = CerealTheme.colorScheme.contentTertiary,
         )
         CerealTextButton(onClick = onClick) {
-            CerealText(
-                text = action,
-                style = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.SemiBold),
-                color = MaterialTheme.colorScheme.primary,
-            )
+            CerealText(text = action)
         }
     }
 }

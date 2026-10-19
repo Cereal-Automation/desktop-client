@@ -420,7 +420,7 @@ private fun Footer(
         when (state.step) {
             ConnectWizardStep.PROVIDER -> {
                 CerealTextButton(onClick = onClose, type = CerealButtonType.Surface) {
-                    CerealText(stringResource(Res.string.proxies_connect_cancel), style = CerealTypography.controlLabel)
+                    CerealText(stringResource(Res.string.proxies_connect_cancel))
                 }
             }
 
@@ -428,7 +428,6 @@ private fun Footer(
                 CerealTextButton(onClick = if (state.replaceMode) onClose else onBack, type = CerealButtonType.Surface) {
                     CerealText(
                         if (state.replaceMode) stringResource(Res.string.proxies_connect_cancel) else stringResource(Res.string.proxies_connect_back),
-                        style = CerealTypography.controlLabel,
                     )
                 }
             }

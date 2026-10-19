@@ -157,10 +157,7 @@ fun ListItem(
                     if (menuOptions.isNotEmpty() && shouldShowActions) {
                         Spacer(Modifier.width(12.dp))
                         Box {
-                            CerealIconButton(
-                                onClick = { isOverflowMenuExpanded = true },
-                                modifier = Modifier.size(24.dp),
-                            ) {
+                            CerealIconButton(onClick = { isOverflowMenuExpanded = true }) {
                                 Icon(
                                     imageVector = Icons.Filled.MoreVert,
                                     contentDescription = stringResource(Res.string.more_options),
