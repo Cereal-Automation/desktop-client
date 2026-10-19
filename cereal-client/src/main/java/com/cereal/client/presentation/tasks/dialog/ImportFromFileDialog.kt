@@ -206,11 +206,9 @@ fun ImportFromFileDialog(
                     modifier =
                         Modifier
                             .testTag("import_button")
-                            .defaultMinSize(minWidth = 160.dp, minHeight = 40.dp),
+                            .defaultMinSize(minWidth = 160.dp),
                 ) {
-                    CerealText(
-                        text = stringResource(Res.string.import),
-                    )
+                    CerealText(text = stringResource(Res.string.import))
                 }
             }
         }

@@ -70,8 +70,8 @@ import com.cereal.client.domain.model.logging.LoggingPriority
 import com.cereal.client.presentation.theme.CerealTheme
 import com.cereal.client.presentation.theme.CerealTypography
 import com.cereal.client.presentation.theme.cerealColors
+import com.cereal.client.presentation.view.CerealIconButton
 import com.cereal.client.presentation.view.CerealText
-import com.cereal.client.presentation.view.button.CerealSmallIconButton
 import com.cereal_automation.cereal_client.generated.resources.Res
 import com.cereal_automation.cereal_client.generated.resources.auto_scroll
 import com.cereal_automation.cereal_client.generated.resources.clear
@@ -326,11 +326,9 @@ private fun OutputHeader(
                 onChange = onAutoScrollChange,
             )
 
-            CerealSmallIconButton(
+            CerealIconButton(
                 onClick = onClear,
                 enabled = clearEnabled,
-                size = 28.dp,
-                cornerRadius = 6.dp,
                 modifier = Modifier.testTag(CLEAR_BUTTON_TEST_TAG),
             ) {
                 Icon(
@@ -341,11 +339,9 @@ private fun OutputHeader(
                 )
             }
 
-            CerealSmallIconButton(
+            CerealIconButton(
                 onClick = onCopyAll,
                 enabled = copyEnabled,
-                size = 28.dp,
-                cornerRadius = 6.dp,
             ) {
                 Icon(
                     imageVector = if (copied) Icons.Filled.Check else Icons.Filled.ContentCopy,
@@ -694,10 +690,8 @@ private fun ArtifactRow(
                 style = MaterialTheme.typography.labelMedium.copy(fontFamily = FontFamily.Monospace),
             )
         }
-        CerealSmallIconButton(
+        CerealIconButton(
             onClick = onDownload,
-            size = 28.dp,
-            cornerRadius = 6.dp,
         ) {
             Icon(
                 imageVector = Icons.Filled.Download,

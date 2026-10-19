@@ -4,12 +4,12 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Visibility
 import androidx.compose.material.icons.outlined.VisibilityOff
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.input.VisualTransformation
+import com.cereal.client.presentation.view.CerealIconButton
 import com.cereal.client.presentation.view.fields.state.SecretTextFieldState
 import com.cereal_automation.cereal_client.generated.resources.Res
 import com.cereal_automation.cereal_client.generated.resources.secret_field_hide
@@ -50,7 +50,7 @@ fun SecretTextField(
                 MaskedVisualTransformation()
             },
         trailingIcon = {
-            IconButton(
+            CerealIconButton(
                 onClick = { state.toggleReveal() },
                 modifier = Modifier.testTag(SECRET_FIELD_REVEAL_TOGGLE_TAG),
             ) {

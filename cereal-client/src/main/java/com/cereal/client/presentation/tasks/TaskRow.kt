@@ -13,6 +13,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ripple
@@ -31,9 +32,9 @@ import com.cereal.client.domain.model.task.UserInteraction
 import com.cereal.client.presentation.tasks.model.TaskUiModel
 import com.cereal.client.presentation.theme.CerealTheme
 import com.cereal.client.presentation.view.ActivityIndicator
+import com.cereal.client.presentation.view.CerealOutlinedIconButton
 import com.cereal.client.presentation.view.CerealText
 import com.cereal.client.presentation.view.CerealTextButton
-import com.cereal.client.presentation.view.button.CerealSmallIconButton
 import com.cereal.client.presentation.view.button.CerealToolbarButton
 import com.cereal.client.presentation.view.button.CerealToolbarButtonVariant
 import com.cereal.client.presentation.view.chip.Pill
@@ -161,7 +162,7 @@ internal fun TaskRow(
                     Icon(
                         painterResource(Res.drawable.ic_play),
                         contentDescription = stringResource(Res.string.continue_task),
-                        modifier = Modifier.size(14.dp),
+                        modifier = Modifier.size(ButtonDefaults.IconSize),
                     )
                     CerealText(text = stringResource(Res.string.continue_action))
                 }
@@ -197,15 +198,11 @@ private fun TaskActionIcon(
     icon: org.jetbrains.compose.resources.DrawableResource,
     contentDescription: String,
 ) {
-    CerealSmallIconButton(
-        onClick = onClick,
-        border = BorderStroke(1.dp, CerealTheme.colorScheme.border),
-    ) {
+    CerealOutlinedIconButton(onClick = onClick) {
         Icon(
             painter = painterResource(icon),
             contentDescription = contentDescription,
             modifier = Modifier.size(16.dp),
-            tint = CerealTheme.colorScheme.contentSecondary,
         )
     }
 }

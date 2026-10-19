@@ -69,8 +69,8 @@ import androidx.compose.ui.unit.dp
 import com.cereal.client.presentation.theme.CerealTheme
 import com.cereal.client.presentation.theme.CerealTypography
 import com.cereal.client.presentation.util.initialsOf
+import com.cereal.client.presentation.view.CerealIconButton
 import com.cereal.client.presentation.view.CerealText
-import com.cereal.client.presentation.view.button.CerealSmallIconButton
 import com.cereal.client.presentation.view.chip.Pill
 import com.cereal_automation.cereal_client.generated.resources.Res
 import com.cereal_automation.cereal_client.generated.resources.add_script
@@ -154,7 +154,7 @@ private fun ScriptsColumnHeader(
                 )
             }
 
-            CerealSmallIconButton(onClick = onCreateGroup) {
+            CerealIconButton(onClick = onCreateGroup) {
                 Icon(
                     imageVector = Icons.Filled.CreateNewFolder,
                     contentDescription = stringResource(Res.string.new_group),
@@ -323,7 +323,7 @@ private fun <P, C> GroupHeaderRow(
 
         if (menuOptions.isNotEmpty()) {
             Box {
-                CerealSmallIconButton(onClick = { menuExpanded = true }) {
+                CerealIconButton(onClick = { menuExpanded = true }) {
                     Icon(
                         imageVector = Icons.Filled.MoreHoriz,
                         contentDescription = stringResource(Res.string.more_options),

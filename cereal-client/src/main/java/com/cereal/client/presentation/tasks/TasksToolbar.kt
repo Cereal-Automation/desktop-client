@@ -18,6 +18,7 @@ import androidx.compose.material.icons.automirrored.filled.HelpOutline
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Tune
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Icon
@@ -101,7 +102,7 @@ internal fun TasksToolbar(
                     Icon(
                         imageVector = Icons.AutoMirrored.Filled.HelpOutline,
                         contentDescription = null,
-                        modifier = Modifier.size(14.dp),
+                        modifier = Modifier.size(ButtonDefaults.IconSize),
                     )
                     CerealText(text = stringResource(Res.string.contact_support))
                 }
@@ -114,7 +115,7 @@ internal fun TasksToolbar(
                     Icon(
                         imageVector = Icons.Filled.Tune,
                         contentDescription = null,
-                        modifier = Modifier.size(14.dp),
+                        modifier = Modifier.size(ButtonDefaults.IconSize),
                     )
                     CerealText(text = stringResource(Res.string.view_config))
                 }
@@ -226,7 +227,7 @@ internal fun TasksQuickActions(
                 Icon(
                     painter = painterResource(Res.drawable.ic_play),
                     contentDescription = stringResource(Res.string.start_all_tasks),
-                    modifier = Modifier.size(14.dp),
+                    modifier = Modifier.size(ButtonDefaults.IconSize),
                 )
                 CerealText(text = stringResource(Res.string.start_all))
             }
@@ -238,7 +239,7 @@ internal fun TasksQuickActions(
                 Icon(
                     painter = painterResource(Res.drawable.ic_cancel),
                     contentDescription = stringResource(Res.string.stop_all_tasks),
-                    modifier = Modifier.size(14.dp),
+                    modifier = Modifier.size(ButtonDefaults.IconSize),
                 )
                 CerealText(text = stringResource(Res.string.stop_all))
             }
@@ -250,7 +251,7 @@ internal fun TasksQuickActions(
                 Icon(
                     imageVector = Icons.Filled.Refresh,
                     contentDescription = null,
-                    modifier = Modifier.size(14.dp),
+                    modifier = Modifier.size(ButtonDefaults.IconSize),
                 )
                 CerealText(text = stringResource(Res.string.restart_errored))
             }
@@ -310,7 +311,7 @@ private fun TaskFilterControl(
                 Icon(
                     imageVector = Icons.Filled.KeyboardArrowDown,
                     contentDescription = null,
-                    modifier = Modifier.size(14.dp),
+                    modifier = Modifier.size(ButtonDefaults.IconSize),
                 )
             }
             DropdownMenu(

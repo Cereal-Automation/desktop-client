@@ -155,11 +155,7 @@ fun AuthenticatedProfileScreen(
                             onClick = { vm.logout() },
                             type = CerealButtonType.Primary,
                         ) {
-                            // Fresh style so the theme's grey bodyLarge color doesn't override the button's content color.
-                            CerealText(
-                                text = stringResource(Res.string.logout),
-                                style = MaterialTheme.typography.labelLarge.copy(fontWeight = FontWeight.SemiBold),
-                            )
+                            CerealText(text = stringResource(Res.string.logout))
                             Spacer(modifier = Modifier.width(CerealTheme.spacing.sm))
                             Icon(
                                 painter = painterResource(Res.drawable.ic_material_logout),

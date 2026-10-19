@@ -15,6 +15,7 @@ import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.material.icons.filled.AlternateEmail
 import androidx.compose.material.icons.filled.LockOpen
 import androidx.compose.material.icons.filled.Person
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
@@ -158,13 +159,12 @@ fun RegistrationFormContent(
             ) {
                 CerealText(
                     text = stringResource(Res.string.register),
-                    style = MaterialTheme.typography.labelLarge.copy(fontWeight = FontWeight.SemiBold),
                 )
 
                 Icon(
                     imageVector = Icons.AutoMirrored.Filled.ArrowForward,
                     contentDescription = null,
-                    modifier = Modifier.size(20.dp),
+                    modifier = Modifier.size(ButtonDefaults.IconSize),
                 )
             }
         }

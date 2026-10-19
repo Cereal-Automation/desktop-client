@@ -18,6 +18,7 @@ import androidx.compose.material.icons.outlined.Link
 import androidx.compose.material.icons.outlined.Schedule
 import androidx.compose.material.icons.outlined.Sync
 import androidx.compose.material.icons.outlined.Tune
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
@@ -154,24 +155,24 @@ private fun ConnectedProviderCard(
             CerealButton(
                 onClick = onManage,
                 type = CerealButtonType.Surface,
+                contentPadding = ButtonDefaults.ButtonWithIconContentPadding,
                 content = {
-                    Icon(Icons.Outlined.Tune, contentDescription = null, modifier = Modifier.size(16.dp))
+                    Icon(Icons.Outlined.Tune, contentDescription = null, modifier = Modifier.size(ButtonDefaults.IconSize))
                     CerealText(
                         text = stringResource(Res.string.proxies_provider_manage),
-                        modifier = Modifier.padding(start = 8.dp),
-                        style = CerealTypography.controlLabel,
+                        modifier = Modifier.padding(start = ButtonDefaults.IconSpacing),
                     )
                 },
             )
             CerealButton(
                 onClick = onSync,
                 type = CerealButtonType.Primary,
+                contentPadding = ButtonDefaults.ButtonWithIconContentPadding,
                 content = {
-                    Icon(Icons.Outlined.Sync, contentDescription = null, modifier = Modifier.size(16.dp))
+                    Icon(Icons.Outlined.Sync, contentDescription = null, modifier = Modifier.size(ButtonDefaults.IconSize))
                     CerealText(
                         text = stringResource(Res.string.proxies_provider_sync),
-                        modifier = Modifier.padding(start = 8.dp),
-                        style = CerealTypography.controlLabel,
+                        modifier = Modifier.padding(start = ButtonDefaults.IconSpacing),
                     )
                 },
             )
@@ -216,12 +217,12 @@ private fun ConnectHero(onConnect: () -> Unit) {
             CerealButton(
                 onClick = onConnect,
                 type = CerealButtonType.Primary,
+                contentPadding = ButtonDefaults.ButtonWithIconContentPadding,
                 content = {
-                    Icon(Icons.Outlined.Link, contentDescription = null, modifier = Modifier.size(16.dp))
+                    Icon(Icons.Outlined.Link, contentDescription = null, modifier = Modifier.size(ButtonDefaults.IconSize))
                     CerealText(
                         text = stringResource(Res.string.proxies_connect_provider),
-                        modifier = Modifier.padding(start = 8.dp),
-                        style = CerealTypography.controlLabel,
+                        modifier = Modifier.padding(start = ButtonDefaults.IconSpacing),
                     )
                 },
             )
