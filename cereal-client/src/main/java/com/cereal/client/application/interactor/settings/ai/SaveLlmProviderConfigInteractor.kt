@@ -15,9 +15,7 @@ class SaveLlmProviderConfigInteractor(
     private val llmProviderConfigRepository: LlmProviderConfigRepository,
 ) : Interactor<Unit, SaveLlmProviderConfigInteractor.Params>() {
     override suspend fun run(params: Params) {
-        llmProviderConfigRepository.save(
-            LlmProviderConfig.of(params.provider, params.baseUrl, params.apiKey, params.model),
-        )
+        llmProviderConfigRepository.save(params.toConfig())
     }
 
     // NB: carries the API key — see [SensitiveParams].
@@ -26,5 +24,8 @@ class SaveLlmProviderConfigInteractor(
         val baseUrl: String,
         val apiKey: String,
         val model: String,
-    ) : SensitiveParams
+    ) : SensitiveParams {
+        /** The validated config; throws [com.cereal.client.domain.model.exception.InvalidLlmProviderConfigException]. */
+        fun toConfig(): LlmProviderConfig = LlmProviderConfig.of(provider, baseUrl, apiKey, model)
+    }
 }

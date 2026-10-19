@@ -83,8 +83,19 @@ class MainViewModelTest {
         dispatcher.scheduler.advanceUntilIdle()
 
         assertEquals("1.2.3", viewModel.appVersion)
-        assertEquals(7, viewModel.menuItems.value.size)
+        assertEquals(9, viewModel.menuItems.value.size)
         assertTrue(viewModel.menuItems.value.any { it.route is Root.Routing.Marketplace })
+    }
+
+    @Test
+    fun `Home is the first Agent item and selected on landing`() {
+        val viewModel = createViewModel()
+        dispatcher.scheduler.advanceUntilIdle()
+
+        val first = viewModel.menuItems.value.first()
+        assertEquals(Root.Routing.Home, first.route)
+        assertEquals(MenuSection.AGENT, first.section)
+        assertTrue(first.selected)
     }
 
     @Test
@@ -98,13 +109,28 @@ class MainViewModelTest {
     }
 
     @Test
-    fun `a white-label build hides the marketplace from the menu`() {
+    fun `a white-label build keeps landing on Tasks and has no Home item`() {
+        every { applicationConfig.isBranded } returns true
+        val viewModel = createViewModel()
+        dispatcher.scheduler.advanceUntilIdle()
+
+        assertEquals(Root.Routing.Tasks(), viewModel.landingRoute)
+        assertTrue(viewModel.menuItems.value.none { it.route is Root.Routing.Home })
+        assertTrue(
+            viewModel.menuItems.value
+                .first { it.route is Root.Routing.Tasks }
+                .selected,
+        )
+    }
+
+    @Test
+    fun `a white-label build hides the ready-made scripts section`() {
         every { applicationConfig.isBranded } returns true
         val viewModel = createViewModel()
         dispatcher.scheduler.advanceUntilIdle()
 
         assertEquals(6, viewModel.menuItems.value.size)
-        assertTrue(viewModel.menuItems.value.none { it.route is Root.Routing.Marketplace })
+        assertTrue(viewModel.menuItems.value.none { it.section == MenuSection.READY_MADE_SCRIPTS })
     }
 
     @Test

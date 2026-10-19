@@ -5,6 +5,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.runtime.Composable
 import com.cereal.client.presentation.customdataset.CustomDatasetsScreen
+import com.cereal.client.presentation.home.HomeScreen
 import com.cereal.client.presentation.marketplace.MarketplaceScreen
 import com.cereal.client.presentation.myscripts.MyScriptsScreen
 import com.cereal.client.presentation.navigation.router.BackStack
@@ -18,6 +19,8 @@ import com.cereal.client.presentation.view.VerticalDivider
 
 interface Root {
     sealed class Routing {
+        data object Home : Routing()
+
         data class Tasks(
             val openScriptSelectionForPackage: String? = null,
             val focusTaskId: String? = null,
@@ -35,7 +38,10 @@ interface Root {
 
         data object MyScripts : Routing()
 
-        data object ApplicationSettings : Routing()
+        /** [checkForUpdates] opens Settings straight into the client update flow. */
+        data class ApplicationSettings(
+            val checkForUpdates: Boolean = false,
+        ) : Routing()
     }
 
     companion object {
@@ -54,6 +60,33 @@ interface Root {
 
                     Column {
                         when (backStack.last()) {
+                            is Routing.Home -> {
+                                HomeScreen(
+                                    onNavigateToMarketplace = {
+                                        backStack.newRoot(Routing.Marketplace)
+                                        onNavigateTo?.invoke(Routing.Marketplace)
+                                    },
+                                    onOpenClientUpdate = {
+                                        backStack.newRoot(Routing.ApplicationSettings(checkForUpdates = true))
+                                        onNavigateTo?.invoke(Routing.ApplicationSettings(checkForUpdates = true))
+                                    },
+                                    onOpenTasks = { taskId ->
+                                        val route = Routing.Tasks(focusTaskId = taskId)
+                                        backStack.newRoot(route)
+                                        onNavigateTo?.invoke(route)
+                                    },
+                                    onRunScript = { packageName ->
+                                        val route = Routing.Tasks(openScriptSelectionForPackage = packageName)
+                                        backStack.newRoot(route)
+                                        onNavigateTo?.invoke(route)
+                                    },
+                                    onNavigateToAiSettings = {
+                                        backStack.newRoot(Routing.ApplicationSettings())
+                                        onNavigateTo?.invoke(Routing.ApplicationSettings())
+                                    },
+                                )
+                            }
+
                             is Routing.Tasks -> {
                                 TasksScreen(
                                     onNavigateToMarketplace = {
@@ -106,10 +139,7 @@ interface Root {
 
                             is Routing.ApplicationSettings -> {
                                 ApplicationSettingsScreen(
-                                    onNavigateToMyScripts = {
-                                        backStack.push(Routing.MyScripts)
-                                        onNavigateTo?.invoke(Routing.MyScripts)
-                                    },
+                                    checkForUpdatesOnOpen = (backStack.last() as Routing.ApplicationSettings).checkForUpdates,
                                 )
                             }
                         }

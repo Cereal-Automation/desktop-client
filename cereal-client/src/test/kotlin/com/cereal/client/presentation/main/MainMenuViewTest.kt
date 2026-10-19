@@ -30,7 +30,7 @@ import kotlin.test.assertEquals
  */
 @OptIn(ExperimentalTestApi::class, ExperimentalFoundationApi::class)
 class MainMenuViewTest {
-    private fun workspaceItem(
+    private fun readyMadeItem(
         route: Root.Routing,
         titleResource: StringResource,
     ) = MenuItemUiModel(
@@ -40,7 +40,7 @@ class MainMenuViewTest {
         titleResource = titleResource,
         titleOverride = null,
         selected = false,
-        mainItem = true,
+        section = MenuSection.READY_MADE_SCRIPTS,
     )
 
     private val menuFixture =
@@ -52,9 +52,9 @@ class MainMenuViewTest {
                 titleResource = Res.string.tasks,
                 titleOverride = null,
                 selected = true,
-                mainItem = true,
+                section = MenuSection.AGENT,
             ),
-            workspaceItem(Root.Routing.Marketplace, Res.string.marketplace),
+            readyMadeItem(Root.Routing.Marketplace, Res.string.marketplace),
             MenuItemUiModel(
                 route = Root.Routing.Profile,
                 externalUrl = null,
@@ -62,16 +62,16 @@ class MainMenuViewTest {
                 titleResource = Res.string.your_profile,
                 titleOverride = "Ada Lovelace",
                 selected = false,
-                mainItem = false,
+                section = null,
             ),
             MenuItemUiModel(
-                route = Root.Routing.ApplicationSettings,
+                route = Root.Routing.ApplicationSettings(),
                 externalUrl = null,
                 resourcePath = IconSource.Vector(Icons.Filled.Settings),
                 titleResource = Res.string.settings,
                 titleOverride = null,
                 selected = false,
-                mainItem = false,
+                section = MenuSection.SYSTEM,
             ),
         )
 
@@ -88,10 +88,13 @@ class MainMenuViewTest {
             }
 
             // Section labels are uppercased by MenuSectionLabel.
-            onNodeWithText("WORKSPACE").assertIsDisplayed()
+            onNodeWithText("AGENT").assertIsDisplayed()
+            onNodeWithText("READY-MADE SCRIPTS").assertIsDisplayed()
             onNodeWithText("SYSTEM").assertIsDisplayed()
+            // A section without items (no Resources in this fixture) is not shown.
+            onNodeWithText("RESOURCES").assertDoesNotExist()
 
-            // Workspace items.
+            // Section items.
             onNodeWithText("Tasks").assertIsDisplayed()
             onNodeWithText("Marketplace").assertIsDisplayed()
 

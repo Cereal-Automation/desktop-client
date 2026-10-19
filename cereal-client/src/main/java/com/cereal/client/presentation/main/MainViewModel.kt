@@ -3,6 +3,8 @@ package com.cereal.client.presentation.main
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AccountTree
 import androidx.compose.material.icons.filled.Bolt
+import androidx.compose.material.icons.filled.Code
+import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Storage
@@ -22,7 +24,9 @@ import com.cereal.client.domain.model.task.TaskStatus
 import com.cereal.client.presentation.navigation.MenuReselectionCoordinator
 import com.cereal.client.presentation.navigation.Root
 import com.cereal_automation.cereal_client.generated.resources.Res
+import com.cereal_automation.cereal_client.generated.resources.home
 import com.cereal_automation.cereal_client.generated.resources.marketplace
+import com.cereal_automation.cereal_client.generated.resources.my_scripts
 import com.cereal_automation.cereal_client.generated.resources.notifications
 import com.cereal_automation.cereal_client.generated.resources.proxies
 import com.cereal_automation.cereal_client.generated.resources.script_datasets
@@ -56,8 +60,11 @@ class MainViewModel(
 ) {
     private val scope = CoroutineScope(SupervisorJob() + dispatcherProvider.main)
 
+    /** Where the app opens: Home, except white-label builds, which keep their own landing on Tasks (spec #141). */
+    val landingRoute: Root.Routing = if (applicationConfig.isBranded) Root.Routing.Tasks() else Root.Routing.Home
+
     // selectedRoute must be initialized before menuItems, since buildMenuItems() reads it.
-    private var selectedRoute: Root.Routing = Root.Routing.Tasks()
+    private var selectedRoute: Root.Routing = landingRoute
     private var username: String? = null
     private var isUpdateAvailable: Boolean = false
     private var activeTaskCount: Int = 0
@@ -73,8 +80,8 @@ class MainViewModel(
                 withContext(dispatcherProvider.main) {
                     if (result is SuspendableResult.Success) {
                         username = result.value?.name
-                        // Logging out tears down the router; the next login lands on Tasks again.
-                        if (result.value == null) selectedRoute = Root.Routing.Tasks()
+                        // Logging out tears down the router; the next login lands on the landing route again.
+                        if (result.value == null) selectedRoute = landingRoute
                     }
                     menuItems.value = buildMenuItems()
                 }
@@ -160,77 +167,86 @@ class MainViewModel(
 
     private fun buildMenuItems(): ImmutableList<MenuItemUiModel> =
         buildList {
-            add(
+            if (!applicationConfig.isBranded) {
+                this +=
+                    createMenuItem(
+                        route = Root.Routing.Home,
+                        resourcePath = IconSource.Vector(Icons.Filled.Home),
+                        titleResource = Res.string.home,
+                        section = MenuSection.AGENT,
+                    )
+            }
+            this +=
                 createMenuItem(
                     route = Root.Routing.Tasks(),
                     resourcePath = IconSource.Vector(Icons.Filled.Bolt),
                     titleResource = Res.string.tasks,
-                    mainItem = true,
+                    section = MenuSection.AGENT,
                     badge = activeTaskCount.takeIf { it > 0 },
-                ),
-            )
-            add(
+                )
+            this +=
                 createMenuItem(
                     route = Root.Routing.NotificationCenter,
                     resourcePath = IconSource.Vector(Icons.Filled.Notifications),
                     titleResource = Res.string.notifications,
-                    mainItem = true,
+                    section = MenuSection.AGENT,
                     badge = unseenNotificationCount.takeIf { it > 0 },
-                ),
-            )
-            // The marketplace is hidden in white-label builds: the appliance is locked to its
+                )
+            // Ready-made scripts are hidden in white-label builds: the appliance is locked to its
             // Brand scripts, with no browsing or installing of others (see docs/adr/0003).
             if (!applicationConfig.isBranded) {
-                add(
+                this +=
+                    createMenuItem(
+                        route = Root.Routing.MyScripts,
+                        resourcePath = IconSource.Vector(Icons.Filled.Code),
+                        titleResource = Res.string.my_scripts,
+                        section = MenuSection.READY_MADE_SCRIPTS,
+                    )
+                this +=
                     createMenuItem(
                         route = Root.Routing.Marketplace,
                         resourcePath = IconSource.Vector(Icons.Filled.Storefront),
                         titleResource = Res.string.marketplace,
-                        mainItem = true,
-                    ),
-                )
+                        section = MenuSection.READY_MADE_SCRIPTS,
+                    )
             }
-            add(
+            this +=
                 createMenuItem(
                     route = Root.Routing.ProxyManager,
                     resourcePath = IconSource.Vector(Icons.Filled.AccountTree),
                     titleResource = Res.string.proxies,
-                    mainItem = true,
-                ),
-            )
-            add(
+                    section = MenuSection.RESOURCES,
+                )
+            this +=
                 createMenuItem(
                     route = Root.Routing.CustomDatasetsManager,
                     resourcePath = IconSource.Vector(Icons.Filled.Storage),
                     titleResource = Res.string.script_datasets,
-                    mainItem = true,
-                ),
-            )
-            add(
+                    section = MenuSection.RESOURCES,
+                )
+            this +=
                 createMenuItem(
                     route = Root.Routing.Profile,
                     resourcePath = IconSource.Vector(Icons.Filled.VerifiedUser),
                     titleResource = Res.string.your_profile,
-                    mainItem = false,
+                    section = null,
                     titleOverride = username,
-                ),
-            )
-            add(
+                )
+            this +=
                 createMenuItem(
-                    route = Root.Routing.ApplicationSettings,
+                    route = Root.Routing.ApplicationSettings(),
                     resourcePath = IconSource.Vector(Icons.Filled.Settings),
                     titleResource = Res.string.settings,
-                    mainItem = false,
+                    section = MenuSection.SYSTEM,
                     hasNotificationDot = isUpdateAvailable,
-                ),
-            )
+                )
         }.toImmutableList()
 
     private fun createMenuItem(
         route: Root.Routing,
         resourcePath: IconSource,
         titleResource: StringResource,
-        mainItem: Boolean,
+        section: MenuSection?,
         titleOverride: String? = null,
         hasNotificationDot: Boolean = false,
         badge: Int? = null,
@@ -245,7 +261,7 @@ class MainViewModel(
             // deep-link payload, so `Tasks(null) != Tasks("x")` even though both are
             // "the Tasks route" for sidebar-selection purposes.
             route::class == selectedRoute::class,
-            mainItem,
+            section,
             hasNotificationDot,
             badge,
         )

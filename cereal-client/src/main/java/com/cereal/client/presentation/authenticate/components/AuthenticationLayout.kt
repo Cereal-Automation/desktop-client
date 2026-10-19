@@ -45,6 +45,7 @@ import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -153,6 +154,7 @@ private fun AuthLogoSection() {
         CerealText(
             text = stringResource(Res.string.introduction_slogan),
             style = MaterialTheme.typography.titleMedium,
+            textAlign = TextAlign.Center,
         )
     }
 }

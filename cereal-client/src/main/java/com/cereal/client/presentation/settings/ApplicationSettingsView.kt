@@ -26,6 +26,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
@@ -86,8 +87,6 @@ import com.cereal_automation.cereal_client.generated.resources.github
 import com.cereal_automation.cereal_client.generated.resources.github_desc
 import com.cereal_automation.cereal_client.generated.resources.logs_directory
 import com.cereal_automation.cereal_client.generated.resources.logs_directory_desc
-import com.cereal_automation.cereal_client.generated.resources.my_scripts
-import com.cereal_automation.cereal_client.generated.resources.my_scripts_desc
 import com.cereal_automation.cereal_client.generated.resources.notifications
 import com.cereal_automation.cereal_client.generated.resources.open
 import com.cereal_automation.cereal_client.generated.resources.privacy
@@ -124,7 +123,6 @@ import org.koin.java.KoinJavaComponent
 @Composable
 @ExperimentalFoundationApi
 fun ApplicationSettingsScreen(
-    onNavigateToMyScripts: () -> Unit = {},
     coroutineScope: CoroutineScope = rememberCoroutineScope(),
     applicationConfig: ApplicationConfig = koinInject(),
     vm: ApplicationSettingsViewModel =
@@ -135,7 +133,9 @@ fun ApplicationSettingsScreen(
             )
         },
     aiVm: AiSettingsViewModel = rememberAiSettingsViewModel(),
+    checkForUpdatesOnOpen: Boolean = false,
 ) {
+    LaunchedEffect(Unit) { if (checkForUpdatesOnOpen) vm.checkForUpdates() }
     Scaffold { paddingValues ->
         Box(
             modifier =
@@ -205,16 +205,6 @@ fun ApplicationSettingsScreen(
                 // General Section
                 item {
                     SettingsSectionCard(title = stringResource(Res.string.general)) {
-                        // "My Scripts" manages installed/marketplace scripts — hidden in white-label
-                        // builds, which are locked to their Brand scripts (see docs/adr/0003).
-                        if (!applicationConfig.isBranded) {
-                            SettingsActionRow(
-                                title = stringResource(Res.string.my_scripts),
-                                description = stringResource(Res.string.my_scripts_desc),
-                                actionText = stringResource(Res.string.open),
-                                onClick = onNavigateToMyScripts,
-                            )
-                        }
                         SettingsToggleRow(
                             title = stringResource(Res.string.enable_discord_status),
                             description = stringResource(Res.string.enable_discord_status_desc),

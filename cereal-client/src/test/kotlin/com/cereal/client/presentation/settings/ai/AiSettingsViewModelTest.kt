@@ -10,6 +10,10 @@ import com.cereal.client.domain.model.llm.LlmProviderType
 import com.cereal.client.infrastructure.data.repository.inmemory.InMemoryLlmProviderConfigRepository
 import com.cereal.client.infrastructure.provider.fixtures.llmProviderOverHttp
 import com.cereal.client.presentation.error.ErrorResolver
+import com.cereal.client.presentation.view.UiText
+import com.cereal_automation.cereal_client.generated.resources.Res
+import com.cereal_automation.cereal_client.generated.resources.ai_connection_bad_key
+import com.cereal_automation.cereal_client.generated.resources.ai_connection_unreachable
 import io.mockk.mockk
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -63,9 +67,9 @@ class AiSettingsViewModelTest {
     private fun fixture(path: String) = MockResponse().setBody(javaClass.getResource("/llm/$path")!!.readText())
 
     private fun AiSettingsViewModel.chooseAnthropicOnServer() {
-        selectProvider(LlmProviderType.ANTHROPIC)
-        baseUrlState.text = server.url("/v1").toString()
-        apiKeyState.text = "sk-ant-1"
+        selectPreset(LlmPreset.ANTHROPIC)
+        form.baseUrlState.text = server.url("/v1").toString()
+        form.apiKeyState.text = "sk-ant-1"
     }
 
     @Test
@@ -77,9 +81,9 @@ class AiSettingsViewModelTest {
         vm.testConnection()
 
         await { vm.connectionStatus.value is ConnectionStatus.Connected }
-        assertEquals("Connected · 2 models", vm.connectionStatus.value.message)
-        assertEquals(listOf("claude-opus-5-5", "claude-haiku-4-5-20251001"), vm.models.value)
-        assertEquals("claude-opus-5-5", vm.modelState.text)
+        assertEquals(ConnectionStatus.Connected(2), vm.connectionStatus.value)
+        assertEquals(listOf("claude-opus-5-5", "claude-haiku-4-5-20251001"), vm.form.models.value)
+        assertEquals("claude-opus-5-5", vm.form.modelState.text)
     }
 
     @Test
@@ -89,13 +93,16 @@ class AiSettingsViewModelTest {
         val vm = viewModel()
         vm.chooseAnthropicOnServer()
         vm.testConnection()
-        await { vm.models.value.isNotEmpty() }
+        await {
+            vm.form.models.value
+                .isNotEmpty()
+        }
 
         vm.testConnection()
 
         await { vm.connectionStatus.value is ConnectionStatus.Failed }
-        assertEquals("Bad API key: the provider rejected it.", vm.connectionStatus.value.message)
-        assertEquals(emptyList<String>(), vm.models.value)
+        assertEquals(ConnectionStatus.Failed(UiText.Resource(Res.string.ai_connection_bad_key)), vm.connectionStatus.value)
+        assertEquals(emptyList<String>(), vm.form.models.value)
     }
 
     @Test
@@ -107,7 +114,7 @@ class AiSettingsViewModelTest {
         vm.testConnection()
 
         await { vm.connectionStatus.value is ConnectionStatus.Failed }
-        assertEquals("Unreachable: check the base URL and your connection.", vm.connectionStatus.value.message)
+        assertEquals(ConnectionStatus.Failed(UiText.Resource(Res.string.ai_connection_unreachable)), vm.connectionStatus.value)
     }
 
     @Test
@@ -120,8 +127,10 @@ class AiSettingsViewModelTest {
 
         await { vm.connectionStatus.value is ConnectionStatus.Failed }
         assertEquals(
-            "Not found: there are no models at this base URL. Check it, including the version path (for example /v1).",
-            vm.connectionStatus.value.message,
+            ConnectionStatus.Failed(
+                UiText.Raw("Not found: there are no models at this base URL. Check it, including the version path (for example /v1)."),
+            ),
+            vm.connectionStatus.value,
         )
     }
 
@@ -129,11 +138,11 @@ class AiSettingsViewModelTest {
     fun `testing without a required key marks the key field and calls nothing`() {
         val vm = viewModel()
         vm.chooseAnthropicOnServer()
-        vm.apiKeyState.text = ""
+        vm.form.apiKeyState.text = ""
 
         vm.testConnection()
 
-        await { vm.apiKeyState.error != null }
+        await { vm.form.apiKeyState.error != null }
         assertEquals(0, server.requestCount)
         assertEquals(ConnectionStatus.Idle, vm.connectionStatus.value)
     }
@@ -142,14 +151,14 @@ class AiSettingsViewModelTest {
     fun `an OpenAI-compatible test works with no model entered yet`() {
         server.enqueue(fixture("openai/models.json"))
         val vm = viewModel()
-        vm.selectProvider(LlmProviderType.OPENAI_COMPATIBLE)
-        vm.baseUrlState.text = server.url("/v1").toString()
+        vm.selectPreset(LlmPreset.OTHER)
+        vm.form.baseUrlState.text = server.url("/v1").toString()
 
         vm.testConnection()
 
         await { vm.connectionStatus.value is ConnectionStatus.Connected }
-        assertEquals(listOf("gpt-5", "gpt-5-mini"), vm.models.value)
-        assertEquals("", vm.modelState.text)
+        assertEquals(listOf("gpt-5", "gpt-5-mini"), vm.form.models.value)
+        assertEquals("", vm.form.modelState.text)
     }
 
     @Test
@@ -161,10 +170,13 @@ class AiSettingsViewModelTest {
 
         val vm = viewModel()
 
-        await { vm.models.value.isNotEmpty() }
-        assertEquals(listOf("gpt-5", "gpt-5-mini"), vm.models.value)
+        await {
+            vm.form.models.value
+                .isNotEmpty()
+        }
+        assertEquals(listOf("gpt-5", "gpt-5-mini"), vm.form.models.value)
         assertEquals(ConnectionStatus.Idle, vm.connectionStatus.value)
-        assertEquals("gpt-5", vm.modelState.text)
+        assertEquals("gpt-5", vm.form.modelState.text)
     }
 
     @Test
@@ -174,14 +186,14 @@ class AiSettingsViewModelTest {
             repository.save(LlmProviderConfig.of(LlmProviderType.OPENAI_COMPATIBLE, server.url("/v1").toString(), "old", "gpt-5"))
         }
         val vm = viewModel()
-        await { server.requestCount == 1 && vm.modelState.text == "gpt-5" }
+        await { server.requestCount == 1 && vm.form.modelState.text == "gpt-5" }
 
-        vm.modelState.text = "my-own-model"
+        vm.form.modelState.text = "my-own-model"
         vm.save()
 
         await { runBlocking { repository.get() }?.model == "my-own-model" }
         assertEquals(ConnectionStatus.Idle, vm.connectionStatus.value)
-        assertEquals(emptyList<String>(), vm.models.value)
+        assertEquals(emptyList<String>(), vm.form.models.value)
     }
 
     @Test
@@ -192,9 +204,34 @@ class AiSettingsViewModelTest {
         vm.testConnection()
         await { vm.connectionStatus.value is ConnectionStatus.Connected }
 
-        vm.selectProvider(LlmProviderType.OPENAI_COMPATIBLE)
+        vm.selectPreset(LlmPreset.OTHER)
 
-        assertEquals(emptyList<String>(), vm.models.value)
+        assertEquals(emptyList<String>(), vm.form.models.value)
         assertEquals(ConnectionStatus.Idle, vm.connectionStatus.value)
+    }
+
+    @Test
+    fun `switching between presets of the same provider type clears the key, so it never reaches the other host`() {
+        val vm = viewModel()
+        vm.selectPreset(LlmPreset.OPENAI)
+        vm.form.apiKeyState.text = "sk-openai-1"
+
+        vm.selectPreset(LlmPreset.GEMINI)
+
+        assertEquals("", vm.form.apiKeyState.text)
+        assertEquals("https://generativelanguage.googleapis.com/v1beta/openai", vm.form.baseUrlState.text)
+        assertEquals("gemini-2.5-flash", vm.form.modelState.text)
+    }
+
+    @Test
+    fun `remove deletes the saved config and deselects the preset`() {
+        runBlocking { repository.save(LlmProviderConfig.of(LlmProviderType.ANTHROPIC, "https://api.anthropic.com/v1", "k", "claude-opus-5-5")) }
+        val vm = viewModel()
+        await { vm.form.preset.value == LlmPreset.ANTHROPIC }
+
+        vm.remove()
+
+        await { runBlocking { repository.get() } == null }
+        assertEquals(null, vm.form.preset.value)
     }
 }

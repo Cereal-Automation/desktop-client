@@ -1,6 +1,10 @@
 package com.cereal.client.infrastructure.di.modules
 
 import com.cereal.client.application.app.VersionCheckService
+import com.cereal.client.application.interactor.agent.GetAiBrowserAgentListingInteractor
+import com.cereal.client.application.interactor.agent.InstallAiBrowserAgentInteractor
+import com.cereal.client.application.interactor.agent.PrefillGoalRunFormInteractor
+import com.cereal.client.application.interactor.agent.StartGoalRunInteractor
 import com.cereal.client.application.interactor.app.CheckForUpdatesInteractor
 import com.cereal.client.application.interactor.app.DownloadLatestAppVersionInteractor
 import com.cereal.client.application.interactor.app.InstallUpdateInteractor
@@ -69,6 +73,7 @@ import com.cereal.client.application.interactor.settings.GetApplicationPreferenc
 import com.cereal.client.application.interactor.settings.OpenFileInteractor
 import com.cereal.client.application.interactor.settings.OpenUrlInteractor
 import com.cereal.client.application.interactor.settings.ai.ClearLlmProviderConfigInteractor
+import com.cereal.client.application.interactor.settings.ai.ConnectLlmProviderInteractor
 import com.cereal.client.application.interactor.settings.ai.GetLlmProviderConfigInteractor
 import com.cereal.client.application.interactor.settings.ai.HasLlmProviderConfigInteractor
 import com.cereal.client.application.interactor.settings.ai.ListLlmModelsInteractor
@@ -119,6 +124,10 @@ object InteractorModule {
             factory { GetScriptConfigDefinitionInteractor(get(), get()) }
             factory { GetScriptPackageInstancesByPackageNameInteractor(get()) }
             factory { StartScriptInteractor(get(), get(), get(), get(), get()) }
+            factory { StartGoalRunInteractor(get(), get(), get(), get()) }
+            factory { PrefillGoalRunFormInteractor(get()) }
+            factory { GetAiBrowserAgentListingInteractor(get()) }
+            factory { InstallAiBrowserAgentInteractor(get(), get()) }
             factory { GetScriptsInGroupInteractor(get(), get()) }
             factory { SyncScriptsOnScriptSelectionInteractor(get()) }
             factory { StartChildScriptInteractor(get(), get(), get()) }
@@ -173,6 +182,7 @@ object InteractorModule {
             factory { SaveLlmProviderConfigInteractor(get()) }
             factory { ClearLlmProviderConfigInteractor(get()) }
             factory { ListLlmModelsInteractor(get()) }
+            factory { ConnectLlmProviderInteractor(get(), get()) }
             factory { HasNotificationChannelsConfiguredInteractor(get()) }
             // Notification center
             factory { ObserveNotificationCenterInteractor(get()) }

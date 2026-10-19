@@ -11,6 +11,7 @@ import androidx.compose.ui.test.performClick
 import testutil.runScreenTest
 import testutil.setScreenContent
 import kotlin.test.Test
+import kotlin.test.assertEquals
 
 /**
  * Renders the full [MainScreen] on the in-memory Koin graph. The in-memory user repository seeds a
@@ -30,11 +31,19 @@ class MainScreenTest {
                 onAllNodesWithText("Tasks").fetchSemanticsNodes().isNotEmpty()
             }
 
-            onNodeWithText("WORKSPACE").assertIsDisplayed()
+            val headers = listOf("AGENT", "READY-MADE SCRIPTS", "RESOURCES", "SYSTEM")
+            headers.forEach { onNodeWithText(it).assertIsDisplayed() }
+            // Sections render top to bottom in the given order.
+            val headerTops = headers.map { onNodeWithText(it).fetchSemanticsNode().boundsInRoot.top }
+            assertEquals(headerTops.sorted(), headerTops)
+
             // "Tasks" appears both in the sidebar and as the default route's header, so assert it is
             // present rather than expecting a single node. The remaining items are sidebar-only here.
             onAllNodesWithText("Tasks").onFirst().assertIsDisplayed()
+            onNodeWithText("Notifications").assertIsDisplayed()
+            onNodeWithText("My Scripts").assertIsDisplayed()
             onNodeWithText("Marketplace").assertIsDisplayed()
+            onNodeWithText("Proxies").assertIsDisplayed()
             onNodeWithText("Datasets").assertIsDisplayed()
             onNodeWithText("Settings").assertIsDisplayed()
         }
