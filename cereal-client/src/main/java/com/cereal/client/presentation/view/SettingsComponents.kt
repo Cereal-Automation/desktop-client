@@ -414,9 +414,9 @@ fun TestButton(
     }
 }
 
-private val InputBg = Color(0xFF1C1C1C)
-private val InputBorder = cerealColors.border
-private val InputPlaceholder = Color(0xFF5A5A5A)
+internal val InputBg = Color(0xFF1C1C1C)
+internal val InputBorder = cerealColors.border
+internal val InputPlaceholder = Color(0xFF5A5A5A)
 private val FieldLabel = Color(0xFFE8E8E8)
 private val FieldDesc = Color(0xFF717171)
 

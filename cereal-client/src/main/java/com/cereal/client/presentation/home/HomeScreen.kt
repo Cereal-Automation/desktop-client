@@ -1,38 +1,54 @@
 package com.cereal.client.presentation.home
 
-import androidx.compose.foundation.clickable
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.ExperimentalLayoutApi
-import androidx.compose.foundation.layout.FlowRow
+import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.selection.selectableGroup
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.outlined.Lock
 import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.focus.onFocusChanged
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.selected
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import com.cereal.client.presentation.error.errorView
 import com.cereal.client.presentation.settings.ai.LlmPresetForm
 import com.cereal.client.presentation.settings.ai.label
@@ -43,10 +59,12 @@ import com.cereal.client.presentation.view.CerealButtonType
 import com.cereal.client.presentation.view.CerealCard
 import com.cereal.client.presentation.view.CerealText
 import com.cereal.client.presentation.view.ConfirmationDialog
+import com.cereal.client.presentation.view.InputBg
+import com.cereal.client.presentation.view.InputBorder
+import com.cereal.client.presentation.view.InputPlaceholder
 import com.cereal.client.presentation.view.SettingsButtonVariant
 import com.cereal.client.presentation.view.SettingsSmallButton
 import com.cereal.client.presentation.view.WarningBox
-import com.cereal.client.presentation.view.chip.Pill
 import com.cereal.client.presentation.view.table.PaneToolbar
 import com.cereal.client.presentation.view.text
 import com.cereal_automation.cereal_client.generated.resources.Res
@@ -55,37 +73,40 @@ import com.cereal_automation.cereal_client.generated.resources.home
 import com.cereal_automation.cereal_client.generated.resources.home_ai_change
 import com.cereal_automation.cereal_client.generated.resources.home_ai_connect
 import com.cereal_automation.cereal_client.generated.resources.home_ai_connect_hint
+import com.cereal_automation.cereal_client.generated.resources.home_ai_connected
 import com.cereal_automation.cereal_client.generated.resources.home_ai_setup_subtitle
 import com.cereal_automation.cereal_client.generated.resources.home_ai_setup_title
-import com.cereal_automation.cereal_client.generated.resources.home_ai_using
 import com.cereal_automation.cereal_client.generated.resources.home_check_every
 import com.cereal_automation.cereal_client.generated.resources.home_check_every_minutes
+import com.cereal_automation.cereal_client.generated.resources.home_composer_locked
+import com.cereal_automation.cereal_client.generated.resources.home_composer_subtitle
 import com.cereal_automation.cereal_client.generated.resources.home_composer_title
-import com.cereal_automation.cereal_client.generated.resources.home_example_buy
-import com.cereal_automation.cereal_client.generated.resources.home_example_buy_goal
-import com.cereal_automation.cereal_client.generated.resources.home_example_read_value
-import com.cereal_automation.cereal_client.generated.resources.home_example_read_value_goal
-import com.cereal_automation.cereal_client.generated.resources.home_example_restock
-import com.cereal_automation.cereal_client.generated.resources.home_example_restock_goal
+import com.cereal_automation.cereal_client.generated.resources.home_goal_label
 import com.cereal_automation.cereal_client.generated.resources.home_goal_placeholder
 import com.cereal_automation.cereal_client.generated.resources.home_install
 import com.cereal_automation.cereal_client.generated.resources.home_installing
 import com.cereal_automation.cereal_client.generated.resources.home_maintenance_banner
 import com.cereal_automation.cereal_client.generated.resources.home_more_options
 import com.cereal_automation.cereal_client.generated.resources.home_not_installed_title
+import com.cereal_automation.cereal_client.generated.resources.home_optional
 import com.cereal_automation.cereal_client.generated.resources.home_pitch
 import com.cereal_automation.cereal_client.generated.resources.home_retry
+import com.cereal_automation.cereal_client.generated.resources.home_run_label
 import com.cereal_automation.cereal_client.generated.resources.home_run_once
+import com.cereal_automation.cereal_client.generated.resources.home_run_once_meta
 import com.cereal_automation.cereal_client.generated.resources.home_run_repeat
-import com.cereal_automation.cereal_client.generated.resources.home_safety_line
+import com.cereal_automation.cereal_client.generated.resources.home_run_repeat_meta
 import com.cereal_automation.cereal_client.generated.resources.home_start
+import com.cereal_automation.cereal_client.generated.resources.home_start_schedule
+import com.cereal_automation.cereal_client.generated.resources.home_start_url_label
 import com.cereal_automation.cereal_client.generated.resources.home_start_url_placeholder
+import com.cereal_automation.cereal_client.generated.resources.home_title_ready
+import com.cereal_automation.cereal_client.generated.resources.home_title_setup
 import com.cereal_automation.cereal_client.generated.resources.home_update_cereal
 import com.cereal_automation.cereal_client.generated.resources.home_update_required_title
 import com.cereal_automation.cereal_client.generated.resources.notification_warning_continue
 import com.cereal_automation.cereal_client.generated.resources.notification_warning_message
 import com.cereal_automation.cereal_client.generated.resources.notification_warning_title
-import org.jetbrains.compose.resources.StringResource
 import org.jetbrains.compose.resources.stringResource
 import org.koin.core.parameter.parametersOf
 import org.koin.java.KoinJavaComponent
@@ -94,16 +115,9 @@ object HomeTestTags {
     const val GOAL = "home_goal"
 }
 
-private val examples: List<Pair<StringResource, StringResource>> =
-    listOf(
-        Res.string.home_example_restock to Res.string.home_example_restock_goal,
-        Res.string.home_example_read_value to Res.string.home_example_read_value_goal,
-        Res.string.home_example_buy to Res.string.home_example_buy_goal,
-    )
-
 /**
- * The agent home: the pitch, then the composer slot. Recent goal runs and the scripts strip go
- * below the slot.
+ * The agent home: a two-step setup (connect a model, then the goal composer), or the install/update card
+ * when the agent can't run. Recent goal runs and the scripts strip go below.
  */
 @Composable
 fun HomeScreen(
@@ -138,20 +152,16 @@ fun HomeScreen(
                 Modifier
                     .fillMaxSize()
                     .verticalScroll(rememberScrollState())
-                    .padding(CerealTheme.spacing.xxl),
+                    .padding(horizontal = 32.dp, vertical = 28.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(CerealTheme.spacing.lg),
         ) {
             Column(
                 modifier = Modifier.widthIn(max = 760.dp).fillMaxWidth(),
-                verticalArrangement = Arrangement.spacedBy(CerealTheme.spacing.lg),
+                verticalArrangement = Arrangement.spacedBy(14.dp),
             ) {
-                CerealText(
-                    text = stringResource(Res.string.home_pitch),
-                    style = MaterialTheme.typography.titleMedium,
-                    color = MaterialTheme.colorScheme.onBackground,
-                )
-                when (viewModel.slot.value) {
+                val slot = viewModel.slot.value
+                Intro(ready = slot == HomeComposerSlot.Composer)
+                when (slot) {
                     HomeComposerSlot.NotInstalled -> {
                         InstallCard(installViewModel.installState.value, installViewModel::onInstall)
                     }
@@ -162,19 +172,38 @@ fun HomeScreen(
 
                     HomeComposerSlot.Composer -> {
                         if (installViewModel.isUnderMaintenance.value) MaintenanceBanner()
-                        GoalComposer(viewModel, enabled = true)
-                        (aiState as? HomeAiProviderState.Configured)?.let { AiProviderLine(it.provider, onNavigateToAiSettings) }
+                        (aiState as? HomeAiProviderState.Configured)?.let { ConnectedStep(it.provider, onNavigateToAiSettings) }
+                        GoalStep(viewModel)
                     }
 
                     HomeComposerSlot.NoAiProvider -> {
-                        AiSetupCard(aiViewModel)
-                        DisabledComposer(viewModel)
+                        ConnectStep(aiViewModel)
+                        LockedGoalStep()
                     }
                 }
                 Spacer(Modifier.height(CerealTheme.spacing.md))
                 HomeActivitySections(onOpenTasks, onRunScript, onNavigateToMarketplace)
             }
         }
+    }
+}
+
+@Composable
+private fun Intro(ready: Boolean) {
+    Column(
+        modifier = Modifier.padding(bottom = 6.dp),
+        verticalArrangement = Arrangement.spacedBy(4.dp),
+    ) {
+        CerealText(
+            text = stringResource(if (ready) Res.string.home_title_ready else Res.string.home_title_setup),
+            style = MaterialTheme.typography.headlineSmall.copy(fontSize = 22.sp, fontWeight = FontWeight.Bold),
+            color = MaterialTheme.colorScheme.onBackground,
+        )
+        CerealText(
+            text = stringResource(Res.string.home_pitch),
+            style = MaterialTheme.typography.bodyMedium,
+            color = CerealTheme.colorScheme.contentTertiary,
+        )
     }
 }
 
@@ -234,190 +263,261 @@ private fun MaintenanceBanner() {
     WarningBox(text = stringResource(Res.string.home_maintenance_banner))
 }
 
-@OptIn(ExperimentalLayoutApi::class)
+private enum class StepBadge { Number, Done, Locked }
+
+/** A numbered setup step: badge, title and [subtitle] in the head, then the optional [body]. */
 @Composable
-private fun GoalComposer(
-    viewModel: HomeViewModel,
-    enabled: Boolean,
+private fun HomeStep(
+    number: Int,
+    title: String,
+    subtitle: @Composable () -> Unit,
+    badge: StepBadge = StepBadge.Number,
+    trailing: @Composable () -> Unit = {},
+    body: (@Composable ColumnScope.() -> Unit)? = null,
 ) {
-    val errors = viewModel.fieldErrors.value
     CerealCard(modifier = Modifier.fillMaxWidth()) {
-        Column(
-            modifier = Modifier.padding(CerealTheme.spacing.xl),
-            verticalArrangement = Arrangement.spacedBy(CerealTheme.spacing.md),
+        Row(
+            modifier = Modifier.fillMaxWidth().padding(horizontal = 22.dp, vertical = 20.dp),
+            horizontalArrangement = Arrangement.spacedBy(14.dp),
         ) {
-            CerealText(
-                text = stringResource(Res.string.home_composer_title),
-                style = MaterialTheme.typography.titleMedium,
-                color = MaterialTheme.colorScheme.onSurface,
-            )
-            ComposerField(
-                value = viewModel.goal.value,
-                onValueChange = viewModel::onGoalChange,
-                placeholder = stringResource(Res.string.home_goal_placeholder),
-                error = errors[ComposerField.GOAL]?.text(),
-                enabled = enabled,
-                singleLine = false,
-                modifier = Modifier.fillMaxWidth().testTag(HomeTestTags.GOAL),
-            )
-            ComposerField(
-                value = viewModel.startUrl.value,
-                onValueChange = viewModel::onStartUrlChange,
-                placeholder = stringResource(Res.string.home_start_url_placeholder),
-                error = errors[ComposerField.START_URL]?.text(),
-                enabled = enabled,
-                modifier = Modifier.fillMaxWidth(),
-            )
-            Row(
-                modifier = Modifier.selectableGroup(),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(CerealTheme.spacing.sm),
-            ) {
-                val repeat = viewModel.repeat.value
-                RunModeOption(stringResource(Res.string.home_run_once), selected = !repeat, enabled = enabled) { viewModel.onRepeatChange(false) }
-                RunModeOption(stringResource(Res.string.home_run_repeat), selected = repeat, enabled = enabled) { viewModel.onRepeatChange(true) }
-                if (repeat) {
-                    CerealText(
-                        text = stringResource(Res.string.home_check_every),
-                        modifier = Modifier.padding(start = CerealTheme.spacing.md),
-                    )
-                    ComposerField(
-                        value = viewModel.checkEveryMinutes.value,
-                        onValueChange = viewModel::onCheckEveryMinutesChange,
-                        error = errors[ComposerField.CHECK_EVERY]?.text(),
-                        enabled = enabled,
-                        modifier = Modifier.width(120.dp),
-                    )
-                    CerealText(text = stringResource(Res.string.home_check_every_minutes))
-                }
-            }
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(CerealTheme.spacing.sm),
-            ) {
-                CerealButton(
-                    onClick = viewModel::onStart,
-                    text = stringResource(Res.string.home_start),
-                    enabled = enabled && !viewModel.isStarting.value,
+            StepNumber(number, badge)
+            Column(modifier = Modifier.weight(1f)) {
+                CerealText(
+                    text = title,
+                    style = MaterialTheme.typography.titleMedium.copy(fontSize = 16.sp, fontWeight = FontWeight.Bold, lineHeight = 26.sp),
+                    color = if (badge == StepBadge.Locked) CerealTheme.colorScheme.contentTertiary else MaterialTheme.colorScheme.onSurface,
                 )
-                CerealButton(
-                    onClick = viewModel::onMoreOptions,
-                    text = stringResource(Res.string.home_more_options),
-                    enabled = enabled,
-                    type = CerealButtonType.Surface,
-                )
+                subtitle()
             }
+            trailing()
         }
+        body?.let { Column(content = it) }
     }
-    FlowRow(
-        horizontalArrangement = Arrangement.spacedBy(CerealTheme.spacing.sm),
-        verticalArrangement = Arrangement.spacedBy(CerealTheme.spacing.sm),
+}
+
+@Composable
+private fun StepNumber(
+    number: Int,
+    badge: StepBadge,
+) {
+    val color =
+        when (badge) {
+            StepBadge.Number -> MaterialTheme.colorScheme.primary
+            StepBadge.Done -> CerealTheme.colorScheme.success
+            StepBadge.Locked -> CerealTheme.colorScheme.contentSubtle
+        }
+    Box(
+        modifier =
+            Modifier
+                .size(26.dp)
+                .clip(CircleShape)
+                .background(if (badge == StepBadge.Locked) Color.Transparent else color.copy(alpha = BADGE_TINT))
+                .border(1.dp, if (badge == StepBadge.Locked) CerealTheme.colorScheme.borderDark else color.copy(alpha = BADGE_BORDER), CircleShape),
+        contentAlignment = Alignment.Center,
     ) {
-        examples.forEach { (label, goal) ->
-            val goalText = stringResource(goal)
-            Pill(
-                text = stringResource(label),
-                contentColor = CerealTheme.colorScheme.contentSecondary,
-                backgroundColor = CerealTheme.colorScheme.cardDark,
-                borderColor = CerealTheme.colorScheme.border,
-                onClick = if (enabled) ({ viewModel.onGoalChange(goalText) }) else null,
+        if (badge == StepBadge.Done) {
+            Icon(Icons.Default.Check, contentDescription = null, modifier = Modifier.size(14.dp), tint = color)
+        } else {
+            CerealText(number.toString(), style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Bold), color = color)
+        }
+    }
+}
+
+@Composable
+private fun StepSubtitle(text: String) {
+    CerealText(text = text, style = MaterialTheme.typography.bodyMedium, color = CerealTheme.colorScheme.contentTertiary)
+}
+
+/** Step 1 with no provider yet: the preset form and Connect. */
+@Composable
+private fun ConnectStep(viewModel: HomeAiProviderViewModel) {
+    HomeStep(
+        number = 1,
+        title = stringResource(Res.string.home_ai_setup_title),
+        subtitle = { StepSubtitle(stringResource(Res.string.home_ai_setup_subtitle)) },
+    ) {
+        LlmPresetForm(form = viewModel.setup, onSelectPreset = viewModel::onSelectPreset)
+        Row(
+            modifier = Modifier.padding(start = 22.dp, end = 22.dp, bottom = 22.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(14.dp),
+        ) {
+            CerealButton(
+                onClick = viewModel::onConnect,
+                text = stringResource(Res.string.home_ai_connect),
+                enabled = !viewModel.isConnecting.value,
+            )
+            val error = viewModel.connectError.value?.text()
+            CerealText(
+                text = error ?: stringResource(Res.string.home_ai_connect_hint),
+                style = MaterialTheme.typography.bodySmall,
+                color = if (error != null) MaterialTheme.colorScheme.error else CerealTheme.colorScheme.contentTertiary,
             )
         }
     }
-    CerealText(
-        text = stringResource(Res.string.home_safety_line),
-        style = MaterialTheme.typography.bodySmall,
-        color = CerealTheme.colorScheme.contentTertiary,
+}
+
+/** Step 1 done: the provider and model, with Change opening Settings → AI. */
+@Composable
+private fun ConnectedStep(
+    provider: AiProviderUiModel,
+    onNavigateToAiSettings: () -> Unit,
+) {
+    HomeStep(
+        number = 1,
+        badge = StepBadge.Done,
+        title = stringResource(Res.string.home_ai_connected),
+        subtitle = {
+            Row(
+                modifier = Modifier.padding(top = 2.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(10.dp),
+            ) {
+                CerealText(
+                    stringResource(provider.preset.label()),
+                    style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.SemiBold),
+                    color = MaterialTheme.colorScheme.onSurface,
+                )
+                Box(Modifier.size(3.dp).clip(CircleShape).background(CerealTheme.colorScheme.contentSubtle))
+                CerealText(provider.model, style = MaterialTheme.typography.bodyMedium, color = CerealTheme.colorScheme.contentSecondary)
+            }
+        },
+        trailing = {
+            CerealButton(onClick = onNavigateToAiSettings, text = stringResource(Res.string.home_ai_change), type = CerealButtonType.Surface)
+        },
+    )
+}
+
+/** Step 2 before a model is connected: collapsed, with nothing to focus. */
+@Composable
+private fun LockedGoalStep() {
+    HomeStep(
+        number = 2,
+        badge = StepBadge.Locked,
+        title = stringResource(Res.string.home_composer_title),
+        subtitle = { StepSubtitle(stringResource(Res.string.home_composer_locked)) },
+        trailing = {
+            Icon(
+                Icons.Outlined.Lock,
+                contentDescription = null,
+                modifier = Modifier.padding(top = 5.dp).size(15.dp),
+                tint = CerealTheme.colorScheme.contentSubtle,
+            )
+        },
     )
 }
 
 @Composable
-private fun AiSetupCard(viewModel: HomeAiProviderViewModel) {
-    CerealCard(modifier = Modifier.fillMaxWidth()) {
-        Column(verticalArrangement = Arrangement.spacedBy(CerealTheme.spacing.sm)) {
-            Column(
-                modifier = Modifier.padding(start = CerealTheme.spacing.xl, top = CerealTheme.spacing.xl, end = CerealTheme.spacing.xl),
-                verticalArrangement = Arrangement.spacedBy(CerealTheme.spacing.xs),
-            ) {
-                CerealText(
-                    text = stringResource(Res.string.home_ai_setup_title),
-                    style = MaterialTheme.typography.titleMedium,
-                    color = MaterialTheme.colorScheme.onSurface,
-                )
-                CerealText(
-                    text = stringResource(Res.string.home_ai_setup_subtitle),
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = CerealTheme.colorScheme.contentSecondary,
+private fun GoalStep(viewModel: HomeViewModel) {
+    val errors = viewModel.fieldErrors.value
+    val repeat = viewModel.repeat.value
+    HomeStep(
+        number = 2,
+        title = stringResource(Res.string.home_composer_title),
+        subtitle = { StepSubtitle(stringResource(Res.string.home_composer_subtitle)) },
+    ) {
+        Column(
+            modifier = Modifier.padding(start = 62.dp, end = 22.dp, bottom = 22.dp),
+            verticalArrangement = Arrangement.spacedBy(18.dp),
+        ) {
+            StepField(stringResource(Res.string.home_goal_label)) {
+                ComposerField(
+                    value = viewModel.goal.value,
+                    onValueChange = viewModel::onGoalChange,
+                    placeholder = stringResource(Res.string.home_goal_placeholder),
+                    error = errors[ComposerField.GOAL]?.text(),
+                    singleLine = false,
+                    modifier = Modifier.fillMaxWidth().testTag(HomeTestTags.GOAL),
                 )
             }
-            LlmPresetForm(form = viewModel.setup, onSelectPreset = viewModel::onSelectPreset)
+            StepField(stringResource(Res.string.home_start_url_label), optional = true) {
+                ComposerField(
+                    value = viewModel.startUrl.value,
+                    onValueChange = viewModel::onStartUrlChange,
+                    placeholder = stringResource(Res.string.home_start_url_placeholder),
+                    error = errors[ComposerField.START_URL]?.text(),
+                    modifier = Modifier.fillMaxWidth(),
+                )
+            }
+            StepField(stringResource(Res.string.home_run_label)) {
+                Row(
+                    modifier = Modifier.selectableGroup(),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(CerealTheme.spacing.sm),
+                ) {
+                    RunModeOption(stringResource(Res.string.home_run_once), selected = !repeat) { viewModel.onRepeatChange(false) }
+                    RunModeOption(stringResource(Res.string.home_run_repeat), selected = repeat) { viewModel.onRepeatChange(true) }
+                    if (repeat) {
+                        CerealText(
+                            text = stringResource(Res.string.home_check_every),
+                            modifier = Modifier.padding(start = CerealTheme.spacing.md),
+                        )
+                        ComposerField(
+                            value = viewModel.checkEveryMinutes.value,
+                            onValueChange = viewModel::onCheckEveryMinutesChange,
+                            error = errors[ComposerField.CHECK_EVERY]?.text(),
+                            modifier = Modifier.width(120.dp),
+                        )
+                        CerealText(text = stringResource(Res.string.home_check_every_minutes))
+                    }
+                }
+            }
             Row(
-                modifier = Modifier.padding(start = CerealTheme.spacing.xl, end = CerealTheme.spacing.xl, bottom = CerealTheme.spacing.xl),
                 verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(CerealTheme.spacing.md),
+                horizontalArrangement = Arrangement.spacedBy(14.dp),
             ) {
                 CerealButton(
-                    onClick = viewModel::onConnect,
-                    text = stringResource(Res.string.home_ai_connect),
-                    enabled = !viewModel.isConnecting.value,
+                    onClick = viewModel::onStart,
+                    text = stringResource(if (repeat) Res.string.home_start_schedule else Res.string.home_start),
+                    enabled = !viewModel.isStarting.value,
                 )
-                val error = viewModel.connectError.value?.text()
+                CerealButton(
+                    onClick = viewModel::onMoreOptions,
+                    text = stringResource(Res.string.home_more_options),
+                    type = CerealButtonType.Surface,
+                )
+                Spacer(Modifier.weight(1f))
                 CerealText(
-                    text = error ?: stringResource(Res.string.home_ai_connect_hint),
+                    text = stringResource(if (repeat) Res.string.home_run_repeat_meta else Res.string.home_run_once_meta),
                     style = MaterialTheme.typography.bodySmall,
-                    color = if (error != null) MaterialTheme.colorScheme.error else CerealTheme.colorScheme.contentTertiary,
+                    color = CerealTheme.colorScheme.contentSubtle,
                 )
             }
         }
     }
 }
 
-/** The composer greyed out under the setup card: visible, but disabled, so neither mouse nor keyboard reaches it. */
 @Composable
-private fun DisabledComposer(viewModel: HomeViewModel) {
-    Column(
-        modifier = Modifier.alpha(DISABLED_ALPHA),
-        verticalArrangement = Arrangement.spacedBy(CerealTheme.spacing.lg),
-    ) {
-        GoalComposer(viewModel, enabled = false)
-    }
-}
-
-@Composable
-private fun AiProviderLine(
-    provider: AiProviderUiModel,
-    onNavigateToAiSettings: () -> Unit,
+private fun StepField(
+    label: String,
+    optional: Boolean = false,
+    content: @Composable () -> Unit,
 ) {
-    Row(horizontalArrangement = Arrangement.spacedBy(CerealTheme.spacing.xs)) {
-        val style = MaterialTheme.typography.bodySmall
-        CerealText(
-            text = stringResource(Res.string.home_ai_using, stringResource(provider.preset.label()), provider.model) + " ·",
-            style = style,
-            color = CerealTheme.colorScheme.contentTertiary,
-        )
-        CerealText(
-            text = stringResource(Res.string.home_ai_change),
-            modifier = Modifier.clickable(role = Role.Button, onClick = onNavigateToAiSettings),
-            style = style,
-            color = CerealTheme.colorScheme.link,
-        )
+    Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+        Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+            val style = MaterialTheme.typography.labelLarge.copy(fontWeight = FontWeight.SemiBold)
+            CerealText(label, style = style, color = CerealTheme.colorScheme.contentSecondary)
+            if (optional) {
+                CerealText(stringResource(Res.string.home_optional), style = style.copy(fontWeight = FontWeight.Medium), color = CerealTheme.colorScheme.contentSubtle)
+            }
+        }
+        content()
     }
 }
 
-private const val DISABLED_ALPHA = 0.4f
+private const val BADGE_TINT = 0.12f
+private const val BADGE_BORDER = 0.3f
 
 /** One option of the Once/Repeat radio group: filled when selected; red stays reserved for Start. */
 @Composable
 private fun RunModeOption(
     text: String,
     selected: Boolean,
-    enabled: Boolean,
     onClick: () -> Unit,
 ) {
     SettingsSmallButton(
         text = text,
         onClick = onClick,
-        enabled = enabled,
         variant = if (selected) SettingsButtonVariant.Flat else SettingsButtonVariant.Ghost,
         modifier =
             Modifier.semantics {
@@ -432,22 +532,49 @@ private fun ComposerField(
     value: String,
     onValueChange: (String) -> Unit,
     error: String?,
-    enabled: Boolean,
     modifier: Modifier = Modifier,
     placeholder: String? = null,
     singleLine: Boolean = true,
 ) {
-    OutlinedTextField(
-        value = value,
-        onValueChange = onValueChange,
-        modifier = modifier,
-        enabled = enabled,
-        placeholder = placeholder?.let { { Text(it) } },
-        singleLine = singleLine,
-        minLines = if (singleLine) 1 else 3,
-        isError = error != null,
-        supportingText = error?.let { { Text(it, color = MaterialTheme.colorScheme.error) } },
-    )
+    // The design's filled input: 38px single-line, a taller box for the goal.
+    val shape = RoundedCornerShape(8.dp)
+    var focused by remember { mutableStateOf(false) }
+    val border =
+        when {
+            error != null -> MaterialTheme.colorScheme.error
+            focused -> CerealTheme.colorScheme.borderDark
+            else -> InputBorder
+        }
+    val textStyle = MaterialTheme.typography.bodyMedium.copy(color = MaterialTheme.colorScheme.onSurface)
+    Column(modifier = modifier, verticalArrangement = Arrangement.spacedBy(6.dp)) {
+        BasicTextField(
+            value = value,
+            onValueChange = onValueChange,
+            singleLine = singleLine,
+            textStyle = textStyle,
+            cursorBrush = SolidColor(MaterialTheme.colorScheme.primary),
+            modifier =
+                Modifier
+                    .fillMaxWidth()
+                    .then(if (singleLine) Modifier.height(38.dp) else Modifier.heightIn(min = 92.dp))
+                    .onFocusChanged { focused = it.isFocused },
+            decorationBox = { inner ->
+                Box(
+                    modifier =
+                        Modifier
+                            .fillMaxWidth()
+                            .background(InputBg, shape)
+                            .border(1.dp, border, shape)
+                            .padding(horizontal = 12.dp, vertical = if (singleLine) 0.dp else 12.dp),
+                    contentAlignment = if (singleLine) Alignment.CenterStart else Alignment.TopStart,
+                ) {
+                    if (value.isEmpty() && placeholder != null) CerealText(placeholder, style = textStyle.copy(color = InputPlaceholder))
+                    inner()
+                }
+            },
+        )
+        error?.let { CerealText(it, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.error) }
+    }
 }
 
 @Composable
