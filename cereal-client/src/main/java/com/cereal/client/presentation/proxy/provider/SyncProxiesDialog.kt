@@ -31,6 +31,7 @@ import androidx.compose.material.icons.outlined.Place
 import androidx.compose.material.icons.outlined.Remove
 import androidx.compose.material.icons.outlined.Storage
 import androidx.compose.material.icons.outlined.Sync
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.LinearProgressIndicator
@@ -634,9 +635,13 @@ private fun SyncFooter(
             }
 
             SyncWizardStep.DONE -> {
-                CerealTextButton(onClick = onSyncMore, type = CerealButtonType.Surface) {
-                    Icon(Icons.Outlined.Add, contentDescription = null, modifier = Modifier.size(14.dp))
-                    CerealText(stringResource(Res.string.proxies_sync_done_more), modifier = Modifier.padding(start = 6.dp))
+                CerealTextButton(
+                    onClick = onSyncMore,
+                    type = CerealButtonType.Surface,
+                    contentPadding = ButtonDefaults.TextButtonWithIconContentPadding,
+                ) {
+                    Icon(Icons.Outlined.Add, contentDescription = null, modifier = Modifier.size(ButtonDefaults.IconSize))
+                    CerealText(stringResource(Res.string.proxies_sync_done_more), modifier = Modifier.padding(start = ButtonDefaults.IconSpacing))
                 }
                 Spacer(modifier = Modifier.weight(1f))
                 CerealButton(onClick = onClose, text = stringResource(Res.string.proxies_sync_done_view), type = CerealButtonType.Primary)
