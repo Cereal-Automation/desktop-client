@@ -60,6 +60,7 @@ import com.cereal.client.presentation.theme.CerealTypography
 import com.cereal.client.presentation.view.CerealButton
 import com.cereal.client.presentation.view.CerealButtonType
 import com.cereal.client.presentation.view.CerealIconButton
+import com.cereal.client.presentation.view.CerealOutlinedIconButton
 import com.cereal.client.presentation.view.CerealOutlinedTextField
 import com.cereal.client.presentation.view.CerealText
 import com.cereal.client.presentation.view.CerealTextButton
@@ -754,16 +755,8 @@ private fun StepButton(
     contentDescription: String,
     onClick: () -> Unit,
 ) {
-    Box(
-        modifier =
-            Modifier
-                .size(40.dp)
-                .border(1.dp, CerealTheme.colorScheme.border, RoundedCornerShape(8.dp))
-                .background(MaterialTheme.colorScheme.surface, RoundedCornerShape(8.dp))
-                .clickable(onClick = onClick),
-        contentAlignment = Alignment.Center,
-    ) {
-        Icon(icon, contentDescription = contentDescription, tint = MaterialTheme.colorScheme.onBackground, modifier = Modifier.size(16.dp))
+    CerealOutlinedIconButton(onClick = onClick) {
+        Icon(icon, contentDescription = contentDescription, modifier = Modifier.size(16.dp))
     }
 }
 

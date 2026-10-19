@@ -50,6 +50,9 @@ enum class CerealButtonType {
     Secondary,
     Surface,
     Success,
+
+    /** Neutral grey: filled with a subtle border, or outlined in the subtle border color. */
+    Neutral,
 }
 
 enum class CerealButtonSize {
@@ -102,14 +105,22 @@ fun CerealButton(
             CerealButtonType.Success -> {
                 ButtonDefaults.buttonColors(
                     containerColor = CerealTheme.colorScheme.success,
+                    contentColor = CerealTheme.colorScheme.onSuccess,
                     disabledContainerColor = CerealTheme.colorScheme.success.copy(alpha = 0.5f),
+                )
+            }
+
+            CerealButtonType.Neutral -> {
+                ButtonDefaults.buttonColors(
+                    containerColor = MaterialTheme.colorScheme.surfaceVariant,
+                    contentColor = MaterialTheme.colorScheme.onSurface,
                 )
             }
         }
 
     val shape = MaterialTheme.shapes.small
     val elevation = ButtonDefaults.buttonElevation()
-    val border: BorderStroke? = null
+    val border = if (type == CerealButtonType.Neutral) BorderStroke(1.dp, CerealTheme.colorScheme.border) else null
 
     val textStyle = cerealButtonTextStyle(size)
 
@@ -182,6 +193,7 @@ fun CerealTextButton(
             CerealButtonType.Secondary -> ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.secondary)
             CerealButtonType.Surface -> ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.onSurface)
             CerealButtonType.Success -> ButtonDefaults.textButtonColors(contentColor = CerealTheme.colorScheme.success)
+            CerealButtonType.Neutral -> ButtonDefaults.textButtonColors(contentColor = CerealTheme.colorScheme.contentSecondary)
         }
 
     TextButton(
@@ -328,8 +340,8 @@ fun CerealOutlinedIconButton(
         modifier = modifier,
         enabled = enabled,
         shape = MaterialTheme.shapes.small,
-        colors = IconButtonDefaults.outlinedIconButtonColors(),
-        border = IconButtonDefaults.outlinedIconButtonBorder(enabled),
+        colors = IconButtonDefaults.outlinedIconButtonColors(contentColor = CerealTheme.colorScheme.contentSecondary),
+        border = BorderStroke(1.dp, CerealTheme.colorScheme.border.copy(alpha = if (enabled) 1f else 0.4f)),
         interactionSource = interactionSource,
         content = content,
     )
@@ -427,6 +439,11 @@ fun CerealOutlinedButton(
             CerealButtonType.Success -> {
                 ButtonDefaults.outlinedButtonColors(contentColor = CerealTheme.colorScheme.success) to
                     CerealTheme.colorScheme.success
+            }
+
+            CerealButtonType.Neutral -> {
+                ButtonDefaults.outlinedButtonColors(contentColor = CerealTheme.colorScheme.contentSecondary) to
+                    CerealTheme.colorScheme.border
             }
         }
 

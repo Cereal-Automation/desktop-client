@@ -33,6 +33,7 @@ import androidx.compose.material.icons.filled.ExpandMore
 import androidx.compose.material.icons.filled.Forum
 import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.outlined.Info
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -51,6 +52,8 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.cereal.client.domain.model.notification.NotificationChannelType
 import com.cereal.client.presentation.theme.CerealTheme
+import com.cereal.client.presentation.view.CerealButtonType
+import com.cereal.client.presentation.view.CerealOutlinedButton
 import com.cereal.client.presentation.view.CerealText
 import com.cereal_automation.cereal_client.generated.resources.Res
 import com.cereal_automation.cereal_client.generated.resources.notification_center_couldnt_deliver
@@ -471,25 +474,20 @@ private fun OpenTaskButton(
         } else {
             "${stringResource(Res.string.notification_center_open_task)} · $taskName"
         }
-    Row(
-        modifier =
-            Modifier
-                .clip(MaterialTheme.shapes.small)
-                .border(1.dp, CerealTheme.colorScheme.borderDark, MaterialTheme.shapes.small)
-                .clickable(onClick = onClick)
-                .padding(horizontal = CerealTheme.spacing.md, vertical = CerealTheme.spacing.sm),
-        horizontalArrangement = Arrangement.spacedBy(CerealTheme.spacing.xs),
-        verticalAlignment = Alignment.CenterVertically,
+    CerealOutlinedButton(
+        onClick = onClick,
+        type = CerealButtonType.Neutral,
+        contentPadding = ButtonDefaults.ButtonWithIconContentPadding,
     ) {
         Icon(
             imageVector = Icons.AutoMirrored.Filled.OpenInNew,
             contentDescription = null,
             tint = MaterialTheme.colorScheme.primary,
-            modifier = Modifier.size(14.dp),
+            modifier = Modifier.size(ButtonDefaults.IconSize),
         )
+        Spacer(modifier = Modifier.width(ButtonDefaults.IconSpacing))
         CerealText(
             text = label,
-            style = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.SemiBold),
             color = MaterialTheme.colorScheme.onSurface,
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,

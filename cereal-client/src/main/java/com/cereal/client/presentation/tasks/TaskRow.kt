@@ -31,9 +31,9 @@ import com.cereal.client.domain.model.task.UserInteraction
 import com.cereal.client.presentation.tasks.model.TaskUiModel
 import com.cereal.client.presentation.theme.CerealTheme
 import com.cereal.client.presentation.view.ActivityIndicator
+import com.cereal.client.presentation.view.CerealOutlinedIconButton
 import com.cereal.client.presentation.view.CerealText
 import com.cereal.client.presentation.view.CerealTextButton
-import com.cereal.client.presentation.view.button.CerealSmallIconButton
 import com.cereal.client.presentation.view.button.CerealToolbarButton
 import com.cereal.client.presentation.view.button.CerealToolbarButtonVariant
 import com.cereal.client.presentation.view.chip.Pill
@@ -199,15 +199,11 @@ private fun TaskActionIcon(
     icon: org.jetbrains.compose.resources.DrawableResource,
     contentDescription: String,
 ) {
-    CerealSmallIconButton(
-        onClick = onClick,
-        border = BorderStroke(1.dp, CerealTheme.colorScheme.border),
-    ) {
+    CerealOutlinedIconButton(onClick = onClick) {
         Icon(
             painter = painterResource(icon),
             contentDescription = contentDescription,
             modifier = Modifier.size(16.dp),
-            tint = CerealTheme.colorScheme.contentSecondary,
         )
     }
 }

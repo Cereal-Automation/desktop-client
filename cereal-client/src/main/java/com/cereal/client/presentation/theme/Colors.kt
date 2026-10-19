@@ -15,6 +15,8 @@ class CerealColors(
     val cardDark: Color = Color(0xFF161616),
     val borderDark: Color = Color(0xFF3E3E3E),
     val success: Color = Color(0xFF2ECC71),
+    /** Content on [success]; dark, because white on this green fails contrast. */
+    val onSuccess: Color = Color(0xFF0C2418),
     val warning: Color = Color(0xFFF5B73A),
     val info: Color = Color(0xFF4F8CFF),
     val link: Color = Color(0xFF64B5F6),

@@ -25,6 +25,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.ArrowBack
 import androidx.compose.material.icons.outlined.Security
 import androidx.compose.material.icons.outlined.TableChart
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -42,6 +43,8 @@ import androidx.compose.ui.unit.sp
 import com.cereal.client.presentation.theme.CerealTheme
 import com.cereal.client.presentation.theme.CerealTypography
 import com.cereal.client.presentation.theme.cerealColors
+import com.cereal.client.presentation.view.CerealButton
+import com.cereal.client.presentation.view.CerealOutlinedIconButton
 import com.cereal.client.presentation.view.CerealText
 
 val PaneTablePadding = 24.dp
@@ -51,8 +54,6 @@ val PaneTableRowMinHeight = 52.dp
 val PaneTableRowPaddingHorizontal = 18.dp
 val PaneTableRowPaddingVertical = 12.dp
 val PaneTableActionAreaWidth = 100.dp
-val PaneTableIconButtonSize = 32.dp
-val PaneTableIconButtonCornerRadius = 6.dp
 val PaneTableIconButtonGlyphSize = 16.dp
 
 val PaneTableMetaIconColor = cerealColors.contentSubtle
@@ -171,21 +172,8 @@ fun PaneIconActionButton(
     contentDescription: String,
     onClick: () -> Unit,
 ) {
-    Box(
-        modifier =
-            Modifier
-                .size(PaneTableIconButtonSize)
-                .clip(RoundedCornerShape(PaneTableIconButtonCornerRadius))
-                .border(1.dp, CerealTheme.colorScheme.border, RoundedCornerShape(PaneTableIconButtonCornerRadius))
-                .clickable(onClick = onClick),
-        contentAlignment = Alignment.Center,
-    ) {
-        Icon(
-            imageVector = icon,
-            contentDescription = contentDescription,
-            tint = CerealTheme.colorScheme.contentSecondary,
-            modifier = Modifier.size(PaneTableIconButtonGlyphSize),
-        )
+    CerealOutlinedIconButton(onClick = onClick) {
+        Icon(imageVector = icon, contentDescription = contentDescription, modifier = Modifier.size(PaneTableIconButtonGlyphSize))
     }
 }
 
@@ -195,28 +183,10 @@ fun PanePrimaryActionButton(
     text: String,
     onClick: () -> Unit,
 ) {
-    Row(
-        modifier =
-            Modifier
-                .heightIn(min = PaneTableIconButtonSize)
-                .clip(RoundedCornerShape(PaneTableIconButtonCornerRadius))
-                .background(MaterialTheme.colorScheme.primary)
-                .clickable(onClick = onClick)
-                .padding(horizontal = 12.dp, vertical = 6.dp),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(6.dp),
-    ) {
-        Icon(
-            imageVector = icon,
-            contentDescription = null,
-            tint = Color.White,
-            modifier = Modifier.size(PaneTableIconButtonGlyphSize),
-        )
-        CerealText(
-            text = text,
-            style = MaterialTheme.typography.labelLarge.copy(fontWeight = FontWeight.SemiBold, fontSize = 12.sp),
-            color = Color.White,
-        )
+    CerealButton(onClick = onClick, contentPadding = ButtonDefaults.ButtonWithIconContentPadding) {
+        Icon(imageVector = icon, contentDescription = null, modifier = Modifier.size(ButtonDefaults.IconSize))
+        Spacer(modifier = Modifier.width(ButtonDefaults.IconSpacing))
+        CerealText(text = text)
     }
 }
 

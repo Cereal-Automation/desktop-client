@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
@@ -20,6 +21,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
@@ -49,10 +51,6 @@ private val SectionRowDivider = Color(0xFF232323)
 private val SectionTitleBg = Color(0xFF181818)
 private val ConfigPanelBg = Color(0xFF121212)
 
-private val FlatBtnBg = Color(0xFF232323)
-private val FlatBtnBorder = cerealColors.border
-private val FlatBtnContent = Color(0xFFE8E8E8)
-
 private val ToggleOffTrack = Color(0xFF2A2A2A)
 
 enum class SettingsButtonVariant { Flat, Primary, Ghost }
@@ -66,47 +64,26 @@ fun SettingsSmallButton(
     enabled: Boolean = true,
     leading: (@Composable () -> Unit)? = null,
 ) {
-    val (bg, content, border) =
-        when (variant) {
-            SettingsButtonVariant.Flat -> {
-                Triple(FlatBtnBg, FlatBtnContent, FlatBtnBorder)
-            }
-
-            SettingsButtonVariant.Primary -> {
-                Triple(MaterialTheme.colorScheme.primary, Color.White, Color.Transparent)
-            }
-
-            SettingsButtonVariant.Ghost -> {
-                Triple(Color.Transparent, CerealTheme.colorScheme.contentSecondary, FlatBtnBorder)
-            }
+    val contentPadding = if (leading != null) ButtonDefaults.ButtonWithIconContentPadding else ButtonDefaults.ContentPadding
+    val content: @Composable RowScope.() -> Unit = {
+        if (leading != null) {
+            leading()
+            Spacer(modifier = Modifier.width(ButtonDefaults.IconSpacing))
         }
-    val alpha = if (enabled) 1f else 0.4f
-    Row(
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(8.dp), // 6px × 1.25
-        modifier =
-            modifier
-                .heightIn(min = 28.dp) // .btn-sm ~22px tall × 1.25
-                .clip(RoundedCornerShape(8.dp)) // 6px × 1.25
-                .background(bg.copy(alpha = bg.alpha * alpha))
-                .border(1.dp, border.copy(alpha = border.alpha * alpha), RoundedCornerShape(8.dp))
-                .clickable(
-                    enabled = enabled,
-                    interactionSource = remember { MutableInteractionSource() },
-                    indication = null,
-                    onClick = onClick,
-                ).padding(horizontal = 11.dp, vertical = 5.dp), // 9px/4px × 1.25
-    ) {
-        if (leading != null) leading()
-        CerealText(
-            text = text,
-            style =
-                MaterialTheme.typography.labelMedium.copy(
-                    fontSize = 14.sp, // 11px × 1.25
-                    fontWeight = FontWeight.SemiBold,
-                    color = content.copy(alpha = content.alpha * alpha),
-                ),
-        )
+        CerealText(text = text)
+    }
+    when (variant) {
+        SettingsButtonVariant.Flat -> {
+            CerealButton(onClick, modifier, enabled = enabled, type = CerealButtonType.Neutral, contentPadding = contentPadding, content = content)
+        }
+
+        SettingsButtonVariant.Primary -> {
+            CerealButton(onClick, modifier, enabled = enabled, type = CerealButtonType.Primary, contentPadding = contentPadding, content = content)
+        }
+
+        SettingsButtonVariant.Ghost -> {
+            CerealOutlinedButton(onClick, modifier, enabled, type = CerealButtonType.Neutral, contentPadding = contentPadding, content = content)
+        }
     }
 }
 
