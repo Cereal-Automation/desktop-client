@@ -297,7 +297,6 @@ private fun FieldHintItem(
                     append(details)
                 },
             style = MaterialTheme.typography.bodyLarge,
-            fontSize = 16.sp,
         )
     }
 }

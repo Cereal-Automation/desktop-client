@@ -307,9 +307,7 @@ private fun OutputHeader(
             text = stringResource(Res.string.output),
             color = Color.White,
             style =
-                MaterialTheme.typography.labelMedium.copy(
-                    fontWeight = FontWeight.Bold,
-                    fontSize = 15.sp,
+                MaterialTheme.typography.titleMedium.copy(
                     letterSpacing = TextUnit(0.02f, TextUnitType.Em),
                 ),
         )
@@ -446,7 +444,6 @@ private fun FilterPill(
                 style =
                     CerealTypography.controlLabel.copy(
                         fontWeight = FontWeight.Medium,
-                        fontSize = 13.sp,
                     ),
             )
             if (badgeCount > 0) {
@@ -474,10 +471,7 @@ private fun UnseenBadge(count: Int) {
             text = if (count > 9) "9+" else count.toString(),
             color = Color.White,
             style =
-                CerealTypography.controlLabel.copy(
-                    fontWeight = FontWeight.Bold,
-                    fontSize = 10.sp,
-                ),
+                MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold),
         )
     }
 }
@@ -588,28 +582,21 @@ private fun LogLine(event: LoggingEvent) {
             text = timestamp,
             color = CerealTheme.colorScheme.contentSubtle,
             maxLines = 1,
-            style = LogLineStyle,
+            style = CerealTypography.logLine,
         )
         CerealText(
             text = glyph,
             color = glyphColor,
-            style = LogLineStyle.copy(fontWeight = FontWeight.Bold),
+            style = CerealTypography.logLine.copy(fontWeight = FontWeight.Bold),
         )
         CerealText(
             text = event.message,
             color = CerealTheme.colorScheme.contentSecondary,
             modifier = Modifier.fillMaxWidth().padding(start = 8.dp),
-            style = LogLineStyle,
+            style = CerealTypography.logLine,
         )
     }
 }
-
-private val LogLineStyle =
-    TextStyle(
-        fontFamily = FontFamily.Monospace,
-        fontSize = 13.sp,
-        lineHeight = 19.sp,
-    )
 
 private fun formatLogLine(event: LoggingEvent): String {
     val timestamp = TimestampFormatter.format(event.timestamp)
@@ -694,13 +681,13 @@ private fun ArtifactRow(
                 text = artifact.name,
                 color = CerealTheme.colorScheme.contentSecondary,
                 maxLines = 1,
-                style = LogLineStyle,
+                style = CerealTypography.logLine,
             )
             CerealText(
                 text = "${formatBytes(artifact.sizeBytes)} · ${TimestampFormatter.format(Date(artifact.createdAt.toEpochMilliseconds()))}",
                 color = CerealTheme.colorScheme.contentSubtle,
                 maxLines = 1,
-                style = LogLineStyle.copy(fontSize = 11.sp),
+                style = MaterialTheme.typography.bodySmall.copy(fontFamily = FontFamily.Monospace),
             )
         }
         CerealIconButton(

@@ -42,6 +42,7 @@ import com.cereal.client.presentation.authenticate.components.AuthTextField
 import com.cereal.client.presentation.model.AuthType
 import com.cereal.client.presentation.model.LoadState
 import com.cereal.client.presentation.theme.CerealTheme
+import com.cereal.client.presentation.theme.CerealTypography
 import com.cereal.client.presentation.view.CerealButton
 import com.cereal.client.presentation.view.CerealButtonSize
 import com.cereal.client.presentation.view.CerealButtonType
@@ -103,20 +104,14 @@ fun LoginFormContent(
             CerealText(
                 text = stringResource(Res.string.password).uppercase(),
                 style =
-                    MaterialTheme.typography.labelSmall.copy(
-                        color = CerealTheme.colorScheme.contentTertiary,
-                        fontSize = 12.sp,
-                        fontWeight = FontWeight.Bold,
-                        letterSpacing = 1.5.sp,
-                    ),
+                    CerealTypography.sectionLabel.copy(color = CerealTheme.colorScheme.contentTertiary),
             )
             CerealText(
                 text = stringResource(Res.string.forgot_password),
                 modifier = Modifier.clickable(role = Role.Button) { onForgotPasswordClick() }.pointerHoverIcon(PointerIcon.Hand),
                 style =
-                    MaterialTheme.typography.labelSmall.copy(
+                    MaterialTheme.typography.labelMedium.copy(
                         color = MaterialTheme.colorScheme.primary,
-                        fontSize = 12.sp,
                         fontWeight = FontWeight.SemiBold,
                     ),
             )
@@ -274,11 +269,7 @@ fun LoginFormContent(
                     text = stringResource(Res.string.quick_access_seperator),
                     modifier = Modifier.padding(horizontal = 16.dp),
                     style =
-                        MaterialTheme.typography.labelSmall.copy(
-                            color = CerealTheme.colorScheme.contentTertiary,
-                            fontWeight = FontWeight.Bold,
-                            letterSpacing = 2.sp,
-                        ),
+                        CerealTypography.sectionLabel.copy(color = CerealTheme.colorScheme.contentTertiary),
                 )
                 HorizontalDivider(
                     modifier = Modifier.weight(1f),

@@ -498,5 +498,5 @@ private fun ProvideButtonTextStyle(
 private fun cerealButtonTextStyle(size: CerealButtonSize) =
     when (size) {
         CerealButtonSize.Small -> MaterialTheme.typography.labelLarge.copy(fontWeight = FontWeight.Medium)
-        CerealButtonSize.Large -> MaterialTheme.typography.labelLarge.copy(fontWeight = FontWeight.Medium, fontSize = 16.sp)
+        CerealButtonSize.Large -> MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Medium)
     }

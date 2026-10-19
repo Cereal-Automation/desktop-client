@@ -282,12 +282,7 @@ fun AuthTextField(
                 text = label.uppercase(),
                 modifier = Modifier.padding(horizontal = 4.dp),
                 style =
-                    MaterialTheme.typography.labelSmall.copy(
-                        color = CerealTheme.colorScheme.contentTertiary,
-                        fontSize = 12.sp,
-                        fontWeight = FontWeight.Bold,
-                        letterSpacing = 1.5.sp,
-                    ),
+                    CerealTypography.sectionLabel.copy(color = CerealTheme.colorScheme.contentTertiary),
             )
             Spacer(modifier = Modifier.height(8.dp))
         }
@@ -298,7 +293,6 @@ fun AuthTextField(
             textStyle =
                 MaterialTheme.typography.bodyLarge.copy(
                     color = MaterialTheme.colorScheme.onBackground,
-                    fontSize = 16.sp,
                 ),
             cursorBrush = SolidColor(MaterialTheme.colorScheme.primary),
             visualTransformation = if (isPassword) PasswordVisualTransformation() else VisualTransformation.None,
@@ -332,7 +326,6 @@ fun AuthTextField(
                                 style =
                                     MaterialTheme.typography.bodyLarge.copy(
                                         color = CerealTheme.colorScheme.contentSubtle,
-                                        fontSize = 16.sp,
                                     ),
                             )
                         }

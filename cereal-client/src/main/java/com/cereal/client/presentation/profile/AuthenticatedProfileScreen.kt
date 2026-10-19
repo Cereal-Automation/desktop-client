@@ -93,7 +93,7 @@ fun AuthenticatedProfileScreen(
                                         )
                                     }.padding(20.dp),
                             text = initials,
-                            style = MaterialTheme.typography.titleLarge.copy(fontSize = 20.sp),
+                            style = MaterialTheme.typography.titleLarge,
                             color = MaterialTheme.colorScheme.onPrimary,
                         )
 
@@ -106,8 +106,6 @@ fun AuthenticatedProfileScreen(
                                     .orEmpty(),
                             style =
                                 MaterialTheme.typography.titleLarge.copy(
-                                    fontWeight = FontWeight.Bold,
-                                    fontSize = 20.sp,
                                     color = MaterialTheme.colorScheme.onSurface,
                                 ),
                         )

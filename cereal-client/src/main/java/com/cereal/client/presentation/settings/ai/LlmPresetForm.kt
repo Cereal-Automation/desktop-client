@@ -83,7 +83,7 @@ internal const val AI_API_KEY_TAG = "ai_api_key"
 internal const val AI_MODEL_TAG = "ai_model"
 internal const val AI_MODEL_OPEN_TAG = "ai_model_open"
 
-private val smallText @Composable get() = MaterialTheme.typography.bodySmall.copy(fontSize = 14.sp, lineHeight = 20.sp)
+private val smallText @Composable get() = MaterialTheme.typography.bodyMedium.copy(lineHeight = 20.sp)
 
 /**
  * The preset tiles plus the chosen preset's connection fields, free-tier caveat and privacy line. The

@@ -48,6 +48,7 @@ import com.cereal.client.presentation.settings.components.DiscordWebhookUrlField
 import com.cereal.client.presentation.settings.components.EmailFields
 import com.cereal.client.presentation.settings.components.TelegramFields
 import com.cereal.client.presentation.theme.CerealTheme
+import com.cereal.client.presentation.theme.CerealTypography
 import com.cereal.client.presentation.view.CerealText
 import com.cereal.client.presentation.view.CerealTextButton
 import com.cereal.client.presentation.view.ConfigurationPanel
@@ -181,9 +182,7 @@ fun ApplicationSettingsScreen(
                         CerealText(
                             text = applicationConfig.name,
                             style =
-                                MaterialTheme.typography.titleLarge.copy(
-                                    fontWeight = FontWeight.Bold,
-                                    fontSize = 28.sp, // 22px × 1.25
+                                MaterialTheme.typography.headlineMedium.copy(
                                     letterSpacing = (-0.25).sp,
                                     color = MaterialTheme.colorScheme.onSurface,
                                 ),
@@ -191,11 +190,8 @@ fun ApplicationSettingsScreen(
                         CerealText(
                             text = stringResource(Res.string.version, applicationConfig.versionName).uppercase(),
                             style =
-                                MaterialTheme.typography.labelSmall.copy(
-                                    fontSize = 13.sp, // 10.5px × 1.25
-                                    letterSpacing = 2.4.sp,
+                                CerealTypography.sectionLabel.copy(
                                     color = CerealTheme.colorScheme.contentSubtle,
-                                    fontWeight = FontWeight.Bold,
                                 ),
                             modifier = Modifier.padding(top = 3.dp), // 2 × 1.25
                         )
@@ -415,10 +411,7 @@ fun ApplicationSettingsScreen(
                         CerealText(
                             text = stringResource(Res.string.settings_footer_tagline),
                             style =
-                                MaterialTheme.typography.labelSmall.copy(
-                                    fontSize = 13.sp, // 10px × 1.25
-                                    letterSpacing = 2.5.sp,
-                                    fontWeight = FontWeight.Bold,
+                                CerealTypography.sectionLabel.copy(
                                     color = CerealTheme.colorScheme.contentTertiary,
                                 ),
                             modifier = Modifier.alpha(0.5f),

@@ -46,7 +46,7 @@ fun AiSettingsSection(vm: AiSettingsViewModel = rememberAiSettingsViewModel()) {
                 text = status.text(),
                 modifier = Modifier.weight(1f),
                 color = if (status is ConnectionStatus.Failed) MaterialTheme.colorScheme.error else CerealTheme.colorScheme.contentTertiary,
-                style = MaterialTheme.typography.bodySmall.copy(fontSize = 14.sp, lineHeight = 20.sp),
+                style = MaterialTheme.typography.bodyMedium.copy(lineHeight = 20.sp),
             )
             if (hasPreset) {
                 SettingsSmallButton(text = stringResource(Res.string.ai_remove), onClick = vm::remove, variant = SettingsButtonVariant.Ghost)

@@ -129,7 +129,6 @@ fun PaneTableHeader(
                 text = column.title.uppercase(),
                 style =
                     CerealTypography.sectionLabel.copy(
-                        fontSize = 11.sp,
                         letterSpacing = TextUnit(0.1f, TextUnitType.Em),
                     ),
                 color = CerealTheme.colorScheme.contentSubtle,
@@ -347,7 +346,6 @@ fun PaneMetaCell(
             text = label.uppercase(),
             style =
                 CerealTypography.sectionLabel.copy(
-                    fontSize = 10.sp,
                     letterSpacing = TextUnit(0.1f, TextUnitType.Em),
                 ),
             color = CerealTheme.colorScheme.contentSubtle,
@@ -355,17 +353,14 @@ fun PaneMetaCell(
         if (emphasis) {
             CerealText(
                 text = value,
-                style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold, fontSize = 18.sp),
+                style = MaterialTheme.typography.titleLarge,
                 color = valueColor,
             )
         } else {
             CerealText(
                 text = value,
                 style =
-                    MaterialTheme.typography.bodyMedium.copy(
-                        fontWeight = FontWeight.Medium,
-                        fontSize = 12.5.sp,
-                    ),
+                    MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.Medium),
                 color = CerealTheme.colorScheme.contentSecondary,
             )
         }
@@ -414,8 +409,6 @@ fun SchemaStrip(
                 text = label.uppercase(),
                 style =
                     CerealTypography.sectionLabel.copy(
-                        fontSize = 10.sp,
-                        fontWeight = FontWeight.Bold,
                         letterSpacing = TextUnit(0.1f, TextUnitType.Em),
                     ),
                 color = CerealTheme.colorScheme.contentSubtle,
@@ -458,10 +451,7 @@ private fun SchemaPill(column: SchemaColumn) {
         CerealText(
             text = column.label,
             style =
-                MaterialTheme.typography.bodySmall.copy(
-                    fontWeight = FontWeight.Medium,
-                    fontSize = 11.5.sp,
-                ),
+                MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.Medium),
             color = MaterialTheme.colorScheme.onBackground,
         )
         CerealText(
@@ -469,7 +459,6 @@ private fun SchemaPill(column: SchemaColumn) {
             style =
                 MaterialTheme.typography.labelSmall.copy(
                     fontWeight = FontWeight.SemiBold,
-                    fontSize = 10.sp,
                     letterSpacing = TextUnit(0.04f, TextUnitType.Em),
                     fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace,
                 ),
