@@ -687,7 +687,7 @@ private fun ArtifactRow(
                 text = "${formatBytes(artifact.sizeBytes)} · ${TimestampFormatter.format(Date(artifact.createdAt.toEpochMilliseconds()))}",
                 color = CerealTheme.colorScheme.contentSubtle,
                 maxLines = 1,
-                style = MaterialTheme.typography.labelMedium.copy(fontFamily = FontFamily.Monospace),
+                style = MaterialTheme.typography.bodySmall.copy(fontFamily = FontFamily.Monospace),
             )
         }
         CerealIconButton(

@@ -161,7 +161,7 @@ private fun PasswordRequirement(
         CerealText(
             text = text,
             style =
-                CerealTheme.typography.labelMedium.copy(
+                CerealTheme.typography.bodySmall.copy(
                     color = if (isMet) MaterialTheme.colorScheme.onSurface.copy(alpha = 0.9f) else CerealTheme.colorScheme.contentTertiary,
                 ),
         )

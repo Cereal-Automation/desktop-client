@@ -472,7 +472,7 @@ private fun RowScope.ProxyGroupNameCell(
                     group.geoLabel?.takeIf { it.isNotBlank() }?.let { geo ->
                         CerealText(
                             text = geo,
-                            style = MaterialTheme.typography.labelMedium,
+                            style = MaterialTheme.typography.bodySmall,
                             color = CerealTheme.colorScheme.contentSubtle,
                             maxLines = 1,
                             overflow = TextOverflow.Ellipsis,

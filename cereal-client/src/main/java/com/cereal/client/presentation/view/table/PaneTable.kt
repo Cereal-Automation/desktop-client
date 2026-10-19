@@ -360,7 +360,7 @@ fun PaneMetaCell(
             CerealText(
                 text = value,
                 style =
-                    MaterialTheme.typography.labelMedium,
+                    MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.Medium),
                 color = CerealTheme.colorScheme.contentSecondary,
             )
         }
@@ -451,7 +451,7 @@ private fun SchemaPill(column: SchemaColumn) {
         CerealText(
             text = column.label,
             style =
-                MaterialTheme.typography.labelMedium,
+                MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.Medium),
             color = MaterialTheme.colorScheme.onBackground,
         )
         CerealText(
