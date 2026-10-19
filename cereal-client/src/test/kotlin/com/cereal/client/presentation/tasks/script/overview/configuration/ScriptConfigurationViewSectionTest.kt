@@ -71,9 +71,9 @@ class ScriptConfigurationViewSectionTest {
         runScreenTest {
             setScreenContent { ScriptConfigurationView(viewModel()) }
 
-            onNodeWithText("Show Advanced settings").performClick()
+            onNodeWithText("SHOW ADVANCED SETTINGS").performClick()
 
-            onNodeWithText("Hide Advanced settings").assertIsDisplayed()
+            onNodeWithText("HIDE ADVANCED SETTINGS").assertIsDisplayed()
             onAllNodesWithText("Retries").onFirst().assertIsDisplayed()
         }
 }

@@ -56,6 +56,7 @@ class ScriptConfigurationViewModel(
     val errorAction = errorResolver.errorAction
     val fileImportConfig = mutableStateOf<FileImportConfig?>(null)
     val listReplaceConfirmation = mutableStateOf<ListReplaceConfirmation?>(null)
+    val scriptName: String = scriptPackage.manifest.name
     val scriptInstructions: String? = scriptPackage.manifest.instructions
     val existingInstances: MutableState<List<ScriptPackageInstance>> = mutableStateOf(emptyList())
 

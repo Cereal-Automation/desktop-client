@@ -9,6 +9,8 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.onFocusChanged
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.VisualTransformation
 import com.cereal.client.presentation.view.CerealText
@@ -27,10 +29,13 @@ fun TextField(
     visualTransformation: VisualTransformation = VisualTransformation.None,
     trailingIcon: @Composable (() -> Unit)? = null,
     onImeAction: () -> Unit = {},
+    // False when the caller shows [title] above the box itself: the box then carries it only as its
+    // accessible name, so screen readers still announce what the input is for.
+    labelVisible: Boolean = true,
 ) {
     // Material3 hides `placeholder` behind an unfocused floating label, so a labeled field shows its hint
     // under the box while it's empty instead; an unlabeled field keeps it inside as the placeholder.
-    val hasLabel = title.isNotBlank()
+    val hasLabel = labelVisible && title.isNotBlank()
     val hint = hintText.takeIf { it.isNotBlank() }
     FormField(state.error) {
         Column(modifier = modifier.fillMaxWidth()) {
@@ -49,7 +54,7 @@ fun TextField(
                 // has already named the field above the input (a single-field list row) gets a bare
                 // box instead of a floating label slot holding nothing.
                 label =
-                    title.takeIf { it.isNotBlank() }?.let {
+                    title.takeIf { hasLabel }?.let {
                         {
                             CerealText(
                                 text = it,
@@ -60,6 +65,7 @@ fun TextField(
                 modifier =
                     Modifier
                         .fillMaxWidth()
+                        .semantics { if (!labelVisible) contentDescription = title }
                         .onFocusChanged { focusState ->
                             state.onFocusChange(focusState.isFocused)
                         },

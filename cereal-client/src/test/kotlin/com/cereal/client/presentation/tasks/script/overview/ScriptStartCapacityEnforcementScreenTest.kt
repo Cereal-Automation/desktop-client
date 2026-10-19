@@ -2,10 +2,10 @@ package com.cereal.client.presentation.tasks.script.overview
 
 import androidx.compose.ui.test.ComposeUiTest
 import androidx.compose.ui.test.ExperimentalTestApi
+import androidx.compose.ui.test.hasContentDescription
 import androidx.compose.ui.test.hasSetTextAction
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.onAllNodesWithText
-import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.v2.runDesktopComposeUiTest
@@ -83,12 +83,12 @@ class ScriptStartCapacityEnforcementScreenTest {
                 waitForText(DATASET_FIELD_LABEL)
                 // Open the dataset dropdown (the editable field, not the section title of the same name)
                 // and pick the over-limit (150-record) group.
-                onNode(hasText(DATASET_FIELD_LABEL) and hasSetTextAction()).performClick()
+                onNode(hasContentDescription(DATASET_FIELD_LABEL) and hasSetTextAction()).performClick()
                 waitForText(DATASET_NAME)
                 onNodeWithText(DATASET_NAME).performClick()
 
                 // Start the run.
-                onNodeWithContentDescription("Start task").performClick()
+                onNodeWithText("Start task").performClick()
                 // No notification channels are configured in the in-memory graph, so accept that warning first.
                 waitForText("Continue Anyway")
                 onNodeWithText("Continue Anyway").performClick()

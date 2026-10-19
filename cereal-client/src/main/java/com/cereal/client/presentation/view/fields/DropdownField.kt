@@ -21,6 +21,8 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import com.cereal.client.presentation.view.CerealIconButton
 import com.cereal.client.presentation.view.CerealText
@@ -35,6 +37,8 @@ fun <T : Any> DropdownTextField(
     state: DropDownFieldState<T>,
     enabled: Boolean = true,
     modifier: Modifier = Modifier,
+    // See [TextField]: false keeps [title] as the accessible name only.
+    labelVisible: Boolean = true,
 ) {
     val isOpen = remember { mutableStateOf(false) }
     val openCloseOfDropDownList: (Boolean) -> Unit = {
@@ -55,7 +59,7 @@ fun <T : Any> DropdownTextField(
                     singleLine = true,
                     // A blank title renders no label at all — see [TextField] for why.
                     label =
-                        title.takeIf { it.isNotBlank() }?.let {
+                        title.takeIf { labelVisible && it.isNotBlank() }?.let {
                             {
                                 CerealText(
                                     text = it,
@@ -76,7 +80,7 @@ fun <T : Any> DropdownTextField(
                         } else {
                             null
                         },
-                    modifier = Modifier.fillMaxWidth(),
+                    modifier = Modifier.fillMaxWidth().semantics { if (!labelVisible) contentDescription = title },
                     textStyle = MaterialTheme.typography.bodyMedium,
                     isError = state.showErrors(),
                 )

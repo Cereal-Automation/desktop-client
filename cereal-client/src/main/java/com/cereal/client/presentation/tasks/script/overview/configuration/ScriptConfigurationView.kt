@@ -1,7 +1,9 @@
 package com.cereal.client.presentation.tasks.script.overview.configuration
 
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -9,6 +11,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
@@ -18,6 +21,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.KeyboardArrowUp
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
@@ -27,6 +31,8 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.onFocusChanged
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.cereal.client.domain.model.script.ScriptPackageInstance
 import com.cereal.client.domain.model.script.configuration.ConfigSection
@@ -37,15 +43,15 @@ import com.cereal.client.presentation.error.errorView
 import com.cereal.client.presentation.tasks.dialog.ImportFromFileDialog
 import com.cereal.client.presentation.tasks.script.overview.configuration.model.ConfigurationItemsForm
 import com.cereal.client.presentation.theme.CerealTheme
-import com.cereal.client.presentation.view.Body2Text
 import com.cereal.client.presentation.view.CaptionText
 import com.cereal.client.presentation.view.CerealButton
 import com.cereal.client.presentation.view.CerealCard
 import com.cereal.client.presentation.view.CerealIconButton
+import com.cereal.client.presentation.view.CerealText
 import com.cereal.client.presentation.view.ClickableUrlText
 import com.cereal.client.presentation.view.ConfirmationDialog
 import com.cereal.client.presentation.view.InfoBox
-import com.cereal.client.presentation.view.SettingsItem
+import com.cereal.client.presentation.view.SectionLabel
 import com.cereal.client.presentation.view.fields.DropdownTextField
 import com.cereal.client.presentation.view.fields.FileField
 import com.cereal.client.presentation.view.fields.SecretTextField
@@ -100,20 +106,19 @@ fun ScriptConfigurationView(viewModel: ScriptConfigurationViewModel) {
                 .withZone(ZoneId.systemDefault())
         }
 
-    // More padding at the bottom to prevent overlap with the floating action button.
     Column(
         modifier =
             Modifier
                 .fillMaxSize()
                 .verticalScroll(scrollState)
-                .padding(start = 16.dp, end = 16.dp, top = 16.dp, bottom = 48.dp),
+                .padding(25.dp), // 20px × 1.25
+        verticalArrangement = Arrangement.spacedBy(20.dp), // 16px × 1.25
     ) {
         // Display instructions if present
         viewModel.scriptInstructions?.let { instructions ->
             InfoBox(
                 text = instructions,
             )
-            Spacer(modifier = Modifier.height(16.dp))
         }
 
         // Copy from existing script instance dropdown
@@ -152,13 +157,12 @@ fun ScriptConfigurationView(viewModel: ScriptConfigurationViewModel) {
                         initialSelectedValue = initialSelectedOption,
                     )
                 }
-            SettingsItem(
+            ConfigField(
                 title = stringResource(Res.string.copy_from_existing_script),
                 description = stringResource(Res.string.copy_from_existing_script_desc),
             ) {
                 DropdownTextField(stringResource(Res.string.select_script), copyFromState)
             }
-            Spacer(modifier = Modifier.height(16.dp))
         }
 
         val scriptConfigurationForm = viewModel.scriptConfigurationForm.value
@@ -175,24 +179,24 @@ fun ScriptConfigurationView(viewModel: ScriptConfigurationViewModel) {
             if (section == null || viewModel.isSectionOpen(section)) {
                 fields.forEach { (t, u) ->
                     if (u.isVisible.value) {
-                        val nameSuffix = if (u.isRequired.value) "*" else ""
-                        SettingsItem(
-                            title = t.definition.name + nameSuffix,
+                        ConfigField(
+                            title = t.definition.name,
                             description = t.definition.description,
+                            isRequired = u.isRequired.value,
                         ) {
                             FormFieldContent(t, u)
                         }
-                        Spacer(modifier = Modifier.height(8.dp))
                     }
                 }
             }
         }
         if (scriptConfigurationForm != null && viewModel.showConcurrentTasks.value) {
-            SettingsItem(
-                title = "# of concurrent tasks*",
+            ConfigField(
+                title = "# of concurrent tasks",
                 description = "The number of tasks to run concurrently for this script (Max: ${ConfigurationItemsForm.MAX_CONCURRENT_TASKS}).",
+                isRequired = true,
             ) {
-                TextField("# of concurrent tasks", scriptConfigurationForm.numberOfConcurrentTasks)
+                TextField("# of concurrent tasks", scriptConfigurationForm.numberOfConcurrentTasks, labelVisible = false)
             }
         }
 
@@ -200,7 +204,6 @@ fun ScriptConfigurationView(viewModel: ScriptConfigurationViewModel) {
         NotificationOverridesSection(viewModel.notificationOverridesForm)
 
         if (viewModel.showIndicatesRequiredFieldsHint.value) {
-            Spacer(modifier = Modifier.height(24.dp))
             CaptionText(
                 "* indicates required field",
                 color = com.cereal.client.presentation.theme.CerealTheme.colorScheme.contentTertiary,
@@ -234,6 +237,38 @@ fun ScriptConfigurationView(viewModel: ScriptConfigurationViewModel) {
     }
 }
 
+private val SectionRuleColor = Color(0xFF232323)
+
+/** A configuration field stacked as label, control, then hint — the label names the control, so it carries none itself. */
+@Composable
+private fun ConfigField(
+    title: String,
+    description: String?,
+    isRequired: Boolean = false,
+    content: @Composable () -> Unit,
+) {
+    Column(modifier = Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+            CerealText(
+                text = title,
+                style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Bold),
+                color = CerealTheme.colorScheme.contentSecondary,
+            )
+            if (isRequired) {
+                CerealText(
+                    text = "*",
+                    style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Bold),
+                    color = MaterialTheme.colorScheme.primary,
+                )
+            }
+        }
+        content()
+        if (!description.isNullOrBlank()) {
+            ClickableUrlText(description, color = CerealTheme.colorScheme.contentSubtle)
+        }
+    }
+}
+
 @Composable
 private fun ConfigSectionHeader(
     section: ConfigSection,
@@ -241,28 +276,34 @@ private fun ConfigSectionHeader(
     errorCount: Int,
     onToggle: () -> Unit,
 ) {
-    val rowModifier = Modifier.fillMaxWidth().padding(top = 16.dp, bottom = 8.dp)
+    val rowModifier = Modifier.fillMaxWidth().padding(top = 8.dp)
     Row(
         modifier = if (section.collapsed) rowModifier.clickable(onClick = onToggle) else rowModifier,
         verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(12.dp), // 10px × 1.25
     ) {
+        val label =
+            if (section.collapsed) {
+                stringResource(if (isOpen) Res.string.hide_section_settings else Res.string.show_section_settings, section.name)
+            } else {
+                section.name
+            }
         if (section.collapsed) {
             Icon(
                 imageVector = if (isOpen) Icons.Default.KeyboardArrowUp else Icons.Default.KeyboardArrowDown,
                 contentDescription = null,
+                tint = CerealTheme.colorScheme.contentSubtle,
+                modifier = Modifier.size(18.dp),
             )
-            Spacer(modifier = Modifier.width(4.dp))
-            Body2Text(stringResource(if (isOpen) Res.string.hide_section_settings else Res.string.show_section_settings, section.name))
-        } else {
-            Body2Text(section.name)
         }
+        SectionLabel(text = label.uppercase(), contentPadding = PaddingValues())
         if (errorCount > 0) {
-            Spacer(modifier = Modifier.width(8.dp))
             CaptionText(
                 pluralStringResource(Res.plurals.section_error_count, errorCount, errorCount),
                 color = MaterialTheme.colorScheme.error,
             )
         }
+        HorizontalDivider(modifier = Modifier.weight(1f), color = SectionRuleColor)
     }
 }
 
@@ -307,7 +348,7 @@ private fun Text(
     configurationItem: ConfigurationItem,
     state: TextFieldState<*>,
 ) {
-    TextField(configurationItem.definition.name, state)
+    TextField(configurationItem.definition.name, state, labelVisible = false)
 }
 
 @Composable
@@ -315,7 +356,7 @@ private fun SecretText(
     configurationItem: ConfigurationItem,
     state: SecretTextFieldState,
 ) {
-    SecretTextField(configurationItem.definition.name, state)
+    SecretTextField(configurationItem.definition.name, state, labelVisible = false)
 }
 
 @Composable
@@ -330,7 +371,7 @@ private fun Dropdown(
 ) {
     if (state.showImportButton()) {
         Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-            DropdownTextField(configurationItem.definition.name, state, modifier = Modifier.weight(1f))
+            DropdownTextField(configurationItem.definition.name, state, modifier = Modifier.weight(1f), labelVisible = false)
             Spacer(modifier = Modifier.width(16.dp))
             Column {
                 CerealButton(
@@ -342,7 +383,7 @@ private fun Dropdown(
             }
         }
     } else {
-        DropdownTextField(configurationItem.definition.name, state)
+        DropdownTextField(configurationItem.definition.name, state, labelVisible = false)
     }
 }
 
