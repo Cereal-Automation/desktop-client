@@ -16,6 +16,7 @@ import com.cereal.client.domain.model.llm.LlmProviderConfig
 import com.cereal.client.domain.model.llm.LlmProviderType
 import com.cereal.client.domain.model.marketplace.MarketplaceScript
 import com.cereal.client.domain.model.script.ScriptPackage
+import com.cereal.client.domain.model.script.configuration.ConfigItemType
 import com.cereal.client.domain.model.script.configuration.ConfigValue
 import com.cereal.client.domain.model.task.ScriptPackageGroup
 import com.cereal.client.infrastructure.data.repository.inmemory.InMemoryApplicationRepository
@@ -33,6 +34,7 @@ import fixtures.FakeRunMode
 import fixtures.FakeScriptInstallProvider
 import fixtures.GoalRunWorld
 import fixtures.agentConfigurationItems
+import fixtures.anAgentItem
 import fixtures.anAgentListing
 import fixtures.anAgentPackage
 import fixtures.anAgentRequiringNewerClient
@@ -322,6 +324,23 @@ class HomeViewModelTest {
             advanceUntilIdle()
 
             coVerify(exactly = 1) { world.taskManager.startTasksToConcurrencyLimit(any()) }
+        }
+
+    @Test
+    fun `an invalid item the composer doesn't show makes Start open the generic form instead of failing`() =
+        runTest {
+            world.notificationSettings.setDiscordWebhookEnabled(true)
+            val agent = anAgentPackage(agentConfigurationItems() + anAgentItem("apiKey", ConfigItemType.StringConfigItem, 10))
+            val vm = homeWith(agent)
+            vm.fillIn()
+
+            vm.onStart()
+            advanceUntilIdle()
+
+            val dialog = assertInstanceOf(HomeDialog.MoreOptions::class.java, vm.dialog.value)
+            assertTrue(dialog.startOnCreate)
+            assertTrue(vm.fieldErrors.value.isEmpty())
+            assertTrue(world.scriptInstances.getScriptPackageInstances().isEmpty())
         }
 
     @Test

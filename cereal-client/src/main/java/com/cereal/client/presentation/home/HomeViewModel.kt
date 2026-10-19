@@ -256,7 +256,14 @@ class HomeViewModel(
                         field to (message?.let { UiText.Raw(it) } ?: UiText.Resource(Res.string.home_field_required))
                     }
                 }.toMap()
-        return fieldErrors.value.isEmpty()
+        if (fieldErrors.value.isNotEmpty()) return false
+        // An item the composer doesn't show is invalid (e.g. an agent build that still wants its own API key):
+        // the generic form shows every field, so let the user fix it there.
+        if (invalid.isNotEmpty()) {
+            openMoreOptions(agent, startOnCreate = true)
+            return false
+        }
+        return true
     }
 
     private fun input() =
