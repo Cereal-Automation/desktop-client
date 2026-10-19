@@ -1,32 +1,42 @@
 package com.cereal.client.presentation.tasks.script.overview
 
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.Close
 import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.BottomAppBar
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Scaffold
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.window.Popup
+import androidx.compose.ui.window.PopupProperties
 import com.cereal.client.application.ApplicationConfig
 import com.cereal.client.domain.model.script.ScriptPackageInstance
 import com.cereal.client.domain.model.task.ScriptPackageGroup
@@ -34,12 +44,14 @@ import com.cereal.client.presentation.error.errorView
 import com.cereal.client.presentation.marketplace.scriptCapacityText
 import com.cereal.client.presentation.model.LoadState
 import com.cereal.client.presentation.tasks.script.overview.configuration.ScriptConfigurationView
+import com.cereal.client.presentation.theme.CerealTheme
+import com.cereal.client.presentation.view.CerealButton
+import com.cereal.client.presentation.view.CerealButtonType
 import com.cereal.client.presentation.view.CerealCircularProgressIndicator
-import com.cereal.client.presentation.view.CerealFloatingActionButton
+import com.cereal.client.presentation.view.CerealIconButton
 import com.cereal.client.presentation.view.CerealText
 import com.cereal.client.presentation.view.CerealTextButton
 import com.cereal.client.presentation.view.ConfirmationDialog
-import com.cereal.client.presentation.view.Dialog
 import com.cereal.client.presentation.view.VerticalDivider
 import com.cereal.client.presentation.view.button.SyncIconButton
 import com.cereal.client.presentation.view.group.GroupedListView
@@ -48,6 +60,7 @@ import com.cereal_automation.cereal_client.generated.resources.ai_warning_contin
 import com.cereal_automation.cereal_client.generated.resources.ai_warning_message
 import com.cereal_automation.cereal_client.generated.resources.ai_warning_title
 import com.cereal_automation.cereal_client.generated.resources.cancel
+import com.cereal_automation.cereal_client.generated.resources.close
 import com.cereal_automation.cereal_client.generated.resources.ic_play
 import com.cereal_automation.cereal_client.generated.resources.installed_scripts
 import com.cereal_automation.cereal_client.generated.resources.no_installed_scripts
@@ -92,104 +105,77 @@ fun ScriptSelectionDialog(
         }
     }
 
-    Dialog(
-        title = stringResource(Res.string.installed_scripts),
-        modifier =
-            Modifier
-                .width(1200.dp)
-                .height(650.dp)
-                .padding(0.dp),
+    Popup(
+        alignment = Alignment.Center,
+        properties = PopupProperties(focusable = true, dismissOnClickOutside = false),
         onDismissRequest = onDismissRequest,
     ) {
-        val fab = @Composable {
-            val updateRequired = viewModel.selectedScriptUpdateRequired.value
-            CerealFloatingActionButton(
-                onClick = {
-                    if (viewModel.configurationViewState.value !is ScriptSelectionState.Config.Selected) {
-                        return@CerealFloatingActionButton
-                    }
-                    if (updateRequired) {
-                        return@CerealFloatingActionButton
-                    }
-                    if (viewModel.validate()) {
-                        viewModel.launchScript()
-                    }
-                },
-                containerColor =
-                    if (updateRequired) {
-                        MaterialTheme.colorScheme.surfaceVariant
-                    } else {
-                        MaterialTheme.colorScheme.primary
-                    },
+        Box(
+            modifier =
+                Modifier
+                    .fillMaxSize()
+                    .background(MaterialTheme.colorScheme.scrim.copy(alpha = 0.62f))
+                    .padding(40.dp), // 32px × 1.25
+            contentAlignment = Alignment.Center,
+        ) {
+            Row(
+                modifier =
+                    Modifier
+                        .widthIn(max = 1175.dp) // 940px × 1.25
+                        .heightIn(max = 800.dp) // 640px × 1.25
+                        .fillMaxSize()
+                        .clip(DialogShape)
+                        .border(1.dp, CerealTheme.colorScheme.borderDark, DialogShape)
+                        .background(CerealTheme.colorScheme.cardDark),
             ) {
-                if (viewModel.scriptLaunchLoadState.value is LoadState.Loading) {
-                    CerealCircularProgressIndicator(
-                        modifier = Modifier.size(24.dp),
-                        color = MaterialTheme.colorScheme.onPrimary,
-                        strokeWidth = 2.dp,
-                    )
-                } else {
-                    Icon(
-                        painterResource(Res.drawable.ic_play),
-                        contentDescription = stringResource(Res.string.start_task),
-                    )
-                }
-            }
-        }
-
-        Scaffold(
-            bottomBar = {
-                BottomAppBar(
-                    actions = {
-                        Row(Modifier.weight(0.35f)) {
-                            SyncIconButton(viewModel.scriptRefreshState.value) {
-                                viewModel.refreshScriptList()
-                            }
-                        }
-                    },
-                    floatingActionButton = fab,
-                )
-            },
-        ) { innerPadding ->
-            val overviewViewState by remember { viewModel.overviewViewState }
-
-            Row(Modifier.fillMaxSize().padding(innerPadding)) {
-                when (val state = overviewViewState) {
+                when (val state = viewModel.overviewViewState.value) {
                     is ScriptSelectionState.Overview.Filled -> {
-                        Column(modifier = Modifier.weight(0.35f)) {
-                            GroupedListView(
-                                viewModel = state.viewModel,
-                            )
+                        ScriptRail(count = state.viewModel.state.value.size, viewModel = viewModel) {
+                            GroupedListView(viewModel = state.viewModel)
                         }
-                        VerticalDivider()
                     }
 
                     is ScriptSelectionState.Overview.Empty -> {
-                        Column(modifier = Modifier.weight(0.35f)) {
+                        ScriptRail(count = 0, viewModel = viewModel) {
                             NoScriptsAvailableView(onNavigateToMarketplace)
                         }
-                        VerticalDivider()
                     }
 
                     // Nothing to choose from, so the configuration takes the full width.
                     is ScriptSelectionState.Overview.Single -> {}
                 }
 
-                Column(Modifier.fillMaxHeight().weight(0.65f)) {
-                    when (val viewState = viewModel.configurationViewState.value) {
-                        is ScriptSelectionState.Config.None -> {
-                            NoItemSelectedView()
-                        }
-
-                        is ScriptSelectionState.Config.Selected -> {
-                            // Surface the entitled record cap before the run is configured/started;
-                            // scriptCapacityText returns null for scripts with no capacity concept.
-                            scriptCapacityText(viewModel.selectedScriptCapacity.value)?.let { capacityValue ->
-                                ScriptCapacityRow(value = capacityValue)
+                val configState = viewModel.configurationViewState.value
+                Column(Modifier.fillMaxHeight().weight(1f)) {
+                    ConfigHeader(
+                        title =
+                            (configState as? ScriptSelectionState.Config.Selected)?.scriptConfigurationViewModel?.scriptName
+                                ?: stringResource(Res.string.installed_scripts),
+                        onClose = onDismissRequest,
+                    )
+                    Column(Modifier.fillMaxWidth().weight(1f)) {
+                        when (configState) {
+                            is ScriptSelectionState.Config.None -> {
+                                NoItemSelectedView()
                             }
-                            ScriptConfigurationView(viewState.scriptConfigurationViewModel)
+
+                            is ScriptSelectionState.Config.Selected -> {
+                                ScriptConfigurationView(configState.scriptConfigurationViewModel)
+                            }
                         }
                     }
+                    ConfigFooter(
+                        // Surface the entitled record cap before the run is configured/started;
+                        // scriptCapacityText returns null for scripts with no capacity concept.
+                        capacity = scriptCapacityText(viewModel.selectedScriptCapacity.value),
+                        enabled = configState is ScriptSelectionState.Config.Selected && !viewModel.selectedScriptUpdateRequired.value,
+                        isLaunching = viewModel.scriptLaunchLoadState.value is LoadState.Loading,
+                        onStart = {
+                            if (viewModel.validate()) {
+                                viewModel.launchScript()
+                            }
+                        },
+                    )
                 }
             }
         }
@@ -257,26 +243,139 @@ private fun NoNotificationChannelsWarningDialog(viewModel: ScriptSelectionViewMo
     }
 }
 
+private val DialogShape = RoundedCornerShape(20.dp) // 16px × 1.25
+
 @Composable
-private fun ScriptCapacityRow(value: String) {
+private fun ScriptRail(
+    count: Int,
+    viewModel: ScriptSelectionViewModel,
+    list: @Composable () -> Unit,
+) {
+    Column(
+        modifier =
+            Modifier
+                .width(310.dp) // 248px × 1.25
+                .fillMaxHeight()
+                .background(CerealTheme.colorScheme.backgroundDark),
+    ) {
+        Row(
+            modifier = Modifier.padding(start = 20.dp, end = 20.dp, top = 22.dp, bottom = 10.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(10.dp),
+        ) {
+            CerealText(
+                text = stringResource(Res.string.installed_scripts),
+                style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
+            )
+            if (count > 0) {
+                CerealText(
+                    text = count.toString(),
+                    style = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.SemiBold),
+                    color = CerealTheme.colorScheme.contentSubtle,
+                )
+            }
+        }
+        Box(Modifier.fillMaxWidth().weight(1f)) {
+            list()
+        }
+        HorizontalDivider(color = DividerColor)
+        Row(modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp)) {
+            SyncIconButton(viewModel.scriptRefreshState.value) {
+                viewModel.refreshScriptList()
+            }
+        }
+    }
+    VerticalDivider(color = DividerColor)
+}
+
+@Composable
+private fun ConfigHeader(
+    title: String,
+    onClose: () -> Unit,
+) {
+    Row(
+        modifier = Modifier.fillMaxWidth().padding(start = 25.dp, end = 15.dp, top = 22.dp, bottom = 20.dp), // 20/18/16px × 1.25
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(18.dp),
+    ) {
+        Box(
+            modifier = Modifier.size(50.dp).background(MaterialTheme.colorScheme.primary, MaterialTheme.shapes.small), // 40px × 1.25
+            contentAlignment = Alignment.Center,
+        ) {
+            CerealText(
+                text = title.take(1).uppercase(),
+                style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.ExtraBold),
+                color = MaterialTheme.colorScheme.onPrimary,
+            )
+        }
+        CerealText(
+            text = title,
+            modifier = Modifier.weight(1f),
+            style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold),
+        )
+        CerealIconButton(onClick = onClose) {
+            Icon(Icons.Outlined.Close, contentDescription = stringResource(Res.string.close), tint = CerealTheme.colorScheme.contentTertiary)
+        }
+    }
+    HorizontalDivider(color = DividerColor)
+}
+
+@Composable
+private fun ConfigFooter(
+    capacity: String?,
+    enabled: Boolean,
+    isLaunching: Boolean,
+    onStart: () -> Unit,
+) {
+    HorizontalDivider(color = DividerColor)
     Row(
         modifier =
             Modifier
                 .fillMaxWidth()
-                .padding(start = 16.dp, end = 16.dp, top = 16.dp),
+                .background(CerealTheme.colorScheme.backgroundDark)
+                .padding(horizontal = 25.dp, vertical = 17.dp), // 20/14px × 1.25
+        verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(8.dp),
     ) {
-        CerealText(
-            text = stringResource(Res.string.script_capacity_label),
-            style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-        )
-        CerealText(
-            text = value,
-            style = MaterialTheme.typography.bodyMedium,
-        )
+        if (capacity != null) {
+            CerealText(
+                text = stringResource(Res.string.script_capacity_label),
+                style = MaterialTheme.typography.bodySmall,
+                color = CerealTheme.colorScheme.contentTertiary,
+            )
+            CerealText(
+                text = capacity,
+                style = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.Bold),
+                color = CerealTheme.colorScheme.contentSecondary,
+            )
+        }
+        Spacer(Modifier.weight(1f))
+        CerealButton(
+            onClick = onStart,
+            enabled = enabled && !isLaunching,
+            type = CerealButtonType.Primary,
+            contentPadding = ButtonDefaults.ButtonWithIconContentPadding,
+        ) {
+            if (isLaunching) {
+                CerealCircularProgressIndicator(
+                    modifier = Modifier.size(ButtonDefaults.IconSize),
+                    color = MaterialTheme.colorScheme.onPrimary,
+                    strokeWidth = 2.dp,
+                )
+            } else {
+                Icon(
+                    painterResource(Res.drawable.ic_play),
+                    contentDescription = null,
+                    modifier = Modifier.size(ButtonDefaults.IconSize),
+                )
+            }
+            Spacer(Modifier.width(ButtonDefaults.IconSpacing))
+            CerealText(stringResource(Res.string.start_task))
+        }
     }
 }
+
+private val DividerColor = Color(0xFF232323)
 
 @Composable
 private fun NoItemSelectedView() {

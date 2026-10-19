@@ -2,7 +2,6 @@ package com.cereal.client.presentation.tasks.script.overview
 
 import androidx.compose.ui.test.ExperimentalTestApi
 import androidx.compose.ui.test.onAllNodesWithText
-import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import com.cereal.client.domain.model.script.ScriptFeature
@@ -41,7 +40,7 @@ class NoAiProviderWarningScreenTest {
                 onAllNodesWithText("Notification Overrides").fetchSemanticsNodes().isNotEmpty()
             }
 
-            onNodeWithContentDescription("Start task").performClick()
+            onNodeWithText("Start task").performClick()
 
             waitUntil(timeoutMillis = 5_000) {
                 onAllNodesWithText("AI provider not set up").fetchSemanticsNodes().isNotEmpty()

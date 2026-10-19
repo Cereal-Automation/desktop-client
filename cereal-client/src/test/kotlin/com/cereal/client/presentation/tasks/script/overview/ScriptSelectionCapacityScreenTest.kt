@@ -65,8 +65,10 @@ class ScriptSelectionCapacityScreenTest {
     fun `hides the script list when only one script is installed`() =
         runCapacityScreenTest(ScriptCapacity.None) {
             waitForText("Notification Overrides")
-            // "Test" is the installed script's name; it would only render as a list row.
-            onNodeWithText("Test").assertDoesNotExist()
+            // The rail (titled "Installed scripts") only renders when there is a list to choose from;
+            // with a script selected, the header shows that script's name instead.
+            onNodeWithText("Installed scripts").assertDoesNotExist()
+            onNodeWithText("Test").assertIsDisplayed()
         }
 
     /**

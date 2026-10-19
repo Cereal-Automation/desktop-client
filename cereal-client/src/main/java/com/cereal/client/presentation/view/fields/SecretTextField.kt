@@ -36,6 +36,7 @@ fun SecretTextField(
     title: String,
     state: SecretTextFieldState,
     modifier: Modifier = Modifier,
+    labelVisible: Boolean = true,
 ) {
     val isRevealed by state.isRevealed
 
@@ -43,6 +44,7 @@ fun SecretTextField(
         title = title,
         state = state,
         modifier = modifier,
+        labelVisible = labelVisible,
         visualTransformation =
             if (isRevealed) {
                 VisualTransformation.None
