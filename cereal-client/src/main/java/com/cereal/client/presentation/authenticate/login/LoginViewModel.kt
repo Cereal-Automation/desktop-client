@@ -92,10 +92,17 @@ class LoginViewModel(
 
     fun onUsernameChanged(value: String) {
         _username.value = value
+        clearError()
     }
 
     fun onPasswordChanged(value: String) {
         _password.value = value
+        clearError()
+    }
+
+    /** Editing either field dismisses a failed sign-in's error. */
+    private fun clearError() {
+        if (_loadingState.value is LoadState.Error) _loadingState.value = LoadState.NotLoading()
     }
 
     /** Pre-fills the username field, e.g. after a successful forgot-password flow. */

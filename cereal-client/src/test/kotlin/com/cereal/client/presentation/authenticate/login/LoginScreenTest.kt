@@ -20,9 +20,6 @@ import kotlin.test.Test
  * Renders [LoginScreen] on the in-memory repository graph supplied by the harness. Resolves the real
  * [LoginViewModel] (a Koin `factory` that takes a coroutine scope) and exercises the email/password
  * fields, the submit button and the registration/forgot-password navigation links.
- *
- * The form labels are rendered upper-cased by the design system (`AuthTextField`), so the asserted
- * strings differ in case from the raw `Res.string` values.
  */
 @OptIn(ExperimentalTestApi::class, ExperimentalFoundationApi::class)
 class LoginScreenTest {
@@ -31,10 +28,18 @@ class LoginScreenTest {
         runScreenTest {
             setScreenContent { LoginScreenUnderTest() }
 
-            onNodeWithText("EMAIL ADDRESS").assertIsDisplayed()
-            onNodeWithText("PASSWORD").assertIsDisplayed()
+            onNodeWithText("Email").assertIsDisplayed()
+            onNodeWithText("Password").assertIsDisplayed()
             onNodeWithText("Sign In").assertIsDisplayed()
             onNodeWithText("Forgot password?").assertIsDisplayed()
+        }
+
+    @Test
+    fun rendersGuestOption() =
+        runScreenTest {
+            setScreenContent { LoginScreenUnderTest() }
+
+            onNodeWithText("Continue without an account").assertExists()
         }
 
     @Test

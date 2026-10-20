@@ -8,55 +8,59 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Warning
+import androidx.compose.material.icons.outlined.Info
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
-import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.input.pointer.PointerIcon
 import androidx.compose.ui.input.pointer.pointerHoverIcon
-import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.cereal.client.presentation.theme.CerealTheme
-import com.cereal.client.presentation.theme.CerealTypography
+import com.cereal.client.presentation.view.CerealCard
 import com.cereal.client.presentation.view.CerealText
+import com.cereal.client.presentation.view.InputBg
+import com.cereal.client.presentation.view.InputBorder
+import com.cereal.client.presentation.view.InputPlaceholder
 import com.cereal_automation.cereal_client.generated.resources.Res
 import com.cereal_automation.cereal_client.generated.resources.application
 import com.cereal_automation.cereal_client.generated.resources.introduction_slogan
 import com.cereal_automation.cereal_client.generated.resources.introduction_title
 import com.cereal_automation.cereal_client.generated.resources.marketplace
+import com.cereal_automation.cereal_client.generated.resources.password_hide
+import com.cereal_automation.cereal_client.generated.resources.password_show
 import com.cereal_automation.cereal_client.generated.resources.privacy
 import com.cereal_automation.cereal_client.generated.resources.status
 import com.cereal_automation.cereal_client.generated.resources.support
@@ -67,187 +71,107 @@ import org.koin.java.KoinJavaComponent.get
 
 /**
  * A reusable authentication layout component that provides the common structure
- * for login and registration screens.
+ * for login and registration screens: a centred column of logo + [title], the card holding
+ * [content], an optional [belowCard] slot, and the footer prompt; the site links sit pinned at the bottom.
  */
 @Composable
 fun AuthenticationLayout(
     footerLabel: String,
     footerAction: String,
     onFooterActionClick: () -> Unit,
+    title: String = stringResource(Res.string.introduction_title),
     authenticationViewModel: AuthenticationViewModel =
         run {
             val scope = rememberCoroutineScope()
             remember { get(AuthenticationViewModel::class.java, parameters = { parametersOf(scope) }) }
         },
-    content: @Composable () -> Unit,
+    belowCard: @Composable () -> Unit = {},
+    content: @Composable ColumnScope.() -> Unit,
 ) {
-    Column(
-        modifier =
-            Modifier
-                .fillMaxSize()
-                .padding(24.dp)
-                .verticalScroll(rememberScrollState()),
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.Center,
-    ) {
-        // Logo Section
-        AuthLogoSection()
-
-        // Card Content
-        AuthCardContainer {
-            content()
+    Column(modifier = Modifier.fillMaxSize()) {
+        BoxWithConstraints(modifier = Modifier.weight(1f).fillMaxWidth()) {
+            Column(
+                modifier =
+                    Modifier
+                        .fillMaxWidth()
+                        .verticalScroll(rememberScrollState())
+                        .heightIn(min = maxHeight)
+                        .padding(start = 24.dp, end = 24.dp, top = 40.dp, bottom = 24.dp),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.Center,
+            ) {
+                Column(
+                    modifier = Modifier.widthIn(max = 380.dp).fillMaxWidth(),
+                    verticalArrangement = Arrangement.spacedBy(28.dp),
+                ) {
+                    AuthLogoSection(title)
+                    CerealCard(modifier = Modifier.fillMaxWidth()) {
+                        Column(modifier = Modifier.padding(22.dp), content = content)
+                    }
+                    belowCard()
+                    AuthFooterPrompt(footerLabel, footerAction, onFooterActionClick)
+                }
+            }
         }
 
-        // Footer
-        AuthFooterSection(
-            footerLabel = footerLabel,
-            footerAction = footerAction,
-            onFooterActionClick = onFooterActionClick,
-            onMarketplaceClick = { authenticationViewModel.marketplace() },
-            onPrivacyClick = { authenticationViewModel.privacyPolicy() },
-            onSupportClick = { authenticationViewModel.support() },
-            onStatusClick = { authenticationViewModel.status() },
-        )
+        Row(
+            modifier = Modifier.align(Alignment.CenterHorizontally).padding(start = 24.dp, end = 24.dp, bottom = 22.dp),
+            horizontalArrangement = Arrangement.spacedBy(22.dp),
+        ) {
+            FooterLink(stringResource(Res.string.marketplace)) { authenticationViewModel.marketplace() }
+            FooterLink(stringResource(Res.string.privacy)) { authenticationViewModel.privacyPolicy() }
+            FooterLink(stringResource(Res.string.support)) { authenticationViewModel.support() }
+            FooterLink(stringResource(Res.string.status)) { authenticationViewModel.status() }
+        }
     }
 }
 
 @Composable
-private fun AuthLogoSection() {
+private fun AuthLogoSection(title: String) {
     Column(
+        modifier = Modifier.fillMaxWidth(),
         horizontalAlignment = Alignment.CenterHorizontally,
-        modifier = Modifier.padding(bottom = 40.dp),
+        verticalArrangement = Arrangement.spacedBy(6.dp),
     ) {
         Box(
             modifier =
                 Modifier
-                    .size(96.dp)
-                    .clip(RoundedCornerShape(24.dp))
-                    .background(
-                        Brush.linearGradient(
-                            colors =
-                                listOf(
-                                    MaterialTheme.colorScheme.surface,
-                                    MaterialTheme.colorScheme.background,
-                                ),
-                        ),
-                    ).border(1.dp, CerealTheme.colorScheme.border, RoundedCornerShape(24.dp))
-                    .padding(16.dp),
+                    .padding(bottom = 12.dp)
+                    .size(52.dp)
+                    .background(Color.White, MaterialTheme.shapes.large),
             contentAlignment = Alignment.Center,
         ) {
             Image(
                 painter = painterResource(Res.drawable.application),
                 contentDescription = null,
-                modifier = Modifier.fillMaxSize(),
-                contentScale = ContentScale.Fit,
+                modifier = Modifier.size(36.dp),
             )
         }
-
-        Spacer(modifier = Modifier.height(24.dp))
-
         CerealText(
-            text = stringResource(Res.string.introduction_title),
-            style = MaterialTheme.typography.headlineLarge,
+            text = title,
+            style = MaterialTheme.typography.headlineSmall.copy(fontWeight = FontWeight.Bold),
+            color = MaterialTheme.colorScheme.onSurface,
         )
-
-        Spacer(modifier = Modifier.height(8.dp))
-
         CerealText(
             text = stringResource(Res.string.introduction_slogan),
-            style = MaterialTheme.typography.titleMedium,
+            modifier = Modifier.widthIn(max = 330.dp),
+            style = MaterialTheme.typography.bodyMedium.copy(fontSize = 13.5.sp, lineHeight = 20.sp),
+            color = CerealTheme.colorScheme.contentTertiary,
             textAlign = TextAlign.Center,
         )
     }
 }
 
 @Composable
-private fun AuthCardContainer(
-    content: @Composable () -> Unit,
+private fun AuthFooterPrompt(
+    label: String,
+    action: String,
+    onActionClick: () -> Unit,
 ) {
-    Box(
-        modifier =
-            Modifier
-                .widthIn(max = 400.dp)
-                .fillMaxWidth()
-                .clip(RoundedCornerShape(32.dp))
-                .background(MaterialTheme.colorScheme.surface.copy(alpha = 0.8f))
-                .border(1.dp, CerealTheme.colorScheme.border, RoundedCornerShape(32.dp)),
-    ) {
-        // Subtle glow in the card
-        BoxWithConstraints(
-            modifier = Modifier.matchParentSize(),
-        ) {
-            val width = constraints.maxWidth.toFloat()
-            val height = constraints.maxHeight.toFloat()
-
-            Box(
-                modifier =
-                    Modifier
-                        .fillMaxSize()
-                        .background(
-                            Brush.linearGradient(
-                                colors =
-                                    listOf(
-                                        MaterialTheme.colorScheme.primary.copy(alpha = 0.15f),
-                                        Color.Transparent,
-                                    ),
-                                start = Offset(width, 0f),
-                                end = Offset(width / 2, height / 2),
-                            ),
-                        ),
-            )
-        }
-
-        Column(
-            modifier = Modifier.padding(horizontal = 32.dp, vertical = 40.dp),
-        ) {
-            content()
-        }
-    }
-}
-
-@Composable
-private fun AuthFooterSection(
-    footerLabel: String,
-    footerAction: String,
-    onFooterActionClick: () -> Unit,
-    onMarketplaceClick: () -> Unit,
-    onPrivacyClick: () -> Unit,
-    onSupportClick: () -> Unit,
-    onStatusClick: () -> Unit,
-) {
-    Column(
-        modifier = Modifier.padding(top = 32.dp),
-        horizontalAlignment = Alignment.CenterHorizontally,
-    ) {
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            CerealText(
-                text = footerLabel,
-                style =
-                    MaterialTheme.typography.bodyLarge.copy(
-                        color = CerealTheme.colorScheme.contentTertiary,
-                        fontWeight = FontWeight.Medium,
-                    ),
-            )
-            CerealText(
-                text = footerAction,
-                modifier = Modifier.clickable(role = Role.Button) { onFooterActionClick() }.pointerHoverIcon(PointerIcon.Hand),
-                style =
-                    MaterialTheme.typography.bodyLarge.copy(
-                        color = MaterialTheme.colorScheme.primary,
-                        fontWeight = FontWeight.Bold,
-                        textDecoration = TextDecoration.Underline,
-                    ),
-            )
-        }
-
-        Spacer(modifier = Modifier.height(24.dp))
-
-        Row(horizontalArrangement = Arrangement.spacedBy(32.dp)) {
-            FooterLink(stringResource(Res.string.marketplace), onMarketplaceClick)
-            FooterLink(stringResource(Res.string.privacy), onPrivacyClick)
-            FooterLink(stringResource(Res.string.support), onSupportClick)
-            FooterLink(stringResource(Res.string.status), onStatusClick)
-        }
+    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.Center) {
+        val style = MaterialTheme.typography.bodySmall.copy(fontSize = 13.sp)
+        CerealText(text = label, style = style, color = CerealTheme.colorScheme.contentTertiary)
+        AuthLink(text = action, onClick = onActionClick, style = style.copy(fontWeight = FontWeight.SemiBold))
     }
 }
 
@@ -257,13 +181,32 @@ private fun FooterLink(
     onClick: () -> Unit,
 ) {
     CerealText(
-        text = text.uppercase(),
+        text = text,
         modifier = Modifier.clickable(role = Role.Button) { onClick() }.pointerHoverIcon(PointerIcon.Hand),
-        style = CerealTypography.sectionLabel,
+        style = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.Medium),
         color = CerealTheme.colorScheme.contentSubtle,
     )
 }
 
+/** An inline text link in the link colour. */
+@Composable
+fun AuthLink(
+    text: String,
+    onClick: () -> Unit,
+    style: TextStyle = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.Medium),
+) {
+    CerealText(
+        text = text,
+        modifier = Modifier.clickable(role = Role.Button) { onClick() }.pointerHoverIcon(PointerIcon.Hand),
+        style = style,
+        color = CerealTheme.colorScheme.link,
+    )
+}
+
+/**
+ * The design's labelled filled input: a sentence-case [label] (with an optional trailing [labelAction]
+ * link), then a 38dp box with a leading [icon]. Password fields get a Show/Hide toggle once non-empty.
+ */
 @Composable
 fun AuthTextField(
     label: String,
@@ -273,63 +216,75 @@ fun AuthTextField(
     icon: ImageVector,
     modifier: Modifier = Modifier,
     isPassword: Boolean = false,
+    isError: Boolean = false,
+    labelAction: String? = null,
+    onLabelActionClick: () -> Unit = {},
     keyboardOptions: KeyboardOptions = KeyboardOptions.Default,
     keyboardActions: KeyboardActions = KeyboardActions.Default,
 ) {
-    Column(modifier = modifier) {
+    var focused by remember { mutableStateOf(false) }
+    var revealed by remember { mutableStateOf(false) }
+    val shape = MaterialTheme.shapes.medium
+    val border =
+        when {
+            isError -> MaterialTheme.colorScheme.primary.copy(alpha = 0.6f)
+            focused -> CerealTheme.colorScheme.borderDark
+            else -> InputBorder
+        }
+    val textStyle = MaterialTheme.typography.bodyMedium.copy(fontSize = 13.5.sp, color = MaterialTheme.colorScheme.onSurface)
+
+    Column(modifier = modifier, verticalArrangement = Arrangement.spacedBy(6.dp)) {
         if (label.isNotEmpty()) {
-            CerealText(
-                text = label.uppercase(),
-                modifier = Modifier.padding(horizontal = 4.dp),
-                style =
-                    CerealTypography.sectionLabel.copy(color = CerealTheme.colorScheme.contentTertiary),
-            )
-            Spacer(modifier = Modifier.height(8.dp))
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                CerealText(
+                    text = label,
+                    modifier = Modifier.weight(1f),
+                    style = MaterialTheme.typography.bodySmall.copy(fontSize = 12.5.sp, fontWeight = FontWeight.SemiBold),
+                    color = CerealTheme.colorScheme.contentSecondary,
+                )
+                labelAction?.let { AuthLink(text = it, onClick = onLabelActionClick) }
+            }
         }
 
         BasicTextField(
             value = value,
             onValueChange = onValueChange,
-            textStyle =
-                MaterialTheme.typography.bodyLarge.copy(
-                    color = MaterialTheme.colorScheme.onBackground,
-                ),
+            textStyle = textStyle,
             cursorBrush = SolidColor(MaterialTheme.colorScheme.primary),
-            visualTransformation = if (isPassword) PasswordVisualTransformation() else VisualTransformation.None,
+            visualTransformation = if (isPassword && !revealed) PasswordVisualTransformation() else VisualTransformation.None,
             keyboardOptions = keyboardOptions,
             keyboardActions = keyboardActions,
             singleLine = true,
+            modifier = Modifier.fillMaxWidth().onFocusChanged { focused = it.isFocused },
             decorationBox = { innerTextField ->
                 Row(
                     modifier =
                         Modifier
                             .fillMaxWidth()
-                            .height(56.dp)
-                            .background(
-                                MaterialTheme.colorScheme.background.copy(alpha = 0.5f),
-                                RoundedCornerShape(16.dp),
-                            ).border(1.dp, CerealTheme.colorScheme.border, RoundedCornerShape(16.dp))
-                            .padding(horizontal = 16.dp),
+                            .height(38.dp)
+                            .background(InputBg, shape)
+                            .border(1.dp, border, shape)
+                            .padding(horizontal = 12.dp),
                     verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
                 ) {
                     Icon(
                         imageVector = icon,
                         contentDescription = null,
-                        tint = CerealTheme.colorScheme.contentTertiary,
-                        modifier = Modifier.size(20.dp),
+                        tint = CerealTheme.colorScheme.contentSubtle,
+                        modifier = Modifier.size(15.dp),
                     )
-                    Spacer(modifier = Modifier.width(12.dp))
                     Box(modifier = Modifier.weight(1f)) {
-                        if (value.isEmpty()) {
-                            CerealText(
-                                text = placeholder,
-                                style =
-                                    MaterialTheme.typography.bodyLarge.copy(
-                                        color = CerealTheme.colorScheme.contentSubtle,
-                                    ),
-                            )
-                        }
+                        if (value.isEmpty()) CerealText(text = placeholder, style = textStyle.copy(color = InputPlaceholder))
                         innerTextField()
+                    }
+                    if (isPassword && value.isNotEmpty()) {
+                        CerealText(
+                            text = stringResource(if (revealed) Res.string.password_hide else Res.string.password_show),
+                            modifier = Modifier.clickable(role = Role.Button) { revealed = !revealed }.pointerHoverIcon(PointerIcon.Hand),
+                            style = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.SemiBold),
+                            color = CerealTheme.colorScheme.contentTertiary,
+                        )
                     }
                 }
             },
@@ -337,26 +292,35 @@ fun AuthTextField(
     }
 }
 
+/** The design's error banner: a tinted red box with an info icon. */
 @Composable
 fun AuthErrorMessage(
     errorMessage: String,
     modifier: Modifier = Modifier,
 ) {
+    val shape = MaterialTheme.shapes.medium
+    val red = MaterialTheme.colorScheme.primary
     Row(
-        modifier = modifier.padding(horizontal = 4.dp),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(8.dp),
+        modifier =
+            modifier
+                .fillMaxWidth()
+                .background(red.copy(alpha = 0.08f), shape)
+                .border(1.dp, red.copy(alpha = 0.28f), shape)
+                .padding(horizontal = 12.dp, vertical = 10.dp),
+        horizontalArrangement = Arrangement.spacedBy(9.dp),
     ) {
         Icon(
-            imageVector = Icons.Default.Warning,
+            imageVector = Icons.Outlined.Info,
             contentDescription = null,
-            tint = MaterialTheme.colorScheme.error,
-            modifier = Modifier.size(16.dp),
+            tint = red,
+            modifier = Modifier.padding(top = 2.dp).size(14.dp),
         )
         CerealText(
             text = errorMessage,
-            color = MaterialTheme.colorScheme.error,
-            style = MaterialTheme.typography.bodySmall,
+            color = ErrorText,
+            style = MaterialTheme.typography.bodySmall.copy(fontSize = 12.5.sp, lineHeight = 18.sp),
         )
     }
 }
+
+private val ErrorText = Color(0xFFF3B0B0)

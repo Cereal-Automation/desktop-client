@@ -98,17 +98,8 @@ fun RegistrationFormContent(
 
     // Password Field
     Column {
-        CerealText(
-            text = stringResource(Res.string.password).uppercase(),
-            modifier = Modifier.padding(horizontal = 4.dp),
-            style =
-                CerealTypography.sectionLabel.copy(color = CerealTheme.colorScheme.contentTertiary),
-        )
-
-        Spacer(modifier = Modifier.height(8.dp))
-
         AuthTextField(
-            label = "",
+            label = stringResource(Res.string.password),
             value = registrationViewModel.password.value,
             onValueChange = { registrationViewModel.updatePassword(it) },
             placeholder = stringResource(Res.string.password_placeholder),
