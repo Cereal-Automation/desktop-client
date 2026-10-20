@@ -1,6 +1,8 @@
 package com.cereal.client.application.interactor.marketplace
 
 import com.cereal.client.application.Interactor
+import com.cereal.client.application.agent.isAiBrowserAgent
+import com.cereal.client.application.exception.CerealException
 import com.cereal.client.application.exception.ScriptHasRunningTasksException
 import com.cereal.client.application.script.ScriptManager
 import com.cereal.client.domain.model.script.ScriptPackage
@@ -15,6 +17,9 @@ class RemoveMarketplaceScriptInteractor(
     private val scriptManager: ScriptManager,
 ) : Interactor<Unit, RemoveMarketplaceScriptInteractor.Params>() {
     override suspend fun run(params: Params) {
+        if (params.scriptPackage.isAiBrowserAgent) {
+            throw CerealException("The AI browser agent is part of Cereal and can't be removed.")
+        }
         val packageName = params.scriptPackage.manifest.packageName
 
         val instances = scriptInstanceRepository.getScriptPackageInstances(packageName)

@@ -1,5 +1,6 @@
 package com.cereal.client.application.agent
 
+import com.cereal.client.domain.model.marketplace.MarketplaceScript
 import com.cereal.client.domain.model.script.ScriptConfigurationValues
 import com.cereal.client.domain.model.script.ScriptPackage
 import com.cereal.client.domain.model.script.configuration.ConfigItemType
@@ -14,6 +15,10 @@ const val AI_BROWSER_AGENT_PACKAGE = "com.cereal.aibrowseragent"
 /** Whether this is the AI browser agent, the script Home's goal composer starts. */
 val ScriptPackage.isAiBrowserAgent: Boolean
     get() = manifest.packageName == AI_BROWSER_AGENT_PACKAGE
+
+/** Whether this marketplace listing is the AI browser agent. */
+val MarketplaceScript.isAiBrowserAgent: Boolean
+    get() = publicIdentifier == AI_BROWSER_AGENT_PACKAGE
 
 /**
  * What the Home goal composer edits: the only four config keys of the AI browser agent it owns.
