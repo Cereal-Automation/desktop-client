@@ -34,24 +34,23 @@ import kotlin.test.assertTrue
 /**
  * Renders the configuration screen with a list on the in-memory harness.
  *
- * The rows live in a bounded, lazily-rendered list nested inside the screen's own vertical scroll —
- * an arrangement Compose rejects outright when the inner list is unbounded, so it is worth rendering
- * for real rather than trusting the layout by inspection. The same goes for the two row layouts: a
- * card per row versus a plain input per row is a claim about what is on screen, not about which
- * branch ran.
+ * The rows flow inline in the screen's own vertical scroll, with no scrolling region of their own.
+ * The two row layouts are worth rendering for real: a card per row versus a plain input per row is a
+ * claim about what is on screen, not about which branch ran.
  */
 @OptIn(ExperimentalTestApi::class)
 class ScriptConfigurationViewListTest {
     @Test
-    fun rendersRowsAndKeepsTheActionsOutsideTheScrollingRegion() =
+    fun rendersRowsWithTheActionsBelowThem() =
         runScreenTest {
             setScreenContent { ScriptConfigurationView(viewModelWithManyRows(fieldCount = 2)) }
 
             onNodeWithText("Row 1").assertIsDisplayed()
             // A record of more than one field keeps its per-field labels, so a row stays legible.
             onAllNodesWithText("SKU*").onFirst().assertIsDisplayed()
-            onNodeWithText("Add").assertIsDisplayed()
-            onNodeWithText("Import from CSV").assertIsDisplayed()
+            // Fifty rows push the actions below the fold; they scroll with the screen.
+            onNodeWithText("Add").assertExists()
+            onNodeWithText("Import from CSV").assertExists()
         }
 
     @Test
@@ -64,8 +63,8 @@ class ScriptConfigurationViewListTest {
             onNodeWithText("SKU*").assertDoesNotExist()
             onNodeWithText("Targets").assertIsDisplayed()
             // Both actions stay; only the card chrome goes.
-            onNodeWithText("Add").assertIsDisplayed()
-            onNodeWithText("Import from CSV").assertIsDisplayed()
+            onNodeWithText("Add").assertExists()
+            onNodeWithText("Import from CSV").assertExists()
         }
 
     // region #84 Secret record fields
@@ -142,7 +141,7 @@ class ScriptConfigurationViewListTest {
                     .getFormFieldStates()
                     .filterIsInstance<ListFieldState>()
                     .single()
-            // Enough rows that the list has to scroll inside its own window.
+            // Enough rows that the list runs past the bottom of the screen.
             repeat(50) { state.addRow() }
         }
     }
