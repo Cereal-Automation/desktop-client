@@ -71,7 +71,7 @@ class HomeViewModelTest {
     /** The composer VM, told whether an AI provider is configured as the screen does. */
     private suspend fun TestScope.homeWith(
         agent: ScriptPackage? = anAgentPackage(),
-        hasAiProvider: Boolean = true,
+        hasAiProvider: Boolean? = true,
     ): HomeViewModel {
         scripts.seed(listOfNotNull(agent))
         val dispatchers = dispatcherProvider()
@@ -86,7 +86,7 @@ class HomeViewModelTest {
                 startAllTasksInScriptPackageInstanceInteractor = world.startAllTasksInScriptPackageInstanceInteractor,
                 errorResolver = ErrorResolver(),
             )
-        vm.onAiProviderChanged(hasAiProvider)
+        hasAiProvider?.let(vm::onAiProviderChanged)
         advanceUntilIdle()
         return vm
     }
@@ -176,6 +176,17 @@ class HomeViewModelTest {
             advanceUntilIdle()
 
             assertEquals(HomeComposerSlot.Composer, vm.slot.value)
+        }
+
+    @Test
+    fun `the composer doesn't show before the AI provider is known`() =
+        runTest {
+            val vm = homeWith(hasAiProvider = null)
+            assertEquals(HomeComposerSlot.Loading, vm.slot.value)
+
+            vm.onAiProviderChanged(false)
+
+            assertEquals(HomeComposerSlot.NoAiProvider, vm.slot.value)
         }
 
     @Test

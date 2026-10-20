@@ -158,8 +158,10 @@ fun HomeScreen(
                 verticalArrangement = Arrangement.spacedBy(14.dp),
             ) {
                 val slot = viewModel.slot.value
-                Intro(ready = slot == HomeComposerSlot.Composer)
+                if (slot != HomeComposerSlot.Loading) Intro(ready = slot == HomeComposerSlot.Composer)
                 when (slot) {
+                    HomeComposerSlot.Loading -> {}
+
                     HomeComposerSlot.NotInstalled -> {
                         InstallCard(installViewModel.installState.value, installViewModel::onInstall)
                     }
