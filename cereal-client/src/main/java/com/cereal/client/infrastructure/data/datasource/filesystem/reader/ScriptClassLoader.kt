@@ -3,6 +3,7 @@ package com.cereal.client.infrastructure.data.datasource.filesystem.reader
 import com.cereal.client.infrastructure.data.datasource.filesystem.security.Encryption
 import com.cereal.client.infrastructure.data.datasource.filesystem.security.EncryptionKey
 import java.io.File
+import java.io.InputStream
 
 class ScriptClassLoader(
     private val file: File,
@@ -61,6 +62,10 @@ class ScriptClassLoader(
             return clazz
         }
     }
+
+    // The script's own files (Class.getResourceAsStream), read like its classes so encrypted jars work too.
+    // getResource stays parent-only: a jar: URL would hand the script the encrypted bytes.
+    override fun getResourceAsStream(name: String): InputStream? = encryption.readJarEntry(file, name, encryptionKey)?.inputStream() ?: super.getResourceAsStream(name)
 
     @Throws(ClassNotFoundException::class)
     override fun findClass(name: String): Class<*> {
