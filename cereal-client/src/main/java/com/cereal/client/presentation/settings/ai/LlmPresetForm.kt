@@ -268,7 +268,7 @@ internal fun LlmPreset.label(): StringResource =
     }
 
 /** Where to cap spend for [this] preset; null for [LlmPreset.LOCAL], which costs nothing. */
-private fun LlmPreset.spendLimitsHelp(): StringResource? =
+internal fun LlmPreset.spendLimitsHelp(): StringResource? =
     when (this) {
         LlmPreset.GEMINI -> Res.string.ai_spend_limits_gemini
         LlmPreset.ANTHROPIC -> Res.string.ai_spend_limits_anthropic

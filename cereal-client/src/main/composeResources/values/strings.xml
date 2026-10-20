@@ -607,7 +607,15 @@
     <string name="home_ai_setup_title">Connect an AI model</string>
     <string name="home_ai_setup_subtitle">The agent thinks with a model you choose. Gemini's free tier costs nothing.</string>
     <string name="home_ai_connect">Connect</string>
-    <string name="home_ai_connect_hint">Checks the key with one call, then saves to Settings → AI.</string>
+    <string name="home_ai_connect_hint">Makes one test call to verify the key.</string>
+    <string name="home_ai_connect_hint_local">Pings your local server once.</string>
+    <string name="home_ai_checking">Checking…</string>
+    <string name="home_ai_show">Show</string>
+    <string name="home_ai_key_help">Stored on this machine. Scripts never see it.</string>
+    <string name="home_ai_model_help">Every agent step uses this model. Change it any time in Settings → AI.</string>
+    <string name="home_ai_privacy">Nothing passes through Cereal. Your key and pages go only to %1$s.</string>
+    <string name="home_ai_privacy_local">your local model</string>
+    <string name="home_ai_privacy_other">the server you set</string>
     <string name="home_ai_change">Change</string>
     <string name="home_title_setup">Set up your agent</string>
     <string name="home_title_ready">Ready when you are</string>
