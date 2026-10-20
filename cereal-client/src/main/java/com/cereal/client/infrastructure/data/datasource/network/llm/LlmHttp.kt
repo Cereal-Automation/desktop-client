@@ -5,6 +5,7 @@ import com.cereal.client.domain.model.llm.LlmModel
 import com.cereal.client.domain.model.llm.LlmToolChoice
 import com.cereal.client.infrastructure.data.datasource.network.util.await
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.delay
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
@@ -28,6 +29,8 @@ import java.net.HttpURLConnection.HTTP_UNAUTHORIZED
 import java.time.Instant
 import java.time.ZonedDateTime
 import java.time.format.DateTimeFormatter
+import kotlin.coroutines.AbstractCoroutineContextElement
+import kotlin.coroutines.CoroutineContext
 import kotlin.time.Duration
 import kotlin.time.Duration.Companion.seconds
 import kotlin.time.toKotlinDuration
@@ -117,6 +120,7 @@ class LlmHttp(
             val retryable = failure is LlmCallException.RateLimited || failure is LlmCallException.Unavailable
             if (!retryable || attempt == retryDelays.size) throw failure
             logger.warn("LLM call failed ({}), retrying ({}/{})", failure::class.simpleName, attempt + 1, retryDelays.size)
+            currentCoroutineContext()[LlmRetryListener]?.onRetry(failure, attempt + 1, retryDelays.size)
             // ponytail: fixed backoff, ignores retry-after; honour it (capped) if providers ask for long waits.
             delay(retryDelays[attempt++])
         }
@@ -224,6 +228,16 @@ class LlmHttp(
         private val JSON = "application/json".toMediaType()
         private val logger = LoggerFactory.getLogger(LlmHttp::class.java)
     }
+}
+
+/**
+ * Hears about each retry of an LLM call made in this coroutine context: [onRetry] gets the failure being
+ * retried, the retry number and the retry count. The script bridge installs one to tell the task log.
+ */
+class LlmRetryListener(
+    val onRetry: (failure: LlmCallException, retry: Int, of: Int) -> Unit,
+) : AbstractCoroutineContextElement(Key) {
+    companion object Key : CoroutineContext.Key<LlmRetryListener>
 }
 
 /** `tool_choice` as both APIs spell it. */

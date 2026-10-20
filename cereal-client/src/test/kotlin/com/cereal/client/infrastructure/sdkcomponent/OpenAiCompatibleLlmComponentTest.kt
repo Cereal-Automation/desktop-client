@@ -375,6 +375,24 @@ class OpenAiCompatibleLlmComponentTest {
         }
 
     @Test
+    fun `each retry adds a task-log line saying why, so a slow provider doesn't look like a hang`() =
+        runTest {
+            server.enqueue(fixture("error-server.json", code = 503))
+            server.enqueue(fixture("error-rate-limit.json", code = 429))
+            server.enqueue(fixture("chat-text.json"))
+
+            component.complete(request)
+
+            assertEquals(
+                listOf(
+                    "WARN The AI provider is unavailable or didn't answer in time. Retrying (1/3).",
+                    "WARN The AI provider is rate limiting requests. Retrying (2/3).",
+                ),
+                taskLog.lines.filter { it.startsWith("WARN") },
+            )
+        }
+
+    @Test
     fun `5xx is retried and then thrown as Unavailable`() =
         runTest {
             repeat(4) { server.enqueue(fixture("error-server.json", code = 500)) }
