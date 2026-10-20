@@ -15,6 +15,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Code
@@ -121,6 +122,8 @@ import org.koin.compose.koinInject
 import org.koin.core.parameter.parametersOf
 import org.koin.java.KoinJavaComponent
 
+private const val AI_SECTION_INDEX = 3
+
 @Composable
 @ExperimentalFoundationApi
 fun ApplicationSettingsScreen(
@@ -135,8 +138,11 @@ fun ApplicationSettingsScreen(
         },
     aiVm: AiSettingsViewModel = rememberAiSettingsViewModel(),
     checkForUpdatesOnOpen: Boolean = false,
+    scrollToAiOnOpen: Boolean = false,
 ) {
+    val listState = rememberLazyListState()
     LaunchedEffect(Unit) { if (checkForUpdatesOnOpen) vm.checkForUpdates() }
+    LaunchedEffect(Unit) { if (scrollToAiOnOpen) listState.scrollToItem(AI_SECTION_INDEX) }
     Scaffold { paddingValues ->
         Box(
             modifier =
@@ -146,6 +152,7 @@ fun ApplicationSettingsScreen(
             contentAlignment = Alignment.TopCenter,
         ) {
             LazyColumn(
+                state = listState,
                 modifier =
                     Modifier
                         .widthIn(max = 900.dp) // 720px × 1.25
@@ -317,6 +324,7 @@ fun ApplicationSettingsScreen(
                     }
                 }
 
+                // Keep at AI_SECTION_INDEX (header, general, notifications come first).
                 item {
                     AiSettingsSection(aiVm)
                 }
