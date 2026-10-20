@@ -42,10 +42,9 @@ class RegistrationScreenTest {
                 )
             }
 
-            // Field labels are rendered uppercased by AuthTextField.
-            onNodeWithText("NAME").assertIsDisplayed()
-            onNodeWithText("EMAIL ADDRESS").assertIsDisplayed()
-            onNodeWithText("PASSWORD").assertIsDisplayed()
+            onNodeWithText("Name").assertIsDisplayed()
+            onNodeWithText("Email").assertIsDisplayed()
+            onNodeWithText("Password").assertIsDisplayed()
             // Submit button.
             onNodeWithText("Create account").assertIsDisplayed()
             // Footer navigation back to login.

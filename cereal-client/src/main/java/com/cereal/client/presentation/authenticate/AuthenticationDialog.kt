@@ -143,7 +143,6 @@ fun AuthenticationDialog(
                             LoginFormContent(
                                 loginViewModel = loginViewModel,
                                 focusRequester = focusRequester,
-                                showGuestLogin = false,
                                 onForgotPasswordClick = {
                                     currentMode.value = AuthenticationDialogMode.FORGOT_PASSWORD
                                 },

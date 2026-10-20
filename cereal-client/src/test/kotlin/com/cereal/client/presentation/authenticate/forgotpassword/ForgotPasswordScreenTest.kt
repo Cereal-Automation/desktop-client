@@ -44,8 +44,7 @@ class ForgotPasswordScreenTest {
 
             onNodeWithText("Enter your email address and we’ll send you a link to reset your password.")
                 .assertIsDisplayed()
-            // Field label is rendered uppercased by AuthTextField.
-            onNodeWithText("EMAIL ADDRESS").assertIsDisplayed()
+            onNodeWithText("Email").assertIsDisplayed()
             // Submit button.
             onNodeWithText("Send Reset Link").assertIsDisplayed()
             // Footer navigation back to login.
