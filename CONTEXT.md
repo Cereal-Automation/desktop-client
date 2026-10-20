@@ -78,6 +78,12 @@ _Avoid_: toggle (collides with user-facing settings toggles), preference (user-o
 A platform capability a script declares, in its manifest's `features` list, that it uses — e.g. `llm` for the `LlmComponent`. A closed set of known values. Declaring it is mandatory for a script that uses the capability, and lets the client check the user's setup before a run starts. Unrelated to a feature flag: a script feature is declared by a script author, a feature flag is set by a client developer.
 _Avoid_: feature flag, permission, capability (as the type name), requirement
 
+## Script runtime
+
+**Shared API**:
+The fixed set of packages a script gets from the client instead of from its own jar: `kotlin.`, `kotlinx.coroutines.` and `com.cereal.sdk.`. The client owns the set and versions it with the SDK, and a script can't widen it. Everything else a script uses, every other library included, comes from its own jar, even when the client ships the same library.
+_Avoid_: allowlist, shared set, host classpath, exported packages
+
 ## Artifacts
 
 **Artifact**:
