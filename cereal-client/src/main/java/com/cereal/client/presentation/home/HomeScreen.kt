@@ -411,7 +411,7 @@ private fun GoalStep(viewModel: HomeViewModel) {
                     modifier = Modifier.fillMaxWidth().testTag(HomeTestTags.GOAL),
                 )
             }
-            StepField(stringResource(Res.string.home_start_url_label), optional = true) {
+            StepField(stringResource(Res.string.home_start_url_label), optional = !viewModel.startUrlRequired.value) {
                 ComposerField(
                     value = viewModel.startUrl.value,
                     onValueChange = viewModel::onStartUrlChange,

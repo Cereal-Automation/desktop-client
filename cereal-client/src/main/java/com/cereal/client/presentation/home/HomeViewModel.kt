@@ -24,6 +24,7 @@ import com.cereal.client.presentation.error.handleFailureOrElse
 import com.cereal.client.presentation.tasks.script.overview.configuration.RawScriptConfigValues
 import com.cereal.client.presentation.tasks.script.overview.configuration.validate
 import com.cereal.client.presentation.view.UiText
+import com.cereal.client.presentation.view.fields.validator.isRequired
 import com.cereal_automation.cereal_client.generated.resources.Res
 import com.cereal_automation.cereal_client.generated.resources.home_field_required
 import com.github.kittinunf.result.coroutines.SuspendableResult
@@ -96,6 +97,9 @@ class HomeViewModel(
 
     val goal = mutableStateOf("")
     val startUrl = mutableStateOf("")
+
+    /** Whether the installed agent requires a start page; Home labels the field "Optional" otherwise. */
+    val startUrlRequired = mutableStateOf(false)
     val repeat = mutableStateOf(false)
     val checkEveryMinutes = mutableStateOf(DEFAULT_CHECK_EVERY_MINUTES.toString())
 
@@ -124,6 +128,7 @@ class HomeViewModel(
                         val installed = result.value.firstOrNull { it.isAiBrowserAgent }
                         if (agent == null && installed != null) applyDefaults(installed)
                         agent = installed
+                        startUrlRequired.value = installed?.let(::isStartUrlRequired) == true
                         this@HomeViewModel.clientSdk = clientSdk
                         updateSlot()
                     }
@@ -141,6 +146,12 @@ class HomeViewModel(
     private fun updateSlot() {
         val sdk = clientSdk ?: return
         _slot.value = homeComposerSlot(agent, sdk, hasAiProvider = hasAiProvider != false)
+    }
+
+    private fun isStartUrlRequired(agent: ScriptPackage): Boolean {
+        val definition = agent.mainScript.configuration
+        val values = RawScriptConfigValues(input().toConfiguration(definition))
+        return definition.itemForKey(GoalRunInput.KEY_START_URL)?.isRequired(values) == true
     }
 
     private fun applyDefaults(agent: ScriptPackage) {
