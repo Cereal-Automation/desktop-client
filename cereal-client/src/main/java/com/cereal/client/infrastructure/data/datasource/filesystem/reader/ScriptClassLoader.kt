@@ -65,8 +65,7 @@ class ScriptClassLoader(
 
     // The script's own files (Class.getResourceAsStream), read like its classes so encrypted jars work too.
     // getResource stays parent-only: a jar: URL would hand the script the encrypted bytes.
-    override fun getResourceAsStream(name: String): InputStream? =
-        encryption.readJarEntry(file, name, encryptionKey)?.inputStream() ?: super.getResourceAsStream(name)
+    override fun getResourceAsStream(name: String): InputStream? = encryption.readJarEntry(file, name, encryptionKey)?.inputStream() ?: super.getResourceAsStream(name)
 
     @Throws(ClassNotFoundException::class)
     override fun findClass(name: String): Class<*> {
