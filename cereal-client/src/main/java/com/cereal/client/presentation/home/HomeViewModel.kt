@@ -36,6 +36,9 @@ import net.swiftzer.semver.SemVer
 
 /** What fills the composer slot on Home: the first state in [homeComposerSlot]'s order that matches. */
 sealed interface HomeComposerSlot {
+    /** The installed scripts or the AI provider aren't read yet: nothing shows, so no wrong card flashes. */
+    data object Loading : HomeComposerSlot
+
     data object NotInstalled : HomeComposerSlot
 
     data object UpdateRequired : HomeComposerSlot
@@ -92,7 +95,7 @@ class HomeViewModel(
     private val startAllTasksInScriptPackageInstanceInteractor: StartAllTasksInScriptPackageInstanceInteractor,
     private val errorResolver: ErrorResolver,
 ) {
-    private val _slot = mutableStateOf<HomeComposerSlot>(HomeComposerSlot.Composer)
+    private val _slot = mutableStateOf<HomeComposerSlot>(HomeComposerSlot.Loading)
     val slot: State<HomeComposerSlot> = _slot
 
     val goal = mutableStateOf("")
@@ -111,10 +114,10 @@ class HomeViewModel(
 
     private var agent: ScriptPackage? = null
 
-    /** Set once the installed scripts have loaded; the slot stays on the composer until then. */
+    /** Set once the installed scripts have loaded; the slot stays [HomeComposerSlot.Loading] until then. */
     private var clientSdk: SemVer? = null
 
-    /** Whether an AI provider is configured; null until known, which keeps the composer so the setup card doesn't flash. */
+    /** Whether an AI provider is configured; null until known, which keeps the slot [HomeComposerSlot.Loading]. */
     private var hasAiProvider: Boolean? = null
 
     init {
@@ -145,7 +148,8 @@ class HomeViewModel(
 
     private fun updateSlot() {
         val sdk = clientSdk ?: return
-        _slot.value = homeComposerSlot(agent, sdk, hasAiProvider = hasAiProvider != false)
+        val hasAiProvider = hasAiProvider ?: return
+        _slot.value = homeComposerSlot(agent, sdk, hasAiProvider)
     }
 
     private fun isStartUrlRequired(agent: ScriptPackage): Boolean {
