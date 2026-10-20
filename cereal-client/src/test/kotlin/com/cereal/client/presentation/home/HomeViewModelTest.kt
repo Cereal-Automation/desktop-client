@@ -213,6 +213,15 @@ class HomeViewModelTest {
         }
 
     @Test
+    fun `the start page is marked optional only when the script lets it be empty`() =
+        runTest {
+            assertTrue(homeWith().startUrlRequired.value)
+
+            val optional = agentConfigurationItems().map { if (it.key == "startUrl") it.copy(isNullable = true) else it }
+            assertFalse(homeWith(anAgentPackage(optional)).startUrlRequired.value)
+        }
+
+    @Test
     fun `start creates one goal run with the composer's values and keeps the text`() =
         runTest {
             world.notificationSettings.setDiscordWebhookEnabled(true)
