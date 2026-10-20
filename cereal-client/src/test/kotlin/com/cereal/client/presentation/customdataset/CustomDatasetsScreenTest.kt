@@ -3,11 +3,13 @@ package com.cereal.client.presentation.customdataset
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.ui.test.ExperimentalTestApi
 import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.onAllNodesWithContentDescription
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onFirst
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.waitUntilAtLeastOneExists
 import testutil.runScreenTest
 import testutil.setScreenContent
 import kotlin.test.Test
@@ -35,7 +37,9 @@ class CustomDatasetsScreenTest {
             onNodeWithText("CREATED").assertIsDisplayed()
 
             // A deterministic seeded group and its thousands-formatted row count. The separator is
-            // locale-dependent, so format it the same way the row cell does ("%,d").
+            // locale-dependent, so format it the same way the row cell does ("%,d"). The groups load
+            // asynchronously, so wait for them before asserting.
+            waitUntilAtLeastOneExists(hasText("EU sneaker SKUs"), LOAD_TIMEOUT_MS)
             onNodeWithText("EU sneaker SKUs").assertIsDisplayed()
             onNodeWithText("%,d".format(1240)).assertIsDisplayed()
         }
@@ -46,10 +50,12 @@ class CustomDatasetsScreenTest {
             setScreenContent { CustomDatasetsScreen() }
 
             // Each row carries an "Edit" icon action button (contentDescription = "Edit").
+            waitUntilAtLeastOneExists(hasText("EU sneaker SKUs"), LOAD_TIMEOUT_MS)
             onAllNodesWithText("EU sneaker SKUs").onFirst().assertIsDisplayed()
             onAllNodesWithContentDescription("Edit").onFirst().performClick()
 
             // EditGroupDialog renders with the "Edit group" title and a "Name" field.
+            waitUntilAtLeastOneExists(hasText("Edit group"), LOAD_TIMEOUT_MS)
             onNodeWithText("Edit group").assertIsDisplayed()
         }
 
@@ -58,13 +64,19 @@ class CustomDatasetsScreenTest {
         runScreenTest {
             setScreenContent { CustomDatasetsScreen() }
 
+            waitUntilAtLeastOneExists(hasText("EU sneaker SKUs"), LOAD_TIMEOUT_MS)
             onAllNodesWithText("EU sneaker SKUs").onFirst().assertIsDisplayed()
             // Row import action button (contentDescription = "Import").
             onAllNodesWithContentDescription("Import").onFirst().performClick()
 
             // ImportFromFileDialog renders its required-fields section and import description.
+            waitUntilAtLeastOneExists(hasText("Required Fields:"), LOAD_TIMEOUT_MS)
             onNodeWithText("Required Fields:").assertIsDisplayed()
             onNodeWithText("Upload your data in CSV format. Make sure it matches the required structure.")
                 .assertIsDisplayed()
         }
+
+    private companion object {
+        const val LOAD_TIMEOUT_MS = 5_000L
+    }
 }
