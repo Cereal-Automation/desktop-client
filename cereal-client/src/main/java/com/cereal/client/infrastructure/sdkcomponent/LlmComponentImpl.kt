@@ -11,6 +11,7 @@ import com.cereal.client.domain.model.llm.LlmToolCall
 import com.cereal.client.domain.model.llm.LlmToolChoice
 import com.cereal.client.domain.model.llm.LlmToolDefinition
 import com.cereal.client.domain.model.llm.LlmUserPart
+import com.cereal.client.infrastructure.data.datasource.network.llm.LlmRetryListener
 import com.cereal.sdk.component.llm.CerealPlatformApi
 import com.cereal.sdk.component.llm.LlmComponent
 import com.cereal.sdk.component.llm.LlmException
@@ -22,6 +23,7 @@ import com.cereal.sdk.component.llm.StopReason
 import com.cereal.sdk.component.llm.ToolChoice
 import com.cereal.sdk.component.llm.UserPart
 import com.cereal.sdk.component.logger.LoggerComponent
+import kotlinx.coroutines.withContext
 import com.cereal.sdk.component.llm.LlmToolCall as SdkLlmToolCall
 
 /**
@@ -29,7 +31,7 @@ import com.cereal.sdk.component.llm.LlmToolCall as SdkLlmToolCall
  * and each [LlmCallException] to the matching SDK [LlmException]. Cancellation and unexpected errors
  * pass through untouched.
  *
- * Writes to the task log: one usage line per billed call, [LlmCallException.InvalidOutput] included
+ * Writes to the task log: one line per retry, one usage line per billed call, [LlmCallException.InvalidOutput] included
  * (model and token counts, never money), and a line naming the configured model when the provider says
  * it doesn't exist. Never any prompt or response content.
  */
@@ -41,7 +43,9 @@ class LlmComponentImpl(
     override suspend fun complete(request: LlmRequest): LlmResponse {
         val completion =
             try {
-                completeLlmRequestInteractor.run(CompleteLlmRequestInteractor.Params(request.toDomain()))
+                withContext(LlmRetryListener(::logRetry)) {
+                    completeLlmRequestInteractor.run(CompleteLlmRequestInteractor.Params(request.toDomain()))
+                }
             } catch (e: LlmCallException.InvalidRequest) {
                 e.missingModel?.let { taskLog.warn("The AI model \"$it\" set in Settings → AI wasn't found. Choose another model there.") }
                 throw e.toSdk()
@@ -53,6 +57,20 @@ class LlmComponentImpl(
             }
         logUsage(completion.model, completion.usage)
         return completion.toSdk()
+    }
+
+    /** A retry can take minutes (a provider timing out); without this line the task looks hung. */
+    private fun logRetry(
+        failure: LlmCallException,
+        retry: Int,
+        of: Int,
+    ) {
+        val why =
+            when (failure) {
+                is LlmCallException.RateLimited -> "is rate limiting requests"
+                else -> "is unavailable or didn't answer in time"
+            }
+        taskLog.warn("The AI provider $why. Retrying ($retry/$of).")
     }
 
     private fun logUsage(

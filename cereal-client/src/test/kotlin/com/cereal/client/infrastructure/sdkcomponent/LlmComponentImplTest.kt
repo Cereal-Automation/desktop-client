@@ -68,7 +68,8 @@ class LlmComponentImplTest {
 
             val thrown = assertThrows<CancellationException> { component.complete(request) }
 
-            assertSame(cancellation, thrown)
+            // With assertions on, coroutine stack-trace recovery rethrows a copy whose cause is the original.
+            assertSame(cancellation, thrown.cause ?: thrown)
         }
 
     @Test
