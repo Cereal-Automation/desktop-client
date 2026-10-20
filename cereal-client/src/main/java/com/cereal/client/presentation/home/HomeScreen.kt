@@ -2,6 +2,7 @@ package com.cereal.client.presentation.home
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -17,6 +18,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.selection.selectableGroup
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -43,14 +45,12 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.Role
-import androidx.compose.ui.semantics.role
-import androidx.compose.ui.semantics.selected
-import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.PasswordVisualTransformation
+import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.cereal.client.presentation.error.errorView
-import com.cereal.client.presentation.settings.ai.LlmPresetForm
 import com.cereal.client.presentation.settings.ai.label
 import com.cereal.client.presentation.tasks.script.overview.ScriptSelectionDialog
 import com.cereal.client.presentation.theme.CerealTheme
@@ -62,8 +62,6 @@ import com.cereal.client.presentation.view.ConfirmationDialog
 import com.cereal.client.presentation.view.InputBg
 import com.cereal.client.presentation.view.InputBorder
 import com.cereal.client.presentation.view.InputPlaceholder
-import com.cereal.client.presentation.view.SettingsButtonVariant
-import com.cereal.client.presentation.view.SettingsSmallButton
 import com.cereal.client.presentation.view.WarningBox
 import com.cereal.client.presentation.view.table.PaneToolbar
 import com.cereal.client.presentation.view.text
@@ -71,11 +69,10 @@ import com.cereal_automation.cereal_client.generated.resources.Res
 import com.cereal_automation.cereal_client.generated.resources.cancel
 import com.cereal_automation.cereal_client.generated.resources.home
 import com.cereal_automation.cereal_client.generated.resources.home_ai_change
-import com.cereal_automation.cereal_client.generated.resources.home_ai_connect
-import com.cereal_automation.cereal_client.generated.resources.home_ai_connect_hint
 import com.cereal_automation.cereal_client.generated.resources.home_ai_connected
 import com.cereal_automation.cereal_client.generated.resources.home_ai_setup_subtitle
 import com.cereal_automation.cereal_client.generated.resources.home_ai_setup_title
+import com.cereal_automation.cereal_client.generated.resources.home_ai_show
 import com.cereal_automation.cereal_client.generated.resources.home_check_every
 import com.cereal_automation.cereal_client.generated.resources.home_check_every_minutes
 import com.cereal_automation.cereal_client.generated.resources.home_composer_locked
@@ -107,6 +104,7 @@ import com.cereal_automation.cereal_client.generated.resources.home_update_requi
 import com.cereal_automation.cereal_client.generated.resources.notification_warning_continue
 import com.cereal_automation.cereal_client.generated.resources.notification_warning_message
 import com.cereal_automation.cereal_client.generated.resources.notification_warning_title
+import com.cereal_automation.cereal_client.generated.resources.secret_field_hide
 import org.jetbrains.compose.resources.stringResource
 import org.koin.core.parameter.parametersOf
 import org.koin.java.KoinJavaComponent
@@ -336,24 +334,7 @@ private fun ConnectStep(viewModel: HomeAiProviderViewModel) {
         title = stringResource(Res.string.home_ai_setup_title),
         subtitle = { StepSubtitle(stringResource(Res.string.home_ai_setup_subtitle)) },
     ) {
-        LlmPresetForm(form = viewModel.setup, onSelectPreset = viewModel::onSelectPreset)
-        Row(
-            modifier = Modifier.padding(start = 22.dp, end = 22.dp, bottom = 22.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(14.dp),
-        ) {
-            CerealButton(
-                onClick = viewModel::onConnect,
-                text = stringResource(Res.string.home_ai_connect),
-                enabled = !viewModel.isConnecting.value,
-            )
-            val error = viewModel.connectError.value?.text()
-            CerealText(
-                text = error ?: stringResource(Res.string.home_ai_connect_hint),
-                style = MaterialTheme.typography.bodySmall,
-                color = if (error != null) MaterialTheme.colorScheme.error else CerealTheme.colorScheme.contentTertiary,
-            )
-        }
+        HomeConnectForm(viewModel)
     }
 }
 
@@ -441,12 +422,21 @@ private fun GoalStep(viewModel: HomeViewModel) {
             }
             StepField(stringResource(Res.string.home_run_label)) {
                 Row(
-                    modifier = Modifier.selectableGroup(),
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(CerealTheme.spacing.sm),
                 ) {
-                    RunModeOption(stringResource(Res.string.home_run_once), selected = !repeat) { viewModel.onRepeatChange(false) }
-                    RunModeOption(stringResource(Res.string.home_run_repeat), selected = repeat) { viewModel.onRepeatChange(true) }
+                    Row(
+                        modifier =
+                            Modifier
+                                .selectableGroup()
+                                .background(InputBg, RoundedCornerShape(8.dp))
+                                .border(1.dp, InputBorder, RoundedCornerShape(8.dp))
+                                .padding(3.dp),
+                        horizontalArrangement = Arrangement.spacedBy(2.dp),
+                    ) {
+                        RunModeOption(stringResource(Res.string.home_run_once), selected = !repeat) { viewModel.onRepeatChange(false) }
+                        RunModeOption(stringResource(Res.string.home_run_repeat), selected = repeat) { viewModel.onRepeatChange(true) }
+                    }
                     if (repeat) {
                         CerealText(
                             text = stringResource(Res.string.home_check_every),
@@ -488,17 +478,22 @@ private fun GoalStep(viewModel: HomeViewModel) {
 }
 
 @Composable
-private fun StepField(
+internal fun StepField(
     label: String,
     optional: Boolean = false,
+    trailing: (@Composable () -> Unit)? = null,
     content: @Composable () -> Unit,
 ) {
     Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-        Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+        Row(horizontalArrangement = Arrangement.spacedBy(10.dp), verticalAlignment = Alignment.CenterVertically) {
             val style = MaterialTheme.typography.labelLarge.copy(fontWeight = FontWeight.SemiBold)
             CerealText(label, style = style, color = CerealTheme.colorScheme.contentSecondary)
             if (optional) {
                 CerealText(stringResource(Res.string.home_optional), style = style.copy(fontWeight = FontWeight.Medium), color = CerealTheme.colorScheme.contentSubtle)
+            }
+            trailing?.let {
+                Spacer(Modifier.weight(1f))
+                it()
             }
         }
         content()
@@ -508,34 +503,51 @@ private fun StepField(
 private const val BADGE_TINT = 0.12f
 private const val BADGE_BORDER = 0.3f
 
-/** One option of the Once/Repeat radio group: filled when selected; red stays reserved for Start. */
+/** One segment of the Once/Repeat control: raised when selected; red stays reserved for Start. */
 @Composable
 private fun RunModeOption(
     text: String,
     selected: Boolean,
     onClick: () -> Unit,
 ) {
-    SettingsSmallButton(
-        text = text,
-        onClick = onClick,
-        variant = if (selected) SettingsButtonVariant.Flat else SettingsButtonVariant.Ghost,
+    val shape = RoundedCornerShape(6.dp)
+    Box(
         modifier =
-            Modifier.semantics {
-                this.selected = selected
-                role = Role.RadioButton
-            },
-    )
+            Modifier
+                .height(30.dp)
+                .clip(shape)
+                .then(
+                    if (selected) {
+                        Modifier
+                            .background(MaterialTheme.colorScheme.surfaceVariant)
+                            .border(1.dp, CerealTheme.colorScheme.borderDark, shape)
+                    } else {
+                        Modifier
+                    },
+                ).selectable(selected = selected, role = Role.RadioButton, onClick = onClick)
+                .padding(horizontal = 14.dp),
+        contentAlignment = Alignment.Center,
+    ) {
+        CerealText(
+            text,
+            style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.SemiBold),
+            color = if (selected) MaterialTheme.colorScheme.onSurface else CerealTheme.colorScheme.contentTertiary,
+        )
+    }
 }
 
 @Composable
-private fun ComposerField(
+internal fun ComposerField(
     value: String,
     onValueChange: (String) -> Unit,
     error: String?,
     modifier: Modifier = Modifier,
     placeholder: String? = null,
+    help: String? = null,
+    isPassword: Boolean = false,
     singleLine: Boolean = true,
 ) {
+    var revealed by remember { mutableStateOf(false) }
     // The design's filled input: 38px single-line, a taller box for the goal.
     val shape = RoundedCornerShape(8.dp)
     var focused by remember { mutableStateOf(false) }
@@ -553,6 +565,7 @@ private fun ComposerField(
             singleLine = singleLine,
             textStyle = textStyle,
             cursorBrush = SolidColor(MaterialTheme.colorScheme.primary),
+            visualTransformation = if (isPassword && !revealed) PasswordVisualTransformation() else VisualTransformation.None,
             modifier =
                 Modifier
                     .fillMaxWidth()
@@ -569,11 +582,20 @@ private fun ComposerField(
                     contentAlignment = if (singleLine) Alignment.CenterStart else Alignment.TopStart,
                 ) {
                     if (value.isEmpty() && placeholder != null) CerealText(placeholder, style = textStyle.copy(color = InputPlaceholder))
-                    inner()
+                    Box(Modifier.padding(end = if (isPassword) 44.dp else 0.dp)) { inner() }
+                    if (isPassword && value.isNotEmpty()) {
+                        CerealText(
+                            text = stringResource(if (revealed) Res.string.secret_field_hide else Res.string.home_ai_show),
+                            modifier = Modifier.align(Alignment.CenterEnd).clickable(role = Role.Button) { revealed = !revealed },
+                            style = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.SemiBold),
+                            color = CerealTheme.colorScheme.contentTertiary,
+                        )
+                    }
                 }
             },
         )
-        error?.let { CerealText(it, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.error) }
+        val note = error ?: help
+        note?.let { CerealText(it, style = MaterialTheme.typography.bodySmall, color = if (error != null) MaterialTheme.colorScheme.error else CerealTheme.colorScheme.contentSubtle) }
     }
 }
 
