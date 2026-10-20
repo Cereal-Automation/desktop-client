@@ -12,6 +12,8 @@ import com.cereal.client.domain.model.script.Release
 import com.cereal.client.domain.repository.ScriptRepository
 import com.cereal.client.infrastructure.data.repository.inmemory.InMemoryScriptRepository
 import fixtures.aScriptPackage
+import fixtures.anAgentListing
+import fixtures.anAgentPackage
 import org.koin.java.KoinJavaComponent
 import testutil.runScreenTest
 import testutil.setScreenContent
@@ -89,10 +91,24 @@ class ScriptDetailDialogTest {
             waitUntil(timeoutMillis = 5_000) {
                 onAllNodes(hasText("Start new instance")).fetchSemanticsNodes().isNotEmpty()
             }
+            onNodeWithText("Uninstall").assertExists()
             onNodeWithText("Start new instance").performClick()
             waitForIdle()
 
             assertEquals(listOf(SCRIPT_PUBLIC_ID), started)
+        }
+
+    @Test
+    fun hidesUninstallForTheInstalledAiBrowserAgent() =
+        runScreenTest {
+            (KoinJavaComponent.get<ScriptRepository>(ScriptRepository::class.java) as InMemoryScriptRepository)
+                .seed(listOf(anAgentPackage()))
+            setScreenContent { ScriptDetailDialog(script = anAgentListing(), onDismiss = {}) }
+
+            waitUntil(timeoutMillis = 5_000) {
+                onAllNodes(hasText("Start new instance")).fetchSemanticsNodes().isNotEmpty()
+            }
+            onNodeWithText("Uninstall").assertDoesNotExist()
         }
 
     private companion object {

@@ -14,6 +14,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import com.cereal.client.application.agent.isAiBrowserAgent
 import com.cereal.client.domain.model.marketplace.MarketplaceScript
 import com.cereal.client.presentation.theme.CerealTheme
 import com.cereal.client.presentation.view.CerealButton
@@ -137,12 +138,14 @@ internal fun ScriptDetailActions(
                         horizontalArrangement = Arrangement.spacedBy(CerealTheme.spacing.sm),
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
-                        CerealButton(
-                            onClick = onRemove,
-                            text = stringResource(Res.string.marketplace_remove),
-                            type = CerealButtonType.Surface,
-                            enabled = onRemoveEnabled,
-                        )
+                        if (!script.isAiBrowserAgent) {
+                            CerealButton(
+                                onClick = onRemove,
+                                text = stringResource(Res.string.marketplace_remove),
+                                type = CerealButtonType.Surface,
+                                enabled = onRemoveEnabled,
+                            )
+                        }
                         CerealButton(
                             onClick = onStartNewInstance,
                             text = stringResource(Res.string.marketplace_start_new_instance),

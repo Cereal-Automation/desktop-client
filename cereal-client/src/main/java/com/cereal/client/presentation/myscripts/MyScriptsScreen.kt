@@ -31,6 +31,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import com.cereal.client.application.agent.isAiBrowserAgent
 import com.cereal.client.domain.model.script.ScriptPackage
 import com.cereal.client.presentation.marketplace.RemoveScriptConfirmationDialog
 import com.cereal.client.presentation.marketplace.UpdateRequiredBadge
@@ -194,11 +195,13 @@ private fun InstalledScriptRow(
                     color = CerealTheme.colorScheme.contentSecondary,
                 )
             }
-            CerealTextButton(
-                onClick = onRemove,
-                enabled = !isRemoving && !hasRunningTasks,
-            ) {
-                CerealText(text = stringResource(Res.string.marketplace_remove))
+            if (!scriptPackage.isAiBrowserAgent) {
+                CerealTextButton(
+                    onClick = onRemove,
+                    enabled = !isRemoving && !hasRunningTasks,
+                ) {
+                    CerealText(text = stringResource(Res.string.marketplace_remove))
+                }
             }
         }
     }
