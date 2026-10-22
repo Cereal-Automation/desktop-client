@@ -25,6 +25,7 @@ import com.cereal.client.domain.model.task.UserInteraction
 import com.cereal.client.presentation.theme.CerealTheme
 import com.cereal.client.presentation.view.CerealButton
 import com.cereal.client.presentation.view.CerealText
+import com.cereal.client.presentation.view.CerealTextField
 import com.cereal.sdk.component.userinteraction.UserInteractionCanceledException
 import com.cereal.sdk.component.userinteraction.WebResourceException
 import com.cereal.sdk.component.userinteraction.WebResourceRequest
@@ -276,11 +277,10 @@ private fun TextInputWindow(
                     verticalArrangement = Arrangement.spacedBy(16.dp),
                 ) {
                     CerealText(text = userInteraction.description)
-                    OutlinedTextField(
+                    CerealTextField(
                         value = text,
                         onValueChange = { text = it },
                         modifier = Modifier.fillMaxWidth(),
-                        singleLine = true,
                     )
                     CerealButton(
                         onClick = {

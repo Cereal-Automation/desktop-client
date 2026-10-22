@@ -1,5 +1,6 @@
 package com.cereal.client.presentation.view.fields
 
+import androidx.compose.foundation.layout.size
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Visibility
 import androidx.compose.material.icons.outlined.VisibilityOff
@@ -9,6 +10,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.input.VisualTransformation
+import androidx.compose.ui.unit.dp
 import com.cereal.client.presentation.view.CerealIconButton
 import com.cereal.client.presentation.view.fields.state.SecretTextFieldState
 import com.cereal_automation.cereal_client.generated.resources.Res
@@ -54,7 +56,7 @@ fun SecretTextField(
         trailingIcon = {
             CerealIconButton(
                 onClick = { state.toggleReveal() },
-                modifier = Modifier.testTag(SECRET_FIELD_REVEAL_TOGGLE_TAG),
+                modifier = Modifier.size(28.dp).testTag(SECRET_FIELD_REVEAL_TOGGLE_TAG),
             ) {
                 Icon(
                     imageVector = if (isRevealed) Icons.Outlined.VisibilityOff else Icons.Outlined.Visibility,

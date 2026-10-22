@@ -61,9 +61,9 @@ import com.cereal.client.presentation.view.CerealButton
 import com.cereal.client.presentation.view.CerealButtonType
 import com.cereal.client.presentation.view.CerealIconButton
 import com.cereal.client.presentation.view.CerealOutlinedIconButton
-import com.cereal.client.presentation.view.CerealOutlinedTextField
 import com.cereal.client.presentation.view.CerealText
 import com.cereal.client.presentation.view.CerealTextButton
+import com.cereal.client.presentation.view.CerealTextField
 import com.cereal_automation.cereal_client.generated.resources.Res
 import com.cereal_automation.cereal_client.generated.resources.proxies_sync_back
 import com.cereal_automation.cereal_client.generated.resources.proxies_sync_cancel
@@ -340,12 +340,11 @@ private fun ConfigureStep(
                     )
                 }
             }
-            CerealOutlinedTextField(
+            CerealTextField(
                 value = state.city ?: "",
                 onValueChange = onCityChanged,
-                modifier = Modifier.fillMaxWidth().border(1.dp, CerealTheme.colorScheme.border, MaterialTheme.shapes.large),
-                singleLine = true,
-                placeholder = { CerealText(stringResource(Res.string.proxies_sync_city_placeholder), color = CerealTheme.colorScheme.contentTertiary) },
+                modifier = Modifier.fillMaxWidth(),
+                placeholder = stringResource(Res.string.proxies_sync_city_placeholder),
             )
         }
 
@@ -426,12 +425,11 @@ private fun ConfigureStep(
             }
             when (state.targetMode) {
                 SyncTargetMode.NEW -> {
-                    CerealOutlinedTextField(
+                    CerealTextField(
                         value = state.newGroupName,
                         onValueChange = onNewGroupNameChanged,
-                        modifier = Modifier.fillMaxWidth().border(1.dp, CerealTheme.colorScheme.border, MaterialTheme.shapes.large),
-                        singleLine = true,
-                        placeholder = { CerealText(stringResource(Res.string.proxies_sync_target_new_placeholder), color = CerealTheme.colorScheme.contentTertiary) },
+                        modifier = Modifier.fillMaxWidth(),
+                        placeholder = stringResource(Res.string.proxies_sync_target_new_placeholder),
                     )
                 }
 

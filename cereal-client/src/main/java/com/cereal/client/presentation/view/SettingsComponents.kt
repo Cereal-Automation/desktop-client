@@ -471,47 +471,15 @@ fun SettingsTextInput(
     isPassword: Boolean = false,
 ) {
     FormField(textError = state.error) {
-        Box(
-            modifier =
-                Modifier
-                    .fillMaxWidth()
-                    .heightIn(min = 42.dp) // padding 8/10 + font 12.5 ≈ 34px × 1.25
-                    .clip(RoundedCornerShape(8.dp)) // 6px × 1.25
-                    .background(InputBg)
-                    .border(
-                        1.dp,
-                        if (state.showErrors()) MaterialTheme.colorScheme.error else InputBorder,
-                        RoundedCornerShape(8.dp),
-                    ).padding(horizontal = 12.dp, vertical = 10.dp), // 10/8 × 1.25
-            contentAlignment = Alignment.CenterStart,
-        ) {
-            BasicTextField(
-                value = state.text,
-                onValueChange = { state.onValueChange(it) },
-                enabled = enabled,
-                singleLine = true,
-                textStyle =
-                    MaterialTheme.typography.bodyLarge.copy(
-                        color = Color.White,
-                    ),
-                cursorBrush = SolidColor(MaterialTheme.colorScheme.primary),
-                visualTransformation =
-                    if (isPassword) PasswordVisualTransformation() else VisualTransformation.None,
-                // Validators run on focus change (see TextFieldState); without this they never fire.
-                modifier = Modifier.fillMaxWidth().onFocusChanged { state.onFocusChange(it.isFocused) },
-                decorationBox = { inner ->
-                    if (state.text.isEmpty() && placeholder.isNotEmpty()) {
-                        CerealText(
-                            text = placeholder,
-                            style =
-                                MaterialTheme.typography.bodyLarge.copy(
-                                    color = InputPlaceholder,
-                                ),
-                        )
-                    }
-                    inner()
-                },
-            )
-        }
+        CerealTextField(
+            value = state.text,
+            onValueChange = { state.onValueChange(it) },
+            placeholder = placeholder.ifEmpty { null },
+            isError = state.showErrors(),
+            enabled = enabled,
+            visualTransformation = if (isPassword) PasswordVisualTransformation() else VisualTransformation.None,
+            // Validators run on focus change (see TextFieldState); without this they never fire.
+            modifier = Modifier.fillMaxWidth().onFocusChanged { state.onFocusChange(it.isFocused) },
+        )
     }
 }

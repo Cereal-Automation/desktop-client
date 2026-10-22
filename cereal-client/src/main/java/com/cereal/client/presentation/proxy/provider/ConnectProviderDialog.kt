@@ -52,6 +52,7 @@ import com.cereal.client.presentation.view.CerealButtonType
 import com.cereal.client.presentation.view.CerealIconButton
 import com.cereal.client.presentation.view.CerealText
 import com.cereal.client.presentation.view.CerealTextButton
+import com.cereal.client.presentation.view.CerealTextField
 import com.cereal_automation.cereal_client.generated.resources.Res
 import com.cereal_automation.cereal_client.generated.resources.proxies_connect_auth_subtitle
 import com.cereal_automation.cereal_client.generated.resources.proxies_connect_back
@@ -314,14 +315,13 @@ private fun ConnectStep(
         }
 
         val isError = state.tokenStatus == ConnectTokenStatus.ERROR
-        OutlinedTextField(
+        CerealTextField(
             value = state.token,
             onValueChange = onTokenChanged,
             modifier = Modifier.fillMaxWidth(),
-            singleLine = true,
             isError = isError,
             enabled = state.tokenStatus != ConnectTokenStatus.VALIDATING,
-            placeholder = { CerealText(stringResource(Res.string.proxies_connect_token_placeholder), color = CerealTheme.colorScheme.contentTertiary) },
+            placeholder = stringResource(Res.string.proxies_connect_token_placeholder),
             visualTransformation = if (state.showToken) VisualTransformation.None else PasswordVisualTransformation(),
             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
             textStyle = LocalTextStyle.current.copy(fontFamily = FontFamily.Monospace),
@@ -336,7 +336,7 @@ private fun ConnectStep(
                     }
 
                     ConnectTokenStatus.IDLE -> {
-                        CerealIconButton(onClick = onToggleTokenVisibility) {
+                        CerealIconButton(onClick = onToggleTokenVisibility, modifier = Modifier.size(28.dp)) {
                             Icon(
                                 if (state.showToken) Icons.Outlined.VisibilityOff else Icons.Outlined.Visibility,
                                 contentDescription =
@@ -349,15 +349,6 @@ private fun ConnectStep(
                     }
                 }
             },
-            shape = RoundedCornerShape(8.dp),
-            colors =
-                OutlinedTextFieldDefaults.colors(
-                    focusedContainerColor = MaterialTheme.colorScheme.surface,
-                    unfocusedContainerColor = MaterialTheme.colorScheme.surface,
-                    focusedBorderColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.6f),
-                    unfocusedBorderColor = CerealTheme.colorScheme.border,
-                    cursorColor = MaterialTheme.colorScheme.primary,
-                ),
         )
 
         when {

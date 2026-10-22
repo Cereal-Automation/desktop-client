@@ -51,6 +51,7 @@ import androidx.compose.ui.unit.sp
 import com.cereal.client.presentation.theme.CerealTheme
 import com.cereal.client.presentation.view.CerealCard
 import com.cereal.client.presentation.view.CerealText
+import com.cereal.client.presentation.view.CerealTextField
 import com.cereal.client.presentation.view.InputBg
 import com.cereal.client.presentation.view.InputBorder
 import com.cereal.client.presentation.view.InputPlaceholder
@@ -222,16 +223,7 @@ fun AuthTextField(
     keyboardOptions: KeyboardOptions = KeyboardOptions.Default,
     keyboardActions: KeyboardActions = KeyboardActions.Default,
 ) {
-    var focused by remember { mutableStateOf(false) }
     var revealed by remember { mutableStateOf(false) }
-    val shape = MaterialTheme.shapes.medium
-    val border =
-        when {
-            isError -> MaterialTheme.colorScheme.primary.copy(alpha = 0.6f)
-            focused -> CerealTheme.colorScheme.borderDark
-            else -> InputBorder
-        }
-    val textStyle = MaterialTheme.typography.bodyMedium.copy(fontSize = 13.5.sp, color = MaterialTheme.colorScheme.onSurface)
 
     Column(modifier = modifier, verticalArrangement = Arrangement.spacedBy(6.dp)) {
         if (label.isNotEmpty()) {
@@ -246,39 +238,27 @@ fun AuthTextField(
             }
         }
 
-        BasicTextField(
+        CerealTextField(
             value = value,
             onValueChange = onValueChange,
-            textStyle = textStyle,
-            cursorBrush = SolidColor(MaterialTheme.colorScheme.primary),
+            placeholder = placeholder,
+            isError = isError,
+            textStyle = MaterialTheme.typography.bodyMedium.copy(fontSize = 13.5.sp),
             visualTransformation = if (isPassword && !revealed) PasswordVisualTransformation() else VisualTransformation.None,
             keyboardOptions = keyboardOptions,
             keyboardActions = keyboardActions,
-            singleLine = true,
-            modifier = Modifier.fillMaxWidth().onFocusChanged { focused = it.isFocused },
-            decorationBox = { innerTextField ->
-                Row(
-                    modifier =
-                        Modifier
-                            .fillMaxWidth()
-                            .height(38.dp)
-                            .background(InputBg, shape)
-                            .border(1.dp, border, shape)
-                            .padding(horizontal = 12.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                ) {
-                    Icon(
-                        imageVector = icon,
-                        contentDescription = null,
-                        tint = CerealTheme.colorScheme.contentSubtle,
-                        modifier = Modifier.size(15.dp),
-                    )
-                    Box(modifier = Modifier.weight(1f)) {
-                        if (value.isEmpty()) CerealText(text = placeholder, style = textStyle.copy(color = InputPlaceholder))
-                        innerTextField()
-                    }
-                    if (isPassword && value.isNotEmpty()) {
+            modifier = Modifier.fillMaxWidth(),
+            leadingIcon = {
+                Icon(
+                    imageVector = icon,
+                    contentDescription = null,
+                    tint = CerealTheme.colorScheme.contentSubtle,
+                    modifier = Modifier.size(15.dp),
+                )
+            },
+            trailingIcon =
+                if (isPassword && value.isNotEmpty()) {
+                    {
                         CerealText(
                             text = stringResource(if (revealed) Res.string.password_hide else Res.string.password_show),
                             modifier = Modifier.clickable(role = Role.Button) { revealed = !revealed }.pointerHoverIcon(PointerIcon.Hand),
@@ -286,8 +266,9 @@ fun AuthTextField(
                             color = CerealTheme.colorScheme.contentTertiary,
                         )
                     }
-                }
-            },
+                } else {
+                    null
+                },
         )
     }
 }
