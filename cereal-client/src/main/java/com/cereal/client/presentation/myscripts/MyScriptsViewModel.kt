@@ -49,6 +49,8 @@ class MyScriptsViewModel(
         val status: InstalledScriptStatus?,
         val hasRunningTasks: Boolean,
         val isRemoving: Boolean,
+        /** The marketplace lookup for this script hasn't finished yet, so it may still gain a listing. */
+        val isListingLoading: Boolean,
     ) {
         /** Only rows with a marketplace listing can open the script detail dialog. */
         val isClickable: Boolean get() = listing != null
@@ -59,28 +61,29 @@ class MyScriptsViewModel(
     private val listings = mutableStateOf<Map<String, MarketplaceScript>>(emptyMap())
     private val sdkVersion = mutableStateOf<SemVer?>(null)
     private val removingPackages = mutableStateOf<Set<String>>(emptySet())
+    private val pendingListingLookups = mutableStateOf<Set<String>>(emptySet())
 
     // Package names already sent to the marketplace, so each is looked up at most once.
-    private var requestedListings = emptySet<String>()
+    private var requestedPackageNames = emptySet<String>()
 
     val rows: State<List<InstalledScriptRow>> =
         derivedStateOf {
-            installedScripts.value.map { pkg ->
-                val packageName = pkg.manifest.packageName
-                val listing = listings.value[packageName]
-                val running = packageName in packagesWithRunningTasks.value
-                InstalledScriptRow(
-                    scriptPackage = pkg,
-                    listing = listing,
-                    status = statusOf(pkg, listing, running),
-                    hasRunningTasks = running,
-                    isRemoving = packageName in removingPackages.value,
-                )
-            }
+            installedScripts.value
+                .map { pkg ->
+                    val packageName = pkg.manifest.packageName
+                    val listing = listings.value[packageName]
+                    val running = packageName in packagesWithRunningTasks.value
+                    InstalledScriptRow(
+                        scriptPackage = pkg,
+                        listing = listing,
+                        status = statusOf(pkg, listing, running),
+                        hasRunningTasks = running,
+                        isRemoving = packageName in removingPackages.value,
+                        isListingLoading = packageName in pendingListingLookups.value,
+                    )
+                }.sortedBy { (it.listing?.title ?: it.scriptPackage.manifest.name).lowercase() }
         }
 
-    /** True until the first marketplace lookup finishes, successfully or not. */
-    val listingsLoading = mutableStateOf(true)
     val selectedScript = mutableStateOf<MarketplaceScript?>(null)
     val confirmRemoveTarget = mutableStateOf<ScriptPackage?>(null)
     val errorAction = errorResolver.errorAction
@@ -99,10 +102,7 @@ class MyScriptsViewModel(
             getScriptsInteractor(Interactor.None()).collectLatest { result ->
                 withContext(dispatcherProvider.main) {
                     result.handleFailureOrElse(errorResolver) { list ->
-                        installedScripts.value =
-                            list
-                                .filterNot { it.isAiBrowserAgent }
-                                .sortedBy { it.manifest.name.lowercase() }
+                        installedScripts.value = list.filterNot { it.isAiBrowserAgent }
                         loadMissingListings()
                     }
                 }
@@ -135,13 +135,10 @@ class MyScriptsViewModel(
     }
 
     private fun loadMissingListings() {
-        val missing = installedScripts.value.map { it.manifest.packageName }.toSet() - requestedListings
-        if (missing.isEmpty()) {
-            // Nothing installed yet; otherwise an earlier lookup still owns the loading flag.
-            if (requestedListings.isEmpty()) listingsLoading.value = false
-            return
-        }
-        requestedListings = requestedListings + missing
+        val missing = installedScripts.value.map { it.manifest.packageName }.toSet() - requestedPackageNames
+        if (missing.isEmpty()) return
+        requestedPackageNames = requestedPackageNames + missing
+        pendingListingLookups.value = pendingListingLookups.value + missing
         scope.launch(dispatcherProvider.io) {
             getMarketplaceListingsInteractor(GetMarketplaceListingsInteractor.Params(missing)) { result ->
                 withContext(dispatcherProvider.main) {
@@ -149,7 +146,7 @@ class MyScriptsViewModel(
                     if (result is SuspendableResult.Success) {
                         listings.value = listings.value + result.value
                     }
-                    listingsLoading.value = false
+                    pendingListingLookups.value = pendingListingLookups.value - missing
                 }
             }
         }
@@ -166,11 +163,6 @@ class MyScriptsViewModel(
     fun onStartNewInstance(publicIdentifier: String) {
         selectedScript.value = null
         this.onStartNewInstance.invoke(publicIdentifier)
-    }
-
-    /** The detail dialog removed its script; close it, as the row is leaving the list. */
-    fun onScriptRemoved() {
-        selectedScript.value = null
     }
 
     fun onRemoveClicked(scriptPackage: ScriptPackage) {

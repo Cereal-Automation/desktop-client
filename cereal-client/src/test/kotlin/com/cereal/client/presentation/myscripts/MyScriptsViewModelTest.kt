@@ -75,6 +75,18 @@ class MyScriptsViewModelTest {
         }
 
     @Test
+    fun `sorts by the displayed name, preferring the listing title`() =
+        runTest(dispatcher) {
+            val vm =
+                createViewModel(
+                    installed = listOf(installed("com.z", "Zed"), installed("com.b", "Beta")),
+                    marketplace = InMemoryMarketplaceProvider(listOf(listing("com.z", title = "Alpha Listed"))),
+                )
+
+            assertEquals(listOf("com.z", "com.b"), vm.rows.value.map { it.scriptPackage.manifest.packageName })
+        }
+
+    @Test
     fun `matches installed scripts to listings by public identifier, beyond the first page`() =
         runTest(dispatcher) {
             val fillers = (1..60).map { listing("com.filler.$it") }
@@ -87,7 +99,7 @@ class MyScriptsViewModelTest {
             val row = vm.rows.value.single()
             assertEquals("Alpha Listed", row.listing?.title)
             assertTrue(row.isClickable)
-            assertFalse(vm.listingsLoading.value)
+            assertFalse(row.isListingLoading)
         }
 
     @Test
@@ -119,7 +131,7 @@ class MyScriptsViewModelTest {
             val row = vm.rows.value.single()
             assertNull(row.listing)
             assertFalse(row.isClickable)
-            assertFalse(vm.listingsLoading.value)
+            assertFalse(row.isListingLoading)
             assertEquals(ErrorAction.None, vm.errorAction.value)
         }
 
@@ -148,13 +160,13 @@ class MyScriptsViewModelTest {
                 )
 
             assertEquals(
-                listOf(
-                    InstalledScriptStatus.CLIENT_UPDATE_REQUIRED,
-                    InstalledScriptStatus.UPDATE_AVAILABLE,
-                    InstalledScriptStatus.RUNNING_TASKS,
-                    null,
+                mapOf(
+                    "com.a" to InstalledScriptStatus.CLIENT_UPDATE_REQUIRED,
+                    "com.b" to InstalledScriptStatus.UPDATE_AVAILABLE,
+                    "com.c" to InstalledScriptStatus.RUNNING_TASKS,
+                    "com.d" to null,
                 ),
-                vm.rows.value.map { it.status },
+                vm.rows.value.associate { it.scriptPackage.manifest.packageName to it.status },
             )
         }
 
@@ -215,21 +227,6 @@ class MyScriptsViewModelTest {
 
             assertNull(vm.selectedScript.value)
             assertEquals(listOf("com.a"), startedInstances)
-        }
-
-    @Test
-    fun `removing from the detail dialog closes it`() =
-        runTest(dispatcher) {
-            val vm =
-                createViewModel(
-                    installed = listOf(installed("com.a", "Alpha")),
-                    marketplace = InMemoryMarketplaceProvider(listOf(listing("com.a"))),
-                )
-            vm.onRowClicked(vm.rows.value.single())
-
-            vm.onScriptRemoved()
-
-            assertNull(vm.selectedScript.value)
         }
 
     private suspend fun TestScope.createViewModel(

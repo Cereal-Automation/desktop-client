@@ -5,6 +5,7 @@ import androidx.compose.ui.test.ComposeUiTest
 import androidx.compose.ui.test.ExperimentalTestApi
 import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
@@ -13,10 +14,13 @@ import com.cereal.client.domain.model.marketplace.ScriptOwner
 import com.cereal.client.domain.model.script.ScriptPackage
 import com.cereal.client.domain.provider.MarketplaceProvider
 import com.cereal.client.domain.repository.ScriptRepository
+import com.cereal.client.domain.repository.TasksRepository
 import com.cereal.client.infrastructure.data.repository.inmemory.InMemoryScriptRepository
 import com.cereal.client.infrastructure.provider.inmemory.InMemoryMarketplaceProvider
 import fixtures.aScriptPackage
+import fixtures.aTask
 import fixtures.anAgentPackage
+import kotlinx.coroutines.runBlocking
 import org.koin.dsl.module
 import org.koin.java.KoinJavaComponent
 import testutil.runScreenTest
@@ -71,6 +75,21 @@ class MyScriptsScreenTest {
 
             waitForText("Uninstall")
             onNodeWithText("Uninstall").assertIsDisplayed()
+        }
+
+    @Test
+    fun inlineUninstallIsDisabledWhileTheScriptHasRunningTasks() =
+        runScreenTest(overrides = listOf(marketplaceWith())) {
+            seedInstalled(aScriptPackage("com.example.team"))
+            runBlocking {
+                KoinJavaComponent
+                    .get<TasksRepository>(TasksRepository::class.java)
+                    .addTask(aTask("task-1", "com.example.team", running = true))
+            }
+            setScreenContent { MyScriptsScreen(onOpenMarketplace = {}) }
+
+            waitForText("Running tasks")
+            onNodeWithText("Uninstall").assertIsNotEnabled()
         }
 
     @Test

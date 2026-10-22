@@ -44,6 +44,7 @@ import com.cereal.client.presentation.marketplace.RemoveScriptConfirmationDialog
 import com.cereal.client.presentation.marketplace.ScriptBadge
 import com.cereal.client.presentation.marketplace.ScriptDetailDialog
 import com.cereal.client.presentation.marketplace.UpdateRequiredBadge
+import com.cereal.client.presentation.marketplace.handle
 import com.cereal.client.presentation.theme.CerealTheme
 import com.cereal.client.presentation.view.CerealButton
 import com.cereal.client.presentation.view.CerealButtonType
@@ -87,7 +88,7 @@ fun MyScriptsScreen(
             script = script,
             onDismiss = viewModel::onDismissDetail,
             onStartNewInstance = viewModel::onStartNewInstance,
-            onRemoved = viewModel::onScriptRemoved,
+            onRemoved = viewModel::onDismissDetail,
         )
     }
 
@@ -106,7 +107,6 @@ fun MyScriptsScreen(
         if (rows.isEmpty()) {
             EmptyState(onOpenMarketplace = onOpenMarketplace)
         } else {
-            val listingsLoading = viewModel.listingsLoading.value
             LazyColumn(
                 contentPadding = PaddingValues(CerealTheme.spacing.xxl),
                 verticalArrangement = Arrangement.spacedBy(CerealTheme.spacing.sm),
@@ -114,7 +114,6 @@ fun MyScriptsScreen(
                 items(rows, key = { it.scriptPackage.manifest.packageName }) { row ->
                     InstalledScriptRow(
                         row = row,
-                        listingsLoading = listingsLoading,
                         onClick = { viewModel.onRowClicked(row) },
                         onRemove = { viewModel.onRemoveClicked(row.scriptPackage) },
                     )
@@ -171,7 +170,6 @@ private fun EmptyState(onOpenMarketplace: () -> Unit) {
 @Composable
 private fun InstalledScriptRow(
     row: MyScriptsViewModel.InstalledScriptRow,
-    listingsLoading: Boolean,
     onClick: () -> Unit,
     onRemove: () -> Unit,
 ) {
@@ -210,7 +208,7 @@ private fun InstalledScriptRow(
                     )
                     listing?.developer?.let { dev ->
                         CerealText(
-                            text = if (dev.verified) "@${dev.name} · verified" else "@${dev.name}",
+                            text = dev.handle,
                             style = MaterialTheme.typography.bodySmall,
                             color = CerealTheme.colorScheme.contentTertiary,
                             maxLines = 1,
@@ -226,7 +224,7 @@ private fun InstalledScriptRow(
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
                     )
-                } else if (listing == null && listingsLoading) {
+                } else if (row.isListingLoading) {
                     DescriptionPlaceholder()
                 }
             }
@@ -242,7 +240,7 @@ private fun InstalledScriptRow(
                 }
 
                 // Wait for the lookup before offering Uninstall: the row may still gain a listing.
-                listingsLoading -> {}
+                row.isListingLoading -> {}
 
                 row.isRemoving -> {
                     Row(

@@ -110,9 +110,8 @@ internal fun ScriptCard(
                     )
                     script.developer?.let { dev ->
                         Spacer(Modifier.height(3.dp))
-                        val authorText = if (dev.verified) "@${dev.name} · verified" else "@${dev.name}"
                         CerealText(
-                            text = authorText,
+                            text = dev.handle,
                             style = MaterialTheme.typography.bodyMedium,
                             color = CerealTheme.colorScheme.contentTertiary,
                             maxLines = 1,
