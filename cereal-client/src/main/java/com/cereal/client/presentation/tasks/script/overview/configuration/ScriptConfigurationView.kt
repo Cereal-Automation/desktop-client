@@ -176,7 +176,9 @@ fun ScriptConfigurationView(viewModel: ScriptConfigurationViewModel) {
             // Collapsing only skips rendering: the field states, and so the values, are kept.
             if (section == null || viewModel.isSectionOpen(section)) {
                 fields.forEach { (t, u) ->
-                    if (u.isVisible.value) {
+                    if (u.isVisible.value && u is ListFieldState) {
+                        ListField(t.definition.name, t.definition.description, u.isRequired.value, u)
+                    } else if (u.isVisible.value) {
                         ConfigField(
                             title = t.definition.name,
                             description = t.definition.description,
@@ -246,23 +248,31 @@ private fun ConfigField(
     content: @Composable () -> Unit,
 ) {
     Column(modifier = Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-            CerealText(
-                text = title,
-                style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Bold),
-                color = CerealTheme.colorScheme.contentSecondary,
-            )
-            if (isRequired) {
-                CerealText(
-                    text = "*",
-                    style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Bold),
-                    color = MaterialTheme.colorScheme.primary,
-                )
-            }
-        }
+        FieldLabel(title, isRequired)
         content()
         if (!description.isNullOrBlank()) {
             ClickableUrlText(description, color = CerealTheme.colorScheme.contentSubtle)
+        }
+    }
+}
+
+@Composable
+internal fun FieldLabel(
+    title: String,
+    isRequired: Boolean,
+) {
+    Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+        CerealText(
+            text = title,
+            style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Bold),
+            color = CerealTheme.colorScheme.contentSecondary,
+        )
+        if (isRequired) {
+            CerealText(
+                text = "*",
+                style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Bold),
+                color = MaterialTheme.colorScheme.primary,
+            )
         }
     }
 }
@@ -332,10 +342,6 @@ private fun FormFieldContent(
         File(formFieldState)
     }
 
-    is ListFieldState -> {
-        ListField(formFieldState)
-    }
-
     else -> {
         throw RuntimeException("Unknown configurationItem ${configurationItem::class.simpleName}")
     }
@@ -388,167 +394,4 @@ private fun Dropdown(
 @Composable
 private fun File(state: FileFieldState) {
     FileField(state)
-}
-
-/**
- * Renders a list as one row per record, with the add and import controls below.
- *
- * A record of two or more fields gets a card per row, so its fields stay legible with their own
- * labels. A record of a single field gets a plain input per row instead — forty SKUs are forty text
- * boxes, not forty cards.
- *
- * Rows grow the list in place and scroll with the rest of the configuration screen, so there is no
- * second scrollbar around them.
- */
-@Composable
-private fun ListField(state: ListFieldState) {
-    val isSingleField = state.fieldDefinitions.size == 1
-    Column {
-        // ponytail: every row is composed eagerly; if lists of thousands of imported rows get slow,
-        // make the screen's outer column a LazyColumn and emit the rows as its items.
-        state.rows.forEachIndexed { index, row ->
-            key(row) {
-                if (isSingleField) {
-                    ListSingleFieldRow(state, row, index)
-                } else {
-                    ListRowCard(state, row, index)
-                }
-            }
-        }
-        if (state.showErrors()) {
-            state.error?.let { errorMsg ->
-                Text(
-                    text = errorMsg,
-                    color = MaterialTheme.colorScheme.error,
-                    style = MaterialTheme.typography.bodySmall,
-                )
-                Spacer(modifier = Modifier.height(4.dp))
-            }
-        }
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            CerealButton(
-                text = stringResource(Res.string.add),
-                onClick = { state.addRow() },
-            )
-            if (state.showImportButton()) {
-                Spacer(modifier = Modifier.width(8.dp))
-                CerealButton(
-                    text = stringResource(Res.string.import_from_csv),
-                    onClick = { state.onImport() },
-                )
-            }
-        }
-    }
-}
-
-/**
- * One row of a single-field list: the field's own widget with a remove control beside it, and no
- * card, no row number and no per-field label. With one field there is nothing to group and nothing to
- * disambiguate — the item's own title already names what the column holds, and repeating it forty
- * times alongside a row number is noise.
- */
-@Composable
-private fun ListSingleFieldRow(
-    state: ListFieldState,
-    row: ListRowState,
-    index: Int,
-) {
-    val fieldDefinition = row.fieldDefinitions.first()
-    val fieldState = row.fieldStates[fieldDefinition.key] ?: return
-    Row(
-        modifier = Modifier.fillMaxWidth(),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        Column(modifier = Modifier.weight(1f)) {
-            ListRowField(fieldDefinition, fieldState, showLabel = false)
-        }
-        CerealIconButton(onClick = { state.removeRow(index) }) {
-            Icon(
-                imageVector = Icons.Filled.Close,
-                contentDescription = stringResource(Res.string.remove_entry),
-            )
-        }
-    }
-    Spacer(modifier = Modifier.height(4.dp))
-}
-
-@Composable
-private fun ListRowCard(
-    state: ListFieldState,
-    row: ListRowState,
-    index: Int,
-) {
-    CerealCard(modifier = Modifier.fillMaxWidth()) {
-        Column(modifier = Modifier.padding(12.dp)) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                CaptionText(
-                    text = stringResource(Res.string.row_number, index + 1),
-                    color = CerealTheme.colorScheme.contentTertiary,
-                    modifier = Modifier.weight(1f),
-                )
-                CerealIconButton(onClick = { state.removeRow(index) }) {
-                    Icon(
-                        imageVector = Icons.Filled.Close,
-                        contentDescription = stringResource(Res.string.remove_entry),
-                    )
-                }
-            }
-            row.fieldDefinitions.forEach { fieldDefinition ->
-                val fieldState = row.fieldStates[fieldDefinition.key] ?: return@forEach
-                ListRowField(fieldDefinition, fieldState)
-                Spacer(modifier = Modifier.height(8.dp))
-            }
-        }
-    }
-    Spacer(modifier = Modifier.height(8.dp))
-}
-
-/**
- * @param showLabel false for a single-field row, where the configuration item's own title already
- *   names the field and repeating it on every row is noise.
- */
-@Composable
-private fun ListRowField(
-    fieldDefinition: ScriptConfigurationItemDefinition,
-    fieldState: FormFieldState<*, *>,
-    showLabel: Boolean = true,
-) {
-    val label =
-        if (showLabel) fieldDefinition.name + if (fieldDefinition.isNullable) "" else "*" else ""
-    when (fieldState) {
-        // Before TextFieldState: a SecretTextFieldState is one, and must render masked.
-        is SecretTextFieldState -> {
-            SecretTextField(label, fieldState)
-        }
-
-        is TextFieldState -> {
-            TextField(label, fieldState)
-        }
-
-        is SwitchFieldState -> {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                SwitchField(fieldState)
-                if (label.isNotEmpty()) {
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Text(text = label, style = MaterialTheme.typography.bodyMedium)
-                }
-            }
-        }
-
-        is DropDownFieldState<*> -> {
-            DropdownTextField(label, fieldState)
-        }
-
-        else -> {
-            throw RuntimeException(
-                "Unsupported list field state ${fieldState::class.simpleName} for '${fieldDefinition.key}'.",
-            )
-        }
-    }
-    // The per-field error is rendered by FormField inside each widget above, so it lands next to the
-    // field that is wrong.
-    if (fieldDefinition.description.isNotBlank()) ClickableUrlText(fieldDefinition.description)
 }

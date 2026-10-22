@@ -8,6 +8,7 @@
     <string name="paywall_refresh_action">I've subscribed — refresh</string>
     <string name="paywall_retry_action">Try again</string>
     <string name="add">Add</string>
+    <string name="add_row">Add row</string>
     <string name="clear">Clear</string>
     <string name="add_script">Add Script</string>
     <string name="already_have_account_label">Already have an account?</string>
