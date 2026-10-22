@@ -353,3 +353,7 @@ internal fun ScriptStatusDot(maintenanceMode: Boolean) {
         }
     }
 }
+
+/** The developer handle shown under a script's title, e.g. "@acme · verified". */
+internal val ScriptOwner.handle: String
+    get() = if (verified) "@$name · verified" else "@$name"

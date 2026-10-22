@@ -54,6 +54,12 @@ interface Root {
             onNavigateTo: ((Routing) -> Unit)? = null,
         ) {
             Router(Root::class.java.name, defaultRouting) { backStack ->
+                // "Start new instance" from Marketplace or My Scripts: new root on Tasks with that script's selection open.
+                val startNewInstance: (String) -> Unit = { publicIdentifier ->
+                    val route = Routing.Tasks(openScriptSelectionForPackage = publicIdentifier)
+                    backStack.newRoot(route)
+                    onNavigateTo?.invoke(route)
+                }
                 Row {
                     menuComposable(backStack)
 
@@ -123,10 +129,7 @@ interface Root {
 
                             is Routing.Marketplace -> {
                                 MarketplaceScreen(
-                                    onStartNewInstance = { publicIdentifier ->
-                                        backStack.newRoot(Routing.Tasks(openScriptSelectionForPackage = publicIdentifier))
-                                        onNavigateTo?.invoke(Routing.Tasks(openScriptSelectionForPackage = publicIdentifier))
-                                    },
+                                    onStartNewInstance = startNewInstance,
                                 )
                             }
 
@@ -136,6 +139,7 @@ interface Root {
                                         backStack.newRoot(Routing.Marketplace)
                                         onNavigateTo?.invoke(Routing.Marketplace)
                                     },
+                                    onStartNewInstance = startNewInstance,
                                 )
                             }
 

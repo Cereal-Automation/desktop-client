@@ -548,6 +548,8 @@
     <string name="my_scripts_empty_title">No scripts installed yet</string>
     <string name="my_scripts_empty_message">Scripts you install from the marketplace show up here.</string>
     <string name="my_scripts_empty_action_browse">Browse marketplace</string>
+    <string name="my_scripts_update_available">Update available</string>
+    <string name="my_scripts_running_tasks">Running tasks</string>
     <string name="tasks_empty_title">No tasks yet</string>
     <string name="tasks_empty_message">Describe a goal on Home, or add a ready-made script.</string>
     <string name="tasks_empty_action_create_group">Create group</string>

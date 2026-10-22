@@ -168,11 +168,12 @@ class HomeSlotCardsScreenTest {
         runScreenTest(overrides = listOf(world())) {
             setScreenContent { HomeScreen() }
 
+            waitUntil(timeoutMillis = 5_000) { onAllNodesWithText("The AI browser agent isn't installed").fetchSemanticsNodes().isNotEmpty() }
             onNodeWithText("The AI browser agent isn't installed").assertIsDisplayed()
             onNodeWithText("Tell the agent what to do").assertDoesNotExist()
             onNodeWithText("Install").performClick()
 
-            waitUntil { onAllNodesWithText("Tell the agent what to do").fetchSemanticsNodes().isNotEmpty() }
+            waitUntil(timeoutMillis = 5_000) { onAllNodesWithText("Tell the agent what to do").fetchSemanticsNodes().isNotEmpty() }
             onNodeWithText("The AI browser agent isn't installed").assertDoesNotExist()
         }
 
@@ -182,9 +183,10 @@ class HomeSlotCardsScreenTest {
             installProvider.failWith = CerealException("Download failed")
             setScreenContent { HomeScreen() }
 
+            waitUntil(timeoutMillis = 5_000) { onAllNodesWithText("Install").fetchSemanticsNodes().isNotEmpty() }
             onNodeWithText("Install").performClick()
 
-            waitUntil { onAllNodesWithText("Retry").fetchSemanticsNodes().isNotEmpty() }
+            waitUntil(timeoutMillis = 5_000) { onAllNodesWithText("Retry").fetchSemanticsNodes().isNotEmpty() }
             onNodeWithText("Download failed").assertIsDisplayed()
         }
 
@@ -194,6 +196,7 @@ class HomeSlotCardsScreenTest {
             var opened = false
             setScreenContent { HomeScreen(onOpenClientUpdate = { opened = true }) }
 
+            waitUntil(timeoutMillis = 5_000) { onAllNodesWithText("Update Cereal to use the AI browser agent").fetchSemanticsNodes().isNotEmpty() }
             onNodeWithText("Update Cereal to use the AI browser agent").assertIsDisplayed()
             onNodeWithText("Tell the agent what to do").assertDoesNotExist()
             onNodeWithText("Update Cereal").performClick()

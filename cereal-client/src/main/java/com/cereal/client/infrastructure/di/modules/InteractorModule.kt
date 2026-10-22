@@ -33,6 +33,7 @@ import com.cereal.client.application.interactor.files.OpenDatasetFileInteractor
 import com.cereal.client.application.interactor.files.ReadCustomDatasetFileInteractor
 import com.cereal.client.application.interactor.files.ReadListFileInteractor
 import com.cereal.client.application.interactor.files.ReadProxyFileInteractor
+import com.cereal.client.application.interactor.marketplace.GetMarketplaceListingsInteractor
 import com.cereal.client.application.interactor.marketplace.GetMarketplaceScriptsInteractor
 import com.cereal.client.application.interactor.marketplace.GetPackagesWithRunningTasksInteractor
 import com.cereal.client.application.interactor.marketplace.HasRunningTasksForScriptInteractor
@@ -192,6 +193,7 @@ object InteractorModule {
             factory { MarkNotificationsSeenInteractor(get()) }
             // Marketplace
             factory { GetMarketplaceScriptsInteractor(get()) }
+            factory { GetMarketplaceListingsInteractor(get()) }
             factory { InstallMarketplaceScriptInteractor(get(), get(), get()) }
             factory { IsScriptInstalledInteractor(get()) }
             factory { RemoveMarketplaceScriptInteractor(get(), get(), get(), get()) }
