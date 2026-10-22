@@ -114,39 +114,26 @@ class ScriptSelectionViewModel(
                         if (items.isEmpty()) {
                             overviewViewState.value = ScriptSelectionState.Overview.Empty
                         } else {
-                            // A single installed script needs no choosing: select it and hide the list.
-                            val single = items.size == 1
-                            scriptsListViewModel.updateItems(items, selectFirstWhenNoSelection = single)
+                            // Pick the duplicated instance's or requested script once; otherwise default to the first.
+                            val initialPackageName =
+                                initialScriptPackageInstance?.definition?.manifest?.packageName ?: initialPublicIdentifier
+                            val initialScript =
+                                initialPackageName?.takeUnless { initialSelectionApplied }?.let { packageName ->
+                                    items.find { item -> item.id.manifest.packageName == packageName }
+                                }
+                            scriptsListViewModel.updateItems(items, selectFirstWhenNoSelection = initialScript == null)
+                            initialScript?.let { scriptItem ->
+                                initialSelectionApplied = true
+                                scriptsListViewModel.selectItem(scriptItem.id)
+                            }
 
+                            // A single installed script needs no choosing: hide the list.
                             overviewViewState.value =
-                                if (single) {
+                                if (items.size == 1) {
                                     ScriptSelectionState.Overview.Single
                                 } else {
                                     ScriptSelectionState.Overview.Filled(scriptsListViewModel)
                                 }
-
-                            // Auto-select the script if duplicating from an existing instance.
-                            initialScriptPackageInstance?.takeUnless { initialSelectionApplied }?.let { instance ->
-                                val matchingScript =
-                                    items.find { item ->
-                                        item.id.manifest.packageName == instance.definition.manifest.packageName
-                                    }
-                                matchingScript?.let { scriptItem ->
-                                    initialSelectionApplied = true
-                                    scriptsListViewModel.selectItem(scriptItem.id)
-                                }
-                            }
-
-                            if (!initialSelectionApplied && initialPublicIdentifier != null && initialScriptPackageInstance == null) {
-                                val matchingScript =
-                                    items.find { item ->
-                                        item.id.manifest.packageName == initialPublicIdentifier
-                                    }
-                                matchingScript?.let { scriptItem ->
-                                    initialSelectionApplied = true
-                                    scriptsListViewModel.selectItem(scriptItem.id)
-                                }
-                            }
                         }
                     }
                 }

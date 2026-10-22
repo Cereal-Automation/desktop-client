@@ -167,14 +167,28 @@ class ScriptSelectionViewModelTest {
     }
 
     @Test
-    fun `loadInstalledScripts shows the filled state when several scripts exist`() {
+    fun `loadInstalledScripts shows the filled state and selects the first script when several exist`() {
+        val first = aScriptPackage("com.example.a", "A")
         coEvery { getScriptsInteractor(any()) } returns
-            flowOf(SuspendableResult.Success(listOf(aScriptPackage("com.example.a", "A"), aScriptPackage("com.example.b", "B"))))
+            flowOf(SuspendableResult.Success(listOf(first, aScriptPackage("com.example.b", "B"))))
         val viewModel = createViewModel()
         dispatcher.scheduler.advanceUntilIdle()
 
-        assertTrue(viewModel.overviewViewState.value is ScriptSelectionState.Overview.Filled)
-        assertTrue(viewModel.configurationViewState.value is ScriptSelectionState.Config.None)
+        val overview = viewModel.overviewViewState.value as ScriptSelectionState.Overview.Filled
+        assertEquals(first, overview.viewModel.selectedItem)
+        assertTrue(viewModel.configurationViewState.value is ScriptSelectionState.Config.Selected)
+    }
+
+    @Test
+    fun `loadInstalledScripts selects the requested script over the first one`() {
+        val second = aScriptPackage("com.example.b", "B")
+        coEvery { getScriptsInteractor(any()) } returns
+            flowOf(SuspendableResult.Success(listOf(aScriptPackage("com.example.a", "A"), second)))
+        val viewModel = createViewModel(initialPublicIdentifier = "com.example.b")
+        dispatcher.scheduler.advanceUntilIdle()
+
+        val overview = viewModel.overviewViewState.value as ScriptSelectionState.Overview.Filled
+        assertEquals(second, overview.viewModel.selectedItem)
     }
 
     @Test
