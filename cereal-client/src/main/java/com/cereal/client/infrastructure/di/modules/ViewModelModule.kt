@@ -64,15 +64,17 @@ object ViewModelModule {
             factory { (scope: CoroutineScope) -> HomeAiProviderViewModel(scope, get(), get(), get(), get()) }
             factory { (scope: CoroutineScope) -> AgentInstallViewModel(scope, get(), get(), get()) }
             factory { (scope: CoroutineScope) -> HomeActivityViewModel(scope, get(), get(), get()) }
-            factory { (scope: CoroutineScope) ->
+            factory { (scope: CoroutineScope, onStartNewInstance: Function1<String, Unit>) ->
                 MyScriptsViewModel(
                     scope = scope,
                     dispatcherProvider = get(),
                     getScriptsInteractor = get(),
                     getSdkVersionInteractor = get(),
                     getPackagesWithRunningTasksInteractor = get(),
+                    getMarketplaceListingsInteractor = get(),
                     removeMarketplaceScriptInteractor = get(),
                     errorResolver = get(),
+                    onStartNewInstance = onStartNewInstance,
                 )
             }
             factory { (scope: CoroutineScope) -> LoginViewModel(scope, get(), get(), get(), get(), get()) }

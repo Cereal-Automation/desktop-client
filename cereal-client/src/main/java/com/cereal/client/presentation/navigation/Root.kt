@@ -136,6 +136,10 @@ interface Root {
                                         backStack.newRoot(Routing.Marketplace)
                                         onNavigateTo?.invoke(Routing.Marketplace)
                                     },
+                                    onStartNewInstance = { publicIdentifier ->
+                                        backStack.newRoot(Routing.Tasks(openScriptSelectionForPackage = publicIdentifier))
+                                        onNavigateTo?.invoke(Routing.Tasks(openScriptSelectionForPackage = publicIdentifier))
+                                    },
                                 )
                             }
 

@@ -60,6 +60,7 @@ fun ScriptDetailDialog(
     script: MarketplaceScript,
     onDismiss: () -> Unit,
     onStartNewInstance: (publicIdentifier: String) -> Unit = {},
+    onRemoved: () -> Unit = {},
 ) {
     val scope = rememberCoroutineScope()
     val viewModel =
@@ -87,7 +88,7 @@ fun ScriptDetailDialog(
     if (viewModel.confirmRemoveDialog.value) {
         RemoveScriptConfirmationDialog(
             scriptName = script.title,
-            onConfirm = { viewModel.onRemoveConfirmed() },
+            onConfirm = { viewModel.onRemoveConfirmed(onRemoved) },
             onDismiss = { viewModel.onRemoveDismissed() },
         )
     }

@@ -166,7 +166,8 @@ class ScriptDetailViewModel(
         confirmRemoveDialog.value = false
     }
 
-    fun onRemoveConfirmed() {
+    /** [onRemoved] fires after a successful removal, e.g. so a caller can close the dialog. */
+    fun onRemoveConfirmed(onRemoved: () -> Unit = {}) {
         confirmRemoveDialog.value = false
         val pkg =
             loadedScriptPackage ?: run {
@@ -185,6 +186,7 @@ class ScriptDetailViewModel(
                             runningTasksJob?.cancel()
                             loadedScriptPackage = null
                             hasRunningTasks.value = false
+                            onRemoved()
                         }
 
                         is SuspendableResult.Failure -> {
