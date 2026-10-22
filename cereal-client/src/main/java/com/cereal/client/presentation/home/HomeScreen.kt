@@ -58,6 +58,7 @@ import com.cereal.client.presentation.view.CerealButton
 import com.cereal.client.presentation.view.CerealButtonType
 import com.cereal.client.presentation.view.CerealCard
 import com.cereal.client.presentation.view.CerealText
+import com.cereal.client.presentation.view.CerealTextField
 import com.cereal.client.presentation.view.ConfirmationDialog
 import com.cereal.client.presentation.view.InputBg
 import com.cereal.client.presentation.view.InputBorder
@@ -550,51 +551,28 @@ internal fun ComposerField(
     singleLine: Boolean = true,
 ) {
     var revealed by remember { mutableStateOf(false) }
-    // The design's filled input: 38px single-line, a taller box for the goal.
-    val shape = RoundedCornerShape(8.dp)
-    var focused by remember { mutableStateOf(false) }
-    val border =
-        when {
-            error != null -> MaterialTheme.colorScheme.error
-            focused -> CerealTheme.colorScheme.borderDark
-            else -> InputBorder
-        }
-    val textStyle = MaterialTheme.typography.bodyMedium.copy(color = MaterialTheme.colorScheme.onSurface)
     Column(modifier = modifier, verticalArrangement = Arrangement.spacedBy(6.dp)) {
-        BasicTextField(
+        CerealTextField(
             value = value,
             onValueChange = onValueChange,
+            placeholder = placeholder,
+            isError = error != null,
             singleLine = singleLine,
-            textStyle = textStyle,
-            cursorBrush = SolidColor(MaterialTheme.colorScheme.primary),
             visualTransformation = if (isPassword && !revealed) PasswordVisualTransformation() else VisualTransformation.None,
-            modifier =
-                Modifier
-                    .fillMaxWidth()
-                    .then(if (singleLine) Modifier.height(38.dp) else Modifier.heightIn(min = 92.dp))
-                    .onFocusChanged { focused = it.isFocused },
-            decorationBox = { inner ->
-                Box(
-                    modifier =
-                        Modifier
-                            .fillMaxWidth()
-                            .background(InputBg, shape)
-                            .border(1.dp, border, shape)
-                            .padding(horizontal = 12.dp, vertical = if (singleLine) 0.dp else 12.dp),
-                    contentAlignment = if (singleLine) Alignment.CenterStart else Alignment.TopStart,
-                ) {
-                    if (value.isEmpty() && placeholder != null) CerealText(placeholder, style = textStyle.copy(color = InputPlaceholder))
-                    Box(Modifier.padding(end = if (isPassword) 44.dp else 0.dp)) { inner() }
-                    if (isPassword && value.isNotEmpty()) {
+            modifier = Modifier.fillMaxWidth(),
+            trailingIcon =
+                if (isPassword && value.isNotEmpty()) {
+                    {
                         CerealText(
                             text = stringResource(if (revealed) Res.string.secret_field_hide else Res.string.home_ai_show),
-                            modifier = Modifier.align(Alignment.CenterEnd).clickable(role = Role.Button) { revealed = !revealed },
+                            modifier = Modifier.clickable(role = Role.Button) { revealed = !revealed },
                             style = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.SemiBold),
                             color = CerealTheme.colorScheme.contentTertiary,
                         )
                     }
-                }
-            },
+                } else {
+                    null
+                },
         )
         val note = error ?: help
         note?.let { CerealText(it, style = MaterialTheme.typography.bodySmall, color = if (error != null) MaterialTheme.colorScheme.error else CerealTheme.colorScheme.contentSubtle) }

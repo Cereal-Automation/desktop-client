@@ -38,6 +38,7 @@ import androidx.compose.ui.unit.dp
 import com.cereal.client.presentation.theme.CerealTheme
 import com.cereal.client.presentation.theme.CerealTypography
 import com.cereal.client.presentation.view.CerealText
+import com.cereal.client.presentation.view.CerealTextField
 import com.cereal.client.presentation.view.SectionLabel
 import com.cereal.client.presentation.view.button.CerealToolbarButton
 import com.cereal.client.presentation.view.button.CerealToolbarButtonVariant
@@ -260,44 +261,20 @@ internal fun MarketplaceSearchBar(
                 .fillMaxWidth()
                 .padding(horizontal = PaneTablePadding, vertical = 12.dp),
     ) {
-        Row(
-            modifier =
-                Modifier
-                    .fillMaxWidth()
-                    .height(36.dp)
-                    .clip(RoundedCornerShape(8.dp))
-                    .background(MaterialTheme.colorScheme.background)
-                    .border(1.dp, CerealTheme.colorScheme.border, RoundedCornerShape(8.dp))
-                    .padding(horizontal = 12.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(10.dp),
-        ) {
-            Icon(
-                imageVector = Icons.Default.Search,
-                contentDescription = null,
-                tint = PaneTableMetaIconColor,
-                modifier = Modifier.size(14.dp),
-            )
-            Box(modifier = Modifier.weight(1f)) {
-                BasicTextField(
-                    value = value,
-                    onValueChange = onValueChange,
-                    modifier = Modifier.fillMaxWidth(),
-                    singleLine = true,
-                    textStyle =
-                        LocalTextStyle.current.merge(
-                            CerealTypography.controlLabel.copy(color = MaterialTheme.colorScheme.onSurface),
-                        ),
-                    cursorBrush = SolidColor(MaterialTheme.colorScheme.primary),
+        CerealTextField(
+            value = value,
+            onValueChange = onValueChange,
+            modifier = Modifier.fillMaxWidth(),
+            placeholder = stringResource(Res.string.marketplace_search_placeholder),
+            textStyle = CerealTypography.controlLabel,
+            leadingIcon = {
+                Icon(
+                    imageVector = Icons.Default.Search,
+                    contentDescription = null,
+                    tint = PaneTableMetaIconColor,
+                    modifier = Modifier.size(14.dp),
                 )
-                if (value.isEmpty()) {
-                    CerealText(
-                        text = stringResource(Res.string.marketplace_search_placeholder),
-                        style = CerealTypography.controlLabel,
-                        color = CerealTheme.colorScheme.contentTertiary,
-                    )
-                }
-            }
-        }
+            },
+        )
     }
 }

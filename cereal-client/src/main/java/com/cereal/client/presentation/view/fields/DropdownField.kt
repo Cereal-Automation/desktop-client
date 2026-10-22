@@ -2,11 +2,13 @@ package com.cereal.client.presentation.view.fields
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.wrapContentWidth
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Clear
@@ -26,6 +28,7 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import com.cereal.client.presentation.view.CerealIconButton
 import com.cereal.client.presentation.view.CerealText
+import com.cereal.client.presentation.view.CerealTextField
 import com.cereal.client.presentation.view.fields.state.DropDownFieldState
 import com.cereal_automation.cereal_client.generated.resources.Res
 import com.cereal_automation.cereal_client.generated.resources.clear
@@ -49,28 +52,18 @@ fun <T : Any> DropdownTextField(
     }
     FormField(state.error, modifier = modifier) {
         Box {
-            Column(modifier = Modifier.fillMaxWidth()) {
-                OutlinedTextField(
+            Column(modifier = Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                FieldLabel(title, visible = labelVisible)
+                CerealTextField(
                     value = state.selectedValue?.toString().orEmpty(),
                     onValueChange = {
                         // No-op, dropdown selection handles this.
                     },
                     enabled = enabled,
-                    singleLine = true,
-                    // A blank title renders no label at all — see [TextField] for why.
-                    label =
-                        title.takeIf { labelVisible && it.isNotBlank() }?.let {
-                            {
-                                CerealText(
-                                    text = it,
-                                    style = MaterialTheme.typography.bodyMedium,
-                                )
-                            }
-                        },
                     trailingIcon =
                         if (state.showClearButton()) {
                             {
-                                CerealIconButton(onClick = { state.onClear() }) {
+                                CerealIconButton(onClick = { state.onClear() }, modifier = Modifier.size(28.dp)) {
                                     Icon(
                                         imageVector = Icons.Default.Clear,
                                         contentDescription = stringResource(Res.string.clear),
@@ -81,7 +74,6 @@ fun <T : Any> DropdownTextField(
                             null
                         },
                     modifier = Modifier.fillMaxWidth().semantics { if (!labelVisible) contentDescription = title },
-                    textStyle = MaterialTheme.typography.bodyMedium,
                     isError = state.showErrors(),
                 )
                 DropdownList(
@@ -97,17 +89,15 @@ fun <T : Any> DropdownTextField(
             }
             if (enabled) {
                 // Transparent overlay to intercept clicks and open the dropdown. The overlay
-                // stops before the trailing icon area (48 dp) so the clear button remains
+                // stops before the trailing icon area (40 dp) so the clear button remains
                 // clickable on top of the Box z-order.
                 Spacer(
                     modifier =
                         Modifier
                             .matchParentSize()
                             .background(Color.Transparent)
-                            .padding(
-                                top = 10.dp,
-                                end = if (state.showClearButton()) 48.dp else 0.dp,
-                            ).clickable(
+                            .padding(end = if (state.showClearButton()) 40.dp else 0.dp)
+                            .clickable(
                                 onClick = { isOpen.value = true },
                             ),
                 )

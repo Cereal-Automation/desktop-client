@@ -5,6 +5,7 @@ import androidx.compose.ui.test.ExperimentalTestApi
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsOff
 import androidx.compose.ui.test.assertIsOn
+import androidx.compose.ui.test.hasSetTextAction
 import androidx.compose.ui.test.isToggleable
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
@@ -59,7 +60,7 @@ class FieldsUiTest {
                 TextField(title = "Username", state = state)
             }
 
-            onNodeWithText("Username").performTextInput("hello")
+            onNode(hasSetTextAction()).performTextInput("hello")
 
             assertEquals("hello", state.text)
         }

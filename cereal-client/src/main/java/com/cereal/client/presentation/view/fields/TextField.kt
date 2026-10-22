@@ -1,19 +1,23 @@
 package com.cereal.client.presentation.view.fields
 
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedTextField
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.VisualTransformation
+import androidx.compose.ui.unit.dp
+import com.cereal.client.presentation.theme.CerealTheme
 import com.cereal.client.presentation.view.CerealText
+import com.cereal.client.presentation.view.CerealTextField
 import com.cereal.client.presentation.view.fields.state.TextFieldState
 
 @Composable
@@ -33,13 +37,10 @@ fun TextField(
     // accessible name, so screen readers still announce what the input is for.
     labelVisible: Boolean = true,
 ) {
-    // Material3 hides `placeholder` behind an unfocused floating label, so a labeled field shows its hint
-    // under the box while it's empty instead; an unlabeled field keeps it inside as the placeholder.
-    val hasLabel = labelVisible && title.isNotBlank()
-    val hint = hintText.takeIf { it.isNotBlank() }
     FormField(state.error) {
-        Column(modifier = modifier.fillMaxWidth()) {
-            OutlinedTextField(
+        Column(modifier = modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+            FieldLabel(title, visible = labelVisible)
+            CerealTextField(
                 value = state.text,
                 onValueChange = {
                     state.onValueChange(it)
@@ -48,20 +49,7 @@ fun TextField(
                 singleLine = singleLine,
                 visualTransformation = visualTransformation,
                 trailingIcon = trailingIcon,
-                placeholder = hint?.takeIf { !hasLabel }?.let { { CerealText(text = it) } },
-                supportingText = hint?.takeIf { hasLabel && state.text.isEmpty() }?.let { { CerealText(text = it) } },
-                // A blank title renders no label at all rather than an empty one, so a caller that
-                // has already named the field above the input (a single-field list row) gets a bare
-                // box instead of a floating label slot holding nothing.
-                label =
-                    title.takeIf { hasLabel }?.let {
-                        {
-                            CerealText(
-                                text = it,
-                                style = MaterialTheme.typography.bodyMedium,
-                            )
-                        }
-                    },
+                placeholder = hintText.takeIf { it.isNotBlank() },
                 modifier =
                     Modifier
                         .fillMaxWidth()
@@ -69,7 +57,6 @@ fun TextField(
                         .onFocusChanged { focusState ->
                             state.onFocusChange(focusState.isFocused)
                         },
-                textStyle = MaterialTheme.typography.bodyMedium,
                 isError = state.showErrors(),
                 keyboardOptions = KeyboardOptions.Default.copy(imeAction = imeAction),
                 keyboardActions =
@@ -80,5 +67,20 @@ fun TextField(
                     ),
             )
         }
+    }
+}
+
+/** The caption above a field box; a blank title renders nothing, so a caller that named the field itself gets a bare box. */
+@Composable
+internal fun FieldLabel(
+    title: String,
+    visible: Boolean = true,
+) {
+    if (visible && title.isNotBlank()) {
+        CerealText(
+            text = title,
+            style = MaterialTheme.typography.labelLarge.copy(fontWeight = FontWeight.SemiBold),
+            color = CerealTheme.colorScheme.contentSecondary,
+        )
     }
 }

@@ -18,7 +18,7 @@
 | Field validators | `[Type]FieldValidator` | `RequiredStringFieldValidator.kt` |
 | UiModels | `[Domain]UiModel` | `TaskUiModel.kt`, `ScriptInstanceUiModel.kt` |
 | Mappers | `[Domain]UiMapper` | `TaskUiMapper.kt`, `GroupListItemContentMapper.kt` |
-| Shared components | `Cereal[Component]` | `CerealOutlinedTextField.kt`, `CerealSnackbar.kt` |
+| Shared components | `Cereal[Component]` | `CerealTextField.kt`, `CerealSnackbar.kt` |
 | Navigation | — | `Router.kt`, `BackStack.kt`, `Root.kt` |
 | Theme | — | `CerealTheme.kt`, `Colors.kt`, `Typography.kt` |
 | Utilities | — | `Extensions.kt`, `ImageUtil.kt` |
