@@ -1,6 +1,7 @@
 package com.cereal.client.infrastructure.di.modules
 
 import com.cereal.client.domain.provider.AuthProvider
+import com.cereal.client.domain.provider.DatasetFileProvider
 import com.cereal.client.domain.repository.LogEventRepository
 import com.cereal.client.domain.repository.NotificationHistoryRepository
 import com.cereal.client.domain.repository.ScriptRepository
@@ -10,6 +11,7 @@ import com.cereal.client.infrastructure.data.repository.SandboxScriptSeeder
 import com.cereal.client.infrastructure.data.repository.SandboxSessionRepository
 import com.cereal.client.infrastructure.data.repository.SandboxTextFileLogEventRepository
 import com.cereal.client.infrastructure.data.repository.SandboxTextFileNotificationHistoryRepository
+import com.cereal.client.infrastructure.provider.DatasetFileProviderImpl
 import com.cereal.client.infrastructure.provider.SandboxAuthProvider
 import org.koin.dsl.module
 
@@ -24,6 +26,8 @@ import org.koin.dsl.module
  *    (including the script repository) reads from.
  *  - log events and notifications are mirrored to plain-text files under
  *    `~/Cereal-Sandbox/` (see [SandboxTextFileLogEventRepository]) for easy inspection.
+ *  - [DatasetFileProviderImpl] reads and writes the import files picked in the real native file
+ *    dialogs, so downloading a template and importing a file actually work.
  *
  * UI tests do not load this module, so they remain fully hermetic against the in-memory
  * `InMemoryScriptRepository` / `InMemoryUserRepository`.
@@ -40,5 +44,6 @@ object SandboxRepositoryModule {
             single<AuthProvider> { SandboxAuthProvider(get()) }
             single<LogEventRepository> { SandboxTextFileLogEventRepository() }
             single<NotificationHistoryRepository> { SandboxTextFileNotificationHistoryRepository() }
+            single<DatasetFileProvider> { DatasetFileProviderImpl(get(), get(), get()) }
         }
 }
