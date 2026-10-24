@@ -16,6 +16,9 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.cereal.client.domain.model.script.ScriptPackageInstance
+import com.cereal.client.domain.model.script.configuration.ConfigItemType
+import com.cereal.client.domain.model.script.configuration.ConfigValue
+import com.cereal.client.domain.model.script.configuration.ConfigurationItem
 import com.cereal.client.presentation.theme.CerealTheme
 import com.cereal.client.presentation.view.Body2Text
 import com.cereal.client.presentation.view.CaptionText
@@ -62,7 +65,7 @@ fun ViewConfigurationDialog(
                             title = configItem.definition.name,
                             description = configItem.definition.description,
                         ) {
-                            Body2Text(configItem.value?.raw.toString())
+                            Body2Text(configItem.displayValue())
                         }
                     }
 
@@ -77,5 +80,16 @@ fun ViewConfigurationDialog(
                 modifier = Modifier.align(Alignment.BottomEnd),
             )
         }
+    }
+}
+
+/** One line per list row, each field shown under its declared name; any other value renders as-is. */
+internal fun ConfigurationItem.displayValue(): String {
+    val listValue = value as? ConfigValue.ListValue ?: return value?.raw.toString()
+    val fields = (definition.type as? ConfigItemType.ListConfigItem)?.items.orEmpty().sortedBy { it.position }
+    return listValue.raw.rows.joinToString("\n") { row ->
+        fields
+            .mapNotNull { field -> row.fields[field.key]?.let { "${field.name}: ${it.raw}" } }
+            .joinToString(" · ")
     }
 }
