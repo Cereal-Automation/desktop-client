@@ -100,7 +100,7 @@ class ScriptSelectionCapacityScreenTest {
                     CerealTheme {
                         ScriptSelectionDialog(
                             scriptPackageGroup = ScriptPackageGroup("group-1", "Group 1"),
-                            initialPublicIdentifier = PACKAGE_NAME,
+                            initialRequest = ScriptRequest(PACKAGE_NAME),
                             onScriptInstanceCreated = {},
                             onDismissRequest = {},
                             onNavigateToMarketplace = {},

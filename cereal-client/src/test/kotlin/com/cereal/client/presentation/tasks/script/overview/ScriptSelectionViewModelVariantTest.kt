@@ -35,6 +35,7 @@ import com.cereal.client.presentation.tasks.script.overview.configuration.Script
 import com.cereal.client.presentation.view.group.GroupedListViewModel
 import fixtures.VARIANT_FIELD
 import fixtures.aScriptPackage
+import fixtures.aScriptPackageInstance
 import fixtures.aScriptPackageWithVariant
 import io.mockk.mockk
 import kotlinx.coroutines.CoroutineScope
@@ -46,6 +47,7 @@ import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.test.setMain
 import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.Assertions.assertEquals
+import org.junit.jupiter.api.Assertions.assertNotEquals
 import org.junit.jupiter.api.Assertions.assertSame
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
@@ -112,34 +114,49 @@ class ScriptSelectionViewModelVariantTest {
         stopKoin()
     }
 
-    private fun createViewModel() =
-        ScriptSelectionViewModel(
-            scope = scope,
-            scriptPackageGroup = ScriptPackageGroup("g1", "Group 1"),
-            initialScriptPackageInstance = null,
-            dispatcherProvider = dispatcherProvider,
-            getScriptsInteractor = GetScriptsInteractor(scriptRepository),
-            getScriptCapacityInteractor = GetScriptCapacityInteractor(ScriptLicenseChecker(authProvider, preferences)),
-            getSdkVersionInteractor = GetSdkVersionInteractor(InMemoryApplicationRepository()),
-            syncScriptsOnScriptSelectionInteractor = mockk(relaxed = true),
-            startScriptInteractor =
-                StartScriptInteractor(
-                    scriptInstanceRepository = scriptInstanceRepository,
-                    taskManager = mockk(relaxed = true),
-                    scriptLicenseChecker = ScriptLicenseChecker(authProvider, preferences),
-                    applicationRepository = InMemoryApplicationRepository(),
-                    scriptInstanceFactory = ScriptInstanceFactory(noOpScopeLinker),
-                ),
-            hasNotificationChannelsConfiguredInteractor = HasNotificationChannelsConfiguredInteractor(InMemoryNotificationSettingsRepository()),
-            hasLlmProviderConfigInteractor = HasLlmProviderConfigInteractor(InMemoryLlmProviderConfigRepository()),
-            errorResolver = ErrorResolver(),
-        ).also { dispatcher.scheduler.advanceUntilIdle() }
+    private fun createViewModel(
+        duplicate: ScriptPackageInstance? = null,
+        request: ScriptRequest? = null,
+    ) = ScriptSelectionViewModel(
+        scope = scope,
+        scriptPackageGroup = ScriptPackageGroup("g1", "Group 1"),
+        initialScriptPackageInstance = duplicate,
+        initialRequest = request,
+        dispatcherProvider = dispatcherProvider,
+        getScriptsInteractor = GetScriptsInteractor(scriptRepository),
+        getScriptCapacityInteractor = GetScriptCapacityInteractor(ScriptLicenseChecker(authProvider, preferences)),
+        getSdkVersionInteractor = GetSdkVersionInteractor(InMemoryApplicationRepository()),
+        syncScriptsOnScriptSelectionInteractor = mockk(relaxed = true),
+        startScriptInteractor =
+            StartScriptInteractor(
+                scriptInstanceRepository = scriptInstanceRepository,
+                taskManager = mockk(relaxed = true),
+                scriptLicenseChecker = ScriptLicenseChecker(authProvider, preferences),
+                applicationRepository = InMemoryApplicationRepository(),
+                scriptInstanceFactory = ScriptInstanceFactory(noOpScopeLinker),
+            ),
+        hasNotificationChannelsConfiguredInteractor = HasNotificationChannelsConfiguredInteractor(InMemoryNotificationSettingsRepository()),
+        hasLlmProviderConfigInteractor = HasLlmProviderConfigInteractor(InMemoryLlmProviderConfigRepository()),
+        errorResolver = ErrorResolver(),
+    ).also { dispatcher.scheduler.advanceUntilIdle() }
 
     @Suppress("UNCHECKED_CAST")
     private fun ScriptSelectionViewModel.rows() =
         ((overviewViewState.value as ScriptSelectionState.Overview.Filled).viewModel as GroupedListViewModel<Any?>).let { list ->
             list to list.state.value
         }
+
+    private fun ScriptSelectionViewModel.selectedTitle() =
+        rows()
+            .second
+            .single { it.selected }
+            .content.title
+
+    private fun ScriptSelectionViewModel.selectedRow() =
+        rows()
+            .second
+            .single { it.selected }
+            .content.id as ScriptEntryRow
 
     private fun ScriptSelectionViewModel.selectRow(title: String) {
         val (list, rows) = rows()
@@ -203,6 +220,42 @@ class ScriptSelectionViewModelVariantTest {
             assertEquals(AGENT, instance.definition.manifest.packageName)
             assertEquals(null, instance.variantId)
         }
+
+    @Test
+    fun `duplicating a variant instance preselects its row and creates a new instance with the same variant`() =
+        runTest {
+            val original = aScriptPackageInstance("original", AGENT, definition = agent, variantId = "checkout")
+            val viewModel = createViewModel(duplicate = original)
+
+            assertEquals("Checkout", viewModel.selectedTitle())
+            viewModel.start()
+
+            assertEquals(ErrorAction.None, viewModel.errorAction.value)
+            val copy = scriptInstanceRepository.getScriptPackageInstances().single()
+            assertNotEquals(original.id, copy.id)
+            assertEquals("checkout", copy.variantId)
+        }
+
+    @Test
+    fun `a request for a variant preselects that variant's row`() {
+        val viewModel = createViewModel(request = ScriptRequest(AGENT, variantId = "checkout"))
+
+        assertEquals("Checkout", viewModel.selectedTitle())
+    }
+
+    @Test
+    fun `a request without a variant preselects the package's default row`() {
+        val viewModel = createViewModel(request = ScriptRequest(PLAIN))
+
+        assertEquals(ScriptEntryRow(plain), viewModel.selectedRow())
+    }
+
+    @Test
+    fun `without a request or duplicate the first row is selected`() {
+        val viewModel = createViewModel()
+
+        assertEquals(ScriptEntryRow(agent), viewModel.selectedRow())
+    }
 
     private companion object {
         const val AGENT = "com.example.agent"

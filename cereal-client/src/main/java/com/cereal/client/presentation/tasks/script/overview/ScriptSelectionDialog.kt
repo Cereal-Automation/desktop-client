@@ -84,13 +84,13 @@ import org.koin.java.KoinJavaComponent
 fun ScriptSelectionDialog(
     scriptPackageGroup: ScriptPackageGroup,
     initialScriptPackageInstance: ScriptPackageInstance? = null,
-    initialPublicIdentifier: String? = null,
+    initialRequest: ScriptRequest? = null,
     coroutineScope: CoroutineScope = rememberCoroutineScope(),
     viewModel: ScriptSelectionViewModel =
         remember {
             KoinJavaComponent.get(
                 ScriptSelectionViewModel::class.java,
-                parameters = { parametersOf(coroutineScope, scriptPackageGroup, initialScriptPackageInstance, initialPublicIdentifier) },
+                parameters = { parametersOf(coroutineScope, scriptPackageGroup, initialScriptPackageInstance, initialRequest) },
             )
         },
     onScriptInstanceCreated: ((scriptPackageInstance: ScriptPackageInstance) -> Unit),
