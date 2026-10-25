@@ -1,7 +1,9 @@
 package com.cereal.client.presentation.tasks
 
 import com.cereal.client.domain.model.script.ScriptPackageInstance
+import com.cereal.client.domain.model.script.configuration.ConfigValue
 import com.cereal.client.domain.model.task.ScriptPackageGroup
+import com.cereal.client.presentation.error.ErrorAction
 import com.cereal.client.presentation.view.group.GroupListItemContent
 import com.cereal.client.presentation.view.group.HierarchicalListItem
 import com.cereal.client.presentation.view.group.ItemStatus
@@ -70,6 +72,61 @@ class TaskSetupsViewModelTest {
 
             val dialog = assertIs<TaskViewState.DialogState.SelectingScript>(viewModel.dialogState.value)
             assertEquals(work, dialog.scriptPackageGroup)
+        }
+
+    @Test
+    fun `edit opens the configuration dialog for the selected setup`() =
+        runTest {
+            val setup = world.setup("setup-1", null, idle())
+            val viewModel = start()
+            viewModel.hierarchicalListViewModel.selectChild(setup)
+            world.dispatcher.scheduler.advanceUntilIdle()
+
+            assertTrue(viewModel.editEnabled)
+            viewModel.onEditClicked()
+
+            val dialog = assertIs<TaskViewState.DialogState.EditingScript>(viewModel.dialogState.value)
+            assertEquals("setup-1", dialog.scriptPackageInstance.id)
+        }
+
+    @Test
+    fun `saving an edit updates the setup in place and keeps its tasks`() =
+        runTest {
+            val setup = world.setup("setup-1", null, idle())
+            val taskBefore = world.tasksRepository.getTask("setup-1-task-1")!!
+            val viewModel = start()
+            viewModel.hierarchicalListViewModel.selectChild(setup)
+            viewModel.onEditClicked()
+            val newConfiguration = mapOf("name" to ConfigValue.StringValue("edited"))
+
+            viewModel.saveEdit(setup.copy(mainConfiguration = newConfiguration))
+            world.dispatcher.scheduler.advanceUntilIdle()
+
+            assertIs<TaskViewState.DialogState.Hidden>(viewModel.dialogState.value)
+            val stored = world.scriptInstances.getScriptPackageInstance("setup-1")
+            assertEquals(newConfiguration, stored.mainConfiguration)
+            assertEquals(setup.createdAt, stored.createdAt)
+            val task = world.tasksRepository.getTask("setup-1-task-1")!!
+            assertEquals(taskBefore.statusHistory, task.statusHistory)
+            assertEquals(taskBefore.createdAt, task.createdAt)
+            assertEquals(newConfiguration, task.configuration)
+            assertEquals(newConfiguration, task.scriptInstance.packageInstance.mainConfiguration)
+        }
+
+    @Test
+    fun `edit is disabled and rejected while a task of the setup runs`() =
+        runTest {
+            val setup = world.setup("setup-1", null, running())
+            val viewModel = start()
+            viewModel.hierarchicalListViewModel.selectChild(setup)
+            world.dispatcher.scheduler.advanceUntilIdle()
+
+            assertFalse(viewModel.editEnabled)
+            viewModel.saveEdit(setup.copy(mainConfiguration = mapOf("name" to ConfigValue.StringValue("edited"))))
+            world.dispatcher.scheduler.advanceUntilIdle()
+
+            assertIs<ErrorAction.Message>(world.errorResolver.errorAction.value)
+            assertEquals(emptyMap<String, ConfigValue>(), world.scriptInstances.getScriptPackageInstance("setup-1").mainConfiguration)
         }
 
     @Test

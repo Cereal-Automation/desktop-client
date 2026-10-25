@@ -68,6 +68,18 @@ class InMemoryScriptInstanceRepository : ScriptInstanceRepository {
             }
     }
 
+    override suspend fun updateScriptPackageInstance(scriptPackageInstance: ScriptPackageInstance) {
+        entries.value =
+            entries.value.map {
+                if (it.packageInstance.id != scriptPackageInstance.id) return@map it
+                val updated = scriptPackageInstance.copy(createdAt = it.packageInstance.createdAt)
+                it.copy(
+                    packageInstance = updated,
+                    mainScript = it.mainScript.copy(configuration = updated.mainConfiguration, packageInstance = updated),
+                )
+            }
+    }
+
     override suspend fun addScriptPackageInstance(
         groupId: String,
         scriptPackageInstance: ScriptPackageInstance,

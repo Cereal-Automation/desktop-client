@@ -1,5 +1,7 @@
 package com.cereal.client.presentation.tasks
 
+import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.TooltipArea
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -13,6 +15,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.HelpOutline
+import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.MoreHoriz
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Tune
@@ -21,6 +24,7 @@ import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Surface
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -28,6 +32,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import com.cereal.client.presentation.theme.CerealTheme
@@ -40,6 +45,7 @@ import com.cereal.client.presentation.view.button.CerealToolbarButtonVariant
 import com.cereal.client.presentation.view.chip.Pill
 import com.cereal_automation.cereal_client.generated.resources.Res
 import com.cereal_automation.cereal_client.generated.resources.contact_support
+import com.cereal_automation.cereal_client.generated.resources.edit
 import com.cereal_automation.cereal_client.generated.resources.ic_cancel
 import com.cereal_automation.cereal_client.generated.resources.ic_play
 import com.cereal_automation.cereal_client.generated.resources.more_options
@@ -48,6 +54,7 @@ import com.cereal_automation.cereal_client.generated.resources.start_all
 import com.cereal_automation.cereal_client.generated.resources.start_all_tasks
 import com.cereal_automation.cereal_client.generated.resources.stop_all
 import com.cereal_automation.cereal_client.generated.resources.stop_all_tasks
+import com.cereal_automation.cereal_client.generated.resources.stop_tasks_to_edit
 import com.cereal_automation.cereal_client.generated.resources.view_config
 import org.jetbrains.compose.resources.painterResource
 import org.jetbrains.compose.resources.stringResource
@@ -60,6 +67,8 @@ internal fun TasksToolbar(
     onContactSupport: (() -> Unit)? = null,
     menuOptions: List<MenuOption> = emptyList(),
     onMenuOptionSelected: (MenuOption) -> Unit = {},
+    onEdit: (() -> Unit)? = null,
+    editEnabled: Boolean = true,
 ) {
     Column(modifier = Modifier.fillMaxWidth()) {
         Row(
@@ -83,7 +92,7 @@ internal fun TasksToolbar(
                     color = CerealTheme.colorScheme.contentTertiary,
                 )
             }
-            if (onViewConfig != null || onContactSupport != null || menuOptions.isNotEmpty()) {
+            if (onViewConfig != null || onContactSupport != null || onEdit != null || menuOptions.isNotEmpty()) {
                 Spacer(Modifier.weight(1f))
             }
             if (onContactSupport != null) {
@@ -98,6 +107,9 @@ internal fun TasksToolbar(
                     )
                     CerealText(text = stringResource(Res.string.contact_support))
                 }
+            }
+            if (onEdit != null) {
+                EditButton(onEdit, editEnabled)
             }
             if (onViewConfig != null) {
                 CerealToolbarButton(
@@ -147,6 +159,47 @@ internal fun TasksToolbar(
                     .height(1.dp)
                     .background(CerealTheme.colorScheme.border),
         )
+    }
+}
+
+/** Edit is disabled while a task runs; hovering it then explains why. */
+@OptIn(ExperimentalFoundationApi::class)
+@Composable
+private fun EditButton(
+    onEdit: () -> Unit,
+    enabled: Boolean,
+) {
+    val button = @Composable {
+        CerealToolbarButton(
+            variant = CerealToolbarButtonVariant.Ghost,
+            onClick = onEdit,
+            enabled = enabled,
+        ) {
+            Icon(
+                imageVector = Icons.Filled.Edit,
+                contentDescription = null,
+                modifier = Modifier.size(ButtonDefaults.IconSize),
+            )
+            CerealText(text = stringResource(Res.string.edit))
+        }
+    }
+    if (enabled) {
+        button()
+        return
+    }
+    TooltipArea(
+        tooltip = {
+            Surface(modifier = Modifier.shadow(4.dp), shape = MaterialTheme.shapes.extraSmall) {
+                CerealText(
+                    text = stringResource(Res.string.stop_tasks_to_edit),
+                    modifier = Modifier.padding(CerealTheme.spacing.sm),
+                    style = MaterialTheme.typography.bodySmall,
+                )
+            }
+        },
+        delayMillis = 0,
+    ) {
+        button()
     }
 }
 

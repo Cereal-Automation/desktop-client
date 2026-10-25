@@ -149,6 +149,8 @@ fun TasksScreen(
                             },
                         menuOptions = if (filled != null) viewModel.headerMenuOptions else emptyList(),
                         onMenuOptionSelected = viewModel::onHeaderMenuOptionSelected,
+                        onEdit = filled?.let { viewModel::onEditClicked },
+                        editEnabled = viewModel.editEnabled,
                     )
 
                     viewModel.taskControls.value?.let { controls ->
@@ -278,6 +280,17 @@ fun TasksScreen(
                     viewModel.closeDialog()
                     onNavigateToMarketplace()
                 },
+            )
+        }
+
+        is TaskViewState.DialogState.EditingScript -> {
+            ScriptSelectionDialog(
+                scriptPackageGroup = state.scriptPackageGroup,
+                initialScriptPackageInstance = state.scriptPackageInstance,
+                onDismissRequest = { viewModel.closeDialog() },
+                onScriptInstanceCreated = {},
+                onNavigateToMarketplace = {},
+                onSaveEdit = viewModel::saveEdit,
             )
         }
 

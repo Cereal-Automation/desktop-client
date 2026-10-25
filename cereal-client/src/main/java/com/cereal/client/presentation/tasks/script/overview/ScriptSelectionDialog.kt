@@ -67,6 +67,7 @@ import com.cereal_automation.cereal_client.generated.resources.no_installed_scri
 import com.cereal_automation.cereal_client.generated.resources.notification_warning_continue
 import com.cereal_automation.cereal_client.generated.resources.notification_warning_message
 import com.cereal_automation.cereal_client.generated.resources.notification_warning_title
+import com.cereal_automation.cereal_client.generated.resources.save
 import com.cereal_automation.cereal_client.generated.resources.script_capacity_label
 import com.cereal_automation.cereal_client.generated.resources.search_marketplace_for_scripts
 import com.cereal_automation.cereal_client.generated.resources.select_script_to_configure
@@ -96,6 +97,8 @@ fun ScriptSelectionDialog(
     onScriptInstanceCreated: ((scriptPackageInstance: ScriptPackageInstance) -> Unit),
     onDismissRequest: (() -> Unit),
     onNavigateToMarketplace: () -> Unit,
+    // Edit mode: saves [initialScriptPackageInstance] in place instead of starting a new setup.
+    onSaveEdit: ((ScriptPackageInstance) -> Unit)? = null,
 ) {
     val scriptInstanceStarted = viewModel.scriptInstanceStarted.value
     LaunchedEffect(scriptInstanceStarted) {
@@ -128,21 +131,24 @@ fun ScriptSelectionDialog(
                         .border(1.dp, CerealTheme.colorScheme.borderDark, DialogShape)
                         .background(CerealTheme.colorScheme.cardDark),
             ) {
-                when (val state = viewModel.overviewViewState.value) {
-                    is ScriptSelectionState.Overview.Filled -> {
-                        ScriptRail(count = state.viewModel.state.value.size, viewModel = viewModel) {
-                            GroupedListView(viewModel = state.viewModel)
+                // An edit keeps its script, so there is nothing to choose.
+                if (onSaveEdit == null) {
+                    when (val state = viewModel.overviewViewState.value) {
+                        is ScriptSelectionState.Overview.Filled -> {
+                            ScriptRail(count = state.viewModel.state.value.size, viewModel = viewModel) {
+                                GroupedListView(viewModel = state.viewModel)
+                            }
                         }
-                    }
 
-                    is ScriptSelectionState.Overview.Empty -> {
-                        ScriptRail(count = 0, viewModel = viewModel) {
-                            NoScriptsAvailableView(onNavigateToMarketplace)
+                        is ScriptSelectionState.Overview.Empty -> {
+                            ScriptRail(count = 0, viewModel = viewModel) {
+                                NoScriptsAvailableView(onNavigateToMarketplace)
+                            }
                         }
-                    }
 
-                    // Nothing to choose from, so the configuration takes the full width.
-                    is ScriptSelectionState.Overview.Single -> {}
+                        // Nothing to choose from, so the configuration takes the full width.
+                        is ScriptSelectionState.Overview.Single -> {}
+                    }
                 }
 
                 val configState = viewModel.configurationViewState.value
@@ -170,9 +176,14 @@ fun ScriptSelectionDialog(
                         capacity = scriptCapacityText(viewModel.selectedScriptCapacity.value),
                         enabled = configState is ScriptSelectionState.Config.Selected && !viewModel.selectedScriptUpdateRequired.value,
                         isLaunching = viewModel.scriptLaunchLoadState.value is LoadState.Loading,
+                        isEditing = onSaveEdit != null,
                         onStart = {
                             if (viewModel.validate()) {
-                                viewModel.launchScript()
+                                if (onSaveEdit != null) {
+                                    viewModel.editedInstance()?.let(onSaveEdit)
+                                } else {
+                                    viewModel.launchScript()
+                                }
                             }
                         },
                     )
@@ -325,6 +336,7 @@ private fun ConfigFooter(
     capacity: String?,
     enabled: Boolean,
     isLaunching: Boolean,
+    isEditing: Boolean,
     onStart: () -> Unit,
 ) {
     HorizontalDivider(color = DividerColor)
@@ -362,15 +374,15 @@ private fun ConfigFooter(
                     color = MaterialTheme.colorScheme.onPrimary,
                     strokeWidth = 2.dp,
                 )
-            } else {
+            } else if (!isEditing) {
                 Icon(
                     painterResource(Res.drawable.ic_play),
                     contentDescription = null,
                     modifier = Modifier.size(ButtonDefaults.IconSize),
                 )
             }
-            Spacer(Modifier.width(ButtonDefaults.IconSpacing))
-            CerealText(stringResource(Res.string.start_task))
+            if (isLaunching || !isEditing) Spacer(Modifier.width(ButtonDefaults.IconSpacing))
+            CerealText(stringResource(if (isEditing) Res.string.save else Res.string.start_task))
         }
     }
 }

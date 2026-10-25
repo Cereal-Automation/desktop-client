@@ -25,6 +25,12 @@ interface ScriptPackageInstanceDataSource {
         groupId: String,
     )
 
+    /** Replaces [scriptPackageInstance]'s configuration, task count and notification overrides; id, group and createdAt stay. */
+    suspend fun updateScriptPackageInstance(
+        user: User,
+        scriptPackageInstance: ScriptPackageInstance,
+    )
+
     suspend fun addChildScript(
         user: User,
         childScriptIdentifier: String,
