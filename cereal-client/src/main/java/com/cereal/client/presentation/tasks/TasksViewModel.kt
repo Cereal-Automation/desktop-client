@@ -509,9 +509,13 @@ class TasksViewModel(
     private fun ensureSetupSelected() {
         val setups =
             hierarchicalListViewModel.state.value
-                .filterIsInstance<HierarchicalListItem.Parent<ScriptPackageGroup, ScriptPackageInstance>>()
-                .flatMap { it.children }
-                .map { it.content.id }
+                .flatMap { item ->
+                    // With a single group the list is flat (#205): setups are top-level children.
+                    when (item) {
+                        is HierarchicalListItem.Parent -> item.children
+                        is HierarchicalListItem.Child -> listOf(item)
+                    }
+                }.map { it.content.id }
         val current = hierarchicalListViewModel.selectedChild
         val created = setups.firstOrNull { it.id == createdSetupId }?.also { createdSetupId = null }
         val target =
