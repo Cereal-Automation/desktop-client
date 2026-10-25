@@ -95,10 +95,6 @@ class TasksViewModel(
                     moveScriptToGroup(scriptInstance)
                 }
             },
-            onAddChildClicked = { group ->
-                // Open the script selection dialog for this group
-                dialogManager.showSelectingScript(group)
-            },
         )
 
     // Start in Loading, not Empty: the groups flow has not emitted yet on screen entry, and
@@ -177,7 +173,12 @@ class TasksViewModel(
         dialogManager.showCreateGroup()
     }
 
+    /** "New task setup": opens script selection for the selected setup's group, else the default group. */
     fun onAddScriptClicked() {
+        hierarchicalListViewModel.selectedParent?.let {
+            dialogManager.showSelectingScript(it)
+            return
+        }
         interactorRunner.launch(getOrCreateDefaultTaskGroupInteractor, Interactor.None()) { group ->
             dialogManager.showSelectingScript(group)
         }

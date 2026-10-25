@@ -13,7 +13,6 @@ class HierarchicalListViewModel<P, C>(
     private val onChildSelectedChange: (C?) -> Unit,
     private val onParentMenuOptionSelected: ((item: P, menuItem: MenuOption) -> Unit)? = null,
     private val onChildMenuOptionSelected: ((item: C, menuItem: MenuOption) -> Unit)? = null,
-    private val onAddChildClicked: ((parentId: P) -> Unit)? = null,
 ) {
     val state = mutableStateOf<List<HierarchicalListItem<P, C>>>(emptyList())
 
@@ -169,9 +168,5 @@ class HierarchicalListViewModel<P, C>(
         }
 
         state.value = items
-    }
-
-    fun onAddChildClick(parent: HierarchicalListItem.Parent<P, C>) {
-        onAddChildClicked?.invoke(parent.content.id)
     }
 }

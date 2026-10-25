@@ -35,6 +35,7 @@ import com.cereal.client.presentation.tasks.script.overview.ScriptSelectionDialo
 import com.cereal.client.presentation.view.ConfirmationDialog
 import com.cereal.client.presentation.view.VerticalDivider
 import com.cereal.client.presentation.view.group.ScriptsColumn
+import com.cereal.client.presentation.view.group.ScriptsColumnHeader
 import com.cereal.client.presentation.view.rememberFileDialogLauncher
 import com.cereal_automation.cereal_client.generated.resources.Res
 import com.cereal_automation.cereal_client.generated.resources.cancel
@@ -54,6 +55,7 @@ import kotlin.coroutines.resume
 @Composable
 fun TasksScreen(
     onNavigateToMarketplace: () -> Unit = {},
+    onNavigateToHome: () -> Unit = {},
     openScriptSelectionForPackage: String? = null,
     focusTaskId: String? = null,
     viewModel: TasksViewModel =
@@ -88,6 +90,7 @@ fun TasksScreen(
                     is TaskViewState.GroupViewState.Filled<*, *> -> {
                         ScriptsColumn(
                             viewModel = viewModel.hierarchicalListViewModel,
+                            onNewTaskSetup = { viewModel.onAddScriptClicked() },
                             onCreateGroup = { viewModel.onCreateTaskGroup() },
                             onChildLongClick = { child ->
                                 child?.let {
@@ -98,10 +101,18 @@ fun TasksScreen(
                     }
 
                     TaskViewState.GroupViewState.Empty -> {
-                        TasksEmptyState(
-                            onCreateGroup = { viewModel.onCreateTaskGroup() },
-                            onAddScript = { viewModel.onAddScriptClicked() },
-                        )
+                        Column {
+                            ScriptsColumnHeader(
+                                totalScripts = 0,
+                                runningScripts = 0,
+                                onNewTaskSetup = { viewModel.onAddScriptClicked() },
+                                onCreateGroup = { viewModel.onCreateTaskGroup() },
+                            )
+                            TasksEmptyState(
+                                onNewTaskSetup = { viewModel.onAddScriptClicked() },
+                                onNavigateToHome = onNavigateToHome,
+                            )
+                        }
                     }
 
                     // Loading is the brief window before the groups flow first emits. Render

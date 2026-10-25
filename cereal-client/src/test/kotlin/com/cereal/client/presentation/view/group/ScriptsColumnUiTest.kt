@@ -13,8 +13,8 @@ import kotlin.test.assertEquals
 
 /**
  * Render + interaction tests for [ScriptsColumn]. Builds a [HierarchicalListViewModel] with one
- * expanded parent group containing a child, then asserts the header, group, child and the
- * "Add Script" affordance render, and that the "New group" button invokes [onCreateGroup].
+ * expanded parent group containing a child, then asserts the "Tasks" header, group and child render,
+ * and that "+" and the "···" menu's New group invoke their callbacks.
  */
 @OptIn(ExperimentalTestApi::class, ExperimentalFoundationApi::class)
 class ScriptsColumnUiTest {
@@ -43,31 +43,51 @@ class ScriptsColumnUiTest {
             setScreenContent {
                 ScriptsColumn(
                     viewModel = viewModel,
+                    onNewTaskSetup = {},
                     onCreateGroup = {},
                 )
             }
 
-            onNodeWithText("Scripts").assertIsDisplayed()
+            onNodeWithText("Tasks").assertIsDisplayed()
+            onNodeWithText("1 setup · 0 running").assertIsDisplayed()
             onNodeWithText("My Group").assertIsDisplayed()
             onNodeWithText("My Script").assertIsDisplayed()
-            // The add-script affordance only shows when the parent is expanded.
-            onNodeWithText("Add Script").assertIsDisplayed()
+            onNodeWithText("Add Script").assertDoesNotExist()
         }
 
     @Test
-    fun clickingNewGroupFiresCallback() =
+    fun clickingPlusFiresNewTaskSetup() =
         runScreenTest {
-            val viewModel = createViewModel()
+            var newTaskSetupClicks = 0
+
+            setScreenContent {
+                ScriptsColumn(
+                    viewModel = createViewModel(),
+                    onNewTaskSetup = { newTaskSetupClicks++ },
+                    onCreateGroup = {},
+                )
+            }
+
+            onNodeWithContentDescription("New task setup").performClick()
+
+            assertEquals(1, newTaskSetupClicks)
+        }
+
+    @Test
+    fun newGroupInOverflowMenuFiresCallback() =
+        runScreenTest {
             var createGroupClicks = 0
 
             setScreenContent {
                 ScriptsColumn(
-                    viewModel = viewModel,
+                    viewModel = createViewModel(),
+                    onNewTaskSetup = {},
                     onCreateGroup = { createGroupClicks++ },
                 )
             }
 
-            onNodeWithContentDescription("New group").performClick()
+            onNodeWithContentDescription("More options").performClick()
+            onNodeWithText("New group").performClick()
 
             assertEquals(1, createGroupClicks)
         }

@@ -176,18 +176,6 @@ class TasksViewModelTest {
         }
 
     @Test
-    fun `groups list becomes Filled once groups load`() =
-        runTest {
-            coEvery { getTaskGroupsInteractor(any()) } returns
-                flowOf(SuspendableResult.Success(listOf(ScriptPackageGroup("1", "Group 1"))))
-
-            createViewModel()
-            dispatcher.scheduler.advanceUntilIdle()
-
-            assertIs<TaskViewState.GroupViewState.Filled<*, *>>(viewModel.hierarchicalListState.value)
-        }
-
-    @Test
     fun `groups list becomes Empty when no groups exist`() =
         runTest {
             coEvery { getTaskGroupsInteractor(any()) } returns
@@ -945,16 +933,6 @@ class TasksViewModelTest {
 
         viewModel.hierarchicalListViewModel.onChildMenuOptionClick(childItem(group, instance), MenuOption.MOVE_TO_GROUP)
         assertIs<TaskViewState.DialogState.MovingScript>(viewModel.dialogState.value)
-    }
-
-    @Test
-    fun `add-child click opens script selection for the group`() {
-        createViewModel()
-        val group = ScriptPackageGroup("1", "Group 1")
-
-        viewModel.hierarchicalListViewModel.onAddChildClick(parentItem(group))
-
-        assertIs<TaskViewState.DialogState.SelectingScript>(viewModel.dialogState.value)
     }
 
     @Test

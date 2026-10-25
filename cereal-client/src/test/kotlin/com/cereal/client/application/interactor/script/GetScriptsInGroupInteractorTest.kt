@@ -33,7 +33,7 @@ class GetScriptsInGroupInteractorTest {
 
             val packageInstance = aScriptPackageInstance("instance-1", "com.example.one")
             val scriptInstance = aScriptInstance(packageInstance)
-            scriptInstanceRepository.seed(listOf(packageInstance))
+            scriptInstanceRepository.seed(listOf(packageInstance), groupId = "group-1")
 
             // Two tasks for this instance, one running, one idle.
             tasksRepository.addTask(aTask("task-1", scriptInstance, running = true))
@@ -56,7 +56,7 @@ class GetScriptsInGroupInteractorTest {
             val interactor = GetScriptsInGroupInteractor(scriptInstanceRepository, tasksRepository)
 
             val packageInstance = aScriptPackageInstance("instance-1", "com.example.one")
-            scriptInstanceRepository.seed(listOf(packageInstance))
+            scriptInstanceRepository.seed(listOf(packageInstance), groupId = "group-1")
 
             // A task for a different, unrelated instance must not be counted.
             tasksRepository.addTask(aTask("other-task", "com.example.other", running = true))
