@@ -1,6 +1,5 @@
 package com.cereal.client.presentation.tasks
 
-import com.cereal.client.domain.model.script.ScriptPackageInstance
 import com.cereal.client.domain.model.task.JobTask
 import com.cereal.client.domain.model.task.TaskStatus
 import com.cereal.client.presentation.tasks.model.TaskUiModel
@@ -30,15 +29,18 @@ class TaskRowsAndOutputViewModelTest {
     private val world = TasksScreenWorld(StandardTestDispatcher())
     private var viewModel: TasksViewModel? = null
 
-    private fun start(selected: ScriptPackageInstance): TasksViewModel =
+    private fun start(): TasksViewModel =
         world.viewModel().also {
             viewModel = it
             world.dispatcher.scheduler.advanceUntilIdle()
-            it.hierarchicalListViewModel.selectChild(selected)
-            world.dispatcher.scheduler.advanceUntilIdle()
         }
 
-    private fun TasksViewModel.rows(): List<TaskUiModel> = assertIs<TaskViewState.DetailViewState.Filled>(tasksViewState.value).scriptInstances.flatMap { it.tasks }
+    private fun TasksViewModel.rows(): List<TaskUiModel> =
+        assertIs<TaskViewState.ListState.Filled>(listState.value)
+            .groups
+            .flatMap { it.setups }
+            .flatMap { it.scripts }
+            .flatMap { it.tasks }
 
     private fun TasksViewModel.row(taskId: String): TaskUiModel = rows().single { it.id.id == taskId }
 
@@ -50,9 +52,9 @@ class TaskRowsAndOutputViewModelTest {
     @Test
     fun `an idle task is marked idle and other tasks show their latest message`() =
         runTest {
-            val setup = world.setup("s", null, idle(), running("Checking out"), succeeded("Bought it"), errored("Sold out"))
+            world.setup("s", null, idle(), running("Checking out"), succeeded("Bought it"), errored("Sold out"))
 
-            val viewModel = start(setup)
+            val viewModel = start()
 
             assertTrue(viewModel.row("s-task-1").isIdle)
             assertFalse(viewModel.row("s-task-2").isIdle)
@@ -65,9 +67,9 @@ class TaskRowsAndOutputViewModelTest {
     fun `a row carries the time of its current status`() =
         runTest {
             val changedAt = Clock.System.now() - 12.seconds
-            val setup = world.setup("s", null, TaskStatus.Running("Monitoring", changedAt))
+            world.setup("s", null, TaskStatus.Running("Monitoring", changedAt))
 
-            val viewModel = start(setup)
+            val viewModel = start()
 
             assertEquals(changedAt, viewModel.row("s-task-1").statusSince)
         }
@@ -88,7 +90,7 @@ class TaskRowsAndOutputViewModelTest {
                 ),
             )
 
-            val viewModel = start(setup)
+            val viewModel = start()
 
             assertEquals(createdAt, viewModel.row("never-run").statusSince)
         }
@@ -96,8 +98,8 @@ class TaskRowsAndOutputViewModelTest {
     @Test
     fun `the output header names the selected task by its number`() =
         runTest {
-            val setup = world.setup("s", null, idle(), running("Monitoring"))
-            val viewModel = start(setup)
+            world.setup("s", null, idle(), running("Monitoring"))
+            val viewModel = start()
 
             viewModel.onTaskSelected(viewModel.row("s-task-2").id)
 
@@ -107,8 +109,8 @@ class TaskRowsAndOutputViewModelTest {
     @Test
     fun `the output header names no task while none is selected`() =
         runTest {
-            val setup = world.setup("s", null, idle())
-            val viewModel = start(setup)
+            world.setup("s", null, idle())
+            val viewModel = start()
 
             viewModel.onTaskSelected(null)
 

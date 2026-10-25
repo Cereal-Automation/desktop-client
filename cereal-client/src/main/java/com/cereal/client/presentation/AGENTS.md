@@ -17,7 +17,7 @@
 | Field state classes | `[Type]FieldState` / `[Type]TextFieldState` | `StringTextFieldState.kt`, `DropDownFieldState.kt` |
 | Field validators | `[Type]FieldValidator` | `RequiredStringFieldValidator.kt` |
 | UiModels | `[Domain]UiModel` | `TaskUiModel.kt`, `ScriptInstanceUiModel.kt` |
-| Mappers | `[Domain]UiMapper` | `TaskUiMapper.kt`, `GroupListItemContentMapper.kt` |
+| Mappers | `[Domain]UiMapper` | `TaskUiMapper.kt` |
 | Shared components | `Cereal[Component]` | `CerealTextField.kt`, `CerealSnackbar.kt` |
 | Navigation | — | `Router.kt`, `BackStack.kt`, `Root.kt` |
 | Theme | — | `CerealTheme.kt`, `Colors.kt`, `Typography.kt` |

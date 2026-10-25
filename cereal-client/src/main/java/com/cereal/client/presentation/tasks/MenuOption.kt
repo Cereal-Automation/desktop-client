@@ -1,10 +1,13 @@
 package com.cereal.client.presentation.tasks
 
 import com.cereal_automation.cereal_client.generated.resources.Res
+import com.cereal_automation.cereal_client.generated.resources.contact_support
 import com.cereal_automation.cereal_client.generated.resources.delete
 import com.cereal_automation.cereal_client.generated.resources.duplicate
 import com.cereal_automation.cereal_client.generated.resources.edit
 import com.cereal_automation.cereal_client.generated.resources.move_to_group
+import com.cereal_automation.cereal_client.generated.resources.rename
+import com.cereal_automation.cereal_client.generated.resources.restart_failed_count
 import com.cereal_automation.cereal_client.generated.resources.view_full_configuration
 import org.jetbrains.compose.resources.StringResource
 
@@ -16,4 +19,9 @@ enum class MenuOption(
     EDIT(Res.string.edit),
     DUPLICATE(Res.string.duplicate),
     MOVE_TO_GROUP(Res.string.move_to_group),
+
+    /** Takes the number of failed tasks as its format argument. */
+    RESTART_FAILED(Res.string.restart_failed_count),
+    CONTACT_SUPPORT(Res.string.contact_support),
+    RENAME(Res.string.rename),
 }

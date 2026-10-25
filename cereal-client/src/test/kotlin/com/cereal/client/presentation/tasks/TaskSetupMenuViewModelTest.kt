@@ -10,9 +10,9 @@ import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Test
 import kotlin.test.assertIs
 
-/** The detail header's "···" menu acts on the setup it is given, like the list context menu. */
+/** A task setup row's "···" menu acts on that row's setup. */
 @OptIn(ExperimentalCoroutinesApi::class)
-class TaskSetupHeaderActionsViewModelTest {
+class TaskSetupMenuViewModelTest {
     private val world = TasksScreenWorld(StandardTestDispatcher())
     private var viewModel: TasksViewModel? = null
 
@@ -30,11 +30,10 @@ class TaskSetupHeaderActionsViewModelTest {
     }
 
     @Test
-    fun `delete from the header asks for confirmation, then removes the selected setup`() =
+    fun `delete from the setup menu asks for confirmation, then removes the setup`() =
         runTest {
             val setup = world.setup("setup-1", null, idle())
             val viewModel = start()
-            viewModel.hierarchicalListViewModel.selectChild(setup)
 
             viewModel.onSetupMenuOptionSelected(setup, MenuOption.DELETE)
 
@@ -49,13 +48,12 @@ class TaskSetupHeaderActionsViewModelTest {
         }
 
     @Test
-    fun `move to group from the header offers the groups, then moves the selected setup`() =
+    fun `move to group from the setup menu offers the groups, then moves the setup`() =
         runTest {
             val default = world.defaultGroup()
             val work = world.group("Work")
             val setup = world.setup("setup-1", null, idle())
             val viewModel = start()
-            viewModel.hierarchicalListViewModel.selectChild(setup)
 
             viewModel.onSetupMenuOptionSelected(setup, MenuOption.MOVE_TO_GROUP)
 
@@ -71,13 +69,12 @@ class TaskSetupHeaderActionsViewModelTest {
         }
 
     @Test
-    fun `duplicate from the header opens script selection prefilled with the selected setup`() =
+    fun `duplicate from the setup menu opens script selection prefilled with the setup`() =
         runTest {
             val work = world.group("Work")
             world.setup("setup-1", null, idle())
             val setup = world.setup("setup-2", work, idle())
             val viewModel = start()
-            viewModel.hierarchicalListViewModel.selectChild(setup)
 
             viewModel.onSetupMenuOptionSelected(setup, MenuOption.DUPLICATE)
 

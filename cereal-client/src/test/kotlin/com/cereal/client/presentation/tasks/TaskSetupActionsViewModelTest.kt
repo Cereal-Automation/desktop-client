@@ -17,7 +17,7 @@ import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
 import kotlin.test.assertIs
 
-/** Per-setup actions act on the task setup passed in, whichever setup the list has selected. */
+/** Per-setup actions act on the task setup passed in, never on another one. */
 @OptIn(ExperimentalCoroutinesApi::class)
 class TaskSetupActionsViewModelTest {
     private val world = TasksScreenWorld(StandardTestDispatcher())
@@ -42,7 +42,6 @@ class TaskSetupActionsViewModelTest {
             val selected = world.setup("selected", null, idle())
             val other = world.setup("other", null, idle())
             val viewModel = start()
-            viewModel.hierarchicalListViewModel.selectChild(selected)
 
             viewModel.startAllTasks(other)
             settle()
@@ -69,7 +68,6 @@ class TaskSetupActionsViewModelTest {
             val selectedJob = Job().also { world.tasksRepository.setTaskJob("selected-task-1", it) }
             val otherJob = Job().also { world.tasksRepository.setTaskJob("other-task-1", it) }
             val viewModel = start()
-            viewModel.hierarchicalListViewModel.selectChild(selected)
 
             viewModel.stopAllTasks(other)
             settle()
@@ -84,7 +82,6 @@ class TaskSetupActionsViewModelTest {
             val selected = world.setup("selected", null, errored())
             val other = world.setup("other", null, errored())
             val viewModel = start()
-            viewModel.hierarchicalListViewModel.selectChild(selected)
 
             viewModel.restartErroredTasks(other)
             settle()
@@ -106,11 +103,10 @@ class TaskSetupActionsViewModelTest {
     @Test
     fun `the stepper changes only the passed setup's task count`() =
         runTest {
-            // The selected setup has no stepper (it always runs one task), so the step must not depend on it.
+            // The other setup has no stepper (it always runs one task), so the step must not depend on it.
             val selected = world.setup("selected", null, idle())
             val other = world.setup("other", null, idle(), idle(), configuration = proxyGroup())
             val viewModel = start()
-            viewModel.hierarchicalListViewModel.selectChild(selected)
 
             viewModel.increaseConcurrentTasks(other)
             settle()
@@ -131,7 +127,6 @@ class TaskSetupActionsViewModelTest {
             val idleSetup = world.setup("idle", null, idle())
             val runningSetup = world.setup("running", null, running())
             val viewModel = start()
-            viewModel.hierarchicalListViewModel.selectChild(selected)
 
             viewModel.onSetupMenuOptionSelected(runningSetup, MenuOption.EDIT)
             assertEquals(TaskViewState.DialogState.Hidden, viewModel.dialogState.value)

@@ -302,7 +302,6 @@
     <string name="report_issue">Report Issue</string>
     <string name="required_field_error">A value is required</string>
     <string name="restart">Restart</string>
-    <string name="restart_errored">Restart errored</string>
     <string name="restart_task">Restart Task</string>
     <string name="restart_task_message">Are you sure you want to restart this properly finished task?</string>
     <string name="restoring_tasks">Restoring tasks</string>
@@ -452,11 +451,18 @@
         <item quantity="one">%1$d script</item>
         <item quantity="other">%1$d scripts</item>
     </plurals>
-    <string name="scripts_column_title">Tasks</string>
-    <plurals name="task_setups_summary">
-        <item quantity="one">%1$d setup · %2$d running</item>
-        <item quantity="other">%1$d setups · %2$d running</item>
+    <plurals name="task_setups_count">
+        <item quantity="one">%1$d setup</item>
+        <item quantity="other">%1$d setups</item>
     </plurals>
+    <plurals name="tasks_count">
+        <item quantity="one">%1$d task</item>
+        <item quantity="other">%1$d tasks</item>
+    </plurals>
+    <string name="setup_running_count">%1$d running</string>
+    <string name="setup_failed_count">%1$d failed</string>
+    <string name="restart_failed_count">Restart failed · %1$d</string>
+    <string name="rename">Rename</string>
     <string name="search_marketplace_for_scripts">Search for scripts in the marketplace</string>
     <string name="select_script">Select script</string>
     <string name="select_script_to_configure">Please, select a script to configure.</string>
@@ -523,10 +529,8 @@
     <string name="update_available_message">A newer version is available. Do you want to update now?</string>
     <string name="update_required_title">Update required</string>
     <string name="update_required_message">This version is no longer supported. Please update to continue.</string>
-    <string name="view_config">View config</string>
     <string name="fewer_concurrent_tasks">Fewer tasks</string>
     <string name="more_concurrent_tasks">More tasks</string>
-    <string name="stop_tasks_to_edit">Stop tasks to edit</string>
     <string name="view_full_configuration">View full configuration</string>
     <string name="view_profile">View profile</string>
     <string name="view_profile_desc">View and edit your profile online.</string>
@@ -560,12 +564,8 @@
     <string name="tasks_empty_title">No task setups yet</string>
     <string name="tasks_empty_message">A task setup runs a ready-made script with your settings.</string>
     <string name="tasks_empty_home_link">or describe a goal on Home</string>
-    <string name="tasks_no_script_selected_title">No task setup selected</string>
-    <string name="tasks_no_script_selected_message">Select a task setup on the left to see its tasks.</string>
-    <string name="tasks_no_tasks_title">No tasks yet</string>
     <string name="task_ready">Ready</string>
     <string name="seconds_ago">%1$ds ago</string>
-    <string name="tasks_no_tasks_message">This task setup has no tasks. Tasks will appear here once they are created.</string>
     <string name="ai">AI</string>
     <string name="ai_provider">Provider</string>
     <string name="ai_provider_desc">Pick the model the AI browser agent and scripts use.</string>

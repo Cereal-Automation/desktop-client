@@ -22,12 +22,13 @@ import com.cereal_automation.cereal_client.generated.resources.Res
 import com.cereal_automation.cereal_client.generated.resources.more_options
 import org.jetbrains.compose.resources.stringResource
 
-/** A "···" button opening a menu of [options]. */
+/** A "···" button opening a menu of [options], each shown as its [label]. */
 @Composable
 internal fun MoreOptionsMenu(
     options: List<MenuOption>,
     onOptionSelected: (MenuOption) -> Unit,
     tint: Color,
+    label: @Composable (MenuOption) -> String = { stringResource(it.stringResource) },
 ) {
     var expanded by remember { mutableStateOf(false) }
     Box {
@@ -45,7 +46,7 @@ internal fun MoreOptionsMenu(
         ) {
             options.forEach { option ->
                 DropdownMenuItem(
-                    text = { CerealText(stringResource(option.stringResource)) },
+                    text = { CerealText(label(option)) },
                     onClick = {
                         expanded = false
                         onOptionSelected(option)
