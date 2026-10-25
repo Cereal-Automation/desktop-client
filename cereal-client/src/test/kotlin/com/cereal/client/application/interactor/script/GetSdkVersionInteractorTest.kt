@@ -23,6 +23,6 @@ class GetSdkVersionInteractorTest {
         runTest {
             val result = interactor.run(Interactor.None())
 
-            assertEquals(SemVer(1, 0, 0), result)
+            assertEquals(SemVer(1, 99, 0), result)
         }
 }
