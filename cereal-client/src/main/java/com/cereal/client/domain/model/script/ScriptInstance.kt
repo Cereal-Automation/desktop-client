@@ -28,6 +28,9 @@ data class ScriptPackageInstance
         val numberOfConcurrentTasks: Int,
         val notificationOverrides: ScriptNotificationOverrides? = null,
     ) {
+        /** The script this instance starts, configures and displays. Package-level concerns read [definition]. */
+        val entryScript: MainScript get() = definition.mainScript
+
         override fun equals(other: Any?): Boolean {
             if (this === other) return true
             if (other !is ScriptPackageInstance) return false

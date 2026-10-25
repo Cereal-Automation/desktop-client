@@ -209,12 +209,12 @@ class ScriptInstanceMapper(
             keyValueMapper.mapConfigurationItemsFromEntities(
                 mainScriptConfigurationItems,
                 user,
-                scriptPackageInstance.definition.mainScript.configuration,
+                scriptPackageInstance.entryScript.configuration,
             )
 
         return scriptInstanceFactory.createMainScriptInstance(
             scriptEntity.id.toString(),
-            scriptPackageInstance.definition.mainScript,
+            scriptPackageInstance.entryScript,
             scriptConfigurationValues,
             scriptEntity.createdAt,
             scriptPackageInstance,

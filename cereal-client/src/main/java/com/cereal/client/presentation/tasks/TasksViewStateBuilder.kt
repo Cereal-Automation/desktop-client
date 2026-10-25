@@ -66,7 +66,7 @@ object TasksViewStateBuilder {
 
         val scriptName = selectedScriptPackageInstance.definition.manifest.name
         val scriptIdentifier =
-            selectedScriptPackageInstance.definition.mainScript.configuration
+            selectedScriptPackageInstance.entryScript.configuration
                 .getScriptIdentifierValue(selectedScriptPackageInstance.mainConfiguration)
 
         return if (!sortedScriptInstances.isNullOrEmpty()) {

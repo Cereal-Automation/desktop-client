@@ -9,7 +9,7 @@ object GroupListItemContentMapper {
     fun fromScriptInstanceInGroup(scriptInstanceInGroup: ScriptInstanceInGroup): GroupListItemContent<ScriptPackageInstance> {
         val scriptName = scriptInstanceInGroup.scriptPackageInstance.definition.manifest.name
         val identifierValue =
-            scriptInstanceInGroup.scriptPackageInstance.definition.mainScript.configuration
+            scriptInstanceInGroup.scriptPackageInstance.entryScript.configuration
                 .getScriptIdentifierValue(scriptInstanceInGroup.scriptPackageInstance.mainConfiguration)
 
         // Note: Warning message should be filled when there's no valid config: scriptInstanceInGroup.scriptPackageInstance.hasValidConfiguration(). Need to optimize performance first.

@@ -68,7 +68,7 @@ class StartScriptInteractor(
         val scriptInstance =
             scriptInstanceFactory.createMainScriptInstance(
                 UUID.randomUUID().toString(),
-                params.scriptPackage.mainScript,
+                scriptPackageInstance.entryScript,
                 params.mainScriptConfiguration,
                 Clock.System.now(),
                 scriptPackageInstance,
