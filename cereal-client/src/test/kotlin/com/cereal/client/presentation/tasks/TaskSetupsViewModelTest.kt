@@ -1,12 +1,22 @@
 package com.cereal.client.presentation.tasks
 
+import com.cereal.client.domain.model.script.ScriptPackageInstance
+import com.cereal.client.presentation.view.group.GroupListItemContent
+import com.cereal.client.presentation.view.group.HierarchicalListItem
+import com.cereal.client.presentation.view.group.ItemStatus
 import fixtures.TasksScreenWorld
+import fixtures.errored
 import fixtures.idle
+import fixtures.running
+import fixtures.succeeded
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.runTest
 import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.Assertions.assertEquals
+import org.junit.jupiter.api.Assertions.assertFalse
+import org.junit.jupiter.api.Assertions.assertNull
+import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
 import kotlin.test.assertIs
 
@@ -60,4 +70,44 @@ class TaskSetupsViewModelTest {
             val dialog = assertIs<TaskViewState.DialogState.SelectingScript>(viewModel.dialogState.value)
             assertEquals(work, dialog.scriptPackageGroup)
         }
+
+    @Test
+    fun `a setup card shows a status dot for its most urgent task instead of a task count`() =
+        runTest {
+            val idleSetup = world.setup("idle", null, idle(), succeeded())
+            val runningSetup = world.setup("running", null, idle(), running())
+            val erroredSetup = world.setup("errored", null, running(), errored())
+
+            val viewModel = start()
+
+            assertEquals(ItemStatus.IDLE, viewModel.setupCard(idleSetup).status)
+            assertEquals(ItemStatus.RUNNING, viewModel.setupCard(runningSetup).status)
+            assertEquals(ItemStatus.ERROR, viewModel.setupCard(erroredSetup).status)
+            assertNull(viewModel.setupCard(runningSetup).badge)
+        }
+
+    @Test
+    fun `a setup needs attention only when a task errored or waits for the user`() =
+        runTest {
+            val idleSetup = world.setup("idle", null, idle(), idle())
+            val runningSetup = world.setup("running", null, running())
+            val erroredSetup = world.setup("errored", null, idle(), errored())
+            val waitingSetup = world.setup("waiting", null, idle(), running())
+            world.awaitUserInput("waiting-task-2")
+
+            val viewModel = start()
+
+            assertFalse(viewModel.setupCard(idleSetup).needsAttention)
+            assertFalse(viewModel.setupCard(runningSetup).needsAttention)
+            assertTrue(viewModel.setupCard(erroredSetup).needsAttention)
+            assertTrue(viewModel.setupCard(waitingSetup).needsAttention)
+        }
+
+    private fun TasksViewModel.setupCard(setup: ScriptPackageInstance): GroupListItemContent<*> =
+        assertIs<TaskViewState.GroupViewState.Filled<*, *>>(hierarchicalListState.value)
+            .hierarchicalViewModel.state.value
+            .filterIsInstance<HierarchicalListItem.Parent<*, *>>()
+            .flatMap { it.children }
+            .single { it.content.id == setup }
+            .content
 }
