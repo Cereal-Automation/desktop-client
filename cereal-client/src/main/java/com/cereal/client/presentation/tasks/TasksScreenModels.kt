@@ -61,3 +61,10 @@ internal fun TaskFilter.labelRes() =
         TaskFilter.SUCCESS -> Res.string.success
         TaskFilter.ERROR -> Res.string.errored
     }
+
+/** The detail header's `− count +` stepper for the selected setup's number of concurrent tasks. */
+data class ConcurrentTaskStepperState(
+    val count: Int,
+    val canDecrease: Boolean,
+    val canIncrease: Boolean,
+)

@@ -195,7 +195,6 @@ class ScriptSelectionViewModel(
         return original.copy(
             mainConfiguration = form.mainConfigurationFormSection.getScriptConfigurationValues(),
             childConfigurations = form.childConfigurationFormSections.mapValues { it.value.getScriptConfigurationValues() },
-            numberOfConcurrentTasks = form.getNumberOfConcurrentTasks(),
             notificationOverrides = scriptConfigurationViewModel?.notificationOverridesForm?.toOverrides(),
         )
     }
@@ -276,9 +275,9 @@ class ScriptSelectionViewModel(
                             it.value.getScriptConfigurationValues()
                         }
                             ?: throw RuntimeException("No scriptConfigurationViewModel"),
+                    // The header's stepper sets the count after creation; a duplicate keeps its source's.
                     numberOfConcurrentTasks =
-                        scriptConfigurationViewModel?.scriptConfigurationForm?.value?.getNumberOfConcurrentTasks()
-                            ?: throw RuntimeException("No scriptConfigurationViewModel"),
+                        scriptConfigurationViewModel?.initialScriptPackageInstance?.numberOfConcurrentTasks ?: 1,
                     ignoreConcurrencyConflicts = ignoreConcurrencyConflicts,
                     notificationOverrides = scriptConfigurationViewModel?.notificationOverridesForm?.toOverrides(),
                 ),

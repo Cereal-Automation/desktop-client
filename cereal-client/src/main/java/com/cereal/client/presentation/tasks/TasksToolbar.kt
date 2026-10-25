@@ -15,9 +15,11 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.HelpOutline
+import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.MoreHoriz
 import androidx.compose.material.icons.filled.Refresh
+import androidx.compose.material.icons.filled.Remove
 import androidx.compose.material.icons.filled.Tune
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.DropdownMenu
@@ -46,8 +48,10 @@ import com.cereal.client.presentation.view.chip.Pill
 import com.cereal_automation.cereal_client.generated.resources.Res
 import com.cereal_automation.cereal_client.generated.resources.contact_support
 import com.cereal_automation.cereal_client.generated.resources.edit
+import com.cereal_automation.cereal_client.generated.resources.fewer_concurrent_tasks
 import com.cereal_automation.cereal_client.generated.resources.ic_cancel
 import com.cereal_automation.cereal_client.generated.resources.ic_play
+import com.cereal_automation.cereal_client.generated.resources.more_concurrent_tasks
 import com.cereal_automation.cereal_client.generated.resources.more_options
 import com.cereal_automation.cereal_client.generated.resources.restart_errored
 import com.cereal_automation.cereal_client.generated.resources.start_all
@@ -69,6 +73,9 @@ internal fun TasksToolbar(
     onMenuOptionSelected: (MenuOption) -> Unit = {},
     onEdit: (() -> Unit)? = null,
     editEnabled: Boolean = true,
+    stepper: ConcurrentTaskStepperState? = null,
+    onDecreaseTasks: () -> Unit = {},
+    onIncreaseTasks: () -> Unit = {},
 ) {
     Column(modifier = Modifier.fillMaxWidth()) {
         Row(
@@ -91,6 +98,9 @@ internal fun TasksToolbar(
                     style = MaterialTheme.typography.bodyMedium,
                     color = CerealTheme.colorScheme.contentTertiary,
                 )
+            }
+            if (stepper != null) {
+                ConcurrentTaskStepper(stepper, onDecreaseTasks, onIncreaseTasks)
             }
             if (onViewConfig != null || onContactSupport != null || onEdit != null || menuOptions.isNotEmpty()) {
                 Spacer(Modifier.weight(1f))
@@ -159,6 +169,32 @@ internal fun TasksToolbar(
                     .height(1.dp)
                     .background(CerealTheme.colorScheme.border),
         )
+    }
+}
+
+/** `− count +`: the setup's number of concurrent tasks. */
+@Composable
+private fun ConcurrentTaskStepper(
+    state: ConcurrentTaskStepperState,
+    onDecrease: () -> Unit,
+    onIncrease: () -> Unit,
+) {
+    Row(verticalAlignment = Alignment.CenterVertically) {
+        CerealIconButton(onClick = onDecrease, enabled = state.canDecrease) {
+            Icon(
+                imageVector = Icons.Filled.Remove,
+                contentDescription = stringResource(Res.string.fewer_concurrent_tasks),
+                modifier = Modifier.size(18.dp),
+            )
+        }
+        CerealText(text = state.count.toString(), style = MaterialTheme.typography.bodyMedium)
+        CerealIconButton(onClick = onIncrease, enabled = state.canIncrease) {
+            Icon(
+                imageVector = Icons.Filled.Add,
+                contentDescription = stringResource(Res.string.more_concurrent_tasks),
+                modifier = Modifier.size(18.dp),
+            )
+        }
     }
 }
 

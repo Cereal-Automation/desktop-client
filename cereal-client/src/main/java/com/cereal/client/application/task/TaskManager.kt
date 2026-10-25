@@ -139,7 +139,7 @@ class TaskManager(
             tasksRepository.getTasks(task.scriptInstance).filter {
                 it.status is TaskStatus.Running
             }
-        val numberOfConcurrentTasks = task.scriptInstance.getNumberOfConcurrentTasks()
+        val numberOfConcurrentTasks = storedNumberOfConcurrentTasks(task.scriptInstance)
         if (numberOfRunningTasks.size >= numberOfConcurrentTasks) {
             throw MaxConcurrentTasksReachedException(numberOfConcurrentTasks)
         }
@@ -231,7 +231,7 @@ class TaskManager(
         startTasksToConcurrencyLimitMutex.withLock {
             val tasks = tasksRepository.getTasks(scriptInstance)
 
-            val numberOfConcurrentTasks = scriptInstance.getNumberOfConcurrentTasks()
+            val numberOfConcurrentTasks = storedNumberOfConcurrentTasks(scriptInstance)
             val activeTasks = tasks.filterRunningTasks()
             val idleTasks = tasks.filterIdleTasks()
 
@@ -241,4 +241,15 @@ class TaskManager(
                 }
             }
         }
+
+    /**
+     * A task captures its setup when it is created, so read the count from the stored setup: the stepper can change it
+     * while the task exists.
+     */
+    private suspend fun storedNumberOfConcurrentTasks(scriptInstance: ScriptInstance): Int =
+        (
+            scriptInstanceRepository
+                .getScriptInstances(scriptInstance.packageInstance)
+                .firstOrNull { it.id == scriptInstance.id } ?: scriptInstance
+        ).getNumberOfConcurrentTasks()
 }

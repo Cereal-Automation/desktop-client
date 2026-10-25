@@ -16,6 +16,7 @@ import com.cereal.client.application.interactor.task.EditScriptInstanceGroupInte
 import com.cereal.client.application.interactor.task.GetOrCreateDefaultTaskGroupInteractor
 import com.cereal.client.application.interactor.task.GetTaskGroupsInteractor
 import com.cereal.client.application.interactor.task.ObserveTasksInteractor
+import com.cereal.client.application.interactor.task.SetConcurrentTaskCountInteractor
 import com.cereal.client.application.interactor.task.StartAllTasksInScriptPackageInstanceInteractor
 import com.cereal.client.application.interactor.task.StartTaskInteractor
 import com.cereal.client.application.interactor.task.StopTaskInteractor
@@ -28,8 +29,14 @@ import com.cereal.client.application.task.JobTaskFactory
 import com.cereal.client.application.task.TaskConfigurationBuilder
 import com.cereal.client.application.task.TaskManager
 import com.cereal.client.domain.model.ScopeLinker
+import com.cereal.client.domain.model.datasets.CustomDatasetGroup
+import com.cereal.client.domain.model.proxy.ProxyGroup
+import com.cereal.client.domain.model.script.ScriptConfigurationValues
 import com.cereal.client.domain.model.script.ScriptInstance
 import com.cereal.client.domain.model.script.ScriptPackageInstance
+import com.cereal.client.domain.model.script.configuration.ConfigItemType
+import com.cereal.client.domain.model.script.configuration.ConfigValue
+import com.cereal.client.domain.model.script.configuration.ScriptConfigurationItemDefinition
 import com.cereal.client.domain.model.task.JobTask
 import com.cereal.client.domain.model.task.ScriptPackageGroup
 import com.cereal.client.domain.model.task.TaskStatus
@@ -129,6 +136,7 @@ class TasksScreenWorld(
             SaveArtifactToFileInteractor(artifactRepository),
             lastSelectedTaskSetup,
             UpdateScriptPackageInstanceInteractor(scriptInstances, tasksRepository, taskManager),
+            SetConcurrentTaskCountInteractor(scriptInstances, tasksRepository, taskManager),
         )
 
     /** The "Default" group, created the same way the screen does on entry. */
@@ -138,15 +146,27 @@ class TasksScreenWorld(
 
     /**
      * Adds a task setup to [group] (the default group when null) with one task per entry of [taskStatuses],
-     * numbered in that order (`<id>-task-1`, `<id>-task-2`, ...).
+     * numbered in that order (`<id>-task-1`, `<id>-task-2`, ...). Its main [configuration] is empty unless given (a
+     * [proxyGroup] makes the task count adjustable); [configurationItems] are the script's configuration definition.
      */
     suspend fun setup(
         id: String,
         group: ScriptPackageGroup? = null,
         vararg taskStatuses: TaskStatus,
+        configuration: ScriptConfigurationValues = emptyMap(),
+        configurationItems: List<ScriptConfigurationItemDefinition> = emptyList(),
     ): ScriptPackageInstance {
-        val packageInstance = aScriptPackageInstance(id, "com.example.$id").copy(numberOfConcurrentTasks = taskStatuses.size.coerceAtLeast(1))
-        val main = aScriptInstance(packageInstance)
+        val definition =
+            aScriptPackage("com.example.$id").let {
+                it.copy(mainScript = it.mainScript.copy(configuration = it.mainScript.configuration.copy(configurationItems = configurationItems)))
+            }
+        val packageInstance =
+            aScriptPackageInstance(id, "com.example.$id").copy(
+                mainConfiguration = configuration,
+                definition = definition,
+                numberOfConcurrentTasks = taskStatuses.size.coerceAtLeast(1),
+            )
+        val main = aScriptInstance(packageInstance).copy(definition = definition.mainScript, configuration = configuration)
         scriptInstances.addScriptPackageInstance((group ?: defaultGroup()).id, packageInstance, main)
         val createdAt = Clock.System.now()
         tasksRepository.addAllTasks(
@@ -178,3 +198,31 @@ fun succeeded(message: String = "Done"): TaskStatus = TaskStatus.Success(message
 
 @OptIn(ExperimentalTime::class)
 fun errored(message: String = "Failed"): TaskStatus = TaskStatus.Error(message, timestamp = Clock.System.now())
+
+/** A main configuration on a proxy group, so the setup's concurrent-task count sets its number of tasks. */
+fun proxyGroup(): ScriptConfigurationValues = mapOf("proxies" to ConfigValue.ProxyGroupValue(ProxyGroup("proxies", "Proxies", 0, emptySequence())))
+
+/** A main configuration on a custom dataset of [records] records, stored under [DATASET_KEY] (see [datasetField]). */
+@OptIn(ExperimentalTime::class)
+fun dataset(records: Int): ScriptConfigurationValues =
+    mapOf(
+        DATASET_KEY to
+            ConfigValue.CustomDatasetGroupValue(
+                CustomDatasetGroup("dataset", "Dataset", records, emptyList(), emptySequence(), Clock.System.now()),
+            ),
+    )
+
+/** The script's dataset field, which [dataset] fills. */
+fun datasetField(): ScriptConfigurationItemDefinition =
+    ScriptConfigurationItemDefinition(
+        name = "Dataset",
+        description = "",
+        key = DATASET_KEY,
+        position = 0,
+        type = ConfigItemType.GroupedConfigItem(items = emptyList()),
+        isNullable = false,
+        stateModifier = null,
+        isScriptIdentifier = false,
+    )
+
+private const val DATASET_KEY = "dataset"

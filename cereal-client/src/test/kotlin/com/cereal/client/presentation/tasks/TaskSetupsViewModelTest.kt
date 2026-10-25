@@ -3,6 +3,7 @@ package com.cereal.client.presentation.tasks
 import com.cereal.client.domain.model.script.ScriptPackageInstance
 import com.cereal.client.domain.model.script.configuration.ConfigValue
 import com.cereal.client.domain.model.task.ScriptPackageGroup
+import com.cereal.client.domain.model.task.TaskStatus
 import com.cereal.client.presentation.error.ErrorAction
 import com.cereal.client.presentation.view.group.GroupListItemContent
 import com.cereal.client.presentation.view.group.HierarchicalListItem
@@ -10,6 +11,7 @@ import com.cereal.client.presentation.view.group.ItemStatus
 import fixtures.TasksScreenWorld
 import fixtures.errored
 import fixtures.idle
+import fixtures.proxyGroup
 import fixtures.running
 import fixtures.succeeded
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -127,6 +129,89 @@ class TaskSetupsViewModelTest {
 
             assertIs<ErrorAction.Message>(world.errorResolver.errorAction.value)
             assertEquals(emptyMap<String, ConfigValue>(), world.scriptInstances.getScriptPackageInstance("setup-1").mainConfiguration)
+        }
+
+    @Test
+    fun `plus adds an idle task and persists the new count`() =
+        runTest {
+            val setup = world.setup("setup-1", null, idle(), configuration = proxyGroup())
+            val viewModel = start()
+            viewModel.hierarchicalListViewModel.selectChild(setup)
+            world.dispatcher.scheduler.advanceUntilIdle()
+            assertEquals(1, viewModel.concurrentTaskStepper.value?.count)
+
+            viewModel.increaseConcurrentTasks()
+            world.dispatcher.scheduler.advanceUntilIdle()
+
+            assertEquals(2, world.scriptInstances.getScriptPackageInstance("setup-1").numberOfConcurrentTasks)
+            assertEquals(2, viewModel.concurrentTaskStepper.value?.count)
+            val tasks = world.tasksRepository.getTasks(setup)
+            assertEquals(2, tasks.size)
+            assertTrue(tasks.all { it.status is TaskStatus.Idle })
+        }
+
+    @Test
+    fun `minus removes the highest-numbered task that is not running`() =
+        runTest {
+            val setup = world.setup("setup-1", null, idle(), succeeded(), running(), configuration = proxyGroup())
+            val viewModel = start()
+            viewModel.hierarchicalListViewModel.selectChild(setup)
+            world.dispatcher.scheduler.advanceUntilIdle()
+
+            viewModel.decreaseConcurrentTasks()
+            world.dispatcher.scheduler.advanceUntilIdle()
+
+            assertEquals(2, viewModel.concurrentTaskStepper.value?.count)
+            assertEquals(2, world.scriptInstances.getScriptPackageInstance("setup-1").numberOfConcurrentTasks)
+            assertEquals(
+                listOf("setup-1-task-1", "setup-1-task-3"),
+                world.tasksRepository
+                    .getTasks(setup)
+                    .map { it.id }
+                    .sorted(),
+            )
+        }
+
+    @Test
+    fun `minus is disabled and rejected when only running tasks are left to remove`() =
+        runTest {
+            val setup = world.setup("setup-1", null, running(), running(), configuration = proxyGroup())
+            val viewModel = start()
+            viewModel.hierarchicalListViewModel.selectChild(setup)
+            world.dispatcher.scheduler.advanceUntilIdle()
+
+            assertEquals(false, viewModel.concurrentTaskStepper.value?.canDecrease)
+            viewModel.decreaseConcurrentTasks()
+            world.dispatcher.scheduler.advanceUntilIdle()
+
+            assertEquals(2, world.scriptInstances.getScriptPackageInstance("setup-1").numberOfConcurrentTasks)
+            assertEquals(2, world.tasksRepository.getTasks(setup).size)
+        }
+
+    @Test
+    fun `minus is disabled at one task`() =
+        runTest {
+            val setup = world.setup("setup-1", null, idle(), configuration = proxyGroup())
+            val viewModel = start()
+            viewModel.hierarchicalListViewModel.selectChild(setup)
+            world.dispatcher.scheduler.advanceUntilIdle()
+
+            assertEquals(ConcurrentTaskStepperState(1, canDecrease = false, canIncrease = true), viewModel.concurrentTaskStepper.value)
+            viewModel.decreaseConcurrentTasks()
+            world.dispatcher.scheduler.advanceUntilIdle()
+
+            assertEquals(1, world.tasksRepository.getTasks(setup).size)
+        }
+
+    @Test
+    fun `no stepper for a setup without a proxy group or dataset, which always runs one task`() =
+        runTest {
+            val setup = world.setup("setup-1", null, idle())
+            val viewModel = start()
+            viewModel.hierarchicalListViewModel.selectChild(setup)
+            world.dispatcher.scheduler.advanceUntilIdle()
+
+            assertNull(viewModel.concurrentTaskStepper.value)
         }
 
     @Test

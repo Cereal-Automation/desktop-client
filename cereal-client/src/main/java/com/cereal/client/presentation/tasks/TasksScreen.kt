@@ -151,6 +151,9 @@ fun TasksScreen(
                         onMenuOptionSelected = viewModel::onHeaderMenuOptionSelected,
                         onEdit = filled?.let { viewModel::onEditClicked },
                         editEnabled = viewModel.editEnabled,
+                        stepper = viewModel.concurrentTaskStepper.value.takeIf { filled != null },
+                        onDecreaseTasks = viewModel::decreaseConcurrentTasks,
+                        onIncreaseTasks = viewModel::increaseConcurrentTasks,
                     )
 
                     viewModel.taskControls.value?.let { controls ->
