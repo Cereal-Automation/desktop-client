@@ -16,6 +16,8 @@ import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.assertThrows
 import org.junit.jupiter.api.io.TempDir
+import org.junit.jupiter.params.ParameterizedTest
+import org.junit.jupiter.params.provider.ValueSource
 import java.io.File
 import java.nio.file.Path
 import java.util.jar.JarEntry
@@ -111,6 +113,32 @@ class FileSystemScriptsDataSourceTest {
                     .map { it.key },
             )
             assertTrue(scriptPackage.variants.isEmpty())
+        }
+
+    @ParameterizedTest(name = "{0}")
+    @ValueSource(
+        strings = [
+            """{ "name": "Checkout", "script": "fixtures.scripts.CheckoutVariantScript" }""",
+            """{ "id": "checkout", "script": "fixtures.scripts.CheckoutVariantScript" }""",
+            """{ "id": "checkout", "name": "Checkout" }""",
+            """{ "id": " ", "name": "Checkout", "script": "fixtures.scripts.CheckoutVariantScript" }""",
+            """{ "id": "checkout", "name": "Checkout", "script": "fixtures.scripts.CheckoutVariantScript" },
+               { "id": "checkout", "name": "Checkout again", "script": "fixtures.scripts.CheckoutVariantScript" }""",
+            """{ "id": "checkout", "name": "Checkout", "script": "fixtures.scripts.DoesNotExist" }""",
+            """{ "id": "checkout", "name": "Checkout", "script": "fixtures.scripts.NotAScript" }""",
+            """{ "id": "checkout", "name": "Checkout", "script": "fixtures.scripts.TwoProxiesVariantScript" }""",
+        ],
+    )
+    fun `a jar with a malformed variant is rejected`(variants: String) =
+        runTest {
+            writeJar(
+                """
+                { "package_name": "com.example.agent", "name": "Agent", "version_code": 1,
+                  "script": "fixtures.scripts.DefaultEntryScript", "variants": [ $variants ] }
+                """,
+            )
+
+            assertNull(realBuilderDataSource().getScriptPackageDefinition("com.example.agent", testUser))
         }
 
     private fun realBuilderDataSource() = FileSystemScriptsDataSource(mockConfig, ScriptConfigurationDefinitionBuilder(), Encryption())
