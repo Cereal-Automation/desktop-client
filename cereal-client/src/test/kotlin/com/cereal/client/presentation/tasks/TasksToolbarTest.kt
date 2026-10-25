@@ -1,6 +1,9 @@
 package com.cereal.client.presentation.tasks
 
 import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.test.ExperimentalTestApi
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.onNodeWithContentDescription
@@ -13,8 +16,8 @@ import kotlin.test.assertEquals
 import kotlin.test.assertTrue
 
 /**
- * Renders [TasksToolbar] in isolation and asserts the title/subtitle render and that the
- * view-config and contact-support callbacks fire on click.
+ * Renders [TasksToolbar] and [TasksQuickActions] in isolation: title/subtitle, the view-config and
+ * contact-support callbacks, the status chips, the Start all / Stop all toggle and Restart errored.
  */
 @OptIn(ExperimentalTestApi::class, ExperimentalFoundationApi::class)
 class TasksToolbarTest {
@@ -83,4 +86,76 @@ class TasksToolbarTest {
             onNodeWithText("Contact support").performClick()
             assertTrue(contacted)
         }
+
+    @Test
+    fun rendersStatusChipsAndClickingOneReportsItsFilter() =
+        runScreenTest {
+            var clicked: TaskFilter? = null
+            setScreenContent {
+                TasksQuickActions(quickActionsState(), callbacks(onStatusChipClick = { clicked = it }))
+            }
+
+            onNodeWithText("Idle 1").assertIsDisplayed()
+            onNodeWithText("Running 0").assertIsDisplayed()
+            onNodeWithText("Success 0").assertIsDisplayed()
+            onNodeWithText("Errored 0").performClick()
+            assertEquals(TaskFilter.ERROR, clicked)
+        }
+
+    @Test
+    fun toggleShowsStartAllWhenNothingRuns() =
+        runScreenTest {
+            var started = false
+            setScreenContent {
+                TasksQuickActions(quickActionsState(showStopAll = false), callbacks(onStartAll = { started = true }))
+            }
+
+            onNodeWithText("Stop all").assertDoesNotExist()
+            onNodeWithText("Start all").performClick()
+            assertTrue(started)
+        }
+
+    @Test
+    fun toggleShowsStopAllWhileTasksRun() =
+        runScreenTest {
+            var stopped = false
+            setScreenContent {
+                TasksQuickActions(quickActionsState(showStopAll = true), callbacks(onStopAll = { stopped = true }))
+            }
+
+            onNodeWithText("Start all").assertDoesNotExist()
+            onNodeWithText("Stop all").performClick()
+            assertTrue(stopped)
+        }
+
+    @Test
+    fun restartErroredOnlyRendersWhenShown() =
+        runScreenTest {
+            var showRestart by mutableStateOf(false)
+            setScreenContent {
+                TasksQuickActions(quickActionsState(showRestartErrored = showRestart), callbacks())
+            }
+
+            onNodeWithText("Restart errored").assertDoesNotExist()
+            showRestart = true
+            onNodeWithText("Restart errored").assertIsDisplayed()
+        }
+
+    private fun quickActionsState(
+        showStopAll: Boolean = false,
+        showRestartErrored: Boolean = false,
+    ) = TaskQuickActionsState(
+        counts = TaskCounts(idle = 1, running = 0, finished = 0, errored = 0),
+        filter = TaskFilter.ALL,
+        showStopAll = showStopAll,
+        startAllEnabled = true,
+        showRestartErrored = showRestartErrored,
+        restartErroredEnabled = true,
+    )
+
+    private fun callbacks(
+        onStatusChipClick: (TaskFilter) -> Unit = {},
+        onStartAll: () -> Unit = {},
+        onStopAll: () -> Unit = {},
+    ) = TaskQuickActionsCallbacks(onStatusChipClick, onStartAll, onStopAll, onRestartErrored = {})
 }
