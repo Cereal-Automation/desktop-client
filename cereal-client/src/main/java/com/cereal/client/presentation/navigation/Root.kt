@@ -83,8 +83,8 @@ interface Root {
                                         backStack.newRoot(route)
                                         onNavigateTo?.invoke(route)
                                     },
-                                    onRunScript = { packageName ->
-                                        val route = Routing.Tasks(openScriptSelectionFor = ScriptRequest(packageName))
+                                    onRunScript = { request ->
+                                        val route = Routing.Tasks(openScriptSelectionFor = request)
                                         backStack.newRoot(route)
                                         onNavigateTo?.invoke(route)
                                     },

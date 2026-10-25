@@ -52,6 +52,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.cereal.client.presentation.error.errorView
 import com.cereal.client.presentation.settings.ai.label
+import com.cereal.client.presentation.tasks.script.overview.ScriptRequest
 import com.cereal.client.presentation.tasks.script.overview.ScriptSelectionDialog
 import com.cereal.client.presentation.theme.CerealTheme
 import com.cereal.client.presentation.view.CerealButton
@@ -123,7 +124,7 @@ fun HomeScreen(
     onNavigateToMarketplace: () -> Unit = {},
     onOpenClientUpdate: () -> Unit = {},
     onOpenTasks: (focusTaskId: String?) -> Unit = {},
-    onRunScript: (packageName: String) -> Unit = {},
+    onRunScript: (ScriptRequest) -> Unit = {},
     onNavigateToAiSettings: () -> Unit = {},
 ) {
     val scope = rememberCoroutineScope()
