@@ -102,9 +102,7 @@ internal fun TasksToolbar(
             if (stepper != null) {
                 ConcurrentTaskStepper(stepper, onDecreaseTasks, onIncreaseTasks)
             }
-            if (onViewConfig != null || onContactSupport != null || onEdit != null || menuOptions.isNotEmpty()) {
-                Spacer(Modifier.weight(1f))
-            }
+            Spacer(Modifier.weight(1f))
             if (onContactSupport != null) {
                 CerealToolbarButton(
                     variant = CerealToolbarButtonVariant.Ghost,
