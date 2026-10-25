@@ -16,6 +16,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.HelpOutline
 import androidx.compose.material.icons.filled.KeyboardArrowDown
+import androidx.compose.material.icons.filled.MoreHoriz
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Tune
 import androidx.compose.material3.ButtonDefaults
@@ -39,6 +40,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.cereal.client.presentation.theme.CerealTheme
 import com.cereal.client.presentation.theme.CerealTypography
+import com.cereal.client.presentation.view.CerealIconButton
 import com.cereal.client.presentation.view.CerealText
 import com.cereal.client.presentation.view.SectionLabel
 import com.cereal.client.presentation.view.StatusDot
@@ -51,6 +53,7 @@ import com.cereal_automation.cereal_client.generated.resources.filter_label
 import com.cereal_automation.cereal_client.generated.resources.ic_cancel
 import com.cereal_automation.cereal_client.generated.resources.ic_play
 import com.cereal_automation.cereal_client.generated.resources.idle
+import com.cereal_automation.cereal_client.generated.resources.more_options
 import com.cereal_automation.cereal_client.generated.resources.restart_errored
 import com.cereal_automation.cereal_client.generated.resources.running
 import com.cereal_automation.cereal_client.generated.resources.start_all
@@ -68,6 +71,8 @@ internal fun TasksToolbar(
     subtitle: String?,
     onViewConfig: (() -> Unit)? = null,
     onContactSupport: (() -> Unit)? = null,
+    menuOptions: List<MenuOption> = emptyList(),
+    onMenuOptionSelected: (MenuOption) -> Unit = {},
 ) {
     Column(modifier = Modifier.fillMaxWidth()) {
         Row(
@@ -91,7 +96,7 @@ internal fun TasksToolbar(
                     color = CerealTheme.colorScheme.contentTertiary,
                 )
             }
-            if (onViewConfig != null || onContactSupport != null) {
+            if (onViewConfig != null || onContactSupport != null || menuOptions.isNotEmpty()) {
                 Spacer(Modifier.weight(1f))
             }
             if (onContactSupport != null) {
@@ -118,6 +123,33 @@ internal fun TasksToolbar(
                         modifier = Modifier.size(ButtonDefaults.IconSize),
                     )
                     CerealText(text = stringResource(Res.string.view_config))
+                }
+            }
+            if (menuOptions.isNotEmpty()) {
+                var menuExpanded by remember { mutableStateOf(false) }
+                Box {
+                    CerealIconButton(onClick = { menuExpanded = true }) {
+                        Icon(
+                            imageVector = Icons.Filled.MoreHoriz,
+                            contentDescription = stringResource(Res.string.more_options),
+                            modifier = Modifier.size(18.dp),
+                            tint = CerealTheme.colorScheme.contentSecondary,
+                        )
+                    }
+                    DropdownMenu(
+                        expanded = menuExpanded,
+                        onDismissRequest = { menuExpanded = false },
+                    ) {
+                        menuOptions.forEach { option ->
+                            DropdownMenuItem(
+                                text = { CerealText(stringResource(option.stringResource)) },
+                                onClick = {
+                                    menuExpanded = false
+                                    onMenuOptionSelected(option)
+                                },
+                            )
+                        }
+                    }
                 }
             }
         }
