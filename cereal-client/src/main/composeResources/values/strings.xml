@@ -264,6 +264,7 @@
     <string name="notifications">Notifications</string>
     <string name="open">Open</string>
     <string name="output">Output</string>
+    <string name="output_task">Output · Task #%1$d</string>
     <string name="output_tab_logs">Logs</string>
     <string name="output_tab_artifacts">Artifacts</string>
     <string name="download_artifact">Download</string>

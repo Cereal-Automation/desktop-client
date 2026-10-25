@@ -225,6 +225,7 @@ fun TasksScreen(
                         events = viewModel.logViewerMessages.value,
                         onClear = viewModel::clearLogs,
                         artifacts = viewModel.artifacts.value,
+                        taskNumber = viewModel.selectedTaskNumber,
                         onDownloadArtifact = { artifact ->
                             openFileDialog(FileDialog.SAVE)?.let { file ->
                                 viewModel.onDownloadArtifact(artifact, file)
