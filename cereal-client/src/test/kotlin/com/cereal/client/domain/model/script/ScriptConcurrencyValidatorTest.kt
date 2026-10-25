@@ -1,12 +1,7 @@
-package com.cereal.client.application.interactor.script.validator
+package com.cereal.client.domain.model.script
 
 import com.cereal.client.domain.model.datasets.CustomDatasetGroup
 import com.cereal.client.domain.model.proxy.ProxyGroup
-import com.cereal.client.domain.model.script.ChildScript
-import com.cereal.client.domain.model.script.MainScript
-import com.cereal.client.domain.model.script.Manifest
-import com.cereal.client.domain.model.script.ScriptConfigurationValues
-import com.cereal.client.domain.model.script.ScriptPackage
 import com.cereal.client.domain.model.script.configuration.ConfigItemType
 import com.cereal.client.domain.model.script.configuration.ConfigValue
 import com.cereal.client.domain.model.script.configuration.ScriptConfigurationDefinition

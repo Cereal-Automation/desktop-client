@@ -135,7 +135,6 @@ object ViewModelModule {
                     get(),
                     get(),
                     get(),
-                    get(),
                 )
             }
             factory { (scope: CoroutineScope) ->
@@ -212,14 +211,16 @@ object ViewModelModule {
                     get(),
                 )
             }
-            // Koin parameter holder unpacks four injected values for this factory.
+            // Koin parameter holder unpacks five injected values for this factory.
             @Suppress("DestructuringDeclarationWithTooManyEntries")
-            factory { (scope: CoroutineScope, scriptPackageGroup: ScriptPackageGroup, initialScriptPackageInstance: ScriptPackageInstance?, initialPublicIdentifier: String?) ->
+            factory { (scope: CoroutineScope, scriptPackageGroup: ScriptPackageGroup, initialScriptPackageInstance: ScriptPackageInstance?, initialPublicIdentifier: String?, editing: Boolean) ->
                 ScriptSelectionViewModel(
                     scope,
                     scriptPackageGroup,
                     initialScriptPackageInstance,
                     initialPublicIdentifier,
+                    editing,
+                    get(),
                     get(),
                     get(),
                     get(),

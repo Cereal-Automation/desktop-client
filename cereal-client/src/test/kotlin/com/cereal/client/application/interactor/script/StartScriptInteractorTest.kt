@@ -3,6 +3,7 @@ package com.cereal.client.application.interactor.script
 import com.cereal.client.application.exception.ClientUpdateRequiredException
 import com.cereal.client.application.script.ScriptInstanceFactory
 import com.cereal.client.application.script.ScriptLicenseChecker
+import com.cereal.client.application.script.TaskSetupLimits
 import com.cereal.client.application.task.TaskManager
 import com.cereal.client.domain.model.ScopeLinker
 import com.cereal.client.domain.model.datasets.CustomDatasetGroup
@@ -65,7 +66,7 @@ class StartScriptInteractorTest {
         StartScriptInteractor(
             scriptInstanceRepository = scriptInstanceRepository,
             taskManager = taskManager,
-            scriptLicenseChecker = ScriptLicenseChecker(InMemoryAuthProvider(subscriptions = subscriptions), preferences),
+            taskSetupLimits = TaskSetupLimits(ScriptLicenseChecker(InMemoryAuthProvider(subscriptions = subscriptions), preferences)),
             applicationRepository = applicationRepository,
             scriptInstanceFactory = ScriptInstanceFactory(noOpScopeLinker),
         )

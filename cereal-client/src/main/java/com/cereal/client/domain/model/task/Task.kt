@@ -74,6 +74,10 @@ sealed class TaskStatus(
     fun isRunning(): Boolean = this is Running
 }
 
+/** The task needs the user: it errored or waits for their input (browser, text input, Continue). */
+val Task.needsAttention: Boolean
+    get() = status is TaskStatus.Error || userInteraction != null
+
 fun <T : Task> List<T>.filterIdleTasks(): List<T> =
     filter {
         it.status is TaskStatus.Idle

@@ -21,6 +21,7 @@ import com.cereal.client.application.interactor.notification.ObserveUnseenNotifi
 import com.cereal.client.application.interactor.script.GetScriptsInteractor
 import com.cereal.client.application.interactor.task.ObserveTasksInteractor
 import com.cereal.client.domain.model.task.TaskStatus
+import com.cereal.client.domain.model.task.needsAttention
 import com.cereal.client.presentation.navigation.MenuReselectionCoordinator
 import com.cereal.client.presentation.navigation.Root
 import com.cereal_automation.cereal_client.generated.resources.Res
@@ -133,7 +134,7 @@ class MainViewModel(
                 if (result is SuspendableResult.Success) {
                     val tasks = result.value
                     val running = tasks.count { it.status is TaskStatus.Running }
-                    val attention = tasks.count { it.status is TaskStatus.Error || it.userInteraction != null }
+                    val attention = tasks.count { it.needsAttention }
                     withContext(dispatcherProvider.main) {
                         runningTaskCount = running
                         attentionTaskCount = attention

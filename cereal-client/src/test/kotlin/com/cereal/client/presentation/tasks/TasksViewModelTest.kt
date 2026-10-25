@@ -157,7 +157,6 @@ class TasksViewModelTest {
             saveArtifactToFileInteractor,
             LastSelectedTaskSetup(),
             mockk(relaxed = true),
-            mockk(relaxed = true),
         )
     }
 
@@ -520,7 +519,6 @@ class TasksViewModelTest {
                     saveArtifactToFileInteractor,
                     LastSelectedTaskSetup(),
                     mockk(relaxed = true),
-                    mockk(relaxed = true),
                 )
 
             vm.onTaskSelected(task)
@@ -613,7 +611,6 @@ class TasksViewModelTest {
                     observeArtifactsInteractor,
                     saveArtifactToFileInteractor,
                     LastSelectedTaskSetup(),
-                    mockk(relaxed = true),
                     mockk(relaxed = true),
                 )
 

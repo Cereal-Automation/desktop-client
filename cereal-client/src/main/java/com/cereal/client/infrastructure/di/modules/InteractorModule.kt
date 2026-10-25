@@ -150,8 +150,8 @@ object InteractorModule {
             factory { StartTaskInteractor(get()) }
             factory { StopTaskInteractor(get()) }
             factory { StopTasksInScriptPackageInstanceInteractor(get(), get()) }
-            factory { UpdateScriptPackageInstanceInteractor(get(), get(), get()) }
-            factory { SetConcurrentTaskCountInteractor(get(), get(), get()) }
+            factory { UpdateScriptPackageInstanceInteractor(get(), get(), get(), get()) }
+            factory { SetConcurrentTaskCountInteractor(get(), get(), get(), get()) }
             factory { StartAllTasksInScriptPackageInstanceInteractor(get(), get()) }
             factory { UserInteractionDismissedInteractor(get()) }
             // Proxies

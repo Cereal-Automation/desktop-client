@@ -25,13 +25,17 @@ import com.cereal.client.application.interactor.task.UpdateScriptPackageInstance
 import com.cereal.client.application.interactor.task.UserInteractionDismissedInteractor
 import com.cereal.client.application.script.GitHubIssueUrlBuilder
 import com.cereal.client.application.script.ScriptInstanceManager
+import com.cereal.client.application.script.ScriptLicenseChecker
+import com.cereal.client.application.script.TaskSetupLimits
 import com.cereal.client.application.task.JobTaskFactory
 import com.cereal.client.application.task.TaskConfigurationBuilder
 import com.cereal.client.application.task.TaskManager
 import com.cereal.client.domain.model.ScopeLinker
 import com.cereal.client.domain.model.datasets.CustomDatasetGroup
 import com.cereal.client.domain.model.proxy.ProxyGroup
+import com.cereal.client.domain.model.script.ScriptCapacity
 import com.cereal.client.domain.model.script.ScriptConfigurationValues
+import com.cereal.client.domain.model.script.ScriptEntitlement
 import com.cereal.client.domain.model.script.ScriptInstance
 import com.cereal.client.domain.model.script.ScriptPackageInstance
 import com.cereal.client.domain.model.script.configuration.ConfigItemType
@@ -41,6 +45,7 @@ import com.cereal.client.domain.model.task.JobTask
 import com.cereal.client.domain.model.task.ScriptPackageGroup
 import com.cereal.client.domain.model.task.TaskStatus
 import com.cereal.client.domain.model.task.UserInteraction
+import com.cereal.client.domain.model.user.Subscription
 import com.cereal.client.infrastructure.data.repository.inmemory.InMemoryApplicationPreferenceRepository
 import com.cereal.client.infrastructure.data.repository.inmemory.InMemoryArtifactRepository
 import com.cereal.client.infrastructure.data.repository.inmemory.InMemoryCustomDatasetRepository
@@ -48,6 +53,7 @@ import com.cereal.client.infrastructure.data.repository.inmemory.InMemoryLogEven
 import com.cereal.client.infrastructure.data.repository.inmemory.InMemoryProxyRepository
 import com.cereal.client.infrastructure.data.repository.inmemory.InMemoryScriptInstanceRepository
 import com.cereal.client.infrastructure.data.repository.inmemory.InMemoryTasksRepository
+import com.cereal.client.infrastructure.provider.inmemory.InMemoryAuthProvider
 import com.cereal.client.infrastructure.provider.inmemory.InMemorySystemProvider
 import com.cereal.client.presentation.error.ErrorResolver
 import com.cereal.client.presentation.tasks.LastSelectedTaskSetup
@@ -102,6 +108,16 @@ class TasksScreenWorld(
 
     private val getOrCreateDefaultTaskGroupInteractor = GetOrCreateDefaultTaskGroupInteractor(tasksRepository)
 
+    /** The user's subscriptions; [setup] licenses its script here unless told otherwise. */
+    val subscriptions = mutableListOf<Subscription>()
+
+    val taskSetupLimits =
+        TaskSetupLimits(ScriptLicenseChecker(InMemoryAuthProvider(subscriptions = subscriptions), InMemoryApplicationPreferenceRepository()))
+
+    val updateScriptPackageInstanceInteractor = UpdateScriptPackageInstanceInteractor(scriptInstances, tasksRepository, taskManager, taskSetupLimits)
+
+    val setConcurrentTaskCountInteractor = SetConcurrentTaskCountInteractor(scriptInstances, tasksRepository, taskManager, taskSetupLimits)
+
     fun viewModel(): TasksViewModel =
         TasksViewModel(
             dispatcherProvider,
@@ -135,8 +151,7 @@ class TasksScreenWorld(
             ObserveArtifactsInteractor(artifactRepository),
             SaveArtifactToFileInteractor(artifactRepository),
             lastSelectedTaskSetup,
-            UpdateScriptPackageInstanceInteractor(scriptInstances, tasksRepository, taskManager),
-            SetConcurrentTaskCountInteractor(scriptInstances, tasksRepository, taskManager),
+            setConcurrentTaskCountInteractor,
         )
 
     /** The "Default" group, created the same way the screen does on entry. */
@@ -148,6 +163,7 @@ class TasksScreenWorld(
      * Adds a task setup to [group] (the default group when null) with one task per entry of [taskStatuses],
      * numbered in that order (`<id>-task-1`, `<id>-task-2`, ...). Its main [configuration] is empty unless given (a
      * [proxyGroup] makes the task count adjustable); [configurationItems] are the script's configuration definition.
+     * Its script is licensed with [capacity]; null leaves it unlicensed.
      */
     suspend fun setup(
         id: String,
@@ -155,7 +171,9 @@ class TasksScreenWorld(
         vararg taskStatuses: TaskStatus,
         configuration: ScriptConfigurationValues = emptyMap(),
         configurationItems: List<ScriptConfigurationItemDefinition> = emptyList(),
+        capacity: ScriptCapacity? = ScriptCapacity.None,
     ): ScriptPackageInstance {
+        if (capacity != null) subscriptions += subscription("com.example.$id", capacity)
         val definition =
             aScriptPackage("com.example.$id").let {
                 it.copy(mainScript = it.mainScript.copy(configuration = it.mainScript.configuration.copy(configurationItems = configurationItems)))
@@ -186,6 +204,23 @@ class TasksScreenWorld(
     /** Puts [taskId] in the "waiting for the user" state (a pending Continue button). */
     suspend fun awaitUserInput(taskId: String) = tasksRepository.setUserInteraction(taskId, UserInteraction.ContinueButton(mockk(relaxed = true)))
 }
+
+private fun subscription(
+    publicIdentifier: String,
+    capacity: ScriptCapacity,
+) = Subscription(
+    id = "sub-$publicIdentifier",
+    entitlement =
+        ScriptEntitlement(
+            publicIdentifier = publicIdentifier,
+            title = publicIdentifier,
+            latestRelease = null,
+            latestDraftRelease = null,
+            shortDescription = null,
+            price = null,
+            capacity = capacity,
+        ),
+)
 
 @OptIn(ExperimentalTime::class)
 fun idle(): TaskStatus = TaskStatus.Idle(timestamp = Clock.System.now())

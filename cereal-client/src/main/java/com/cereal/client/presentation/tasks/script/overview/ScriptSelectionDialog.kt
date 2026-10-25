@@ -86,19 +86,21 @@ fun ScriptSelectionDialog(
     scriptPackageGroup: ScriptPackageGroup,
     initialScriptPackageInstance: ScriptPackageInstance? = null,
     initialPublicIdentifier: String? = null,
+    // Saves [initialScriptPackageInstance] in place instead of creating a setup from it.
+    editing: Boolean = false,
     coroutineScope: CoroutineScope = rememberCoroutineScope(),
     viewModel: ScriptSelectionViewModel =
         remember {
             KoinJavaComponent.get(
                 ScriptSelectionViewModel::class.java,
-                parameters = { parametersOf(coroutineScope, scriptPackageGroup, initialScriptPackageInstance, initialPublicIdentifier) },
+                parameters = { parametersOf(coroutineScope, scriptPackageGroup, initialScriptPackageInstance, initialPublicIdentifier, editing) },
             )
         },
+    // The created setup or, when editing, the saved one.
     onScriptInstanceCreated: ((scriptPackageInstance: ScriptPackageInstance) -> Unit),
     onDismissRequest: (() -> Unit),
-    onNavigateToMarketplace: () -> Unit,
-    // Edit mode: saves [initialScriptPackageInstance] in place instead of starting a new setup.
-    onSaveEdit: ((ScriptPackageInstance) -> Unit)? = null,
+    // Only reachable while choosing a script, so not when editing.
+    onNavigateToMarketplace: () -> Unit = {},
 ) {
     val scriptInstanceStarted = viewModel.scriptInstanceStarted.value
     LaunchedEffect(scriptInstanceStarted) {
@@ -132,7 +134,7 @@ fun ScriptSelectionDialog(
                         .background(CerealTheme.colorScheme.cardDark),
             ) {
                 // An edit keeps its script, so there is nothing to choose.
-                if (onSaveEdit == null) {
+                if (!viewModel.editing) {
                     when (val state = viewModel.overviewViewState.value) {
                         is ScriptSelectionState.Overview.Filled -> {
                             ScriptRail(count = state.viewModel.state.value.size, viewModel = viewModel) {
@@ -176,14 +178,10 @@ fun ScriptSelectionDialog(
                         capacity = scriptCapacityText(viewModel.selectedScriptCapacity.value),
                         enabled = configState is ScriptSelectionState.Config.Selected && !viewModel.selectedScriptUpdateRequired.value,
                         isLaunching = viewModel.scriptLaunchLoadState.value is LoadState.Loading,
-                        isEditing = onSaveEdit != null,
+                        isEditing = viewModel.editing,
                         onStart = {
                             if (viewModel.validate()) {
-                                if (onSaveEdit != null) {
-                                    viewModel.editedInstance()?.let(onSaveEdit)
-                                } else {
-                                    viewModel.launchScript()
-                                }
+                                if (viewModel.editing) viewModel.saveEdit() else viewModel.launchScript()
                             }
                         },
                     )
@@ -211,7 +209,7 @@ private fun StartScriptWarningConfirmationDialog(viewModel: ScriptSelectionViewM
             },
             confirmButton = {
                 CerealTextButton(onClick = { viewModel.onStartScriptWarningConfirmationAccepted() }) {
-                    CerealText(stringResource(Res.string.start_script))
+                    CerealText(stringResource(if (viewModel.editing) Res.string.save else Res.string.start_script))
                 }
             },
             dismissButton = {

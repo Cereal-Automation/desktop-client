@@ -12,13 +12,11 @@ import com.cereal.client.application.interactor.settings.OpenUrlInteractor
 import com.cereal.client.application.interactor.settings.developers.ObserveShowDebugLogsInteractor
 import com.cereal.client.application.interactor.task.GetOrCreateDefaultTaskGroupInteractor
 import com.cereal.client.application.interactor.task.SetConcurrentTaskCountInteractor
-import com.cereal.client.application.interactor.task.UpdateScriptPackageInstanceInteractor
-import com.cereal.client.application.interactor.task.concurrentTaskCounts
 import com.cereal.client.domain.model.artifact.Artifact
 import com.cereal.client.domain.model.logging.LoggingEvent
 import com.cereal.client.domain.model.logging.LoggingPriority
-import com.cereal.client.domain.model.script.MainScriptInstance
 import com.cereal.client.domain.model.script.ScriptPackageInstance
+import com.cereal.client.domain.model.script.concurrentTaskCounts
 import com.cereal.client.domain.model.task.ScriptPackageGroup
 import com.cereal.client.domain.model.task.Task
 import com.cereal.client.domain.model.task.TaskStatus
@@ -62,7 +60,6 @@ class TasksViewModel(
     private val observeArtifactsInteractor: ObserveArtifactsInteractor,
     private val saveArtifactToFileInteractor: SaveArtifactToFileInteractor,
     private val lastSelectedTaskSetup: LastSelectedTaskSetup,
-    private val updateScriptPackageInstanceInteractor: UpdateScriptPackageInstanceInteractor,
     private val setConcurrentTaskCountInteractor: SetConcurrentTaskCountInteractor,
 ) {
     private val scope = CoroutineScope(SupervisorJob() + dispatcherProvider.main)
@@ -323,13 +320,6 @@ class TasksViewModel(
         dialogManager.showEditScript(group, setup)
     }
 
-    fun saveEdit(scriptPackageInstance: ScriptPackageInstance) {
-        interactorRunner.launch(
-            updateScriptPackageInstanceInteractor,
-            UpdateScriptPackageInstanceInteractor.Params(scriptPackageInstance),
-        ) { closeDialog() }
-    }
-
     fun increaseConcurrentTasks() = changeConcurrentTaskCount(+1)
 
     fun decreaseConcurrentTasks() = changeConcurrentTaskCount(-1)
@@ -359,10 +349,8 @@ class TasksViewModel(
 
     private fun updateConcurrentTaskStepper() {
         val setup = selectedSetup()
-        val mainTasks =
-            tasks.orEmpty().filter { it.scriptInstance is MainScriptInstance && it.scriptInstance.packageInstance.id == setup?.id }
         concurrentTaskStepper.value =
-            setup?.let { concurrentTaskCounts(it, mainTasks) }?.let { counts ->
+            setup?.concurrentTaskCounts(tasks.orEmpty())?.let { counts ->
                 val count = setup.numberOfConcurrentTasks
                 ConcurrentTaskStepperState(count, canDecrease = count - 1 >= counts.first, canIncrease = count + 1 <= counts.last)
             }
@@ -373,8 +361,7 @@ class TasksViewModel(
     }
 
     /** The group that actually holds [scriptInstance]; menu actions must not assume it's the selected one. */
-    private fun groupOf(scriptInstance: ScriptPackageInstance): ScriptPackageGroup? =
-        observedSetup(scriptInstance.id)?.first ?: hierarchicalListViewModel.selectedParent
+    private fun groupOf(scriptInstance: ScriptPackageInstance): ScriptPackageGroup? = observedSetup(scriptInstance.id)?.first ?: hierarchicalListViewModel.selectedParent
 
     fun moveScriptToGroup(scriptInstance: ScriptPackageInstance) {
         val currentGroup = groupOf(scriptInstance)
