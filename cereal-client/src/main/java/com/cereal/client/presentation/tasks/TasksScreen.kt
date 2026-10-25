@@ -31,6 +31,7 @@ import com.cereal.client.presentation.group.GroupNameDialog
 import com.cereal.client.presentation.logs.LogOutputView
 import com.cereal.client.presentation.tasks.dialog.MoveScriptDialog
 import com.cereal.client.presentation.tasks.dialog.ViewConfigurationDialog
+import com.cereal.client.presentation.tasks.script.overview.ScriptRequest
 import com.cereal.client.presentation.tasks.script.overview.ScriptSelectionDialog
 import com.cereal.client.presentation.view.ConfirmationDialog
 import com.cereal.client.presentation.view.VerticalDivider
@@ -54,7 +55,7 @@ import kotlin.coroutines.resume
 @Composable
 fun TasksScreen(
     onNavigateToMarketplace: () -> Unit = {},
-    openScriptSelectionForPackage: String? = null,
+    openScriptSelectionFor: ScriptRequest? = null,
     focusTaskId: String? = null,
     viewModel: TasksViewModel =
         remember {
@@ -67,9 +68,9 @@ fun TasksScreen(
         onDispose { viewModel.dispose() }
     }
 
-    LaunchedEffect(openScriptSelectionForPackage) {
-        openScriptSelectionForPackage?.let {
-            viewModel.openScriptSelectionForPublicIdentifier(it)
+    LaunchedEffect(openScriptSelectionFor) {
+        openScriptSelectionFor?.let {
+            viewModel.openScriptSelection(it)
         }
     }
 
@@ -290,7 +291,7 @@ fun TasksScreen(
         is TaskViewState.DialogState.SelectingScript -> {
             ScriptSelectionDialog(
                 scriptPackageGroup = state.scriptPackageGroup,
-                initialPublicIdentifier = state.initialPublicIdentifier,
+                initialRequest = state.initialRequest,
                 onDismissRequest = { viewModel.closeDialog() },
                 onScriptInstanceCreated = { scriptPackageInstance: ScriptPackageInstance ->
                     viewModel.onScriptInstanceCreated(scriptPackageInstance)

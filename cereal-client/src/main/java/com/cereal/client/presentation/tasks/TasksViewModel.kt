@@ -20,6 +20,7 @@ import com.cereal.client.domain.model.task.TaskStatus
 import com.cereal.client.domain.repository.LogEventRepository
 import com.cereal.client.presentation.error.ErrorResolver
 import com.cereal.client.presentation.tasks.model.TaskUiModel
+import com.cereal.client.presentation.tasks.script.overview.ScriptRequest
 import com.cereal.client.presentation.util.InteractorRunner
 import com.cereal.client.presentation.view.group.HierarchicalListViewModel
 import com.github.kittinunf.result.coroutines.SuspendableResult
@@ -211,12 +212,12 @@ class TasksViewModel(
         return true
     }
 
-    fun openScriptSelectionForPublicIdentifier(publicIdentifier: String) {
+    fun openScriptSelection(request: ScriptRequest) {
         interactorRunner.launch(getOrCreateDefaultTaskGroupInteractor, Interactor.None()) { group ->
             dialogState.value =
                 TaskViewState.DialogState.SelectingScript(
                     scriptPackageGroup = group,
-                    initialPublicIdentifier = publicIdentifier,
+                    initialRequest = request,
                 )
         }
     }

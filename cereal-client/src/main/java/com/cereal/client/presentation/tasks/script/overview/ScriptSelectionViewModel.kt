@@ -42,7 +42,7 @@ class ScriptSelectionViewModel(
     private val scope: CoroutineScope,
     val scriptPackageGroup: ScriptPackageGroup,
     private val initialScriptPackageInstance: ScriptPackageInstance?,
-    private val initialPublicIdentifier: String? = null,
+    private val initialRequest: ScriptRequest? = null,
     private val dispatcherProvider: CoroutinesDispatcherProvider,
     private val getScriptsInteractor: GetScriptsInteractor,
     private val getScriptCapacityInteractor: GetScriptCapacityInteractor,
@@ -118,13 +118,14 @@ class ScriptSelectionViewModel(
                             overviewViewState.value = ScriptSelectionState.Overview.Empty
                         } else {
                             // Pick the duplicated instance's or requested script once; otherwise default to the first.
-                            val initialPackageName =
-                                initialScriptPackageInstance?.definition?.manifest?.packageName ?: initialPublicIdentifier
+                            val initialEntry =
+                                initialScriptPackageInstance?.let { ScriptRequest(it.definition.manifest.packageName, it.variantId) }
+                                    ?: initialRequest
                             val initialScript =
-                                initialPackageName?.takeUnless { initialSelectionApplied }?.let { packageName ->
+                                initialEntry?.takeUnless { initialSelectionApplied }?.let { entry ->
                                     items.find { item ->
-                                        item.id.scriptPackage.manifest.packageName == packageName &&
-                                            item.id.variantId == initialScriptPackageInstance?.variantId
+                                        item.id.scriptPackage.manifest.packageName == entry.packageName &&
+                                            item.id.variantId == entry.variantId
                                     }
                                 }
                             scriptsListViewModel.updateItems(items, selectFirstWhenNoSelection = initialScript == null)
@@ -363,6 +364,12 @@ class ScriptSelectionViewModel(
             "This script requires a newer version of Cereal. Update your client to use it."
     }
 }
+
+/** A request to add a specific entry script: a package's default entry ([variantId] null) or one of its variants. */
+data class ScriptRequest(
+    val packageName: String,
+    val variantId: String? = null,
+)
 
 /** One selectable row in script selection: a package's default entry ([variantId] null) or one of its variants. */
 data class ScriptEntryRow(
