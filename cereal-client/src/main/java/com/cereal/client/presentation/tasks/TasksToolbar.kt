@@ -92,9 +92,7 @@ internal fun TasksToolbar(
                     color = CerealTheme.colorScheme.contentTertiary,
                 )
             }
-            if (onViewConfig != null || onContactSupport != null || onEdit != null || menuOptions.isNotEmpty()) {
-                Spacer(Modifier.weight(1f))
-            }
+            Spacer(Modifier.weight(1f))
             if (onContactSupport != null) {
                 CerealToolbarButton(
                     variant = CerealToolbarButtonVariant.Ghost,
