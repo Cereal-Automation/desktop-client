@@ -65,13 +65,15 @@ class TasksViewModel(
     // Every group's task setups in list order; null until they first load.
     private val groupedSetups = mutableStateOf<List<Pair<ScriptPackageGroup, List<ScriptPackageInstance>>>?>(null, referentialEqualityPolicy())
     private val allTasks = mutableStateOf<List<Task>>(emptyList())
+    private val statusFilter = mutableStateOf(TaskFilter.ALL)
+    private val groupFilter = mutableStateOf<String?>(null)
 
     /**
      * Every task setup under its group, with its tasks. Starts in Loading, not Empty: rendering the empty state before
      * the groups first load would flicker ahead of the real list.
      */
     val listState: State<TaskViewState.ListState> =
-        derivedStateOf { TasksViewStateBuilder.buildListState(groupedSetups.value, allTasks.value) }
+        derivedStateOf { TasksViewStateBuilder.buildListState(groupedSetups.value, allTasks.value, statusFilter.value, groupFilter.value) }
 
     /** A task the list should scroll to (set by [focusTask]); the screen clears it with [onScrolledToTask]. */
     val scrollToTaskId = mutableStateOf<String?>(null)
@@ -187,6 +189,16 @@ class TasksViewModel(
         onTaskSelected(task)
         scrollToTaskId.value = taskId
         return true
+    }
+
+    /** A status chip: shows only matching tasks, across every setup. */
+    fun onStatusFilterSelected(filter: TaskFilter) {
+        statusFilter.value = filter
+    }
+
+    /** The group filter: one group's id, or null for all groups. */
+    fun onGroupFilterSelected(groupId: String?) {
+        groupFilter.value = groupId
     }
 
     fun onScrolledToTask() {

@@ -94,9 +94,10 @@
     <string name="enable_webhook_desc">Enable Discord webhook notifications.</string>
     <string name="error">Error</string>
     <string name="error_refreshing_scripts">Error refreshing scripts</string>
-    <string name="errored">Errored</string>
     <string name="expand">Expand</string>
     <string name="filter_all">All</string>
+    <string name="filter_all_groups">All groups</string>
+    <string name="filter_failed">Failed</string>
     <string name="filter_action_label">Filter</string>
     <string name="filter_section_price">Price</string>
     <string name="filter_section_creator">Creator</string>

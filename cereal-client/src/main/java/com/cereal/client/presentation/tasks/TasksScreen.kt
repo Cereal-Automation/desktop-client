@@ -90,24 +90,29 @@ fun TasksScreen(
             onNewGroup = viewModel::onCreateTaskGroup,
             onNewTaskSetup = viewModel::onAddScriptClicked,
         )
-
+        // The inspector sits beside the filter bar and list, under the header.
         Row(Modifier.weight(1.0f).fillMaxWidth()) {
-            Box(Modifier.weight(1.0f).fillMaxHeight()) {
-                when (val state = listState) {
-                    is TaskViewState.ListState.Filled -> {
-                        TaskListContent(state, viewModel)
-                    }
+            Column(Modifier.weight(1.0f).fillMaxHeight()) {
+                (listState as? TaskViewState.ListState.Filled)?.let { state ->
+                    TaskFilterBar(state.chips, state.groupFilter, viewModel::onStatusFilterSelected, viewModel::onGroupFilterSelected)
+                }
+                Box(Modifier.weight(1.0f).fillMaxWidth()) {
+                    when (val state = listState) {
+                        is TaskViewState.ListState.Filled -> {
+                            TaskListContent(state, viewModel)
+                        }
 
-                    TaskViewState.ListState.Empty -> {
-                        TasksEmptyState(
-                            onNewTaskSetup = viewModel::onAddScriptClicked,
-                            onNavigateToHome = onNavigateToHome,
-                        )
-                    }
+                        TaskViewState.ListState.Empty -> {
+                            TasksEmptyState(
+                                onNewTaskSetup = viewModel::onAddScriptClicked,
+                                onNavigateToHome = onNavigateToHome,
+                            )
+                        }
 
-                    // Loading is the brief window before the groups first load. Render nothing here so the
-                    // empty-state CTA never flashes ahead of the real list.
-                    TaskViewState.ListState.Loading -> {}
+                        // Loading is the brief window before the groups first load. Render nothing here so the
+                        // empty-state CTA never flashes ahead of the real list.
+                        TaskViewState.ListState.Loading -> {}
+                    }
                 }
             }
 
