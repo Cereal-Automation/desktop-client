@@ -143,17 +143,19 @@ fun TasksScreen(
                             },
                         onContactSupport =
                             if (filled != null && !supportUrl.isNullOrBlank()) {
-                                { viewModel.contactSupport() }
+                                { viewModel.hierarchicalListViewModel.selectedChild?.let(viewModel::contactSupport) }
                             } else {
                                 null
                             },
                         menuOptions = if (filled != null) viewModel.headerMenuOptions else emptyList(),
-                        onMenuOptionSelected = viewModel::onHeaderMenuOptionSelected,
-                        onEdit = filled?.let { viewModel::onEditClicked },
+                        onMenuOptionSelected = { option ->
+                            viewModel.hierarchicalListViewModel.selectedChild?.let { viewModel.onSetupMenuOptionSelected(it, option) }
+                        },
+                        onEdit = filled?.let { { viewModel.hierarchicalListViewModel.selectedChild?.let(viewModel::onEditClicked) } },
                         editEnabled = viewModel.editEnabled,
                         stepper = viewModel.concurrentTaskStepper.value.takeIf { filled != null },
-                        onDecreaseTasks = viewModel::decreaseConcurrentTasks,
-                        onIncreaseTasks = viewModel::increaseConcurrentTasks,
+                        onDecreaseTasks = { viewModel.hierarchicalListViewModel.selectedChild?.let(viewModel::decreaseConcurrentTasks) },
+                        onIncreaseTasks = { viewModel.hierarchicalListViewModel.selectedChild?.let(viewModel::increaseConcurrentTasks) },
                     )
 
                     viewModel.taskControls.value?.let { controls ->
@@ -163,9 +165,9 @@ fun TasksScreen(
                                 remember(viewModel) {
                                     TaskQuickActionsCallbacks(
                                         onStatusChipClick = { viewModel.onStatusChipClicked(it) },
-                                        onStartAll = { viewModel.startAllTasks() },
-                                        onStopAll = { viewModel.stopAllTasks() },
-                                        onRestartErrored = { viewModel.restartErroredTasks() },
+                                        onStartAll = { viewModel.hierarchicalListViewModel.selectedChild?.let(viewModel::startAllTasks) },
+                                        onStopAll = { viewModel.hierarchicalListViewModel.selectedChild?.let(viewModel::stopAllTasks) },
+                                        onRestartErrored = { viewModel.hierarchicalListViewModel.selectedChild?.let(viewModel::restartErroredTasks) },
                                     )
                                 },
                         )

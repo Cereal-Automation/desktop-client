@@ -83,7 +83,7 @@ class TaskSetupsViewModelTest {
             world.dispatcher.scheduler.advanceUntilIdle()
 
             assertTrue(viewModel.editEnabled)
-            viewModel.onEditClicked()
+            viewModel.onEditClicked(setup)
 
             val dialog = assertIs<TaskViewState.DialogState.EditingScript>(viewModel.dialogState.value)
             assertEquals("setup-1", dialog.scriptPackageInstance.id)
@@ -109,7 +109,7 @@ class TaskSetupsViewModelTest {
             world.dispatcher.scheduler.advanceUntilIdle()
             assertEquals(1, viewModel.concurrentTaskStepper.value?.count)
 
-            viewModel.increaseConcurrentTasks()
+            viewModel.increaseConcurrentTasks(setup)
             world.dispatcher.scheduler.advanceUntilIdle()
 
             assertEquals(2, world.scriptInstances.getScriptPackageInstance("setup-1").numberOfConcurrentTasks)
@@ -127,7 +127,7 @@ class TaskSetupsViewModelTest {
             viewModel.hierarchicalListViewModel.selectChild(setup)
             world.dispatcher.scheduler.advanceUntilIdle()
 
-            viewModel.decreaseConcurrentTasks()
+            viewModel.decreaseConcurrentTasks(setup)
             world.dispatcher.scheduler.advanceUntilIdle()
 
             assertEquals(2, viewModel.concurrentTaskStepper.value?.count)
@@ -150,7 +150,7 @@ class TaskSetupsViewModelTest {
             world.dispatcher.scheduler.advanceUntilIdle()
 
             assertEquals(false, viewModel.concurrentTaskStepper.value?.canDecrease)
-            viewModel.decreaseConcurrentTasks()
+            viewModel.decreaseConcurrentTasks(setup)
             world.dispatcher.scheduler.advanceUntilIdle()
 
             assertEquals(2, world.scriptInstances.getScriptPackageInstance("setup-1").numberOfConcurrentTasks)
@@ -166,7 +166,7 @@ class TaskSetupsViewModelTest {
             world.dispatcher.scheduler.advanceUntilIdle()
 
             assertEquals(ConcurrentTaskStepperState(1, canDecrease = false, canIncrease = true), viewModel.concurrentTaskStepper.value)
-            viewModel.decreaseConcurrentTasks()
+            viewModel.decreaseConcurrentTasks(setup)
             world.dispatcher.scheduler.advanceUntilIdle()
 
             assertEquals(1, world.tasksRepository.getTasks(setup).size)

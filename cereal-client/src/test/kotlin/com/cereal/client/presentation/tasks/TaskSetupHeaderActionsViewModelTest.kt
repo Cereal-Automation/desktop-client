@@ -10,7 +10,7 @@ import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Test
 import kotlin.test.assertIs
 
-/** The detail header's "···" menu acts on the selected task setup, like the list context menu. */
+/** The detail header's "···" menu acts on the setup it is given, like the list context menu. */
 @OptIn(ExperimentalCoroutinesApi::class)
 class TaskSetupHeaderActionsViewModelTest {
     private val world = TasksScreenWorld(StandardTestDispatcher())
@@ -36,7 +36,7 @@ class TaskSetupHeaderActionsViewModelTest {
             val viewModel = start()
             viewModel.hierarchicalListViewModel.selectChild(setup)
 
-            viewModel.onHeaderMenuOptionSelected(MenuOption.DELETE)
+            viewModel.onSetupMenuOptionSelected(setup, MenuOption.DELETE)
 
             val dialog = assertIs<TaskViewState.DialogState.ConfirmScriptInstanceDeletion>(viewModel.dialogState.value)
             assertEquals(setup, dialog.scriptPackageInstance)
@@ -57,7 +57,7 @@ class TaskSetupHeaderActionsViewModelTest {
             val viewModel = start()
             viewModel.hierarchicalListViewModel.selectChild(setup)
 
-            viewModel.onHeaderMenuOptionSelected(MenuOption.MOVE_TO_GROUP)
+            viewModel.onSetupMenuOptionSelected(setup, MenuOption.MOVE_TO_GROUP)
 
             val dialog = assertIs<TaskViewState.DialogState.MovingScript>(viewModel.dialogState.value)
             assertEquals(default, dialog.currentGroup)
@@ -79,7 +79,7 @@ class TaskSetupHeaderActionsViewModelTest {
             val viewModel = start()
             viewModel.hierarchicalListViewModel.selectChild(setup)
 
-            viewModel.onHeaderMenuOptionSelected(MenuOption.DUPLICATE)
+            viewModel.onSetupMenuOptionSelected(setup, MenuOption.DUPLICATE)
 
             val dialog = assertIs<TaskViewState.DialogState.DuplicatingScript>(viewModel.dialogState.value)
             assertEquals(setup, dialog.scriptPackageInstance)

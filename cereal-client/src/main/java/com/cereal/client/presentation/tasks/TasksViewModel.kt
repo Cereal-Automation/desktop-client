@@ -286,14 +286,10 @@ class TasksViewModel(
         }
     }
 
-    /** The detail header's "···" menu: the list context menu's setup actions, applied to the selected setup. */
+    /** The detail header's "···" menu: the list context menu's setup actions. */
     val headerMenuOptions = listOf(MenuOption.DUPLICATE, MenuOption.MOVE_TO_GROUP, MenuOption.DELETE)
 
-    fun onHeaderMenuOptionSelected(option: MenuOption) {
-        hierarchicalListViewModel.selectedChild?.let { onSetupMenuOptionSelected(it, option) }
-    }
-
-    private fun onSetupMenuOptionSelected(
+    fun onSetupMenuOptionSelected(
         scriptInstance: ScriptPackageInstance,
         option: MenuOption,
     ) {
@@ -302,44 +298,44 @@ class TasksViewModel(
             MenuOption.VIEW_CONFIGURATION -> showConfiguration(scriptInstance)
             MenuOption.DUPLICATE -> duplicateScriptInstance(scriptInstance)
             MenuOption.MOVE_TO_GROUP -> moveScriptToGroup(scriptInstance)
-            MenuOption.EDIT -> Unit // Setups are edited from the detail header.
+            MenuOption.EDIT -> onEditClicked(scriptInstance)
         }
     }
 
-    /** Edit in the detail header: only while none of the selected setup's tasks runs. */
+    /** Edit in the detail header, for the selected setup. */
     val editEnabled: Boolean
-        get() =
-            hierarchicalListViewModel.selectedChild != null &&
-                (tasksViewState.value as? TaskViewState.DetailViewState.Filled)?.runningTasksCount?.let { it == 0 } ?: true
+        get() = hierarchicalListViewModel.selectedChild?.let(::canEdit) ?: false
 
-    fun onEditClicked() {
-        val selected = hierarchicalListViewModel.selectedChild ?: return
-        if (!editEnabled) return
+    /** A setup is edited only while none of its tasks runs. */
+    private fun canEdit(setup: ScriptPackageInstance): Boolean = tasks.orEmpty().none { it.scriptInstance.packageInstance.id == setup.id && it.status is TaskStatus.Running }
+
+    fun onEditClicked(setup: ScriptPackageInstance) {
+        if (!canEdit(setup)) return
         // Prefer the setup from the observed list, which carries its latest saved configuration.
-        val (group, setup) = observedSetup(selected.id) ?: return
-        dialogManager.showEditScript(group, setup)
+        val (group, latest) = observedSetup(setup.id) ?: return
+        dialogManager.showEditScript(group, latest)
     }
 
-    fun increaseConcurrentTasks() = changeConcurrentTaskCount(+1)
+    fun increaseConcurrentTasks(setup: ScriptPackageInstance) = changeConcurrentTaskCount(setup, +1)
 
-    fun decreaseConcurrentTasks() = changeConcurrentTaskCount(-1)
+    fun decreaseConcurrentTasks(setup: ScriptPackageInstance) = changeConcurrentTaskCount(setup, -1)
 
-    private fun changeConcurrentTaskCount(step: Int) {
-        val stepper = concurrentTaskStepper.value ?: return
+    private fun changeConcurrentTaskCount(
+        setup: ScriptPackageInstance,
+        step: Int,
+    ) {
+        val latest = latestOf(setup)
+        val stepper = stepperOf(latest) ?: return
         val allowed = if (step > 0) stepper.canIncrease else stepper.canDecrease
         if (!allowed) return
-        val setup = selectedSetup() ?: return
         interactorRunner.launch(
             setConcurrentTaskCountInteractor,
-            SetConcurrentTaskCountInteractor.Params(setup, stepper.count + step),
+            SetConcurrentTaskCountInteractor.Params(latest, stepper.count + step),
         )
     }
 
-    /** The selected setup as last observed in the list, which carries its latest saved values. */
-    private fun selectedSetup(): ScriptPackageInstance? {
-        val selected = hierarchicalListViewModel.selectedChild ?: return null
-        return observedSetup(selected.id)?.second ?: selected
-    }
+    /** [setup] as last observed in the list, which carries its latest saved values. */
+    private fun latestOf(setup: ScriptPackageInstance): ScriptPackageInstance = observedSetup(setup.id)?.second ?: setup
 
     /** The setup with [id] as last observed in the list, with the group that holds it. */
     private fun observedSetup(id: String): Pair<ScriptPackageGroup, ScriptPackageInstance>? =
@@ -348,13 +344,14 @@ class TasksViewModel(
         }
 
     private fun updateConcurrentTaskStepper() {
-        val setup = selectedSetup()
-        concurrentTaskStepper.value =
-            setup?.concurrentTaskCounts(tasks.orEmpty())?.let { counts ->
-                val count = setup.numberOfConcurrentTasks
-                ConcurrentTaskStepperState(count, canDecrease = count - 1 >= counts.first, canIncrease = count + 1 <= counts.last)
-            }
+        concurrentTaskStepper.value = hierarchicalListViewModel.selectedChild?.let { stepperOf(latestOf(it)) }
     }
+
+    private fun stepperOf(setup: ScriptPackageInstance): ConcurrentTaskStepperState? =
+        setup.concurrentTaskCounts(tasks.orEmpty())?.let { counts ->
+            val count = setup.numberOfConcurrentTasks
+            ConcurrentTaskStepperState(count, canDecrease = count - 1 >= counts.first, canIncrease = count + 1 <= counts.last)
+        }
 
     fun showConfiguration(scriptPackageInstance: ScriptPackageInstance) {
         dialogManager.showConfiguration(scriptPackageInstance)
@@ -409,16 +406,12 @@ class TasksViewModel(
         hierarchicalListViewModel.selectChild(scriptPackageInstance)
     }
 
-    fun startAllTasks() {
-        hierarchicalListViewModel.selectedChild?.let {
-            tasksActionHandler.startAllTasks(scope, it)
-        }
+    fun startAllTasks(setup: ScriptPackageInstance) {
+        tasksActionHandler.startAllTasks(scope, setup)
     }
 
-    fun stopAllTasks() {
-        hierarchicalListViewModel.selectedChild?.let {
-            tasksActionHandler.stopAllTasks(scope, it)
-        }
+    fun stopAllTasks(setup: ScriptPackageInstance) {
+        tasksActionHandler.stopAllTasks(scope, setup)
     }
 
     private var restartErroredJob: Job? = null
@@ -460,17 +453,16 @@ class TasksViewModel(
             }
         }
 
-    fun restartErroredTasks() {
+    fun restartErroredTasks(setup: ScriptPackageInstance) {
         // Guard against duplicate submissions: the button stays enabled while errored > 0,
         // which only flips once the backend reports the new state, so rapid clicks would
         // otherwise re-fire the same task starts.
         if (restartErroredJob?.isActive == true) return
-        val filled = tasksViewState.value as? TaskViewState.DetailViewState.Filled ?: return
         val erroredIds =
-            filled.scriptInstances
-                .flatMap { it.tasks }
-                .filter { it.isError }
-                .map { it.id.id }
+            tasks
+                .orEmpty()
+                .filter { it.scriptInstance.packageInstance.id == setup.id && it.status is TaskStatus.Error }
+                .map { it.id }
         if (erroredIds.isEmpty()) return
 
         restartErroredInFlight.value = true
@@ -533,12 +525,8 @@ class TasksViewModel(
         ) {}
     }
 
-    fun contactSupport() {
-        val url =
-            hierarchicalListViewModel.selectedChild
-                ?.definition
-                ?.manifest
-                ?.supportUrl ?: return
+    fun contactSupport(setup: ScriptPackageInstance) {
+        val url = setup.definition.manifest.supportUrl ?: return
         interactorRunner.launch(openUrlInteractor, OpenUrlInteractor.Params(url)) {}
     }
 

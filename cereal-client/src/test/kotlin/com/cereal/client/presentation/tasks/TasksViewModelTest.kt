@@ -385,7 +385,7 @@ class TasksViewModelTest {
             coEvery { openUrlInteractor(capture(slot), any()) } returns Unit
 
             // Act
-            viewModel.contactSupport()
+            viewModel.contactSupport(instance)
             dispatcher.scheduler.advanceUntilIdle()
 
             // Assert
@@ -795,8 +795,8 @@ class TasksViewModelTest {
             every { instance.id } returns "inst-1"
             viewModel.hierarchicalListViewModel.selectChild(instance)
 
-            viewModel.startAllTasks()
-            viewModel.stopAllTasks()
+            viewModel.startAllTasks(instance)
+            viewModel.stopAllTasks(instance)
             dispatcher.scheduler.advanceUntilIdle()
 
             coVerify(exactly = 1) { startAllTasksInScriptPackageInstanceInteractor(any(), any()) }
