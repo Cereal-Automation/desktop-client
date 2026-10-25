@@ -19,6 +19,8 @@ import androidx.compose.ui.test.performClick
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.width
+import com.cereal.client.domain.model.proxy.Proxy
+import com.cereal.client.domain.model.script.configuration.ConfigValue
 import com.cereal.client.domain.model.task.JobTask
 import com.cereal.client.domain.model.task.ScriptPackageGroup
 import com.cereal.client.domain.model.task.TaskStatus
@@ -30,6 +32,7 @@ import kotlinx.coroutines.runBlocking
 import org.koin.java.KoinJavaComponent
 import testutil.runScreenTest
 import testutil.setScreenContent
+import java.util.UUID
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.time.Clock
@@ -87,9 +90,26 @@ class TasksScreenTest {
             onNodeWithText("Restart").assertIsDisplayed()
             onNodeWithText("LOG").assertIsDisplayed()
             onNodeWithText("None yet").assertExists()
+            // Task #2 has no proxy or dataset row of its own, so there are no task values to show.
+            onNodeWithText("TASK VALUES").assertDoesNotExist()
 
             onAllNodesWithText("Sold out")[0].performClick()
             waitUntil { onAllNodesWithText("Task #2").fetchSemanticsNodes().isEmpty() }
+        }
+
+    @Test
+    fun theInspectorShowsATasksOwnValues() =
+        runScreenTest {
+            seedOneSetupWithTwoTasks()
+            setScreenContent { TasksScreen() }
+            waitUntil { onAllNodesWithText("Watching stock").fetchSemanticsNodes().isNotEmpty() }
+
+            onNodeWithText("Watching stock").performClick()
+            waitUntil { onAllNodesWithText("Task #1").fetchSemanticsNodes().isNotEmpty() }
+
+            onNodeWithText("TASK VALUES").assertIsDisplayed()
+            // Once on the row, once in the inspector.
+            assertEquals(2, onAllNodesWithText("proxy: 127.0.0.1:8080").fetchSemanticsNodes().size)
         }
 
     @Test
@@ -172,7 +192,10 @@ class TasksScreenTest {
             onNodeWithText("Delete").assertIsDisplayed()
         }
 
-    /** One setup in the default group: task 1 running ("Watching stock"), task 2 failed ("Sold out"). */
+    /**
+     * One setup in the default group: task 1 running ("Watching stock") on its own proxy, task 2 failed ("Sold out")
+     * with no values of its own.
+     */
     private fun seedOneSetupWithTwoTasks() =
         runBlocking {
             val group = KoinJavaComponent.get<TasksRepository>(TasksRepository::class.java).createScriptInstanceGroup(ScriptPackageGroup.createDefault())
@@ -185,7 +208,12 @@ class TasksScreenTest {
                     JobTask(
                         id = "task-${index + 1}",
                         scriptInstance = main,
-                        configuration = emptyMap(),
+                        configuration =
+                            if (index == 0) {
+                                mapOf("proxy" to ConfigValue.ProxyValue(Proxy(UUID.randomUUID(), "127.0.0.1", 8080, null, null)))
+                            } else {
+                                emptyMap()
+                            },
                         statusHistory = listOf(if (index == 0) TaskStatus.Running(message, now) else TaskStatus.Error(message, timestamp = now)),
                         createdAt = now + index.milliseconds,
                     )

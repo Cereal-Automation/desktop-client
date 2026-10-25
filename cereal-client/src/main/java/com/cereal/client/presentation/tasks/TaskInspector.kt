@@ -116,18 +116,21 @@ internal fun TaskInspector(
                 )
             }
 
-            InspectorSection(stringResource(Res.string.task_values)) {
-                val shape = RoundedCornerShape(8.dp)
-                CerealText(
-                    text = task.configuration.ifEmpty { "—" },
-                    modifier =
-                        Modifier
-                            .fillMaxWidth()
-                            .border(1.dp, CerealTheme.colorScheme.border, shape)
-                            .padding(horizontal = 12.dp, vertical = 10.dp),
-                    color = CerealTheme.colorScheme.contentSecondary,
-                    style = MaterialTheme.typography.bodyMedium.copy(fontFamily = FontFamily.Monospace, fontSize = 13.sp),
-                )
+            // Only a task with a proxy or dataset row of its own has values worth showing.
+            if (task.configuration.isNotEmpty()) {
+                InspectorSection(stringResource(Res.string.task_values)) {
+                    val shape = RoundedCornerShape(8.dp)
+                    CerealText(
+                        text = task.configuration,
+                        modifier =
+                            Modifier
+                                .fillMaxWidth()
+                                .border(1.dp, CerealTheme.colorScheme.border, shape)
+                                .padding(horizontal = 12.dp, vertical = 10.dp),
+                        color = CerealTheme.colorScheme.contentSecondary,
+                        style = MaterialTheme.typography.bodyMedium.copy(fontFamily = FontFamily.Monospace, fontSize = 13.sp),
+                    )
+                }
             }
 
             TaskLogSection(events = events, onClear = onClearLog)
