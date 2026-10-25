@@ -105,7 +105,7 @@ class ScriptSelectionViewModelTest {
             scope = CoroutineScope(dispatcher),
             scriptPackageGroup = group,
             initialScriptPackageInstance = null,
-            initialPublicIdentifier = initialPublicIdentifier,
+            initialRequest = initialPublicIdentifier?.let(::ScriptRequest),
             dispatcherProvider = dispatcherProvider,
             getScriptsInteractor = getScriptsInteractor,
             getScriptCapacityInteractor =
