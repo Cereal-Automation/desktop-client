@@ -244,7 +244,7 @@ private fun MenuNavItem(
                         Modifier
                             .defaultMinSize(minWidth = 18.dp)
                             .clip(CircleShape)
-                            .background(MaterialTheme.colorScheme.error)
+                            .background(if (item.isBadgeAttention) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.surfaceVariant)
                             .padding(horizontal = 6.dp, vertical = 1.dp),
                     contentAlignment = Alignment.Center,
                 ) {
@@ -255,7 +255,7 @@ private fun MenuNavItem(
                             MaterialTheme.typography.labelMedium.copy(
                                 fontWeight = FontWeight.Bold,
                             ),
-                        color = MaterialTheme.colorScheme.onError,
+                        color = if (item.isBadgeAttention) MaterialTheme.colorScheme.onError else MaterialTheme.colorScheme.onSurfaceVariant,
                     )
                 }
             }
