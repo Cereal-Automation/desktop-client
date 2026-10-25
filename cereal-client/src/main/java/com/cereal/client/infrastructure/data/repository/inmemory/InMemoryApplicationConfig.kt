@@ -19,7 +19,7 @@ class InMemoryApplicationConfig(
 ) : ApplicationConfig {
     override val title: String = "Cereal"
     override val appIcon: String = ""
-    override val versionName: String = "0.0.0-test"
+    override val versionName: String = "2.0.0-test"
 
     override val brandId: String? = null
     override val brandScriptIds: List<String> = emptyList()
