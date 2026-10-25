@@ -13,6 +13,7 @@ import com.cereal.client.application.interactor.script.GetScriptsInteractor
 import com.cereal.client.application.interactor.script.GetSdkVersionInteractor
 import com.cereal.client.domain.model.marketplace.MarketplaceScript
 import com.cereal.client.domain.model.script.ScriptPackage
+import com.cereal.client.domain.model.script.entryName
 import com.cereal.client.domain.model.script.isClientUpdateRequired
 import com.cereal.client.presentation.error.ErrorResolver
 import com.cereal.client.presentation.error.handleFailureOrElse
@@ -58,7 +59,7 @@ class MyScriptsViewModel(
         val isClickable: Boolean get() = listing != null
 
         val name: String
-            get() = variantId?.let { scriptPackage.variants[it]?.name } ?: listing?.title ?: scriptPackage.manifest.name
+            get() = variantId?.let(scriptPackage::entryName) ?: listing?.title ?: scriptPackage.manifest.name
 
         /** Uninstalling removes the whole jar, so it stays hidden for every row of the AI browser agent package. */
         val canUninstall: Boolean get() = !scriptPackage.isAiBrowserAgent

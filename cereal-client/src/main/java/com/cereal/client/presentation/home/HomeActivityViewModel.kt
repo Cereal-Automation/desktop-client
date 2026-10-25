@@ -9,6 +9,7 @@ import com.cereal.client.application.agent.isAiBrowserAgent
 import com.cereal.client.application.agent.isAiBrowserAgentDefaultEntry
 import com.cereal.client.application.interactor.script.GetScriptsInteractor
 import com.cereal.client.application.interactor.task.ObserveTasksInteractor
+import com.cereal.client.domain.model.script.entryName
 import com.cereal.client.domain.model.task.Task
 import com.cereal.client.presentation.tasks.mappers.toDisplayStatus
 import com.github.kittinunf.result.coroutines.SuspendableResult
@@ -70,9 +71,9 @@ class HomeActivityViewModel(
                             val packageName = pkg.manifest.packageName
                             // The agent's default entry is the goal composer; its variants are ready-made scripts.
                             if (pkg.isAiBrowserAgent) {
-                                pkg.variants.map { (id, variant) -> ReadyMadeScriptUiModel(packageName, variant.name, id) }
+                                pkg.variants.keys.map { id -> ReadyMadeScriptUiModel(packageName, pkg.entryName(id), id) }
                             } else {
-                                listOf(ReadyMadeScriptUiModel(packageName, pkg.manifest.name))
+                                listOf(ReadyMadeScriptUiModel(packageName, pkg.entryName(null)))
                             }
                         }
                     withContext(dispatcherProvider.main) { _readyMadeScripts.value = scripts }
