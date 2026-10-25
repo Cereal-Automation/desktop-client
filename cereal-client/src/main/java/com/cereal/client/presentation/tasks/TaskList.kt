@@ -1,5 +1,7 @@
 package com.cereal.client.presentation.tasks
 
+import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.TooltipArea
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -12,6 +14,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
@@ -20,14 +23,17 @@ import androidx.compose.material.icons.filled.CreateNewFolder
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.Remove
 import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Surface
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
@@ -44,6 +50,7 @@ import com.cereal.client.presentation.util.initialsOf
 import com.cereal.client.presentation.view.CerealIconButton
 import com.cereal.client.presentation.view.CerealOutlinedIconButton
 import com.cereal.client.presentation.view.CerealText
+import com.cereal.client.presentation.view.HorizontalDivider
 import com.cereal.client.presentation.view.SectionLabel
 import com.cereal.client.presentation.view.StatusDot
 import com.cereal.client.presentation.view.button.CerealToolbarButton
@@ -62,6 +69,7 @@ import com.cereal_automation.cereal_client.generated.resources.setup_failed_coun
 import com.cereal_automation.cereal_client.generated.resources.setup_running_count
 import com.cereal_automation.cereal_client.generated.resources.start_all_tasks
 import com.cereal_automation.cereal_client.generated.resources.stop_all_tasks
+import com.cereal_automation.cereal_client.generated.resources.stop_tasks_to_edit
 import com.cereal_automation.cereal_client.generated.resources.task_setups_count
 import com.cereal_automation.cereal_client.generated.resources.tasks
 import com.cereal_automation.cereal_client.generated.resources.tasks_count
@@ -110,13 +118,7 @@ internal fun TasksHeader(
                 CerealText(text = stringResource(Res.string.new_task_setup))
             }
         }
-        Box(
-            modifier =
-                Modifier
-                    .fillMaxWidth()
-                    .height(1.dp)
-                    .background(CerealTheme.colorScheme.border),
-        )
+        HorizontalDivider()
     }
 }
 
@@ -124,10 +126,10 @@ internal fun TasksHeader(
 @Composable
 internal fun TaskGroupLabel(
     section: TaskGroupSection,
-    onMenuOptionSelected: (MenuOption) -> Unit,
+    onMenuOptionSelected: (GroupMenuOption) -> Unit,
 ) {
     Row(
-        modifier = Modifier.fillMaxWidth().padding(start = PanePadding, end = 8.dp, top = 8.dp),
+        modifier = Modifier.fillMaxWidth().padding(start = PanePadding, end = 8.dp, top = 18.dp, bottom = 8.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         SectionLabel(
@@ -135,11 +137,19 @@ internal fun TaskGroupLabel(
             contentPadding = PaddingValues(),
         )
         Spacer(Modifier.weight(1f))
-        MoreOptionsMenu(GroupMenuOptions, onMenuOptionSelected, tint = CerealTheme.colorScheme.contentSubtle)
+        // Takes no height, so the 40dp button overhangs the label's padding instead of stretching the line.
+        Box(Modifier.height(0.dp).wrapContentHeight(unbounded = true)) {
+            MoreOptionsMenu(tint = CerealTheme.colorScheme.contentSubtle) { close ->
+                GroupMenuOption.entries.forEach { option ->
+                    MenuItem(stringResource(option.label)) {
+                        close()
+                        onMenuOptionSelected(option)
+                    }
+                }
+            }
+        }
     }
 }
-
-private val GroupMenuOptions = listOf(MenuOption.RENAME, MenuOption.DELETE)
 
 /** A task setup's header row: chevron, avatar, name, counts, stepper, Start all / Stop all and its "···" menu. */
 @Composable
@@ -150,7 +160,7 @@ internal fun TaskSetupRow(
     onStopAll: () -> Unit,
     onDecreaseTasks: () -> Unit,
     onIncreaseTasks: () -> Unit,
-    onMenuOptionSelected: (MenuOption) -> Unit,
+    onMenuOptionSelected: (SetupMenuOption) -> Unit,
 ) {
     Row(
         modifier = Modifier.fillMaxWidth().padding(start = 12.dp, top = 10.dp, end = 8.dp, bottom = 10.dp),
@@ -201,18 +211,55 @@ internal fun TaskSetupRow(
                 modifier = Modifier.size(16.dp),
             )
         }
-        MoreOptionsMenu(
-            options = section.menuOptions,
-            onOptionSelected = onMenuOptionSelected,
-            tint = CerealTheme.colorScheme.contentTertiary,
-            label = { option ->
-                if (option == MenuOption.RESTART_FAILED) {
-                    stringResource(option.stringResource, section.failedCount)
+        MoreOptionsMenu(tint = CerealTheme.colorScheme.contentTertiary) { close ->
+            section.menuOptions.forEach { option ->
+                val label =
+                    if (option == SetupMenuOption.RESTART_FAILED) {
+                        stringResource(option.label, section.failedCount)
+                    } else {
+                        stringResource(option.label)
+                    }
+                if (option == SetupMenuOption.EDIT && !section.editable) {
+                    DisabledMenuItem(label, reason = stringResource(Res.string.stop_tasks_to_edit))
                 } else {
-                    stringResource(option.stringResource)
+                    MenuItem(label) {
+                        close()
+                        onMenuOptionSelected(option)
+                    }
                 }
-            },
-        )
+            }
+        }
+    }
+}
+
+@Composable
+private fun MenuItem(
+    label: String,
+    onClick: () -> Unit,
+) {
+    DropdownMenuItem(text = { CerealText(label) }, onClick = onClick)
+}
+
+/** A menu entry that can't be picked right now; hovering it explains why. */
+@OptIn(ExperimentalFoundationApi::class)
+@Composable
+private fun DisabledMenuItem(
+    label: String,
+    reason: String,
+) {
+    TooltipArea(
+        tooltip = {
+            Surface(modifier = Modifier.shadow(4.dp), shape = MaterialTheme.shapes.extraSmall) {
+                CerealText(
+                    text = reason,
+                    modifier = Modifier.padding(CerealTheme.spacing.sm),
+                    style = MaterialTheme.typography.bodySmall,
+                )
+            }
+        },
+        delayMillis = 0,
+    ) {
+        DropdownMenuItem(text = { CerealText(label) }, onClick = {}, enabled = false)
     }
 }
 
@@ -255,7 +302,7 @@ private fun ConcurrentTaskStepper(
 
 /** A child script's title above its task rows. */
 @Composable
-internal fun TaskGroupTitle(title: String) {
+internal fun ChildScriptTitle(title: String) {
     SectionLabel(
         text = title,
         contentPadding = PaddingValues(start = PanePadding, end = PanePadding, top = 18.dp, bottom = 8.dp),
@@ -289,9 +336,10 @@ private val CardRadius = 8.dp
 @Composable
 private fun SetupAvatar(name: String) {
     val initials = remember(name) { initialsOf(name) }
-    val color = remember(name) { avatarColorFor(name) }
+    // Theme colours, minus error red so no setup looks failed.
+    val palette = CerealTheme.colorScheme.run { listOf(info, success, warning, highlight, borderDark) }
     Box(
-        modifier = Modifier.size(32.dp).clip(RoundedCornerShape(7.dp)).background(color),
+        modifier = Modifier.size(32.dp).clip(RoundedCornerShape(7.dp)).background(palette[avatarColorIndex(name, palette.size)]),
         contentAlignment = Alignment.Center,
     ) {
         CerealText(
@@ -302,22 +350,11 @@ private fun SetupAvatar(name: String) {
     }
 }
 
-private val AvatarPalette =
-    listOf(
-        Color(0xFFE54848),
-        Color(0xFFF5B73A),
-        Color(0xFF2ECC71),
-        Color(0xFF4F8CFF),
-        Color(0xFF5865F2),
-        Color(0xFFB57AFF),
-        Color(0xFF333333),
-    )
-
 private const val HASH_PRIME = 31
 private const val POSITIVE_INT_MASK = 0x7FFFFFFF
 
-private fun avatarColorFor(name: String): Color {
-    if (name.isEmpty()) return AvatarPalette[0]
-    val hash = name.fold(0) { acc, c -> (acc * HASH_PRIME + c.code) and POSITIVE_INT_MASK }
-    return AvatarPalette[hash % AvatarPalette.size]
-}
+/** A stable index into a palette of [size] colours for [name]. */
+private fun avatarColorIndex(
+    name: String,
+    size: Int,
+): Int = name.fold(0) { acc, c -> (acc * HASH_PRIME + c.code) and POSITIVE_INT_MASK } % size

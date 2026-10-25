@@ -1,17 +1,24 @@
 package com.cereal.client.presentation.tasks
 
 import androidx.compose.ui.unit.dp
-import com.cereal.client.domain.model.script.ScriptPackageInstance
-import com.cereal.client.domain.model.task.ScriptPackageGroup
 import com.cereal.client.domain.model.task.TaskStatus
 import com.cereal.client.presentation.tasks.model.ScriptInstanceUiModel
 import com.cereal.client.presentation.tasks.model.TaskUiModel
 import com.cereal_automation.cereal_client.generated.resources.Res
+import com.cereal_automation.cereal_client.generated.resources.contact_support
+import com.cereal_automation.cereal_client.generated.resources.delete
+import com.cereal_automation.cereal_client.generated.resources.duplicate
+import com.cereal_automation.cereal_client.generated.resources.edit
 import com.cereal_automation.cereal_client.generated.resources.filter_all
 import com.cereal_automation.cereal_client.generated.resources.filter_failed
 import com.cereal_automation.cereal_client.generated.resources.idle
+import com.cereal_automation.cereal_client.generated.resources.move_to_group
+import com.cereal_automation.cereal_client.generated.resources.rename
+import com.cereal_automation.cereal_client.generated.resources.restart_failed_count
 import com.cereal_automation.cereal_client.generated.resources.running
 import com.cereal_automation.cereal_client.generated.resources.success
+import com.cereal_automation.cereal_client.generated.resources.view_full_configuration
+import org.jetbrains.compose.resources.StringResource
 
 internal val PanePadding = 20.dp
 
@@ -56,15 +63,14 @@ data class GroupFilterOption(
 
 /** A group's label in the task list and the task setups beneath it. */
 data class TaskGroupSection(
-    val group: ScriptPackageGroup,
-    /** [group]'s name, held apart because a group equals any version of itself by id: a rename must still change the section. */
+    val groupId: String,
     val name: String,
     val setups: List<TaskSetupSection>,
 )
 
 /** One task setup in the task list: its header row and its task rows. */
 data class TaskSetupSection(
-    val setup: ScriptPackageInstance,
+    val setupId: String,
     val name: String,
     val subtitle: String?,
     val runningCount: Int,
@@ -76,12 +82,37 @@ data class TaskSetupSection(
     val showStopAll: Boolean,
     /** Start all has something to start. */
     val canStartAll: Boolean,
-    val menuOptions: List<MenuOption>,
+    val menuOptions: List<SetupMenuOption>,
+    /** Edit is offered only while none of its tasks runs. */
+    val editable: Boolean,
     /** False while the user has collapsed it: its task rows are not shown. */
     val expanded: Boolean,
     /** Task rows per script: the main script first, then child scripts (which carry a title). */
     val scripts: List<ScriptInstanceUiModel>,
 )
+
+/** A task setup row's "···" menu entries. */
+enum class SetupMenuOption(
+    val label: StringResource,
+) {
+    EDIT(Res.string.edit),
+    VIEW_CONFIGURATION(Res.string.view_full_configuration),
+    DUPLICATE(Res.string.duplicate),
+    MOVE_TO_GROUP(Res.string.move_to_group),
+
+    /** Takes the number of failed tasks as its format argument. */
+    RESTART_FAILED(Res.string.restart_failed_count),
+    CONTACT_SUPPORT(Res.string.contact_support),
+    DELETE(Res.string.delete),
+}
+
+/** A group label's "···" menu entries. */
+enum class GroupMenuOption(
+    val label: StringResource,
+) {
+    RENAME(Res.string.rename),
+    DELETE(Res.string.delete),
+}
 
 /** A task setup's `− count +` stepper for its number of concurrent tasks. */
 data class ConcurrentTaskStepperState(

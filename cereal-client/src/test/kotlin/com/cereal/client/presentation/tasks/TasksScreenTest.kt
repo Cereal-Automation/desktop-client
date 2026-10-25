@@ -3,6 +3,9 @@ package com.cereal.client.presentation.tasks
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.ui.test.ExperimentalTestApi
 import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.assertIsEnabled
+import androidx.compose.ui.test.assertIsNotEnabled
+import androidx.compose.ui.test.onAllNodesWithContentDescription
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
@@ -92,6 +95,34 @@ class TasksScreenTest {
 
             onNodeWithContentDescription("Close").performClick()
             waitUntil { onAllNodesWithText("Task #1").fetchSemanticsNodes().isEmpty() }
+        }
+
+    @Test
+    fun aSetupsEditEntryIsDisabledWhileItsTasksRun() =
+        runScreenTest {
+            seedOneSetupWithTwoTasks()
+            setScreenContent { TasksScreen() }
+            waitUntil { onAllNodesWithText("Watching stock").fetchSemanticsNodes().isNotEmpty() }
+
+            // The group label's "···" comes first, then the setup's.
+            onAllNodesWithContentDescription("More options")[1].performClick()
+            waitUntil { onAllNodesWithText("Edit").fetchSemanticsNodes().isNotEmpty() }
+
+            onNodeWithText("Edit").assertIsNotEnabled()
+            onNodeWithText("View full configuration").assertIsEnabled()
+        }
+
+    @Test
+    fun aGroupLabelsMenuOffersRenameAndDelete() =
+        runScreenTest {
+            seedOneSetupWithTwoTasks()
+            setScreenContent { TasksScreen() }
+            waitUntil { onAllNodesWithText("DEFAULT · 1").fetchSemanticsNodes().isNotEmpty() }
+
+            onAllNodesWithContentDescription("More options")[0].performClick()
+            waitUntil { onAllNodesWithText("Rename").fetchSemanticsNodes().isNotEmpty() }
+
+            onNodeWithText("Delete").assertIsDisplayed()
         }
 
     /** One setup in the default group: task 1 running ("Watching stock"), task 2 failed ("Sold out"). */

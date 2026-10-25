@@ -280,14 +280,14 @@ private sealed interface TaskListItem {
     data class GroupLabel(
         val section: TaskGroupSection,
     ) : TaskListItem {
-        override val key get() = "group-${section.group.id}"
+        override val key get() = "group-${section.groupId}"
     }
 
     data class SetupHeader(
         val section: TaskSetupSection,
         val last: Boolean,
     ) : TaskListItem {
-        override val key get() = "setup-${section.setup.id}"
+        override val key get() = "setup-${section.setupId}"
     }
 
     data class ScriptTitle(
@@ -346,11 +346,11 @@ private fun TaskListContent(
             items(items, key = { it.key }) { item ->
                 when (item) {
                     is TaskListItem.GroupLabel -> {
-                        TaskGroupLabel(item.section) { option -> viewModel.onGroupMenuOptionSelected(item.section.group, option) }
+                        TaskGroupLabel(item.section) { option -> viewModel.onGroupMenuOptionSelected(item.section.groupId, option) }
                     }
 
                     is TaskListItem.SetupHeader -> {
-                        val setup = item.section.setup
+                        val setup = item.section.setupId
                         Box(Modifier.setupCardSlice(first = true, last = item.last, fill = cardFill, border = cardBorder)) {
                             TaskSetupRow(
                                 section = item.section,
@@ -366,7 +366,7 @@ private fun TaskListContent(
 
                     is TaskListItem.ScriptTitle -> {
                         Box(Modifier.setupCardSlice(first = false, last = false, fill = cardFill, border = cardBorder)) {
-                            TaskGroupTitle(item.title)
+                            ChildScriptTitle(item.title)
                         }
                     }
 

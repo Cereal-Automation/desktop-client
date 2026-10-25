@@ -43,7 +43,7 @@ class TaskSetupActionsViewModelTest {
             val other = world.setup("other", null, idle())
             val viewModel = start()
 
-            viewModel.startAllTasks(other)
+            viewModel.startAllTasks(other.id)
             settle()
 
             assertTrue(
@@ -69,7 +69,7 @@ class TaskSetupActionsViewModelTest {
             val otherJob = Job().also { world.tasksRepository.setTaskJob("other-task-1", it) }
             val viewModel = start()
 
-            viewModel.stopAllTasks(other)
+            viewModel.stopAllTasks(other.id)
             settle()
 
             assertTrue(otherJob.isCancelled)
@@ -83,7 +83,7 @@ class TaskSetupActionsViewModelTest {
             val other = world.setup("other", null, errored())
             val viewModel = start()
 
-            viewModel.restartErroredTasks(other)
+            viewModel.onSetupMenuOptionSelected(other.id, SetupMenuOption.RESTART_FAILED)
             settle()
 
             assertTrue(
@@ -108,11 +108,11 @@ class TaskSetupActionsViewModelTest {
             val other = world.setup("other", null, idle(), idle(), configuration = proxyGroup())
             val viewModel = start()
 
-            viewModel.increaseConcurrentTasks(other)
+            viewModel.increaseConcurrentTasks(other.id)
             settle()
             assertEquals(3, world.tasksRepository.getTasks(other).size)
 
-            viewModel.decreaseConcurrentTasks(other)
+            viewModel.decreaseConcurrentTasks(other.id)
             settle()
             assertEquals(2, world.tasksRepository.getTasks(other).size)
             assertEquals(2, world.scriptInstances.getScriptPackageInstance("other").numberOfConcurrentTasks)
@@ -121,18 +121,20 @@ class TaskSetupActionsViewModelTest {
         }
 
     @Test
-    fun `edit opens the passed setup, and only while none of its tasks runs`() =
+    fun `edit is offered only while none of the setup's tasks runs, and opens the passed setup`() =
         runTest {
-            val selected = world.setup("selected", null, idle())
+            world.setup("selected", null, idle())
             val idleSetup = world.setup("idle", null, idle())
             val runningSetup = world.setup("running", null, running())
             val viewModel = start()
 
-            viewModel.onSetupMenuOptionSelected(runningSetup, MenuOption.EDIT)
-            assertEquals(TaskViewState.DialogState.Hidden, viewModel.dialogState.value)
+            assertFalse(viewModel.section(runningSetup.id).editable)
+            assertTrue(viewModel.section(idleSetup.id).editable)
 
-            viewModel.onSetupMenuOptionSelected(idleSetup, MenuOption.EDIT)
+            viewModel.onSetupMenuOptionSelected(idleSetup.id, SetupMenuOption.EDIT)
             val dialog = assertIs<TaskViewState.DialogState.EditingScript>(viewModel.dialogState.value)
             assertEquals("idle", dialog.scriptPackageInstance.id)
         }
+
+    private fun TasksViewModel.section(setupId: String): TaskSetupSection = assertIs<TaskViewState.ListState.Filled>(listState.value).groups.flatMap { it.setups }.single { it.setupId == setupId }
 }

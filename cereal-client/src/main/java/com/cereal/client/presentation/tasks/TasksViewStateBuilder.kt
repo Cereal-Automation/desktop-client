@@ -42,7 +42,7 @@ object TasksViewStateBuilder {
                 shownGroups
                     .map { (group, setups) ->
                         val sections = setups.map { buildSetupSection(it, tasksBySetup[it.id].orEmpty(), statusFilter, expanded = statusFilter != TaskFilter.ALL || it.id !in collapsedSetupIds) }
-                        TaskGroupSection(group, group.name, if (statusFilter == TaskFilter.ALL) sections else sections.filter { it.scripts.isNotEmpty() })
+                        TaskGroupSection(group.id, group.name, if (statusFilter == TaskFilter.ALL) sections else sections.filter { it.scripts.isNotEmpty() })
                     }.filter { statusFilter == TaskFilter.ALL || it.setups.isNotEmpty() },
             setupCount = groups.sumOf { it.second.size },
             taskCount = groups.sumOf { (_, setups) -> setups.sumOf { tasksBySetup[it.id].orEmpty().size } },
@@ -70,7 +70,7 @@ object TasksViewStateBuilder {
         val failed = tasks.count { it.status is TaskStatus.Error }
         val running = tasks.count { it.status is TaskStatus.Running }
         return TaskSetupSection(
-            setup = setup,
+            setupId = setup.id,
             name = setup.definition.manifest.name,
             subtitle =
                 setup.definition.mainScript.configuration
@@ -83,14 +83,15 @@ object TasksViewStateBuilder {
             canStartAll = tasks.any { it.status is TaskStatus.Idle },
             menuOptions =
                 buildList {
-                    add(MenuOption.EDIT)
-                    add(MenuOption.VIEW_CONFIGURATION)
-                    add(MenuOption.DUPLICATE)
-                    add(MenuOption.MOVE_TO_GROUP)
-                    if (failed > 0) add(MenuOption.RESTART_FAILED)
-                    if (setup.definition.manifest.supportUrl != null) add(MenuOption.CONTACT_SUPPORT)
-                    add(MenuOption.DELETE)
+                    add(SetupMenuOption.EDIT)
+                    add(SetupMenuOption.VIEW_CONFIGURATION)
+                    add(SetupMenuOption.DUPLICATE)
+                    add(SetupMenuOption.MOVE_TO_GROUP)
+                    if (failed > 0) add(SetupMenuOption.RESTART_FAILED)
+                    if (setup.definition.manifest.supportUrl != null) add(SetupMenuOption.CONTACT_SUPPORT)
+                    add(SetupMenuOption.DELETE)
                 },
+            editable = running == 0,
             expanded = expanded,
             scripts = scriptRows(tasks, statusFilter),
         )

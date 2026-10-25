@@ -39,6 +39,7 @@ import com.cereal.client.presentation.logs.TaskLogSection
 import com.cereal.client.presentation.theme.CerealTheme
 import com.cereal.client.presentation.view.CerealIconButton
 import com.cereal.client.presentation.view.CerealText
+import com.cereal.client.presentation.view.HorizontalDivider
 import com.cereal.client.presentation.view.SectionLabel
 import com.cereal.client.presentation.view.button.CerealToolbarButton
 import com.cereal.client.presentation.view.button.CerealToolbarButtonVariant
@@ -94,7 +95,7 @@ internal fun TaskInspector(
                 )
             }
         }
-        Box(Modifier.fillMaxWidth().height(1.dp).background(CerealTheme.colorScheme.border))
+        HorizontalDivider()
 
         Column(
             modifier = Modifier.fillMaxWidth().verticalScroll(rememberScrollState()).padding(PanePadding),

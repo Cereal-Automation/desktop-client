@@ -80,6 +80,18 @@ class LogViewTest {
         }
 
     @Test
+    fun aFilterHidingEveryLineDoesNotClaimThereIsNoOutput() =
+        runScreenTest {
+            setScreenContent { TaskLogSection(events = listOf(logEvent(LoggingPriority.INFO, "info-line-message")), onClear = {}) }
+
+            onNodeWithText("ERR").performClick()
+            waitForIdle()
+
+            onNodeWithText("No output yet").assertDoesNotExist()
+            onNodeWithText("No lines match this filter").assertIsDisplayed()
+        }
+
+    @Test
     fun clickingClearInvokesCallback() =
         runScreenTest {
             var cleared = false

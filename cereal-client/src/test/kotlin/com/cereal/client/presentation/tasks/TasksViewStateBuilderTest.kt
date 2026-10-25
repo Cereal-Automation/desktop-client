@@ -35,7 +35,7 @@ class TasksViewStateBuilderTest {
     fun `lists groups the user made even while they hold no setups`() {
         val state = TasksViewStateBuilder.buildListState(listOf(default to emptyList(), work to emptyList()), emptyList())
 
-        assertEquals(listOf("Default", "Work"), assertIs<TaskViewState.ListState.Filled>(state).groups.map { it.group.name })
+        assertEquals(listOf("Default", "Work"), assertIs<TaskViewState.ListState.Filled>(state).groups.map { it.name })
     }
 
     @Test

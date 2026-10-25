@@ -4,6 +4,7 @@ import com.cereal.client.domain.model.logging.LoggingEvent
 import com.cereal.client.domain.model.logging.LoggingPriority
 import com.cereal.client.domain.model.task.Task
 import com.cereal.client.domain.model.task.TaskStatus
+import com.cereal.client.presentation.tasks.model.TaskUiModel
 import fixtures.TasksScreenWorld
 import fixtures.errored
 import fixtures.idle
@@ -39,14 +40,15 @@ class TaskInspectorViewModelTest {
         viewModel?.dispose()
     }
 
-    private fun TasksViewModel.task(taskId: String): Task =
+    private fun TasksViewModel.row(taskId: String): TaskUiModel =
         assertIs<TaskViewState.ListState.Filled>(listState.value)
             .groups
             .flatMap { it.setups }
             .flatMap { it.scripts }
             .flatMap { it.tasks }
             .single { it.id.id == taskId }
-            .id
+
+    private fun TasksViewModel.task(taskId: String): Task = row(taskId).id
 
     private fun TasksViewModel.inspectedTaskId(): String? =
         inspector.value
@@ -105,7 +107,7 @@ class TaskInspectorViewModelTest {
             val viewModel = start()
 
             fun actionsOf(taskId: String): List<TaskInspectorAction> {
-                viewModel.onTaskSelected(viewModel.task(taskId))
+                viewModel.onTaskClicked(viewModel.task(taskId))
                 return viewModel.inspector.value!!.actions
             }
 
@@ -161,6 +163,36 @@ class TaskInspectorViewModelTest {
                     .statusHistory
                     .any { it is TaskStatus.Running },
             )
+        }
+
+    @Test
+    fun `a row's start button runs its task without opening the inspector`() =
+        runTest {
+            world.setup("s", null, idle())
+            val viewModel = start()
+
+            viewModel.startTask(viewModel.row("s-task-1"))
+            settle()
+
+            assertTrue(
+                world.tasksRepository
+                    .getTask("s-task-1")!!
+                    .statusHistory
+                    .any { it is TaskStatus.Running },
+            )
+            assertNull(viewModel.inspector.value)
+        }
+
+    @Test
+    fun `confirming a row's restart does not open the inspector`() =
+        runTest {
+            world.setup("s", null, succeeded())
+            val viewModel = start()
+
+            viewModel.startTask(viewModel.row("s-task-1"))
+            viewModel.confirmTaskRestart(viewModel.row("s-task-1"))
+
+            assertNull(viewModel.inspector.value)
         }
 
     @Test

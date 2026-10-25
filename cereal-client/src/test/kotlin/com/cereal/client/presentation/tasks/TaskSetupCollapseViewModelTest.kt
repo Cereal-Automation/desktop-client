@@ -34,7 +34,7 @@ class TaskSetupCollapseViewModelTest {
     /** Setup id → the task ids it shows (none while collapsed), in list order. */
     private fun TasksViewModel.shown(): Map<String, List<String>> =
         assertIs<TaskViewState.ListState.Filled>(listState.value).groups.flatMap { it.setups }.associate { setup ->
-            setup.setup.id to if (setup.expanded) setup.scripts.flatMap { it.tasks }.map { it.id.id } else emptyList()
+            setup.setupId to if (setup.expanded) setup.scripts.flatMap { it.tasks }.map { it.id.id } else emptyList()
         }
 
     @Test
@@ -44,7 +44,7 @@ class TaskSetupCollapseViewModelTest {
             world.setup("b", null, idle())
             val viewModel = start()
 
-            viewModel.onSetupExpandToggled(a)
+            viewModel.onSetupExpandToggled(a.id)
 
             assertEquals(mapOf("a" to emptyList<String>(), "b" to listOf("b-task-1")), viewModel.shown())
 
@@ -53,7 +53,7 @@ class TaskSetupCollapseViewModelTest {
 
             assertEquals(mapOf("a" to emptyList<String>(), "b" to listOf("b-task-1")), viewModel.shown())
 
-            viewModel.onSetupExpandToggled(a)
+            viewModel.onSetupExpandToggled(a.id)
 
             assertEquals(mapOf("a" to listOf("a-task-1", "a-task-2"), "b" to listOf("b-task-1")), viewModel.shown())
         }
@@ -63,7 +63,7 @@ class TaskSetupCollapseViewModelTest {
         runTest {
             val a = world.setup("a", null, idle())
             start().apply {
-                onSetupExpandToggled(a)
+                onSetupExpandToggled(a.id)
                 dispose()
             }
 
@@ -79,8 +79,8 @@ class TaskSetupCollapseViewModelTest {
             val b = world.setup("b", null, errored())
             world.setup("c", null, idle())
             val viewModel = start()
-            viewModel.onSetupExpandToggled(a)
-            viewModel.onSetupExpandToggled(b)
+            viewModel.onSetupExpandToggled(a.id)
+            viewModel.onSetupExpandToggled(b.id)
 
             viewModel.onStatusFilterSelected(TaskFilter.ERROR)
 
@@ -97,7 +97,7 @@ class TaskSetupCollapseViewModelTest {
             val a = world.setup("a", null, idle(), errored())
             world.setup("b", null, idle())
             val viewModel = start()
-            viewModel.onSetupExpandToggled(a)
+            viewModel.onSetupExpandToggled(a.id)
 
             viewModel.focusTask("a-task-2")
             settle()
@@ -114,7 +114,7 @@ class TaskSetupCollapseViewModelTest {
             val a = world.setup("a", null, errored())
             world.setup("b", work, running())
             val viewModel = start()
-            viewModel.onSetupExpandToggled(a)
+            viewModel.onSetupExpandToggled(a.id)
             viewModel.onGroupFilterSelected(work.id)
             viewModel.onStatusFilterSelected(TaskFilter.RUNNING)
 

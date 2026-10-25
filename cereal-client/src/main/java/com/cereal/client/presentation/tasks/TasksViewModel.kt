@@ -146,7 +146,7 @@ class TasksViewModel(
         interactorRunner.launch(getOrCreateDefaultTaskGroupInteractor, Interactor.None()) {}
     }
 
-    fun onTaskSelected(task: Task?) {
+    private fun onTaskSelected(task: Task?) {
         _selectedTask.value = task
         observeLogEventsForTask(task)
         observeArtifactsForTask(task)
@@ -218,9 +218,9 @@ class TasksViewModel(
     }
 
     /** A setup row's chevron or name: collapses or expands its tasks. */
-    fun onSetupExpandToggled(setup: ScriptPackageInstance) {
+    fun onSetupExpandToggled(setupId: String) {
         val collapsed = collapsedSetupIds.value
-        collapsedSetupIds.value = if (setup.id in collapsed) collapsed - setup.id else collapsed + setup.id
+        collapsedSetupIds.value = if (setupId in collapsed) collapsed - setupId else collapsed + setupId
     }
 
     fun onScrolledToTask() {
@@ -237,23 +237,20 @@ class TasksViewModel(
         }
     }
 
-    fun onEditTaskGroup(group: ScriptPackageGroup) {
-        dialogManager.showEditGroup(group)
-    }
-
     /** A group label's "···" menu. */
     fun onGroupMenuOptionSelected(
-        group: ScriptPackageGroup,
-        option: MenuOption,
+        groupId: String,
+        option: GroupMenuOption,
     ) {
+        val group = groupedSetups.value?.firstOrNull { it.first.id == groupId }?.first ?: return
         when (option) {
-            MenuOption.RENAME -> onEditTaskGroup(group)
-            MenuOption.DELETE -> onDeleteGroup(group)
-            else -> Unit
+            GroupMenuOption.RENAME -> dialogManager.showEditGroup(group)
+            GroupMenuOption.DELETE -> deleteGroup(group)
         }
     }
 
-    private fun onDeleteGroup(group: ScriptPackageGroup) {
+    /** Deletes [group] at once when it holds no setups, else asks first. */
+    fun deleteGroup(group: ScriptPackageGroup) {
         val setups =
             groupedSetups.value
                 ?.firstOrNull { it.first.id == group.id }
@@ -262,15 +259,11 @@ class TasksViewModel(
         if (setups.isNotEmpty()) {
             dialogManager.showConfirmDeletion(group)
         } else {
-            deleteGroupInternal(group)
+            confirmGroupDeletion(group)
         }
     }
 
     fun confirmGroupDeletion(group: ScriptPackageGroup) {
-        deleteGroupInternal(group)
-    }
-
-    private fun deleteGroupInternal(group: ScriptPackageGroup) {
         // The list follows the change through its flows.
         tasksActionHandler.deleteGroupInternal(scope, group) { closeDialog() }
     }
@@ -282,91 +275,74 @@ class TasksViewModel(
         tasksActionHandler.changeGroup(scope, scriptPackageInstance, newGroup) { closeDialog() }
     }
 
-    internal fun onDeleteScriptInstance(scriptPackageInstance: ScriptPackageInstance) {
-        dialogManager.showConfirmScriptInstanceDeletion(scriptPackageInstance)
-    }
-
     fun confirmScriptInstanceDeletion(scriptPackageInstance: ScriptPackageInstance) {
         tasksActionHandler.deleteScriptInstance(scope, scriptPackageInstance) { closeDialog() }
     }
 
-    /** A task setup row's "···" menu. */
+    /** A task setup row's "···" menu; acts on the setup as last observed, which carries its latest saved values. */
     fun onSetupMenuOptionSelected(
-        scriptInstance: ScriptPackageInstance,
-        option: MenuOption,
+        setupId: String,
+        option: SetupMenuOption,
     ) {
+        val (group, setup) = observedSetup(setupId) ?: return
         when (option) {
-            MenuOption.DELETE -> onDeleteScriptInstance(scriptInstance)
-            MenuOption.VIEW_CONFIGURATION -> showConfiguration(scriptInstance)
-            MenuOption.DUPLICATE -> duplicateScriptInstance(scriptInstance)
-            MenuOption.MOVE_TO_GROUP -> moveScriptToGroup(scriptInstance)
-            MenuOption.EDIT -> onEditClicked(scriptInstance)
-            MenuOption.RESTART_FAILED -> restartErroredTasks(scriptInstance)
-            MenuOption.CONTACT_SUPPORT -> contactSupport(scriptInstance)
-            MenuOption.RENAME -> Unit
+            SetupMenuOption.EDIT -> {
+                dialogManager.showEditScript(group, setup)
+            }
+
+            SetupMenuOption.VIEW_CONFIGURATION -> {
+                dialogManager.showConfiguration(setup)
+            }
+
+            SetupMenuOption.DUPLICATE -> {
+                dialogManager.showDuplicateScript(group, setup)
+            }
+
+            SetupMenuOption.MOVE_TO_GROUP -> {
+                dialogManager.showMoveScriptToGroup(
+                    scriptInstance = setup,
+                    currentGroup = group,
+                    availableGroups = groupedSetups.value.orEmpty().map { it.first },
+                )
+            }
+
+            SetupMenuOption.RESTART_FAILED -> {
+                restartErroredTasks(setupId)
+            }
+
+            SetupMenuOption.CONTACT_SUPPORT -> {
+                contactSupport(setup)
+            }
+
+            SetupMenuOption.DELETE -> {
+                dialogManager.showConfirmScriptInstanceDeletion(setup)
+            }
         }
     }
 
-    /** A setup is edited only while none of its tasks runs. */
-    private fun canEdit(setup: ScriptPackageInstance): Boolean = tasks.none { it.scriptInstance.packageInstance.id == setup.id && it.status is TaskStatus.Running }
+    fun increaseConcurrentTasks(setupId: String) = changeConcurrentTaskCount(setupId, +1)
 
-    fun onEditClicked(setup: ScriptPackageInstance) {
-        if (!canEdit(setup)) return
-        // Prefer the setup from the observed list, which carries its latest saved configuration.
-        val (group, latest) = observedSetup(setup.id) ?: return
-        dialogManager.showEditScript(group, latest)
-    }
-
-    fun increaseConcurrentTasks(setup: ScriptPackageInstance) = changeConcurrentTaskCount(setup, +1)
-
-    fun decreaseConcurrentTasks(setup: ScriptPackageInstance) = changeConcurrentTaskCount(setup, -1)
+    fun decreaseConcurrentTasks(setupId: String) = changeConcurrentTaskCount(setupId, -1)
 
     private fun changeConcurrentTaskCount(
-        setup: ScriptPackageInstance,
+        setupId: String,
         step: Int,
     ) {
-        val latest = latestOf(setup)
-        val stepper = TasksViewStateBuilder.stepperOf(latest, tasks) ?: return
+        val (_, setup) = observedSetup(setupId) ?: return
+        val stepper = TasksViewStateBuilder.stepperOf(setup, tasks) ?: return
         val allowed = if (step > 0) stepper.canIncrease else stepper.canDecrease
         if (!allowed) return
         interactorRunner.launch(
             setConcurrentTaskCountInteractor,
-            SetConcurrentTaskCountInteractor.Params(latest, stepper.count + step),
+            SetConcurrentTaskCountInteractor.Params(setup, stepper.count + step),
         )
     }
-
-    /** [setup] as last observed in the list, which carries its latest saved values. */
-    private fun latestOf(setup: ScriptPackageInstance): ScriptPackageInstance = observedSetup(setup.id)?.second ?: setup
 
     /** The setup with [id] as last observed in the list, with the group that holds it. */
     private fun observedSetup(id: String): Pair<ScriptPackageGroup, ScriptPackageInstance>? =
         groupedSetups.value.orEmpty().firstNotNullOfOrNull { (group, setups) ->
             setups.firstOrNull { it.id == id }?.let { group to it }
         }
-
-    fun showConfiguration(scriptPackageInstance: ScriptPackageInstance) {
-        dialogManager.showConfiguration(scriptPackageInstance)
-    }
-
-    /** The group that holds [scriptInstance]. */
-    private fun groupOf(scriptInstance: ScriptPackageInstance): ScriptPackageGroup? = observedSetup(scriptInstance.id)?.first
-
-    fun moveScriptToGroup(scriptInstance: ScriptPackageInstance) {
-        val currentGroup = groupOf(scriptInstance)
-        if (currentGroup != null) {
-            val availableGroups = groupedSetups.value.orEmpty().map { it.first }
-            dialogManager.showMoveScriptToGroup(
-                scriptInstance = scriptInstance,
-                currentGroup = currentGroup,
-                availableGroups = availableGroups,
-            )
-        }
-    }
-
-    fun duplicateScriptInstance(scriptPackageInstance: ScriptPackageInstance) {
-        val group = groupOf(scriptPackageInstance) ?: return
-        dialogManager.showDuplicateScript(group, scriptPackageInstance)
-    }
 
     fun createGroup(groupName: String) {
         tasksActionHandler.createGroup(scope, groupName) { closeDialog() }
@@ -381,38 +357,32 @@ class TasksViewModel(
         }
     }
 
-    fun deleteGroup(group: ScriptPackageGroup) {
-        onDeleteGroup(group)
+    fun startAllTasks(setupId: String) {
+        observedSetup(setupId)?.let { (_, setup) -> tasksActionHandler.startAllTasks(scope, setup) }
     }
 
-    fun startAllTasks(setup: ScriptPackageInstance) {
-        tasksActionHandler.startAllTasks(scope, setup)
-    }
-
-    fun stopAllTasks(setup: ScriptPackageInstance) {
-        tasksActionHandler.stopAllTasks(scope, setup)
+    fun stopAllTasks(setupId: String) {
+        observedSetup(setupId)?.let { (_, setup) -> tasksActionHandler.stopAllTasks(scope, setup) }
     }
 
     private var restartErroredJob: Job? = null
 
-    fun restartErroredTasks(setup: ScriptPackageInstance) {
+    private fun restartErroredTasks(setupId: String) {
         // Guard against duplicate submissions: the button stays enabled while errored > 0,
         // which only flips once the backend reports the new state, so rapid clicks would
         // otherwise re-fire the same task starts.
         if (restartErroredJob?.isActive == true) return
         val erroredIds =
             tasks
-                .filter { it.scriptInstance.packageInstance.id == setup.id && it.status is TaskStatus.Error }
+                .filter { it.scriptInstance.packageInstance.id == setupId && it.status is TaskStatus.Error }
                 .map { it.id }
         if (erroredIds.isEmpty()) return
 
         restartErroredJob = scope.launch { erroredIds.map { id -> tasksActionHandler.startTaskInternal(scope, id) }.joinAll() }
     }
 
+    /** A row's play button or the inspector's Start/Restart; leaves the selection alone (only a row click selects). */
     fun startTask(taskUiModel: TaskUiModel) {
-        // Select the task when play button is pressed
-        onTaskSelected(taskUiModel.id)
-
         // Check if task is in finished state and show confirmation dialog
         if (taskUiModel.id.status is TaskStatus.Success) {
             dialogManager.showConfirmTaskRestart(taskUiModel)
@@ -425,8 +395,6 @@ class TasksViewModel(
 
     fun confirmTaskRestart(taskUiModel: TaskUiModel) {
         closeDialog()
-        // Ensure task remains selected when restarting
-        onTaskSelected(taskUiModel.id)
         startTaskInternal(taskUiModel)
     }
 
@@ -446,7 +414,7 @@ class TasksViewModel(
         tasksActionHandler.finishUserInteraction(scope, taskUiModel.id.id)
     }
 
-    fun reportIssue(taskUiModel: TaskUiModel) {
+    private fun reportIssue(taskUiModel: TaskUiModel) {
         val packageInstance = taskUiModel.id.scriptInstance.packageInstance
         interactorRunner.launch(
             reportScriptIssueInteractor,
@@ -458,7 +426,7 @@ class TasksViewModel(
         ) {}
     }
 
-    fun contactSupport(setup: ScriptPackageInstance) {
+    private fun contactSupport(setup: ScriptPackageInstance) {
         val url = setup.definition.manifest.supportUrl ?: return
         interactorRunner.launch(openUrlInteractor, OpenUrlInteractor.Params(url)) {}
     }

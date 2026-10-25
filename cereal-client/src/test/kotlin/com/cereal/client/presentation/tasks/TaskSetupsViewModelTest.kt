@@ -68,36 +68,13 @@ class TaskSetupsViewModelTest {
         }
 
     @Test
-    fun `edit opens the configuration dialog for the setup`() =
-        runTest {
-            val setup = world.setup("setup-1", null, idle())
-            val viewModel = start()
-
-            viewModel.onEditClicked(setup)
-
-            val dialog = assertIs<TaskViewState.DialogState.EditingScript>(viewModel.dialogState.value)
-            assertEquals("setup-1", dialog.scriptPackageInstance.id)
-        }
-
-    @Test
-    fun `edit is disabled while a task of the setup runs`() =
-        runTest {
-            val setup = world.setup("setup-1", null, running())
-            val viewModel = start()
-
-            viewModel.onEditClicked(setup)
-
-            assertEquals(TaskViewState.DialogState.Hidden, viewModel.dialogState.value)
-        }
-
-    @Test
     fun `plus adds an idle task and persists the new count`() =
         runTest {
             val setup = world.setup("setup-1", null, idle(), configuration = proxyGroup())
             val viewModel = start()
             assertEquals(1, viewModel.stepperOf(setup)?.count)
 
-            viewModel.increaseConcurrentTasks(setup)
+            viewModel.increaseConcurrentTasks(setup.id)
             world.dispatcher.scheduler.advanceUntilIdle()
 
             assertEquals(2, world.scriptInstances.getScriptPackageInstance("setup-1").numberOfConcurrentTasks)
@@ -113,7 +90,7 @@ class TaskSetupsViewModelTest {
             val setup = world.setup("setup-1", null, idle(), succeeded(), running(), configuration = proxyGroup())
             val viewModel = start()
 
-            viewModel.decreaseConcurrentTasks(setup)
+            viewModel.decreaseConcurrentTasks(setup.id)
             world.dispatcher.scheduler.advanceUntilIdle()
 
             assertEquals(2, viewModel.stepperOf(setup)?.count)
@@ -134,7 +111,7 @@ class TaskSetupsViewModelTest {
             val viewModel = start()
 
             assertEquals(false, viewModel.stepperOf(setup)?.canDecrease)
-            viewModel.decreaseConcurrentTasks(setup)
+            viewModel.decreaseConcurrentTasks(setup.id)
             world.dispatcher.scheduler.advanceUntilIdle()
 
             assertEquals(2, world.scriptInstances.getScriptPackageInstance("setup-1").numberOfConcurrentTasks)
@@ -148,7 +125,7 @@ class TaskSetupsViewModelTest {
             val viewModel = start()
 
             assertEquals(ConcurrentTaskStepperState(1, canDecrease = false, canIncrease = true), viewModel.stepperOf(setup))
-            viewModel.decreaseConcurrentTasks(setup)
+            viewModel.decreaseConcurrentTasks(setup.id)
             world.dispatcher.scheduler.advanceUntilIdle()
 
             assertEquals(1, world.tasksRepository.getTasks(setup).size)
@@ -167,6 +144,6 @@ class TaskSetupsViewModelTest {
         assertIs<TaskViewState.ListState.Filled>(listState.value)
             .groups
             .flatMap { it.setups }
-            .single { it.setup.id == setup.id }
+            .single { it.setupId == setup.id }
             .stepper
 }

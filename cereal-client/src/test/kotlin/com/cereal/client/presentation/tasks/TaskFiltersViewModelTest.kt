@@ -37,7 +37,7 @@ class TaskFiltersViewModelTest {
     /** Group name → setup id → task ids, in list order. */
     private fun TasksViewModel.outline(): Map<String, Map<String, List<String>>> =
         list().groups.associate { group ->
-            group.name to group.setups.associate { setup -> setup.setup.id to setup.scripts.flatMap { it.tasks }.map { it.id.id } }
+            group.name to group.setups.associate { setup -> setup.setupId to setup.scripts.flatMap { it.tasks }.map { it.id.id } }
         }
 
     @Test
@@ -136,7 +136,7 @@ class TaskFiltersViewModelTest {
             val viewModel = start()
             viewModel.onGroupFilterSelected(drops.id)
 
-            viewModel.onGroupMenuOptionSelected(drops, MenuOption.DELETE)
+            viewModel.onGroupMenuOptionSelected(drops.id, GroupMenuOption.DELETE)
             settle()
 
             assertEquals(listOf("Default", "Work") to null, viewModel.groupFilter())

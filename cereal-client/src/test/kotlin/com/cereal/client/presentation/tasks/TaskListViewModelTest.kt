@@ -37,12 +37,12 @@ class TaskListViewModelTest {
 
     private fun TasksViewModel.groups(): List<TaskGroupSection> = assertIs<TaskViewState.ListState.Filled>(listState.value).groups
 
-    private fun TasksViewModel.section(setupId: String): TaskSetupSection = groups().flatMap { it.setups }.single { it.setup.id == setupId }
+    private fun TasksViewModel.section(setupId: String): TaskSetupSection = groups().flatMap { it.setups }.single { it.setupId == setupId }
 
     /** Group name → setup id → task ids, in list order. */
     private fun TasksViewModel.outline(): Map<String, Map<String, List<String>>> =
         groups().associate { group ->
-            group.name to group.setups.associate { setup -> setup.setup.id to setup.scripts.flatMap { it.tasks }.map { it.id.id } }
+            group.name to group.setups.associate { setup -> setup.setupId to setup.scripts.flatMap { it.tasks }.map { it.id.id } }
         }
 
     @Test
@@ -118,10 +118,10 @@ class TaskListViewModelTest {
             world.setup("failing", null, errored(), idle(), supportUrl = "https://example.com/support")
             val viewModel = start()
 
-            val always = listOf(MenuOption.EDIT, MenuOption.VIEW_CONFIGURATION, MenuOption.DUPLICATE, MenuOption.MOVE_TO_GROUP, MenuOption.DELETE)
+            val always = listOf(SetupMenuOption.EDIT, SetupMenuOption.VIEW_CONFIGURATION, SetupMenuOption.DUPLICATE, SetupMenuOption.MOVE_TO_GROUP, SetupMenuOption.DELETE)
             assertEquals(always, viewModel.section("plain").menuOptions)
             assertEquals(
-                always + listOf(MenuOption.RESTART_FAILED, MenuOption.CONTACT_SUPPORT),
+                always + listOf(SetupMenuOption.RESTART_FAILED, SetupMenuOption.CONTACT_SUPPORT),
                 viewModel.section("failing").menuOptions.sortedBy { it !in always },
             )
         }
@@ -133,8 +133,8 @@ class TaskListViewModelTest {
             world.setup("other", null, errored(), supportUrl = "https://example.com/other")
             val viewModel = start()
 
-            viewModel.onSetupMenuOptionSelected(failing, MenuOption.RESTART_FAILED)
-            viewModel.onSetupMenuOptionSelected(failing, MenuOption.CONTACT_SUPPORT)
+            viewModel.onSetupMenuOptionSelected(failing.id, SetupMenuOption.RESTART_FAILED)
+            viewModel.onSetupMenuOptionSelected(failing.id, SetupMenuOption.CONTACT_SUPPORT)
             settle()
 
             // The test script ends at once, so a restarted task shows up as a fresh Running entry in its history.
@@ -150,7 +150,7 @@ class TaskListViewModelTest {
             world.setup("a", work, idle())
             val viewModel = start()
 
-            viewModel.onGroupMenuOptionSelected(work, MenuOption.RENAME)
+            viewModel.onGroupMenuOptionSelected(work.id, GroupMenuOption.RENAME)
             val dialog = assertIs<TaskViewState.DialogState.EditingTaskGroup>(viewModel.dialogState.value)
             viewModel.editGroup(dialog.group, "Drops")
             settle()
@@ -166,7 +166,7 @@ class TaskListViewModelTest {
             world.setup("a", work, idle())
             val viewModel = start()
 
-            viewModel.onGroupMenuOptionSelected(work, MenuOption.DELETE)
+            viewModel.onGroupMenuOptionSelected(work.id, GroupMenuOption.DELETE)
             val dialog = assertIs<TaskViewState.DialogState.ConfirmGroupDeletion>(viewModel.dialogState.value)
             assertEquals(listOf("Default", "Work"), viewModel.groups().map { it.name })
 
@@ -183,7 +183,7 @@ class TaskListViewModelTest {
             world.group("Drops")
             val viewModel = start()
 
-            viewModel.onGroupMenuOptionSelected(work, MenuOption.DELETE)
+            viewModel.onGroupMenuOptionSelected(work.id, GroupMenuOption.DELETE)
             settle()
 
             assertEquals(listOf("Default", "Drops"), viewModel.groups().map { it.name })
@@ -198,7 +198,7 @@ class TaskListViewModelTest {
             world.setup("new", null, idle(), idle())
             settle()
 
-            assertEquals(listOf("a", "new"), viewModel.groups().flatMap { it.setups }.map { it.setup.id })
+            assertEquals(listOf("a", "new"), viewModel.groups().flatMap { it.setups }.map { it.setupId })
             assertEquals(Triple(0, 0, 2), viewModel.section("new").counts())
         }
 
@@ -212,7 +212,7 @@ class TaskListViewModelTest {
             viewModel.confirmScriptInstanceDeletion(a)
             settle()
 
-            assertEquals(listOf("b"), viewModel.groups().flatMap { it.setups }.map { it.setup.id })
+            assertEquals(listOf("b"), viewModel.groups().flatMap { it.setups }.map { it.setupId })
         }
 
     @Test

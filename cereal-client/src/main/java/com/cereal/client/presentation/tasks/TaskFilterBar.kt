@@ -25,6 +25,7 @@ import androidx.compose.ui.unit.sp
 import com.cereal.client.presentation.theme.CerealTheme
 import com.cereal.client.presentation.theme.CerealTypography
 import com.cereal.client.presentation.view.CerealText
+import com.cereal.client.presentation.view.HorizontalDivider
 import com.cereal.client.presentation.view.StatusDot
 import com.cereal_automation.cereal_client.generated.resources.Res
 import com.cereal_automation.cereal_client.generated.resources.filter_all_groups
@@ -71,7 +72,7 @@ internal fun TaskFilterBar(
                 }
             }
         }
-        Box(Modifier.fillMaxWidth().height(1.dp).background(CerealTheme.colorScheme.border))
+        HorizontalDivider()
     }
 }
 

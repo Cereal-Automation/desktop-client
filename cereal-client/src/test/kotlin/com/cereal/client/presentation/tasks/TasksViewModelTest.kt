@@ -248,24 +248,6 @@ class TasksViewModelTest {
         }
 
     @Test
-    fun `onDeleteScriptInstance should show confirmation dialog`() =
-        runTest {
-            // Arrange
-            val scriptPackageInstance = mockk<ScriptPackageInstance>(relaxed = true)
-            createViewModel()
-
-            // Act
-            viewModel.onDeleteScriptInstance(scriptPackageInstance)
-            dispatcher.scheduler.advanceUntilIdle()
-
-            // Assert
-            coVerify(exactly = 0) { deleteScriptInstanceInteractor(any(), any()) }
-            val dialogState = viewModel.dialogState.value
-            assertIs<TaskViewState.DialogState.ConfirmScriptInstanceDeletion>(dialogState)
-            assertEquals(scriptPackageInstance, dialogState.scriptPackageInstance)
-        }
-
-    @Test
     fun `confirmScriptInstanceDeletion should invoke delete interactor`() =
         runTest {
             // Arrange
@@ -279,124 +261,6 @@ class TasksViewModelTest {
             // Assert
             coVerify(exactly = 1) { deleteScriptInstanceInteractor(any(), any()) }
             assertEquals(TaskViewState.DialogState.Hidden, viewModel.dialogState.value)
-        }
-
-    @Test
-    fun `closeDialog should hide dialog without invoking delete interactor`() =
-        runTest {
-            // Arrange
-            val scriptPackageInstance = mockk<ScriptPackageInstance>(relaxed = true)
-            createViewModel()
-            viewModel.onDeleteScriptInstance(scriptPackageInstance)
-            dispatcher.scheduler.advanceUntilIdle()
-            assertIs<TaskViewState.DialogState.ConfirmScriptInstanceDeletion>(viewModel.dialogState.value)
-
-            // Act
-            viewModel.closeDialog()
-
-            // Assert
-            coVerify(exactly = 0) { deleteScriptInstanceInteractor(any(), any()) }
-            assertEquals(TaskViewState.DialogState.Hidden, viewModel.dialogState.value)
-        }
-
-    @Test
-    fun `reportIssue should invoke interactor with correct params`() =
-        runTest {
-            // Arrange
-            createViewModel()
-            val packageInstance = mockk<ScriptPackageInstance>(relaxed = true)
-            val scriptInstance = mockk<ScriptInstance>(relaxed = true)
-            every { scriptInstance.packageInstance } returns packageInstance
-
-            val task = mockk<Task>(relaxed = true)
-            every { task.scriptInstance } returns scriptInstance
-
-            val taskUiModel =
-                TaskUiModel(
-                    id = task,
-                    taskNumber = 1,
-                    isRunning = false,
-                    isError = true,
-                    isSuccess = false,
-                    hasSupportUrl = true,
-                    message = "Error occurred",
-                    status = "Error",
-                    configuration = "",
-                    stackTrace = "java.lang.Exception: Error occurred",
-                    isIdle = false,
-                    statusSince = Clock.System.now(),
-                )
-
-            val slot = slot<ReportScriptIssueInteractor.Params>()
-            coEvery { reportScriptIssueInteractor(capture(slot), any()) } returns Unit
-
-            // Act
-            viewModel.reportIssue(taskUiModel)
-            dispatcher.scheduler.advanceUntilIdle()
-
-            // Assert
-            coVerify(exactly = 1) { reportScriptIssueInteractor(any(), any()) }
-            assertEquals(packageInstance, slot.captured.scriptPackageInstance)
-            assertEquals("Error occurred", slot.captured.errorMessage)
-            assertEquals("java.lang.Exception: Error occurred", slot.captured.stackTrace)
-        }
-
-    @Test
-    fun `contactSupport should open the setup's support url`() =
-        runTest {
-            // Arrange
-            createViewModel()
-            val instance = mockk<ScriptPackageInstance>(relaxed = true)
-            every { instance.definition.manifest.supportUrl } returns "https://github.com/owner/repo/issues"
-
-            val slot = slot<OpenUrlInteractor.Params>()
-            coEvery { openUrlInteractor(capture(slot), any()) } returns Unit
-
-            // Act
-            viewModel.contactSupport(instance)
-            dispatcher.scheduler.advanceUntilIdle()
-
-            // Assert
-            coVerify(exactly = 1) { openUrlInteractor(any(), any()) }
-            assertEquals("https://github.com/owner/repo/issues", slot.captured.url)
-        }
-
-    @Test
-    fun `reportIssue should invoke interactor and let it guard when supportUrl is absent`() =
-        runTest {
-            // Arrange
-            createViewModel()
-            val packageInstance = mockk<ScriptPackageInstance>(relaxed = true)
-            val scriptInstance = mockk<ScriptInstance>(relaxed = true)
-            every { scriptInstance.packageInstance } returns packageInstance
-
-            val task = mockk<Task>(relaxed = true)
-            every { task.scriptInstance } returns scriptInstance
-
-            val taskUiModel =
-                TaskUiModel(
-                    id = task,
-                    taskNumber = 1,
-                    isRunning = false,
-                    isError = true,
-                    isSuccess = false,
-                    hasSupportUrl = true,
-                    message = "Error occurred",
-                    status = "Error",
-                    configuration = "",
-                    stackTrace = null,
-                    isIdle = false,
-                    statusSince = Clock.System.now(),
-                )
-
-            coEvery { reportScriptIssueInteractor(any(), any()) } returns Unit
-
-            // Act
-            viewModel.reportIssue(taskUiModel)
-            dispatcher.scheduler.advanceUntilIdle()
-
-            // Assert — interactor is always called; it decides internally whether to open browser
-            coVerify(exactly = 1) { reportScriptIssueInteractor(any(), any()) }
         }
 
     @Test
@@ -451,7 +315,7 @@ class TasksViewModelTest {
                     mockk(relaxed = true),
                 )
 
-            vm.onTaskSelected(task)
+            vm.onTaskClicked(task)
 
             val messages = vm.logViewerMessages.value
             assertTrue(messages.none { it.priority == LoggingPriority.DEBUG })
@@ -471,7 +335,7 @@ class TasksViewModelTest {
                 flowOf(SuspendableResult.Success(listOf(artifact)))
             val vm = buildViewModel(unconfinedProvider)
 
-            vm.onTaskSelected(task)
+            vm.onTaskClicked(task)
 
             assertEquals(listOf(artifact), vm.artifacts.value)
         }
@@ -543,7 +407,7 @@ class TasksViewModelTest {
                     mockk(relaxed = true),
                 )
 
-            vm.onTaskSelected(task)
+            vm.onTaskClicked(task)
 
             val messages = vm.logViewerMessages.value
             assertTrue(messages.any { it.priority == LoggingPriority.DEBUG })
@@ -575,26 +439,6 @@ class TasksViewModelTest {
         viewModel.onCreateTaskGroup()
 
         assertIs<TaskViewState.DialogState.AddingTaskGroup>(viewModel.dialogState.value)
-    }
-
-    @Test
-    fun `onEditTaskGroup shows the edit-group dialog`() {
-        createViewModel()
-        val group = ScriptPackageGroup("1", "Group 1")
-
-        viewModel.onEditTaskGroup(group)
-
-        assertIs<TaskViewState.DialogState.EditingTaskGroup>(viewModel.dialogState.value)
-    }
-
-    @Test
-    fun `showConfiguration shows the configuration dialog`() {
-        createViewModel()
-        val instance = mockk<ScriptPackageInstance>(relaxed = true)
-
-        viewModel.showConfiguration(instance)
-
-        assertIs<TaskViewState.DialogState.ViewScriptConfiguration>(viewModel.dialogState.value)
     }
 
     @Test
@@ -679,22 +523,6 @@ class TasksViewModelTest {
         }
 
     @Test
-    fun `startAllTasks and stopAllTasks invoke their interactors`() =
-        runTest {
-            createViewModel()
-            val instance = mockk<ScriptPackageInstance>(relaxed = true)
-            every { instance.id } returns "inst-1"
-
-            viewModel.startAllTasks(instance)
-            viewModel.stopAllTasks(instance)
-            dispatcher.scheduler.advanceUntilIdle()
-
-            coVerify(exactly = 1) { startAllTasksInScriptPackageInstanceInteractor(any(), any()) }
-            coVerify(exactly = 1) { stopTasksInScriptPackageInstanceInteractor(any(), any()) }
-        }
-
-    @OptIn(ExperimentalTime::class)
-    @Test
     fun `startTask starts immediately for a non-finished task`() =
         runTest {
             createViewModel()
@@ -762,24 +590,4 @@ class TasksViewModelTest {
 
             coVerify(exactly = 1) { userInteractionDismissedInteractor.run(any()) }
         }
-
-    @Test
-    fun `setup menu view-configuration option opens the configuration dialog`() {
-        createViewModel()
-        val instance = mockk<ScriptPackageInstance>(relaxed = true)
-
-        viewModel.onSetupMenuOptionSelected(instance, MenuOption.VIEW_CONFIGURATION)
-
-        assertIs<TaskViewState.DialogState.ViewScriptConfiguration>(viewModel.dialogState.value)
-    }
-
-    @Test
-    fun `setup menu delete option asks for deletion confirmation`() {
-        createViewModel()
-        val instance = mockk<ScriptPackageInstance>(relaxed = true)
-
-        viewModel.onSetupMenuOptionSelected(instance, MenuOption.DELETE)
-
-        assertIs<TaskViewState.DialogState.ConfirmScriptInstanceDeletion>(viewModel.dialogState.value)
-    }
 }

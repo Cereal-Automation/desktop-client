@@ -652,6 +652,8 @@
     <string name="latest_message">Latest message</string>
     <string name="log">Log</string>
     <string name="no_output_yet">No output yet</string>
+    <string name="stop_tasks_to_edit">Stop tasks to edit</string>
+    <string name="no_log_lines_match_filter">No lines match this filter</string>
     <string name="none_yet">None yet</string>
     <string name="start">Start</string>
     <string name="stop">Stop</string>

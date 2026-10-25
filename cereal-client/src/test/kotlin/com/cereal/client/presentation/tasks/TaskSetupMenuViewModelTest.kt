@@ -35,7 +35,7 @@ class TaskSetupMenuViewModelTest {
             val setup = world.setup("setup-1", null, idle())
             val viewModel = start()
 
-            viewModel.onSetupMenuOptionSelected(setup, MenuOption.DELETE)
+            viewModel.onSetupMenuOptionSelected(setup.id, SetupMenuOption.DELETE)
 
             val dialog = assertIs<TaskViewState.DialogState.ConfirmScriptInstanceDeletion>(viewModel.dialogState.value)
             assertEquals(setup, dialog.scriptPackageInstance)
@@ -55,7 +55,7 @@ class TaskSetupMenuViewModelTest {
             val setup = world.setup("setup-1", null, idle())
             val viewModel = start()
 
-            viewModel.onSetupMenuOptionSelected(setup, MenuOption.MOVE_TO_GROUP)
+            viewModel.onSetupMenuOptionSelected(setup.id, SetupMenuOption.MOVE_TO_GROUP)
 
             val dialog = assertIs<TaskViewState.DialogState.MovingScript>(viewModel.dialogState.value)
             assertEquals(default, dialog.currentGroup)
@@ -76,10 +76,36 @@ class TaskSetupMenuViewModelTest {
             val setup = world.setup("setup-2", work, idle())
             val viewModel = start()
 
-            viewModel.onSetupMenuOptionSelected(setup, MenuOption.DUPLICATE)
+            viewModel.onSetupMenuOptionSelected(setup.id, SetupMenuOption.DUPLICATE)
 
             val dialog = assertIs<TaskViewState.DialogState.DuplicatingScript>(viewModel.dialogState.value)
             assertEquals(setup, dialog.scriptPackageInstance)
             assertEquals(work, dialog.scriptPackageGroup)
+        }
+
+    @Test
+    fun `view configuration from the setup menu shows the setup's configuration`() =
+        runTest {
+            val setup = world.setup("setup-1", null, idle())
+            val viewModel = start()
+
+            viewModel.onSetupMenuOptionSelected(setup.id, SetupMenuOption.VIEW_CONFIGURATION)
+
+            val dialog = assertIs<TaskViewState.DialogState.ViewScriptConfiguration>(viewModel.dialogState.value)
+            assertEquals(setup, dialog.scriptPackageInstance)
+        }
+
+    @Test
+    fun `closing the delete confirmation keeps the setup`() =
+        runTest {
+            val setup = world.setup("setup-1", null, idle())
+            val viewModel = start()
+
+            viewModel.onSetupMenuOptionSelected(setup.id, SetupMenuOption.DELETE)
+            viewModel.closeDialog()
+            settle()
+
+            assertEquals(TaskViewState.DialogState.Hidden, viewModel.dialogState.value)
+            assertEquals(listOf(setup), world.scriptInstances.getScriptPackageInstances())
         }
 }

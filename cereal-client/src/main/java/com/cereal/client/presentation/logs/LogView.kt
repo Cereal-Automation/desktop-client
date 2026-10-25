@@ -68,6 +68,7 @@ import com.cereal_automation.cereal_client.generated.resources.log_filter_all
 import com.cereal_automation.cereal_client.generated.resources.log_filter_err
 import com.cereal_automation.cereal_client.generated.resources.log_filter_info
 import com.cereal_automation.cereal_client.generated.resources.log_filter_warn
+import com.cereal_automation.cereal_client.generated.resources.no_log_lines_match_filter
 import com.cereal_automation.cereal_client.generated.resources.no_output_yet
 import com.cereal_automation.cereal_client.generated.resources.none_yet
 import kotlinx.coroutines.delay
@@ -186,7 +187,9 @@ fun TaskLogSection(
                     .border(1.dp, CerealTheme.colorScheme.border, boxShape),
         ) {
             if (filteredEvents.isEmpty()) {
-                EmptyHint(stringResource(Res.string.no_output_yet), Modifier.padding(horizontal = 12.dp, vertical = 14.dp))
+                // "No output yet" only when the task has logged nothing; otherwise the level filter hides every line.
+                val hint = if (events.isEmpty()) Res.string.no_output_yet else Res.string.no_log_lines_match_filter
+                EmptyHint(stringResource(hint), Modifier.padding(horizontal = 12.dp, vertical = 14.dp))
             } else {
                 LazyColumn(
                     state = listState,
