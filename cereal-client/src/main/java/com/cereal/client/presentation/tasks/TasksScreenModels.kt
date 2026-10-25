@@ -13,6 +13,7 @@ import com.cereal_automation.cereal_client.generated.resources.filter_all
 import com.cereal_automation.cereal_client.generated.resources.filter_failed
 import com.cereal_automation.cereal_client.generated.resources.idle
 import com.cereal_automation.cereal_client.generated.resources.move_to_group
+import com.cereal_automation.cereal_client.generated.resources.new_task_setup
 import com.cereal_automation.cereal_client.generated.resources.rename
 import com.cereal_automation.cereal_client.generated.resources.restart_failed_count
 import com.cereal_automation.cereal_client.generated.resources.running
@@ -110,6 +111,7 @@ enum class SetupMenuOption(
 enum class GroupMenuOption(
     val label: StringResource,
 ) {
+    NEW_TASK_SETUP(Res.string.new_task_setup),
     RENAME(Res.string.rename),
     DELETE(Res.string.delete),
 }

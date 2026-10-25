@@ -158,7 +158,7 @@ class TasksScreenTest {
         }
 
     @Test
-    fun aGroupLabelsMenuOffersRenameAndDelete() =
+    fun aGroupLabelsMenuOffersNewTaskSetupRenameAndDelete() =
         runScreenTest {
             seedOneSetupWithTwoTasks()
             setScreenContent { TasksScreen() }
@@ -167,6 +167,8 @@ class TasksScreenTest {
             onAllNodesWithContentDescription("More options")[0].performClick()
             waitUntil { onAllNodesWithText("Rename").fetchSemanticsNodes().isNotEmpty() }
 
+            // The header's button is the first "New task setup"; the menu adds a second.
+            assertEquals(2, onAllNodesWithText("New task setup").fetchSemanticsNodes().size)
             onNodeWithText("Delete").assertIsDisplayed()
         }
 

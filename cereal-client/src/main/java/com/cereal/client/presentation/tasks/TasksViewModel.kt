@@ -244,6 +244,7 @@ class TasksViewModel(
     ) {
         val group = groupedSetups.value?.firstOrNull { it.first.id == groupId }?.first ?: return
         when (option) {
+            GroupMenuOption.NEW_TASK_SETUP -> dialogManager.showSelectingScript(group)
             GroupMenuOption.RENAME -> dialogManager.showEditGroup(group)
             GroupMenuOption.DELETE -> deleteGroup(group)
         }

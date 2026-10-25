@@ -160,6 +160,19 @@ class TaskListViewModelTest {
         }
 
     @Test
+    fun `new task setup from a group label's menu opens the new-setup dialog for that group`() =
+        runTest {
+            val work = world.group("Work")
+            world.setup("a", work, idle())
+            val viewModel = start()
+
+            viewModel.onGroupMenuOptionSelected(work.id, GroupMenuOption.NEW_TASK_SETUP)
+
+            val dialog = assertIs<TaskViewState.DialogState.SelectingScript>(viewModel.dialogState.value)
+            assertEquals(work.id, dialog.scriptPackageGroup.id)
+        }
+
+    @Test
     fun `delete from a group label's menu asks for confirmation while it holds setups, then removes it`() =
         runTest {
             val work = world.group("Work")
