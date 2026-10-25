@@ -27,7 +27,6 @@ import com.cereal.client.presentation.error.ErrorResolver
 import com.cereal.client.presentation.tasks.model.ScriptInstanceUiModel
 import com.cereal.client.presentation.tasks.model.TaskUiModel
 import com.cereal.client.presentation.util.InteractorRunner
-import com.cereal.client.presentation.view.group.HierarchicalListItem
 import com.cereal.client.presentation.view.group.HierarchicalListViewModel
 import com.github.kittinunf.result.coroutines.SuspendableResult
 import com.github.kittinunf.result.coroutines.map
@@ -82,6 +81,8 @@ class TasksViewModel(
                 }
             },
             onChildSelectedChange = { scriptInstance ->
+                // A filter chosen for another setup could hide every task of this one.
+                if (scriptInstance?.id != lastSelectedTaskSetup.id) taskFilter.value = TaskFilter.ALL
                 scriptInstance?.let { lastSelectedTaskSetup.id = it.id }
                 updateTasks(scriptInstance)
                 // Restore this script's last selected task (fresh copy) so logs never show another script's task.
@@ -105,6 +106,7 @@ class TasksViewModel(
     val hierarchicalListState =
         mutableStateOf<TaskViewState.GroupViewState>(TaskViewState.GroupViewState.Loading)
     val tasksViewState = mutableStateOf<TaskViewState.DetailViewState>(TaskViewState.DetailViewState.NoSelection)
+    private val taskFilter = mutableStateOf(TaskFilter.ALL)
 
     /** The detail header's concurrent-task stepper for the selected setup; declared before `init`, which updates it. */
     val concurrentTaskStepper = mutableStateOf<ConcurrentTaskStepperState?>(null)
@@ -215,13 +217,9 @@ class TasksViewModel(
 
     private fun tryFocusTask(taskId: String): Boolean {
         val task = tasks?.firstOrNull { it.id == taskId } ?: return false
-        val instanceId = task.scriptInstance.packageInstance.id
-        val entry =
-            tasksListObserver.childrenByGroupState.entries
-                .firstOrNull { (_, items) -> items.any { it.id.id == instanceId } } ?: return false
-        val instance = entry.value.first { it.id.id == instanceId }.id
+        val (group, instance) = observedSetup(task.scriptInstance.packageInstance.id) ?: return false
 
-        hierarchicalListViewModel.selectParent(entry.key)
+        hierarchicalListViewModel.selectParent(group)
         hierarchicalListViewModel.selectChild(instance)
         onTaskSelected(task)
         return true
@@ -302,14 +300,12 @@ class TasksViewModel(
         scriptInstance: ScriptPackageInstance,
         option: MenuOption,
     ) {
-        if (option == MenuOption.DELETE) {
-            onDeleteScriptInstance(scriptInstance)
-        } else if (option == MenuOption.VIEW_CONFIGURATION) {
-            showConfiguration(scriptInstance)
-        } else if (option == MenuOption.DUPLICATE) {
-            duplicateScriptInstance(scriptInstance)
-        } else if (option == MenuOption.MOVE_TO_GROUP) {
-            moveScriptToGroup(scriptInstance)
+        when (option) {
+            MenuOption.DELETE -> onDeleteScriptInstance(scriptInstance)
+            MenuOption.VIEW_CONFIGURATION -> showConfiguration(scriptInstance)
+            MenuOption.DUPLICATE -> duplicateScriptInstance(scriptInstance)
+            MenuOption.MOVE_TO_GROUP -> moveScriptToGroup(scriptInstance)
+            MenuOption.EDIT -> Unit // Setups are edited from the detail header.
         }
     }
 
@@ -323,10 +319,8 @@ class TasksViewModel(
         val selected = hierarchicalListViewModel.selectedChild ?: return
         if (!editEnabled) return
         // Prefer the setup from the observed list, which carries its latest saved configuration.
-        val (group, items) =
-            tasksListObserver.childrenByGroupState.entries
-                .firstOrNull { (_, items) -> items.any { it.id.id == selected.id } } ?: return
-        dialogManager.showEditScript(group, items.first { it.id.id == selected.id }.id)
+        val (group, setup) = observedSetup(selected.id) ?: return
+        dialogManager.showEditScript(group, setup)
     }
 
     fun saveEdit(scriptPackageInstance: ScriptPackageInstance) {
@@ -354,11 +348,14 @@ class TasksViewModel(
     /** The selected setup as last observed in the list, which carries its latest saved values. */
     private fun selectedSetup(): ScriptPackageInstance? {
         val selected = hierarchicalListViewModel.selectedChild ?: return null
-        return tasksListObserver.childrenByGroupState.values
-            .flatten()
-            .firstOrNull { it.id.id == selected.id }
-            ?.id ?: selected
+        return observedSetup(selected.id)?.second ?: selected
     }
+
+    /** The setup with [id] as last observed in the list, with the group that holds it. */
+    private fun observedSetup(id: String): Pair<ScriptPackageGroup, ScriptPackageInstance>? =
+        tasksListObserver.childrenByGroupState.entries.firstNotNullOfOrNull { (group, items) ->
+            items.firstOrNull { it.id.id == id }?.let { group to it.id }
+        }
 
     private fun updateConcurrentTaskStepper() {
         val setup = selectedSetup()
@@ -377,9 +374,7 @@ class TasksViewModel(
 
     /** The group that actually holds [scriptInstance]; menu actions must not assume it's the selected one. */
     private fun groupOf(scriptInstance: ScriptPackageInstance): ScriptPackageGroup? =
-        tasksListObserver.childrenByGroupState.entries
-            .firstOrNull { (_, items) -> items.any { it.id.id == scriptInstance.id } }
-            ?.key ?: hierarchicalListViewModel.selectedParent
+        observedSetup(scriptInstance.id)?.first ?: hierarchicalListViewModel.selectedParent
 
     fun moveScriptToGroup(scriptInstance: ScriptPackageInstance) {
         val currentGroup = groupOf(scriptInstance)
@@ -441,8 +436,6 @@ class TasksViewModel(
 
     private var restartErroredJob: Job? = null
     val restartErroredInFlight = mutableStateOf(false)
-
-    private val taskFilter = mutableStateOf(TaskFilter.ALL)
 
     /** Status chip click: filters the task list to that status; clicking the active chip clears the filter. */
     internal fun onStatusChipClicked(filter: TaskFilter) {
@@ -575,15 +568,7 @@ class TasksViewModel(
      * last selected this session, else the first.
      */
     private fun ensureSetupSelected() {
-        val setups =
-            hierarchicalListViewModel.state.value
-                .flatMap { item ->
-                    // With a single group the list is flat (#205): setups are top-level children.
-                    when (item) {
-                        is HierarchicalListItem.Parent -> item.children
-                        is HierarchicalListItem.Child -> listOf(item)
-                    }
-                }.map { it.content.id }
+        val setups = hierarchicalListViewModel.allChildren.map { it.id }
         val current = hierarchicalListViewModel.selectedChild
         val created = setups.firstOrNull { it.id == createdSetupId }?.also { createdSetupId = null }
         val target =

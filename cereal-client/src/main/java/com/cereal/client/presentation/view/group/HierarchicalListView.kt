@@ -86,14 +86,9 @@ fun <P, C> ScriptsColumn(
     onChildLongClick: ((HierarchicalListItem.Child<P, C>?) -> Unit)? = null,
 ) {
     val items = viewModel.state.value
-    // Parents carry their children even when collapsed; without parents (single group) the children are top-level.
-    val children =
-        remember(items) {
-            val parents = items.filterIsInstance<HierarchicalListItem.Parent<P, C>>()
-            if (parents.isEmpty()) items.filterIsInstance<HierarchicalListItem.Child<P, C>>() else parents.flatMap { it.children }
-        }
+    val children = remember(items) { viewModel.allChildren }
     val totalScripts = children.size
-    val runningScripts = remember(children) { children.count { it.content.isRunning } }
+    val runningScripts = remember(children) { children.count { it.isRunning } }
 
     Column(
         modifier =
@@ -214,13 +209,7 @@ fun <P, C> HierarchicalListView(
             if (groupedItems.isEmpty()) {
                 // Single group: the view model emits its children without a parent, rendered as a flat list.
                 items(viewModel.state.value.filterIsInstance<HierarchicalListItem.Child<P, C>>(), key = { it.content.id as Any }) { child ->
-                    ScriptRow(
-                        child = child,
-                        menuOptions = viewModel.childMenuOptions,
-                        onMenuOptionClick = { option -> viewModel.onChildMenuOptionClick(child, option) },
-                        onClick = { viewModel.onChildClick(child) },
-                        onLongClick = { onChildLongClick?.invoke(child) },
-                    )
+                    ChildRow(child, viewModel, onChildLongClick)
                 }
             }
             items(groupedItems, key = { it.parent.content.id as Any }) { groupedItem ->
@@ -291,17 +280,24 @@ private fun <P, C> GroupSection(
         )
 
         if (parent.expanded) {
-            children.forEach { child ->
-                ScriptRow(
-                    child = child,
-                    menuOptions = viewModel.childMenuOptions,
-                    onMenuOptionClick = { option -> viewModel.onChildMenuOptionClick(child, option) },
-                    onClick = { viewModel.onChildClick(child) },
-                    onLongClick = { onChildLongClick?.invoke(child) },
-                )
-            }
+            children.forEach { child -> ChildRow(child, viewModel, onChildLongClick) }
         }
     }
+}
+
+@Composable
+private fun <P, C> ChildRow(
+    child: HierarchicalListItem.Child<P, C>,
+    viewModel: HierarchicalListViewModel<P, C>,
+    onChildLongClick: ((HierarchicalListItem.Child<P, C>?) -> Unit)?,
+) {
+    ScriptRow(
+        child = child,
+        menuOptions = viewModel.childMenuOptions,
+        onMenuOptionClick = { option -> viewModel.onChildMenuOptionClick(child, option) },
+        onClick = { viewModel.onChildClick(child) },
+        onLongClick = { onChildLongClick?.invoke(child) },
+    )
 }
 
 @Composable

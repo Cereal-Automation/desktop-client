@@ -63,6 +63,21 @@ class TaskStatusControlsViewModelTest {
         }
 
     @Test
+    fun `selecting another setup clears the status filter`() =
+        runTest {
+            val first = world.setup("setup-1", null, idle(), errored())
+            val second = world.setup("setup-2", null, idle())
+            val viewModel = open(first)
+            viewModel.onStatusChipClicked(TaskFilter.ERROR)
+
+            viewModel.hierarchicalListViewModel.selectChild(second)
+            world.dispatcher.scheduler.advanceUntilIdle()
+
+            assertEquals(TaskFilter.ALL, viewModel.taskControls.value?.filter)
+            assertEquals(listOf("setup-2-task-1"), viewModel.visibleTaskIds())
+        }
+
+    @Test
     fun `clicking another chip switches the filter`() =
         runTest {
             val setup = world.setup("setup-1", null, idle(), errored())

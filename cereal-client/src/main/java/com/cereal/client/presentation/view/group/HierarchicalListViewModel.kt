@@ -25,6 +25,10 @@ class HierarchicalListViewModel<P, C>(
     var selectedChild: C? = null
         private set
 
+    /** Every child in list order, including those of collapsed parents and of a single (hidden) parent. */
+    val allChildren: List<GroupListItemContent<C>>
+        get() = parents.flatMap { childrenByParent[it.id].orEmpty() }
+
     fun updateItems(
         parents: List<GroupListItemContent<P>>,
         childrenByParent: Map<P, List<GroupListItemContent<C>>>,
