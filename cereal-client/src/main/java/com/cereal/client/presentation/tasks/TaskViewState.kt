@@ -4,6 +4,7 @@ import com.cereal.client.domain.model.script.ScriptPackageInstance
 import com.cereal.client.domain.model.task.ScriptPackageGroup
 import com.cereal.client.presentation.tasks.model.ScriptInstanceUiModel
 import com.cereal.client.presentation.tasks.model.TaskUiModel
+import com.cereal.client.presentation.tasks.script.overview.ScriptRequest
 import com.cereal.client.presentation.view.group.HierarchicalListViewModel
 
 sealed class TaskViewState {
@@ -81,7 +82,7 @@ sealed class TaskViewState {
 
         class SelectingScript(
             val scriptPackageGroup: ScriptPackageGroup,
-            val initialPublicIdentifier: String? = null,
+            val initialRequest: ScriptRequest? = null,
         ) : DialogState()
 
         class ViewScriptConfiguration(

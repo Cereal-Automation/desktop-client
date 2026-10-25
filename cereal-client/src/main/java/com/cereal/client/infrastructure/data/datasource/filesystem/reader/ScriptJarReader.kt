@@ -1,5 +1,6 @@
 package com.cereal.client.infrastructure.data.datasource.filesystem.reader
 
+import com.cereal.client.domain.model.exception.InvalidManifestException
 import com.cereal.client.infrastructure.data.datasource.filesystem.ManifestDefinition
 import com.cereal.client.infrastructure.data.datasource.filesystem.reader.models.ManifestJson
 import com.cereal.client.infrastructure.data.datasource.filesystem.security.Encryption
@@ -33,7 +34,7 @@ class ScriptJarReader(
         mutableMapOf()
     var manifest: ManifestDefinition? = null
 
-    /** Variants whose script class loaded, by manifest id. */
+    /** Variants by manifest id. */
     val variants: MutableMap<String, LoadedVariant> = mutableMapOf()
 
     init {
@@ -59,13 +60,17 @@ class ScriptJarReader(
                 }
             }
 
-            // ponytail: a variant whose class doesn't load is skipped; rejecting the package with a reason is #198.
+            // A malformed variant rejects the whole package: the caller treats the exception like an unreadable jar.
             json.variants.forEach { variant ->
-                loadScript(variant.scriptClass)?.let { (scriptClass, configurationClass) ->
-                    configurationClass?.let { configuration ->
-                        variants[variant.id] = LoadedVariant(variant.name, variant.instructions, scriptClass, configuration)
-                    }
-                }
+                fun reject(reason: String): Nothing = throw InvalidManifestException("Invalid variant in manifest: $reason")
+                if (variant.id.isBlank()) reject("a variant has no id.")
+                if (variant.name.isBlank()) reject("Variant '${variant.id}' has no name.")
+                if (variant.scriptClass.isBlank()) reject("Variant '${variant.id}' has no script.")
+                if (variant.id in variants) reject("Duplicate variant id '${variant.id}'.")
+                val (scriptClass, configurationClass) =
+                    loadScript(variant.scriptClass)?.takeIf { it.second != null }
+                        ?: reject("Variant '${variant.id}' script ${variant.scriptClass} could not be loaded as a Script.")
+                variants[variant.id] = LoadedVariant(variant.name, variant.instructions, scriptClass, configurationClass!!)
             }
 
             json.childScriptPackageClasses?.forEach { childScriptClassName ->

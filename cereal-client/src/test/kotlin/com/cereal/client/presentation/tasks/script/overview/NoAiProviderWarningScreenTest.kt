@@ -30,7 +30,7 @@ class NoAiProviderWarningScreenTest {
             setScreenContent {
                 ScriptSelectionDialog(
                     scriptPackageGroup = ScriptPackageGroup("group-1", "Group 1"),
-                    initialPublicIdentifier = PACKAGE,
+                    initialRequest = ScriptRequest(PACKAGE),
                     onScriptInstanceCreated = {},
                     onDismissRequest = {},
                     onNavigateToMarketplace = {},
