@@ -88,6 +88,9 @@ fun TasksScreen(
             onNewGroup = viewModel::onCreateTaskGroup,
             onNewTaskSetup = viewModel::onAddScriptClicked,
         )
+        (listState as? TaskViewState.ListState.Filled)?.let { state ->
+            TaskFilterBar(state.chips, state.groupFilter, viewModel::onStatusFilterSelected, viewModel::onGroupFilterSelected)
+        }
 
         Box(Modifier.weight(1.0f).fillMaxWidth()) {
             when (val state = listState) {

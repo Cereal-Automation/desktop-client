@@ -17,25 +17,50 @@ object TasksViewStateBuilder {
     /**
      * The task list from every group's task setups (in list order; null while they load) and all tasks.
      * Empty when there are no groups, or only one group and it holds no setups.
+     *
+     * With more than one group, [groupFilter] (a group id; null, or a group that is gone, means all groups) narrows the
+     * list and the chip counts to that group. A [statusFilter] other than All then keeps only matching task rows and
+     * drops setups (and groups) left without any; the chip counts ignore it.
      */
     fun buildListState(
         groups: List<Pair<ScriptPackageGroup, List<ScriptPackageInstance>>>?,
         tasks: List<Task>,
+        statusFilter: TaskFilter = TaskFilter.ALL,
+        groupFilter: String? = null,
     ): TaskViewState.ListState {
         if (groups == null) return TaskViewState.ListState.Loading
         if (groups.isEmpty() || (groups.size == 1 && groups.single().second.isEmpty())) return TaskViewState.ListState.Empty
+        val pickedGroupId = groupFilter?.takeIf { id -> groups.size > 1 && groups.any { it.first.id == id } }
+        val shownGroups = if (pickedGroupId == null) groups else groups.filter { it.first.id == pickedGroupId }
         val tasksBySetup = tasks.groupBy { it.scriptInstance.getScriptPackageInstance().id }
         return TaskViewState.ListState.Filled(
-            groups.map { (group, setups) ->
-                TaskGroupSection(group, group.name, setups.map { buildSetupSection(it, tasksBySetup[it.id].orEmpty()) })
-            },
+            groups =
+                shownGroups
+                    .map { (group, setups) ->
+                        val sections = setups.map { buildSetupSection(it, tasksBySetup[it.id].orEmpty(), statusFilter) }
+                        TaskGroupSection(group, group.name, if (statusFilter == TaskFilter.ALL) sections else sections.filter { it.scripts.isNotEmpty() })
+                    }.filter { statusFilter == TaskFilter.ALL || it.setups.isNotEmpty() },
+            setupCount = groups.sumOf { it.second.size },
+            taskCount = groups.sumOf { (_, setups) -> setups.sumOf { tasksBySetup[it.id].orEmpty().size } },
+            chips = chips(shownGroups.flatMap { (_, setups) -> setups.flatMap { tasksBySetup[it.id].orEmpty() } }, statusFilter),
+            groupFilter = if (groups.size > 1) GroupFilterState(groups.map { (group) -> GroupFilterOption(group.id, group.name) }, pickedGroupId) else null,
         )
     }
+
+    /** Every chip with its count over [tasks]; one with no tasks is left out unless it is All or [active]. */
+    private fun chips(
+        tasks: List<Task>,
+        active: TaskFilter,
+    ): List<TaskFilterChip> =
+        TaskFilter.entries
+            .map { filter -> TaskFilterChip(filter, tasks.count { filter.matches(it.status) }, active = filter == active) }
+            .filter { it.filter == TaskFilter.ALL || it.active || it.count > 0 }
 
     /** [setup]'s row and its [tasks]' rows. */
     private fun buildSetupSection(
         setup: ScriptPackageInstance,
         tasks: List<Task>,
+        statusFilter: TaskFilter,
     ): TaskSetupSection {
         val failed = tasks.count { it.status is TaskStatus.Error }
         val running = tasks.count { it.status is TaskStatus.Running }
@@ -61,7 +86,7 @@ object TasksViewStateBuilder {
                     if (setup.definition.manifest.supportUrl != null) add(MenuOption.CONTACT_SUPPORT)
                     add(MenuOption.DELETE)
                 },
-            scripts = scriptRows(tasks),
+            scripts = scriptRows(tasks, statusFilter),
         )
     }
 
@@ -76,13 +101,16 @@ object TasksViewStateBuilder {
         }
 
     /**
-     * One setup's tasks as rows per script: numbered by creation within the setup (1-based), sorted by status then
-     * number; the main script first, then child scripts newest first.
+     * One setup's tasks matching [filter] as rows per script: numbered by creation within the setup (1-based), sorted
+     * by status then number; the main script first, then child scripts newest first.
      */
-    private fun scriptRows(tasks: List<Task>): List<ScriptInstanceUiModel> {
+    private fun scriptRows(
+        tasks: List<Task>,
+        filter: TaskFilter,
+    ): List<ScriptInstanceUiModel> {
         val numbers = numberTasks(tasks)
         val scripts =
-            tasks.groupBy { it.scriptInstance.id }.values.map { scriptTasks ->
+            tasks.filter { filter.matches(it.status) }.groupBy { it.scriptInstance.id }.values.map { scriptTasks ->
                 scriptTasks
                     .first()
                     .scriptInstance

@@ -3,26 +3,27 @@ package com.cereal.client.presentation.tasks
 import androidx.compose.ui.unit.dp
 import com.cereal.client.domain.model.script.ScriptPackageInstance
 import com.cereal.client.domain.model.task.ScriptPackageGroup
+import com.cereal.client.domain.model.task.TaskStatus
 import com.cereal.client.presentation.tasks.model.ScriptInstanceUiModel
-import com.cereal.client.presentation.tasks.model.TaskUiModel
 import com.cereal_automation.cereal_client.generated.resources.Res
-import com.cereal_automation.cereal_client.generated.resources.errored
 import com.cereal_automation.cereal_client.generated.resources.filter_all
+import com.cereal_automation.cereal_client.generated.resources.filter_failed
 import com.cereal_automation.cereal_client.generated.resources.idle
 import com.cereal_automation.cereal_client.generated.resources.running
 import com.cereal_automation.cereal_client.generated.resources.success
 
 internal val PanePadding = 20.dp
 
-internal enum class TaskFilter { ALL, RUNNING, IDLE, SUCCESS, ERROR }
+/** The status chips, in chip order. */
+enum class TaskFilter { ALL, RUNNING, ERROR, SUCCESS, IDLE }
 
-internal fun TaskFilter.matches(task: TaskUiModel): Boolean =
+internal fun TaskFilter.matches(status: TaskStatus): Boolean =
     when (this) {
         TaskFilter.ALL -> true
-        TaskFilter.RUNNING -> task.isRunning
-        TaskFilter.ERROR -> task.isError
-        TaskFilter.SUCCESS -> task.isSuccess
-        TaskFilter.IDLE -> task.isIdle
+        TaskFilter.RUNNING -> status is TaskStatus.Running
+        TaskFilter.ERROR -> status is TaskStatus.Error
+        TaskFilter.SUCCESS -> status is TaskStatus.Success
+        TaskFilter.IDLE -> status is TaskStatus.Idle
     }
 
 internal fun TaskFilter.labelRes() =
@@ -31,8 +32,26 @@ internal fun TaskFilter.labelRes() =
         TaskFilter.RUNNING -> Res.string.running
         TaskFilter.IDLE -> Res.string.idle
         TaskFilter.SUCCESS -> Res.string.success
-        TaskFilter.ERROR -> Res.string.errored
+        TaskFilter.ERROR -> Res.string.filter_failed
     }
+
+/** A status chip: its tasks across every listed setup, whatever chip is active. */
+data class TaskFilterChip(
+    val filter: TaskFilter,
+    val count: Int,
+    val active: Boolean,
+)
+
+/** The group filter: "All groups" ([selectedGroupId] null) or one of [groups]. */
+data class GroupFilterState(
+    val groups: List<GroupFilterOption>,
+    val selectedGroupId: String?,
+)
+
+data class GroupFilterOption(
+    val id: String,
+    val name: String,
+)
 
 /** A group's label in the task list and the task setups beneath it. */
 data class TaskGroupSection(

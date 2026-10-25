@@ -14,11 +14,16 @@ sealed class TaskViewState {
         data object Empty : ListState()
 
         data class Filled(
+            /** The groups and setups the filters leave. */
             val groups: List<TaskGroupSection>,
-        ) : ListState() {
-            val setupCount: Int get() = groups.sumOf { it.setups.size }
-            val taskCount: Int get() = groups.sumOf { group -> group.setups.sumOf { it.taskCount } }
-        }
+            /** Every setup and task, whatever the filters leave. */
+            val setupCount: Int,
+            val taskCount: Int,
+            /** The status chips to show, in order. */
+            val chips: List<TaskFilterChip>,
+            /** Offered only with more than one group. */
+            val groupFilter: GroupFilterState?,
+        ) : ListState()
     }
 
     sealed class DialogState {
