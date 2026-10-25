@@ -6,7 +6,6 @@ import com.cereal.client.domain.model.script.configuration.ConfigValue
 import com.cereal.client.domain.model.task.ScriptPackageGroup
 import com.cereal.client.domain.model.task.Task
 import com.cereal.client.domain.model.task.TaskStatus
-import com.cereal.client.presentation.notification.formatRelativeTime
 import com.cereal.client.presentation.tasks.formatter.joinToString
 import com.cereal.client.presentation.tasks.model.ScriptInstanceUiModel
 import com.cereal.client.presentation.tasks.model.TaskUiModel
@@ -18,7 +17,6 @@ import java.time.format.FormatStyle
 import java.util.Date
 import java.util.Locale
 import kotlin.time.ExperimentalTime
-import kotlin.time.Instant
 import kotlin.time.toJavaInstant
 
 val taskStatusSortOrder =
@@ -46,9 +44,6 @@ fun ScriptInstance.toUiModel(): ScriptInstanceUiModel {
     return ScriptInstanceUiModel(this, name)
 }
 
-/** Main text of an idle task row; the idle status message ("Press start") stays in the status history. */
-const val IDLE_ROW_MESSAGE = "Ready"
-
 @OptIn(ExperimentalTime::class)
 fun Task.toUiModel(taskNumber: Int): TaskUiModel =
     TaskUiModel(
@@ -57,8 +52,9 @@ fun Task.toUiModel(taskNumber: Int): TaskUiModel =
         status.isRunning(),
         isError = status is TaskStatus.Error,
         isSuccess = status is TaskStatus.Success,
+        isIdle = status is TaskStatus.Idle,
         hasSupportUrl = scriptInstance.packageInstance.definition.manifest.supportUrl != null,
-        if (status is TaskStatus.Idle) IDLE_ROW_MESSAGE else status.toDisplayMessage(),
+        status.toDisplayMessage(),
         status.toDisplayStatus(),
         configuration
             .filter {
@@ -67,23 +63,9 @@ fun Task.toUiModel(taskNumber: Int): TaskUiModel =
                 it.value is ConfigValue.ProxyValue || it.value is ConfigValue.CustomDatasetItemValue
             }.joinToString(scriptInstance.definition.configuration),
         stackTrace = (status as? TaskStatus.Error)?.stackTrace,
-        // A task without status history reports an unset (epoch) timestamp; show no time for it.
-        statusSince = status.timestamp.takeIf { it.toEpochMilliseconds() > 0 },
+        // A task without status history reports an unset (epoch) timestamp; it hasn't changed since its creation.
+        statusSince = status.timestamp.takeIf { it.toEpochMilliseconds() > 0 } ?: createdAt,
     )
-
-/** Time since [since] for a task row: seconds under a minute ("12s ago"), then [formatRelativeTime]. */
-@OptIn(ExperimentalTime::class)
-fun formatTimeSince(
-    since: Instant,
-    now: Instant,
-): String {
-    val elapsed = now - since
-    return if (elapsed.inWholeMinutes < 1) {
-        "${elapsed.inWholeSeconds.coerceAtLeast(0)}s ago"
-    } else {
-        formatRelativeTime(since.toEpochMilliseconds(), now.toEpochMilliseconds())
-    }
-}
 
 @OptIn(ExperimentalTime::class)
 fun List<TaskStatus>.toDisplayStatus(): List<String> =

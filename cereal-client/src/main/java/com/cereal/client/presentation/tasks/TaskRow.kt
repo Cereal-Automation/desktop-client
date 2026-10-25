@@ -32,9 +32,8 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.cereal.client.domain.model.task.TaskStatus
 import com.cereal.client.domain.model.task.UserInteraction
-import com.cereal.client.presentation.tasks.mappers.formatTimeSince
+import com.cereal.client.presentation.notification.formatRelativeTime
 import com.cereal.client.presentation.tasks.model.TaskUiModel
 import com.cereal.client.presentation.theme.CerealTheme
 import com.cereal.client.presentation.view.ActivityIndicator
@@ -50,8 +49,10 @@ import com.cereal_automation.cereal_client.generated.resources.continue_task
 import com.cereal_automation.cereal_client.generated.resources.ic_play
 import com.cereal_automation.cereal_client.generated.resources.ic_stop
 import com.cereal_automation.cereal_client.generated.resources.report_issue
+import com.cereal_automation.cereal_client.generated.resources.seconds_ago
 import com.cereal_automation.cereal_client.generated.resources.start_task
 import com.cereal_automation.cereal_client.generated.resources.stop_task
+import com.cereal_automation.cereal_client.generated.resources.task_ready
 import kotlinx.coroutines.delay
 import org.jetbrains.compose.resources.painterResource
 import org.jetbrains.compose.resources.stringResource
@@ -119,10 +120,10 @@ internal fun TaskRow(
             )
 
             Column(modifier = Modifier.weight(1f)) {
-                val isIdle = taskItem.id.status is TaskStatus.Idle
                 CerealText(
-                    text = taskItem.message,
-                    color = if (isIdle) CerealTheme.colorScheme.contentTertiary else MaterialTheme.colorScheme.onSurface,
+                    // An idle task's status message ("Press start") stays in its status history.
+                    text = if (taskItem.isIdle) stringResource(Res.string.task_ready) else taskItem.message,
+                    color = if (taskItem.isIdle) CerealTheme.colorScheme.contentTertiary else MaterialTheme.colorScheme.onSurface,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
                     style =
@@ -145,7 +146,7 @@ internal fun TaskRow(
                 }
             }
 
-            taskItem.statusSince?.let { TimeSince(it) }
+            TimeSince(taskItem.statusSince)
 
             if (taskItem.isRunning) {
                 ActivityIndicator(size = 18.dp)
@@ -207,7 +208,7 @@ internal fun TaskRow(
     }
 }
 
-/** "12s ago" since [since], re-rendered every second while the row is composed. */
+/** Time since [since]: seconds under a minute ("12s ago"), then [formatRelativeTime]; re-rendered every second. */
 @OptIn(ExperimentalTime::class)
 @Composable
 private fun TimeSince(since: Instant) {
@@ -218,8 +219,14 @@ private fun TimeSince(since: Instant) {
             delay(1.seconds)
         }
     }
+    val elapsed = now - since
     CerealText(
-        text = formatTimeSince(since, now),
+        text =
+            if (elapsed.inWholeMinutes < 1) {
+                stringResource(Res.string.seconds_ago, elapsed.inWholeSeconds.coerceAtLeast(0))
+            } else {
+                formatRelativeTime(since.toEpochMilliseconds(), now.toEpochMilliseconds())
+            },
         color = CerealTheme.colorScheme.contentTertiary,
         maxLines = 1,
         style = MaterialTheme.typography.labelMedium,

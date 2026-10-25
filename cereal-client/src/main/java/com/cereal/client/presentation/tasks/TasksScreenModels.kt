@@ -50,7 +50,7 @@ internal fun TaskFilter.matches(task: TaskUiModel): Boolean =
         TaskFilter.RUNNING -> task.isRunning
         TaskFilter.ERROR -> task.isError
         TaskFilter.SUCCESS -> task.isSuccess
-        TaskFilter.IDLE -> !task.isRunning && !task.isError && !task.isSuccess
+        TaskFilter.IDLE -> task.isIdle
     }
 
 internal fun TaskFilter.labelRes() =

@@ -15,8 +15,6 @@ import org.junit.jupiter.api.Assertions.assertNull
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
 import kotlin.time.Clock
-import kotlin.time.Duration.Companion.minutes
-import kotlin.time.Duration.Companion.seconds
 import kotlin.time.ExperimentalTime
 
 class TaskUiMapperTest {
@@ -85,19 +83,5 @@ class TaskUiMapperTest {
         val uiModel = task.toUiModel(taskNumber = 1)
 
         assertFalse(uiModel.isError)
-    }
-
-    @Test
-    fun `formatTimeSince shows seconds under a minute`() {
-        val now = Clock.System.now()
-
-        assertEquals("12s ago", formatTimeSince(now - 12.seconds, now))
-    }
-
-    @Test
-    fun `formatTimeSince shows minutes from a minute on`() {
-        val now = Clock.System.now()
-
-        assertEquals("5m ago", formatTimeSince(now - 5.minutes, now))
     }
 }

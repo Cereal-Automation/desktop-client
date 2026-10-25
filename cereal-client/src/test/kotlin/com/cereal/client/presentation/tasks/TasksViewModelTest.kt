@@ -354,6 +354,8 @@ class TasksViewModelTest {
                     status = "Error",
                     configuration = "",
                     stackTrace = "java.lang.Exception: Error occurred",
+                    isIdle = false,
+                    statusSince = Clock.System.now(),
                 )
 
             val slot = slot<ReportScriptIssueInteractor.Params>()
@@ -415,6 +417,8 @@ class TasksViewModelTest {
                     status = "Error",
                     configuration = "",
                     stackTrace = null,
+                    isIdle = false,
+                    statusSince = Clock.System.now(),
                 )
 
             coEvery { reportScriptIssueInteractor(any(), any()) } returns Unit
@@ -635,6 +639,8 @@ class TasksViewModelTest {
         status = "Idle",
         configuration = "",
         stackTrace = null,
+        isIdle = true,
+        statusSince = Clock.System.now(),
     )
 
     @Test

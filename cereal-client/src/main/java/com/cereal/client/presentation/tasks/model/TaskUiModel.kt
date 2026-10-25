@@ -11,11 +11,12 @@ data class TaskUiModel(
     val isRunning: Boolean,
     val isError: Boolean,
     val isSuccess: Boolean,
+    val isIdle: Boolean,
     val hasSupportUrl: Boolean,
     val message: String,
     val status: String,
     val configuration: String,
     val stackTrace: String?,
-    /** When the current status began; null when the task has no status history yet. */
-    val statusSince: Instant? = null,
+    /** When the current status began, or when the task was created if it has no status history yet. */
+    val statusSince: Instant,
 )
