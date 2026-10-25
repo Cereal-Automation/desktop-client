@@ -4,6 +4,7 @@ import com.cereal.client.application.FlowInteractor
 import com.cereal.client.domain.model.script.ScriptPackageInstance
 import com.cereal.client.domain.model.script.getScriptPackageInstance
 import com.cereal.client.domain.model.task.TaskStatus
+import com.cereal.client.domain.model.task.needsAttention
 import com.cereal.client.domain.repository.ScriptInstanceRepository
 import com.cereal.client.domain.repository.TasksRepository
 import kotlinx.coroutines.FlowPreview
@@ -26,7 +27,7 @@ class GetScriptsInGroupInteractor(
                     instanceTasks.size,
                     instanceTasks.count { it.status.isRunning() },
                     erroredTaskCount = instanceTasks.count { it.status is TaskStatus.Error },
-                    awaitingUserTaskCount = instanceTasks.count { it.userInteraction != null },
+                    attentionTaskCount = instanceTasks.count { it.needsAttention },
                 )
             }
         }
@@ -42,6 +43,6 @@ data class ScriptInstanceInGroup(
     val taskCount: Int,
     val runningTaskCount: Int,
     val erroredTaskCount: Int = 0,
-    /** Tasks waiting for the user (browser, text input, Continue). */
-    val awaitingUserTaskCount: Int = 0,
+    /** Tasks that need the user (see [com.cereal.client.domain.model.task.needsAttention]). */
+    val attentionTaskCount: Int = 0,
 )

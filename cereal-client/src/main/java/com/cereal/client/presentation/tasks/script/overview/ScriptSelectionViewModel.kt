@@ -12,7 +12,9 @@ import com.cereal.client.application.interactor.script.NumberOfConcurrentTasksCo
 import com.cereal.client.application.interactor.script.StartScriptInteractor
 import com.cereal.client.application.interactor.script.SyncScriptsOnScriptSelectionInteractor
 import com.cereal.client.application.interactor.settings.ai.HasLlmProviderConfigInteractor
+import com.cereal.client.application.interactor.task.UpdateScriptPackageInstanceInteractor
 import com.cereal.client.domain.model.script.ScriptCapacity
+import com.cereal.client.domain.model.script.ScriptConfigurationValues
 import com.cereal.client.domain.model.script.ScriptFeature
 import com.cereal.client.domain.model.script.ScriptPackage
 import com.cereal.client.domain.model.script.ScriptPackageInstance
@@ -42,12 +44,15 @@ class ScriptSelectionViewModel(
     val scriptPackageGroup: ScriptPackageGroup,
     private val initialScriptPackageInstance: ScriptPackageInstance?,
     private val initialPublicIdentifier: String? = null,
+    /** Saves [initialScriptPackageInstance] in place instead of creating a setup; its script can't be changed. */
+    val editing: Boolean = false,
     private val dispatcherProvider: CoroutinesDispatcherProvider,
     private val getScriptsInteractor: GetScriptsInteractor,
     private val getScriptCapacityInteractor: GetScriptCapacityInteractor,
     private val getSdkVersionInteractor: GetSdkVersionInteractor,
     private val syncScriptsOnScriptSelectionInteractor: SyncScriptsOnScriptSelectionInteractor,
     private val startScriptInteractor: StartScriptInteractor,
+    private val updateScriptPackageInstanceInteractor: UpdateScriptPackageInstanceInteractor,
     private val hasNotificationChannelsConfiguredInteractor: HasNotificationChannelsConfiguredInteractor,
     private val hasLlmProviderConfigInteractor: HasLlmProviderConfigInteractor,
     private val errorResolver: ErrorResolver,
@@ -63,6 +68,8 @@ class ScriptSelectionViewModel(
     val configurationViewState = mutableStateOf<ScriptSelectionState.Config>(ScriptSelectionState.Config.None)
     val scriptRefreshState = mutableStateOf<LoadState>(LoadState.NotLoading())
     val scriptLaunchLoadState = mutableStateOf<LoadState>(LoadState.NotLoading())
+
+    /** The setup once created or, when [editing], saved. */
     val scriptInstanceStarted = mutableStateOf<ScriptPackageInstance?>(null)
     val errorAction = errorResolver.errorAction
     private var scriptConfigurationViewModel: ScriptConfigurationViewModel? = null
@@ -188,16 +195,15 @@ class ScriptSelectionViewModel(
 
     fun validate(): Boolean = scriptConfigurationViewModel?.validate() ?: false
 
-    /** The initial setup with the form's values, for saving an edit in place; null until its form is loaded. */
-    fun editedInstance(): ScriptPackageInstance? {
-        val original = initialScriptPackageInstance ?: return null
+    /** The form's main and child configuration values; null until a script's form is loaded. */
+    private fun configuredValues(): Pair<ScriptConfigurationValues, Map<String, ScriptConfigurationValues>>? {
         val form = scriptConfigurationViewModel?.scriptConfigurationForm?.value ?: return null
-        return original.copy(
-            mainConfiguration = form.mainConfigurationFormSection.getScriptConfigurationValues(),
-            childConfigurations = form.childConfigurationFormSections.mapValues { it.value.getScriptConfigurationValues() },
-            notificationOverrides = scriptConfigurationViewModel?.notificationOverridesForm?.toOverrides(),
-        )
+        return form.mainConfigurationFormSection.getScriptConfigurationValues() to
+            form.childConfigurationFormSections.mapValues { it.value.getScriptConfigurationValues() }
     }
+
+    /** Saves the edited setup in place; a concurrency conflict asks for confirmation first, as creation does. */
+    fun saveEdit() = launchScriptInternal(false)
 
     /**
      * Runs the pre-launch checks, then starts the script. The AI provider check comes first because a
@@ -256,50 +262,58 @@ class ScriptSelectionViewModel(
         }
 
         scriptLaunchLoadState.value = LoadState.Loading()
-        val taskGroupId = scriptPackageGroup.id
+        val (mainConfiguration, childConfigurations) = configuredValues() ?: throw RuntimeException("No scriptConfigurationViewModel")
+        val notificationOverrides = scriptConfigurationViewModel?.notificationOverridesForm?.toOverrides()
+        val onResult: suspend (SuspendableResult<ScriptPackageInstance, Exception>) -> Unit = { result ->
+            withContext(dispatcherProvider.main) {
+                when (result) {
+                    is SuspendableResult.Failure -> {
+                        if (result.error is NumberOfConcurrentTasksConflictException) {
+                            handleNumberOfConcurrentTasksConflictException(result.error as NumberOfConcurrentTasksConflictException)
+                        } else {
+                            errorResolver.setError(result.error)
+                        }
+                    }
+
+                    is SuspendableResult.Success -> {
+                        // Script instance is added to the view in the flow observer.
+                        scriptInstanceStarted.value = result.value
+                    }
+                }.exhaustive
+            }
+
+            scriptLaunchLoadState.value = LoadState.NotLoading()
+        }
 
         scope.launch(dispatcherProvider.io) {
-            startScriptInteractor(
-                StartScriptInteractor.Params(
-                    groupId = taskGroupId,
-                    scriptPackage = scriptsListViewModel.selectedItem!!,
-                    mainScriptConfiguration =
-                        scriptConfigurationViewModel
-                            ?.scriptConfigurationForm
-                            ?.value
-                            ?.mainConfigurationFormSection
-                            ?.getScriptConfigurationValues()
-                            ?: throw RuntimeException("No scriptConfigurationViewModel"),
-                    childConfigurations =
-                        scriptConfigurationViewModel?.scriptConfigurationForm?.value?.childConfigurationFormSections?.mapValues {
-                            it.value.getScriptConfigurationValues()
-                        }
-                            ?: throw RuntimeException("No scriptConfigurationViewModel"),
-                    // The header's stepper sets the count after creation; a duplicate keeps its source's.
-                    numberOfConcurrentTasks =
-                        scriptConfigurationViewModel?.initialScriptPackageInstance?.numberOfConcurrentTasks ?: 1,
-                    ignoreConcurrencyConflicts = ignoreConcurrencyConflicts,
-                    notificationOverrides = scriptConfigurationViewModel?.notificationOverridesForm?.toOverrides(),
-                ),
-            ) { result ->
-                withContext(dispatcherProvider.main) {
-                    when (result) {
-                        is SuspendableResult.Failure -> {
-                            if (result.error is NumberOfConcurrentTasksConflictException) {
-                                handleNumberOfConcurrentTasksConflictException(result.error as NumberOfConcurrentTasksConflictException)
-                            } else {
-                                errorResolver.setError(result.error)
-                            }
-                        }
-
-                        is SuspendableResult.Success -> {
-                            // Script instance is added to the view in the flow observer.
-                            scriptInstanceStarted.value = result.value
-                        }
-                    }.exhaustive
-                }
-
-                scriptLaunchLoadState.value = LoadState.NotLoading()
+            val edited = initialScriptPackageInstance?.takeIf { editing }
+            if (edited != null) {
+                updateScriptPackageInstanceInteractor(
+                    UpdateScriptPackageInstanceInteractor.Params(
+                        edited.copy(
+                            mainConfiguration = mainConfiguration,
+                            childConfigurations = childConfigurations,
+                            notificationOverrides = notificationOverrides,
+                        ),
+                        ignoreConcurrencyConflicts,
+                    ),
+                    onResult,
+                )
+            } else {
+                startScriptInteractor(
+                    StartScriptInteractor.Params(
+                        groupId = scriptPackageGroup.id,
+                        scriptPackage = scriptsListViewModel.selectedItem!!,
+                        mainScriptConfiguration = mainConfiguration,
+                        childConfigurations = childConfigurations,
+                        // The header's stepper sets the count after creation; a duplicate keeps its source's.
+                        numberOfConcurrentTasks =
+                            scriptConfigurationViewModel?.initialScriptPackageInstance?.numberOfConcurrentTasks ?: 1,
+                        ignoreConcurrencyConflicts = ignoreConcurrencyConflicts,
+                        notificationOverrides = notificationOverrides,
+                    ),
+                    onResult,
+                )
             }
         }
     }

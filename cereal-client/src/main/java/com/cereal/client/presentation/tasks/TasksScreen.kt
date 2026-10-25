@@ -290,10 +290,9 @@ fun TasksScreen(
             ScriptSelectionDialog(
                 scriptPackageGroup = state.scriptPackageGroup,
                 initialScriptPackageInstance = state.scriptPackageInstance,
+                editing = true,
                 onDismissRequest = { viewModel.closeDialog() },
-                onScriptInstanceCreated = {},
-                onNavigateToMarketplace = {},
-                onSaveEdit = viewModel::saveEdit,
+                onScriptInstanceCreated = viewModel::onScriptInstanceCreated,
             )
         }
 

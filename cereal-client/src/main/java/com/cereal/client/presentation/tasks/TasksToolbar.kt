@@ -17,21 +17,14 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.HelpOutline
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Edit
-import androidx.compose.material.icons.filled.MoreHoriz
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Remove
 import androidx.compose.material.icons.filled.Tune
 import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.DropdownMenu
-import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.shadow
@@ -45,6 +38,7 @@ import com.cereal.client.presentation.view.SectionLabel
 import com.cereal.client.presentation.view.button.CerealToolbarButton
 import com.cereal.client.presentation.view.button.CerealToolbarButtonVariant
 import com.cereal.client.presentation.view.chip.Pill
+import com.cereal.client.presentation.view.group.MoreOptionsMenu
 import com.cereal_automation.cereal_client.generated.resources.Res
 import com.cereal_automation.cereal_client.generated.resources.contact_support
 import com.cereal_automation.cereal_client.generated.resources.edit
@@ -52,7 +46,6 @@ import com.cereal_automation.cereal_client.generated.resources.fewer_concurrent_
 import com.cereal_automation.cereal_client.generated.resources.ic_cancel
 import com.cereal_automation.cereal_client.generated.resources.ic_play
 import com.cereal_automation.cereal_client.generated.resources.more_concurrent_tasks
-import com.cereal_automation.cereal_client.generated.resources.more_options
 import com.cereal_automation.cereal_client.generated.resources.restart_errored
 import com.cereal_automation.cereal_client.generated.resources.start_all
 import com.cereal_automation.cereal_client.generated.resources.start_all_tasks
@@ -133,31 +126,7 @@ internal fun TasksToolbar(
                 }
             }
             if (menuOptions.isNotEmpty()) {
-                var menuExpanded by remember { mutableStateOf(false) }
-                Box {
-                    CerealIconButton(onClick = { menuExpanded = true }) {
-                        Icon(
-                            imageVector = Icons.Filled.MoreHoriz,
-                            contentDescription = stringResource(Res.string.more_options),
-                            modifier = Modifier.size(18.dp),
-                            tint = CerealTheme.colorScheme.contentSecondary,
-                        )
-                    }
-                    DropdownMenu(
-                        expanded = menuExpanded,
-                        onDismissRequest = { menuExpanded = false },
-                    ) {
-                        menuOptions.forEach { option ->
-                            DropdownMenuItem(
-                                text = { CerealText(stringResource(option.stringResource)) },
-                                onClick = {
-                                    menuExpanded = false
-                                    onMenuOptionSelected(option)
-                                },
-                            )
-                        }
-                    }
-                }
+                MoreOptionsMenu(menuOptions, onMenuOptionSelected, tint = CerealTheme.colorScheme.contentSecondary)
             }
         }
         Box(
@@ -296,11 +265,10 @@ internal fun TasksQuickActions(
                     )
                     CerealText(text = stringResource(Res.string.stop_all))
                 }
-            } else {
+            } else if (state.showStartAll) {
                 CerealToolbarButton(
                     variant = CerealToolbarButtonVariant.Green,
                     onClick = callbacks.onStartAll,
-                    enabled = state.startAllEnabled,
                 ) {
                     Icon(
                         painter = painterResource(Res.drawable.ic_play),

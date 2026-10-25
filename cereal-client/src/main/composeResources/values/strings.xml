@@ -44,9 +44,9 @@
     <string name="default_error_message">An unexpected error occurred, we are notified about this and will fix it asap.</string>
     <string name="delete">Delete</string>
     <string name="delete_all">Delete all</string>
-    <string name="delete_group_confirmation_message">This group contains script instances. Deleting the group will also delete all script instances within it. Are you sure you want to continue?</string>
+    <string name="delete_group_confirmation_message">This group contains task setups. Deleting the group will also delete all task setups within it. Are you sure you want to continue?</string>
     <string name="delete_group_confirmation_title">Delete Group</string>
-    <string name="delete_script_instance_confirmation_title">Delete Script Instance?</string>
+    <string name="delete_script_instance_confirmation_title">Delete task setup?</string>
     <string name="delete_script_instance_confirmation_message">Delete &#8220;%1$s&#8221;? This will stop and remove all running tasks.</string>
     <string name="desktop_notifications">Desktop</string>
     <string name="desktop_notifications_desc">Enable desktop notifications.</string>
@@ -560,10 +560,12 @@
     <string name="tasks_empty_title">No task setups yet</string>
     <string name="tasks_empty_message">A task setup runs a ready-made script with your settings.</string>
     <string name="tasks_empty_home_link">or describe a goal on Home</string>
-    <string name="tasks_no_script_selected_title">No script selected</string>
-    <string name="tasks_no_script_selected_message">Select a script on the left to see its tasks.</string>
+    <string name="tasks_no_script_selected_title">No task setup selected</string>
+    <string name="tasks_no_script_selected_message">Select a task setup on the left to see its tasks.</string>
     <string name="tasks_no_tasks_title">No tasks yet</string>
-    <string name="tasks_no_tasks_message">This script has no tasks. Tasks will appear here once they are created.</string>
+    <string name="task_ready">Ready</string>
+    <string name="seconds_ago">%1$ds ago</string>
+    <string name="tasks_no_tasks_message">This task setup has no tasks. Tasks will appear here once they are created.</string>
     <string name="ai">AI</string>
     <string name="ai_provider">Provider</string>
     <string name="ai_provider_desc">Pick the model the AI browser agent and scripts use.</string>

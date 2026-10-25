@@ -26,7 +26,7 @@ object GroupListItemContentMapper {
                     scriptInstanceInGroup.runningTaskCount > 0 -> ItemStatus.RUNNING
                     else -> ItemStatus.IDLE
                 },
-            needsAttention = scriptInstanceInGroup.erroredTaskCount > 0 || scriptInstanceInGroup.awaitingUserTaskCount > 0,
+            needsAttention = scriptInstanceInGroup.attentionTaskCount > 0,
         )
     }
 }

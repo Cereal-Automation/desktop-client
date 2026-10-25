@@ -3,17 +3,13 @@ package com.cereal.client.application.interactor.script
 import com.cereal.client.application.Interactor
 import com.cereal.client.application.exception.CerealException
 import com.cereal.client.application.exception.ClientUpdateRequiredException
-import com.cereal.client.application.interactor.script.validator.CapacityValidator
-import com.cereal.client.application.interactor.script.validator.ScriptConcurrencyValidator
-import com.cereal.client.application.interactor.script.validator.ScriptConfigurationItemDefinitionConflict
 import com.cereal.client.application.interactor.script.validator.ScriptConfigurationValuesValidator
 import com.cereal.client.application.script.ScriptInstanceFactory
-import com.cereal.client.application.script.ScriptLicenseChecker
+import com.cereal.client.application.script.TaskSetupLimits
 import com.cereal.client.application.task.TaskManager
 import com.cereal.client.domain.model.notification.ScriptNotificationOverrides
-import com.cereal.client.domain.model.script.ScriptCapacity
+import com.cereal.client.domain.model.script.ScriptConfigurationItemDefinitionConflict
 import com.cereal.client.domain.model.script.ScriptConfigurationValues
-import com.cereal.client.domain.model.script.ScriptEntitlement
 import com.cereal.client.domain.model.script.ScriptPackage
 import com.cereal.client.domain.model.script.ScriptPackageInstance
 import com.cereal.client.domain.model.script.isClientUpdateRequired
@@ -26,7 +22,7 @@ import kotlin.time.ExperimentalTime
 class StartScriptInteractor(
     private val scriptInstanceRepository: ScriptInstanceRepository,
     private val taskManager: TaskManager,
-    private val scriptLicenseChecker: ScriptLicenseChecker,
+    private val taskSetupLimits: TaskSetupLimits,
     private val applicationRepository: ApplicationRepository,
     private val scriptInstanceFactory: ScriptInstanceFactory,
 ) : Interactor<ScriptPackageInstance, StartScriptInteractor.Params>() {
@@ -46,12 +42,14 @@ class StartScriptInteractor(
             )
         configValuesValidator.validate()
 
-        val entitlement = scriptLicenseChecker.getEntitlement(params.scriptPackage) ?: throw UnlicensedException()
-
-        checkCapacity(params, entitlement)
-
+        taskSetupLimits.checkEntitlement(params.scriptPackage, params.mainScriptConfiguration)
         if (!params.ignoreConcurrencyConflicts) {
-            checkNumberOfConcurrentTasksConflicts(params)
+            taskSetupLimits.checkConcurrency(
+                params.scriptPackage,
+                params.mainScriptConfiguration,
+                params.childConfigurations,
+                params.numberOfConcurrentTasks,
+            )
         }
 
         val scriptPackageInstance =
@@ -82,54 +80,6 @@ class StartScriptInteractor(
         taskManager.createTasks(scriptInstance)
 
         return scriptPackageInstance
-    }
-
-    /**
-     * Soft-enforces the [entitlement]'s record capacity: refuses to start (throws
-     * [CapacityExceededException]) when the run's dataset-record count exceeds a
-     * [ScriptCapacity.Limited] cap. The allow/deny decision is delegated to
-     * [ScriptEntitlement.allows] so the rule lives in the domain. Honor-system and local —
-     * [ScriptCapacity.Unlimited] and [ScriptCapacity.None] never block, and nothing is reported upstream.
-     */
-    private fun checkCapacity(
-        params: Params,
-        entitlement: ScriptEntitlement,
-    ) {
-        val limited = entitlement.capacity as? ScriptCapacity.Limited ?: return
-
-        val recordCount =
-            CapacityValidator(
-                params.scriptPackage,
-                params.mainScriptConfiguration,
-            ).runRecordCount()
-
-        if (!entitlement.allows(recordCount)) {
-            throw CapacityExceededException(recordCount, limited.records, limited.unit)
-        }
-    }
-
-    /**
-     * Checks if any of the number of concurrent tasks exceed the number of items in any of the task configurations
-     * and throws a [NumberOfConcurrentTasksConflictException] when that's the case.
-     */
-    private fun checkNumberOfConcurrentTasksConflicts(params: Params) {
-        val validator =
-            ScriptConcurrencyValidator(
-                params.scriptPackage,
-                params.mainScriptConfiguration,
-                params.childConfigurations,
-                params.numberOfConcurrentTasks,
-            )
-        val numberOfConcurrentTasksLimited = validator.validateTaskLimits()
-        val recordsUsedByMultipleTasks = validator.validateRecordsReused()
-
-        if (numberOfConcurrentTasksLimited != null || recordsUsedByMultipleTasks.isNotEmpty()) {
-            throw NumberOfConcurrentTasksConflictException(
-                params.numberOfConcurrentTasks,
-                recordsUsedByMultipleTasks,
-                numberOfConcurrentTasksLimited,
-            )
-        }
     }
 
     data class Params(

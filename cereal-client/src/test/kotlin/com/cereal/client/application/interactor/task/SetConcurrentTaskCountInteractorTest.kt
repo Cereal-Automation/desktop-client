@@ -1,6 +1,7 @@
 package com.cereal.client.application.interactor.task
 
 import com.cereal.client.application.exception.CerealException
+import com.cereal.client.application.interactor.script.UnlicensedException
 import fixtures.TasksScreenWorld
 import fixtures.dataset
 import fixtures.datasetField
@@ -12,11 +13,12 @@ import kotlinx.coroutines.test.runTest
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.assertThrows
+import java.security.InvalidParameterException
 
 /** [SetConcurrentTaskCountInteractor] on in-memory repositories and a real task manager (see [TasksScreenWorld]). */
 class SetConcurrentTaskCountInteractorTest {
     private val world = TasksScreenWorld(StandardTestDispatcher())
-    private val interactor = SetConcurrentTaskCountInteractor(world.scriptInstances, world.tasksRepository, world.taskManager)
+    private val interactor = world.setConcurrentTaskCountInteractor
 
     @Test
     fun `refuses a count that would remove a running task and changes nothing`() =
@@ -34,7 +36,18 @@ class SetConcurrentTaskCountInteractorTest {
         runTest {
             val setup = world.setup("setup-1", null, idle(), configuration = proxyGroup())
 
-            assertThrows<IllegalArgumentException> { interactor.run(SetConcurrentTaskCountInteractor.Params(setup, 0)) }
+            assertThrows<InvalidParameterException> { interactor.run(SetConcurrentTaskCountInteractor.Params(setup, 0)) }
+        }
+
+    @Test
+    fun `refuses a new count for an unlicensed script, as creation does`() =
+        runTest {
+            val setup = world.setup("setup-1", null, idle(), configuration = proxyGroup(), capacity = null)
+
+            assertThrows<UnlicensedException> { interactor.run(SetConcurrentTaskCountInteractor.Params(setup, 2)) }
+
+            assertEquals(1, world.scriptInstances.getScriptPackageInstance("setup-1").numberOfConcurrentTasks)
+            assertEquals(1, world.tasksRepository.getTasks(setup).size)
         }
 
     @Test

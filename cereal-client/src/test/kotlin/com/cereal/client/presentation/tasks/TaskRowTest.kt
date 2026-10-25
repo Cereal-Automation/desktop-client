@@ -2,9 +2,7 @@ package com.cereal.client.presentation.tasks
 
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.ui.test.ExperimentalTestApi
-import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.assertIsDisplayed
-import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
@@ -17,6 +15,7 @@ import kotlin.test.Test
 import kotlin.test.assertTrue
 import kotlin.time.Clock
 import kotlin.time.Duration.Companion.minutes
+import kotlin.time.Duration.Companion.seconds
 import kotlin.time.ExperimentalTime
 import kotlin.time.Instant
 
@@ -77,11 +76,11 @@ class TaskRowTest {
         }
 
     @Test
-    fun showsNoTimeWithoutAStatusTimestamp() =
+    fun showsSecondsUnderAMinute() =
         runScreenTest {
             setScreenContent {
                 TaskRow(
-                    taskItem = taskUiModel(statusSince = null),
+                    taskItem = taskUiModel(statusSince = Clock.System.now() - 12.seconds),
                     isSelected = false,
                     onStartTask = {},
                     onStopTask = {},
@@ -89,7 +88,7 @@ class TaskRowTest {
                 )
             }
 
-            onAllNodesWithText("ago", substring = true).assertCountEquals(0)
+            onNodeWithText("12s ago").assertIsDisplayed()
         }
 
     @Test
@@ -175,7 +174,8 @@ private fun taskUiModel(
     message: String = "Task message",
     status: String = "Idle",
     configuration: String = "",
-    statusSince: Instant? = null,
+    statusSince: Instant = Clock.System.now(),
+    isIdle: Boolean = false,
 ): TaskUiModel =
     TaskUiModel(
         id = aTask(id = "task-$taskNumber", packageName = "com.example.script", running = isRunning),
@@ -183,6 +183,7 @@ private fun taskUiModel(
         isRunning = isRunning,
         isError = isError,
         isSuccess = isSuccess,
+        isIdle = isIdle,
         hasSupportUrl = false,
         message = message,
         status = status,

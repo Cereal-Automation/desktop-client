@@ -9,6 +9,7 @@ import com.cereal.client.application.script.ScriptInstanceManager
 import com.cereal.client.application.script.ScriptLicenseChecker
 import com.cereal.client.application.script.ScriptManager
 import com.cereal.client.application.script.ScriptSyncManager
+import com.cereal.client.application.script.TaskSetupLimits
 import com.cereal.client.application.task.JobTaskFactory
 import com.cereal.client.application.task.TaskConfigurationBuilder
 import com.cereal.client.application.task.TaskManager
@@ -78,6 +79,7 @@ object ApplicationModule {
             single { ScriptManager(get(), get(), get(), get()) }
             single { TaskConfigurationBuilder(get(), get(), get()) }
             single { ScriptLicenseChecker(get(), get()) }
+            factory { TaskSetupLimits(get()) }
             single<ScopeLinker> { KoinScopeLinker() }
             single { ScriptInstanceFactory(get()) }
             single { JobTaskFactory(get()) }

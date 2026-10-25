@@ -63,6 +63,21 @@ class TaskStatusControlsViewModelTest {
         }
 
     @Test
+    fun `selecting another setup clears the status filter`() =
+        runTest {
+            val first = world.setup("setup-1", null, idle(), errored())
+            val second = world.setup("setup-2", null, idle())
+            val viewModel = open(first)
+            viewModel.onStatusChipClicked(TaskFilter.ERROR)
+
+            viewModel.hierarchicalListViewModel.selectChild(second)
+            world.dispatcher.scheduler.advanceUntilIdle()
+
+            assertEquals(TaskFilter.ALL, viewModel.taskControls.value?.filter)
+            assertEquals(listOf("setup-2-task-1"), viewModel.visibleTaskIds())
+        }
+
+    @Test
     fun `clicking another chip switches the filter`() =
         runTest {
             val setup = world.setup("setup-1", null, idle(), errored())
@@ -92,7 +107,18 @@ class TaskStatusControlsViewModelTest {
             val controls = assertNotNull(open(setup).taskControls.value)
 
             assertFalse(controls.showStopAll)
-            assertTrue(controls.startAllEnabled)
+            assertTrue(controls.showStartAll)
+        }
+
+    @Test
+    fun `Start all is hidden when no task can start`() =
+        runTest {
+            val setup = world.setup("setup-1", null, succeeded(), errored())
+
+            val controls = assertNotNull(open(setup).taskControls.value)
+
+            assertFalse(controls.showStopAll)
+            assertFalse(controls.showStartAll)
         }
 
     @Test

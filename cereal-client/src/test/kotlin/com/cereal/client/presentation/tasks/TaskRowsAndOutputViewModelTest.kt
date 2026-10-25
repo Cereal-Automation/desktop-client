@@ -15,7 +15,9 @@ import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.runTest
 import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.Assertions.assertEquals
+import org.junit.jupiter.api.Assertions.assertFalse
 import org.junit.jupiter.api.Assertions.assertNull
+import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
 import kotlin.test.assertIs
 import kotlin.time.Clock
@@ -46,13 +48,14 @@ class TaskRowsAndOutputViewModelTest {
     }
 
     @Test
-    fun `an idle task reads Ready and other tasks show their latest message`() =
+    fun `an idle task is marked idle and other tasks show their latest message`() =
         runTest {
             val setup = world.setup("s", null, idle(), running("Checking out"), succeeded("Bought it"), errored("Sold out"))
 
             val viewModel = start(setup)
 
-            assertEquals("Ready", viewModel.row("s-task-1").message)
+            assertTrue(viewModel.row("s-task-1").isIdle)
+            assertFalse(viewModel.row("s-task-2").isIdle)
             assertEquals("Checking out", viewModel.row("s-task-2").message)
             assertEquals("Bought it", viewModel.row("s-task-3").message)
             assertEquals("Sold out", viewModel.row("s-task-4").message)
@@ -70,23 +73,24 @@ class TaskRowsAndOutputViewModelTest {
         }
 
     @Test
-    fun `a task without status history has no time since its last update`() =
+    fun `a task without status history shows the time since it was created`() =
         runTest {
             val setup = world.setup("s", null, idle())
+            val createdAt = Clock.System.now() - 3.seconds
             world.tasksRepository.addAllTasks(
                 listOf(
                     JobTask(
                         id = "never-run",
                         scriptInstance = aScriptInstance(setup),
                         configuration = emptyMap(),
-                        createdAt = Clock.System.now(),
+                        createdAt = createdAt,
                     ),
                 ),
             )
 
             val viewModel = start(setup)
 
-            assertNull(viewModel.row("never-run").statusSince)
+            assertEquals(createdAt, viewModel.row("never-run").statusSince)
         }
 
     @Test
