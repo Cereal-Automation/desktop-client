@@ -21,6 +21,7 @@ import com.cereal.client.domain.repository.LogEventRepository
 import com.cereal.client.presentation.error.ErrorResolver
 import com.cereal.client.presentation.tasks.model.TaskUiModel
 import com.cereal.client.presentation.util.InteractorRunner
+import com.cereal.client.presentation.view.group.HierarchicalListItem
 import com.cereal.client.presentation.view.group.HierarchicalListViewModel
 import com.github.kittinunf.result.coroutines.SuspendableResult
 import com.github.kittinunf.result.coroutines.map
@@ -55,6 +56,7 @@ class TasksViewModel(
     private val openUrlInteractor: OpenUrlInteractor,
     private val observeArtifactsInteractor: ObserveArtifactsInteractor,
     private val saveArtifactToFileInteractor: SaveArtifactToFileInteractor,
+    private val lastSelectedTaskSetup: LastSelectedTaskSetup,
 ) {
     private val scope = CoroutineScope(SupervisorJob() + dispatcherProvider.main)
     private val interactorRunner = InteractorRunner(scope, dispatcherProvider, errorResolver)
@@ -72,10 +74,12 @@ class TasksViewModel(
                 }
             },
             onChildSelectedChange = { scriptInstance ->
+                scriptInstance?.let { lastSelectedTaskSetup.id = it.id }
                 updateTasks(scriptInstance)
                 // Restore this script's last selected task (fresh copy) so logs never show another script's task.
                 val remembered = scriptInstance?.let { selectedTaskInScriptInstance[it] }
                 onTaskSelected(remembered?.let { r -> tasks?.firstOrNull { it.id == r.id } })
+                if (scriptInstance == null) ensureSetupSelected()
             },
             onParentMenuOptionSelected = { group, menuItem ->
                 if (menuItem == MenuOption.DELETE) {
@@ -323,7 +327,12 @@ class TasksViewModel(
         onDeleteGroup(group)
     }
 
+    // A setup the dialog just created; the list may not show it yet, so it is (re)selected once it does.
+    private var createdSetupId: String? = null
+
+    /** Selects the new setup without starting it. */
     fun onScriptInstanceCreated(scriptPackageInstance: ScriptPackageInstance) {
+        createdSetupId = scriptPackageInstance.id
         hierarchicalListViewModel.selectChild(scriptPackageInstance)
     }
 
@@ -427,7 +436,29 @@ class TasksViewModel(
     private fun observeTaskGroups() {
         tasksListObserver.observeTaskGroups(scope, hierarchicalListViewModel) { newState ->
             hierarchicalListState.value = newState
+            ensureSetupSelected()
         }
+    }
+
+    /**
+     * A task setup is always selected while any exist: the current one if it still exists, else the one
+     * last selected this session, else the first.
+     */
+    private fun ensureSetupSelected() {
+        val setups =
+            hierarchicalListViewModel.state.value
+                .filterIsInstance<HierarchicalListItem.Parent<ScriptPackageGroup, ScriptPackageInstance>>()
+                .flatMap { it.children }
+                .map { it.content.id }
+        val current = hierarchicalListViewModel.selectedChild
+        val created = setups.firstOrNull { it.id == createdSetupId }?.also { createdSetupId = null }
+        val target =
+            created
+                ?: current?.let { setups.firstOrNull { it.id == current.id } }
+                ?: setups.firstOrNull { it.id == lastSelectedTaskSetup.id }
+                ?: setups.firstOrNull()
+                ?: return
+        hierarchicalListViewModel.selectChild(target)
     }
 
     private fun updateUserInteractions() {
