@@ -111,7 +111,7 @@ fun MyScriptsScreen(
                 contentPadding = PaddingValues(CerealTheme.spacing.xxl),
                 verticalArrangement = Arrangement.spacedBy(CerealTheme.spacing.sm),
             ) {
-                items(rows, key = { it.scriptPackage.manifest.packageName }) { row ->
+                items(rows, key = { it.scriptPackage.manifest.packageName to it.variantId }) { row ->
                     InstalledScriptRow(
                         row = row,
                         onClick = { viewModel.onRowClicked(row) },
@@ -201,7 +201,7 @@ private fun InstalledScriptRow(
                 ) {
                     CerealText(
                         modifier = Modifier.weight(1f, fill = false),
-                        text = listing?.title ?: row.scriptPackage.manifest.name,
+                        text = row.name,
                         style = MaterialTheme.typography.titleSmall,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
@@ -240,7 +240,7 @@ private fun InstalledScriptRow(
                 }
 
                 // Wait for the lookup before offering Uninstall: the row may still gain a listing.
-                row.isListingLoading -> {}
+                row.isListingLoading || !row.canUninstall -> {}
 
                 row.isRemoving -> {
                     Row(

@@ -6,6 +6,7 @@ import com.cereal.client.application.CoroutinesDispatcherProvider
 import com.cereal.client.application.Interactor
 import com.cereal.client.application.agent.goalRunDetails
 import com.cereal.client.application.agent.isAiBrowserAgent
+import com.cereal.client.application.agent.isAiBrowserAgentDefaultEntry
 import com.cereal.client.application.interactor.script.GetScriptsInteractor
 import com.cereal.client.application.interactor.task.ObserveTasksInteractor
 import com.cereal.client.domain.model.task.Task
@@ -30,6 +31,8 @@ data class RecentRunUiModel(
 data class ReadyMadeScriptUiModel(
     val packageName: String,
     val name: String,
+    /** The variant this entry runs; null for a package's default entry. */
+    val variantId: String? = null,
 )
 
 /** The two sections below Home's composer slot: recent goal runs and the ready-made scripts strip. */
@@ -51,7 +54,7 @@ class HomeActivityViewModel(
                 if (result is SuspendableResult.Success) {
                     val runs =
                         result.value
-                            .filter { it.scriptInstance.packageInstance.definition.isAiBrowserAgent }
+                            .filter { it.scriptInstance.packageInstance.isAiBrowserAgentDefaultEntry }
                             .sortedByDescending { it.createdAt }
                             .take(RECENT_RUNS)
                             .map { it.toRecentRun() }
@@ -63,9 +66,15 @@ class HomeActivityViewModel(
             getScriptsInteractor(Interactor.None()).collectLatest { result ->
                 if (result is SuspendableResult.Success) {
                     val scripts =
-                        result.value
-                            .filterNot { it.isAiBrowserAgent }
-                            .map { ReadyMadeScriptUiModel(it.manifest.packageName, it.manifest.name) }
+                        result.value.flatMap { pkg ->
+                            val packageName = pkg.manifest.packageName
+                            // The agent's default entry is the goal composer; its variants are ready-made scripts.
+                            if (pkg.isAiBrowserAgent) {
+                                pkg.variants.map { (id, variant) -> ReadyMadeScriptUiModel(packageName, variant.name, id) }
+                            } else {
+                                listOf(ReadyMadeScriptUiModel(packageName, pkg.manifest.name))
+                            }
+                        }
                     withContext(dispatcherProvider.main) { _readyMadeScripts.value = scripts }
                 }
             }

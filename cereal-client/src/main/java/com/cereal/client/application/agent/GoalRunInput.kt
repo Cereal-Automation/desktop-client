@@ -3,6 +3,7 @@ package com.cereal.client.application.agent
 import com.cereal.client.domain.model.marketplace.MarketplaceScript
 import com.cereal.client.domain.model.script.ScriptConfigurationValues
 import com.cereal.client.domain.model.script.ScriptPackage
+import com.cereal.client.domain.model.script.ScriptPackageInstance
 import com.cereal.client.domain.model.script.configuration.ConfigItemType
 import com.cereal.client.domain.model.script.configuration.ConfigValue
 import com.cereal.client.domain.model.script.configuration.ScriptConfigurationDefinition
@@ -15,6 +16,10 @@ const val AI_BROWSER_AGENT_PACKAGE = "com.cereal.aibrowseragent"
 /** Whether this is the AI browser agent, the script Home's goal composer starts. */
 val ScriptPackage.isAiBrowserAgent: Boolean
     get() = manifest.packageName == AI_BROWSER_AGENT_PACKAGE
+
+/** Whether this instance runs the AI browser agent's default entry (the goal composer's), not one of its variants. */
+val ScriptPackageInstance.isAiBrowserAgentDefaultEntry: Boolean
+    get() = definition.isAiBrowserAgent && variantId == null
 
 /** Whether this marketplace listing is the AI browser agent. */
 val MarketplaceScript.isAiBrowserAgent: Boolean

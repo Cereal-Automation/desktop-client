@@ -51,9 +51,17 @@ class MyScriptsViewModel(
         val isRemoving: Boolean,
         /** The marketplace lookup for this script hasn't finished yet, so it may still gain a listing. */
         val isListingLoading: Boolean,
+        /** The variant this row stands for; null for the package's default entry. */
+        val variantId: String? = null,
     ) {
         /** Only rows with a marketplace listing can open the script detail dialog. */
         val isClickable: Boolean get() = listing != null
+
+        val name: String
+            get() = variantId?.let { scriptPackage.variants[it]?.name } ?: listing?.title ?: scriptPackage.manifest.name
+
+        /** Uninstalling removes the whole jar, so it stays hidden for every row of the AI browser agent package. */
+        val canUninstall: Boolean get() = !scriptPackage.isAiBrowserAgent
     }
 
     private val installedScripts = mutableStateOf<List<ScriptPackage>>(emptyList())
@@ -69,7 +77,11 @@ class MyScriptsViewModel(
     val rows: State<List<InstalledScriptRow>> =
         derivedStateOf {
             installedScripts.value
-                .map { pkg ->
+                .flatMap { pkg ->
+                    // The agent's default entry lives on Home; only its variants are listed here.
+                    val variantIds = if (pkg.isAiBrowserAgent) pkg.variants.keys.toList() else listOf(null)
+                    variantIds.map { pkg to it }
+                }.map { (pkg, variantId) ->
                     val packageName = pkg.manifest.packageName
                     val listing = listings.value[packageName]
                     val running = packageName in packagesWithRunningTasks.value
@@ -80,8 +92,9 @@ class MyScriptsViewModel(
                         hasRunningTasks = running,
                         isRemoving = packageName in removingPackages.value,
                         isListingLoading = packageName in pendingListingLookups.value,
+                        variantId = variantId,
                     )
-                }.sortedBy { (it.listing?.title ?: it.scriptPackage.manifest.name).lowercase() }
+                }.sortedBy { it.name.lowercase() }
         }
 
     val selectedScript = mutableStateOf<MarketplaceScript?>(null)
@@ -102,7 +115,7 @@ class MyScriptsViewModel(
             getScriptsInteractor(Interactor.None()).collectLatest { result ->
                 withContext(dispatcherProvider.main) {
                     result.handleFailureOrElse(errorResolver) { list ->
-                        installedScripts.value = list.filterNot { it.isAiBrowserAgent }
+                        installedScripts.value = list
                         loadMissingListings()
                     }
                 }
