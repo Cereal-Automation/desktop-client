@@ -25,7 +25,15 @@ data class ScriptVariant(
  * The entry script for [variantId]: the [ScriptPackage.mainScript] when null, otherwise that variant. An id the
  * package doesn't contain throws [UnknownScriptVariantException]; it never falls back to the default entry.
  */
-fun ScriptPackage.entry(variantId: String?): MainScript = if (variantId == null) mainScript else variants[variantId]?.script ?: throw UnknownScriptVariantException(variantId)
+fun ScriptPackage.entry(variantId: String?): MainScript = if (variantId == null) mainScript else variant(variantId).script
+
+/** The display name of the entry for [variantId]: the variant's name, or the package name for the default entry. */
+fun ScriptPackage.entryName(variantId: String?): String = if (variantId == null) manifest.name else variant(variantId).name
+
+/** The instructions of the entry for [variantId]; a variant never falls back to the package's instructions. */
+fun ScriptPackage.entryInstructions(variantId: String?): String? = if (variantId == null) manifest.instructions else variant(variantId).instructions
+
+private fun ScriptPackage.variant(variantId: String): ScriptVariant = variants[variantId] ?: throw UnknownScriptVariantException(variantId)
 
 interface Script {
     val clazz: KClass<out com.cereal.sdk.Script<*>>

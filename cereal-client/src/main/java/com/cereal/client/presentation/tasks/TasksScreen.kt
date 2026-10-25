@@ -360,7 +360,7 @@ fun TasksScreen(
         is TaskViewState.DialogState.ConfirmScriptInstanceDeletion -> {
             ConfirmationDialog(
                 title = stringResource(Res.string.delete_script_instance_confirmation_title),
-                message = stringResource(Res.string.delete_script_instance_confirmation_message, state.scriptPackageInstance.definition.manifest.name),
+                message = stringResource(Res.string.delete_script_instance_confirmation_message, state.scriptPackageInstance.entryName),
                 confirmButtonText = stringResource(Res.string.delete),
                 dismissButtonText = stringResource(Res.string.cancel),
                 onConfirm = { viewModel.confirmScriptInstanceDeletion(state.scriptPackageInstance) },

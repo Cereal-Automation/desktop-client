@@ -7,7 +7,7 @@ import com.cereal.client.presentation.view.group.GroupListItemContent
 
 object GroupListItemContentMapper {
     fun fromScriptInstanceInGroup(scriptInstanceInGroup: ScriptInstanceInGroup): GroupListItemContent<ScriptPackageInstance> {
-        val scriptName = scriptInstanceInGroup.scriptPackageInstance.definition.manifest.name
+        val scriptName = scriptInstanceInGroup.scriptPackageInstance.entryName
         val identifierValue =
             scriptInstanceInGroup.scriptPackageInstance.entryScript.configuration
                 .getScriptIdentifierValue(scriptInstanceInGroup.scriptPackageInstance.mainConfiguration)

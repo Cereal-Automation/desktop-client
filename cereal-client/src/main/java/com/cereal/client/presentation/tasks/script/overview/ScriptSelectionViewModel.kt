@@ -16,6 +16,7 @@ import com.cereal.client.domain.model.script.ScriptCapacity
 import com.cereal.client.domain.model.script.ScriptFeature
 import com.cereal.client.domain.model.script.ScriptPackage
 import com.cereal.client.domain.model.script.ScriptPackageInstance
+import com.cereal.client.domain.model.script.entryName
 import com.cereal.client.domain.model.script.isClientUpdateRequired
 import com.cereal.client.domain.model.task.ScriptPackageGroup
 import com.cereal.client.presentation.error.ErrorResolver
@@ -368,8 +369,7 @@ data class ScriptEntryRow(
     val scriptPackage: ScriptPackage,
     val variantId: String? = null,
 ) {
-    // ponytail: the default row keeps the package name; #199 owns entry names everywhere else.
-    val title: String get() = variantId?.let { scriptPackage.variants.getValue(it).name } ?: scriptPackage.manifest.name
+    val title: String get() = scriptPackage.entryName(variantId)
 }
 
 /** The default entry first, then each variant in manifest order. */
