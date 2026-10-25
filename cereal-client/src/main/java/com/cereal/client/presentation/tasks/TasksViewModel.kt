@@ -132,6 +132,16 @@ class TasksViewModel(
         get() {
             return _selectedTask
         }
+
+    /** Number of the selected task within its setup, for the Output header ("Output · Task #n"). */
+    val selectedTaskNumber: Int?
+        get() {
+            val selectedId = _selectedTask.value?.id ?: return null
+            val filled = tasksViewState.value as? TaskViewState.DetailViewState.Filled ?: return null
+            return filled.scriptInstances.firstNotNullOfOrNull { instance ->
+                instance.tasks.firstOrNull { it.id.id == selectedId }?.taskNumber
+            }
+        }
     val userInteractions = mutableStateOf<List<TaskUiModel>>(emptyList())
 
     private var selectedTaskInScriptInstance = mutableMapOf<ScriptPackageInstance, Task>()
