@@ -20,7 +20,13 @@ class InMemoryScriptInstanceRepository : ScriptInstanceRepository {
         val groupId: String,
         val packageInstance: ScriptPackageInstance,
         val mainScript: MainScriptInstance,
-    )
+    ) {
+        // A setup equals by id only, so an update that changes no configuration (e.g. only its task count) would
+        // compare equal and the state flow would drop it. Compare entries by identity instead.
+        override fun equals(other: Any?) = this === other
+
+        override fun hashCode() = System.identityHashCode(this)
+    }
 
     private val entries = MutableStateFlow<List<Entry>>(emptyList())
 

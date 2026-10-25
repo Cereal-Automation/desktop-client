@@ -524,6 +524,8 @@
     <string name="update_required_title">Update required</string>
     <string name="update_required_message">This version is no longer supported. Please update to continue.</string>
     <string name="view_config">View config</string>
+    <string name="fewer_concurrent_tasks">Fewer tasks</string>
+    <string name="more_concurrent_tasks">More tasks</string>
     <string name="stop_tasks_to_edit">Stop tasks to edit</string>
     <string name="view_full_configuration">View full configuration</string>
     <string name="view_profile">View profile</string>

@@ -11,10 +11,13 @@ import com.cereal.client.application.interactor.script.ReportScriptIssueInteract
 import com.cereal.client.application.interactor.settings.OpenUrlInteractor
 import com.cereal.client.application.interactor.settings.developers.ObserveShowDebugLogsInteractor
 import com.cereal.client.application.interactor.task.GetOrCreateDefaultTaskGroupInteractor
+import com.cereal.client.application.interactor.task.SetConcurrentTaskCountInteractor
 import com.cereal.client.application.interactor.task.UpdateScriptPackageInstanceInteractor
+import com.cereal.client.application.interactor.task.concurrentTaskCounts
 import com.cereal.client.domain.model.artifact.Artifact
 import com.cereal.client.domain.model.logging.LoggingEvent
 import com.cereal.client.domain.model.logging.LoggingPriority
+import com.cereal.client.domain.model.script.MainScriptInstance
 import com.cereal.client.domain.model.script.ScriptPackageInstance
 import com.cereal.client.domain.model.task.ScriptPackageGroup
 import com.cereal.client.domain.model.task.Task
@@ -61,6 +64,7 @@ class TasksViewModel(
     private val saveArtifactToFileInteractor: SaveArtifactToFileInteractor,
     private val lastSelectedTaskSetup: LastSelectedTaskSetup,
     private val updateScriptPackageInstanceInteractor: UpdateScriptPackageInstanceInteractor,
+    private val setConcurrentTaskCountInteractor: SetConcurrentTaskCountInteractor,
 ) {
     private val scope = CoroutineScope(SupervisorJob() + dispatcherProvider.main)
     private val interactorRunner = InteractorRunner(scope, dispatcherProvider, errorResolver)
@@ -101,6 +105,9 @@ class TasksViewModel(
     val hierarchicalListState =
         mutableStateOf<TaskViewState.GroupViewState>(TaskViewState.GroupViewState.Loading)
     val tasksViewState = mutableStateOf<TaskViewState.DetailViewState>(TaskViewState.DetailViewState.NoSelection)
+
+    /** The detail header's concurrent-task stepper for the selected setup; declared before `init`, which updates it. */
+    val concurrentTaskStepper = mutableStateOf<ConcurrentTaskStepperState?>(null)
     private val dialogManager = TaskDialogManager()
     val dialogState get() = dialogManager.dialogState
     val logViewerMessages = mutableStateOf<List<LoggingEvent>>(emptyList())
@@ -329,6 +336,41 @@ class TasksViewModel(
         ) { closeDialog() }
     }
 
+    fun increaseConcurrentTasks() = changeConcurrentTaskCount(+1)
+
+    fun decreaseConcurrentTasks() = changeConcurrentTaskCount(-1)
+
+    private fun changeConcurrentTaskCount(step: Int) {
+        val stepper = concurrentTaskStepper.value ?: return
+        val allowed = if (step > 0) stepper.canIncrease else stepper.canDecrease
+        if (!allowed) return
+        val setup = selectedSetup() ?: return
+        interactorRunner.launch(
+            setConcurrentTaskCountInteractor,
+            SetConcurrentTaskCountInteractor.Params(setup, stepper.count + step),
+        )
+    }
+
+    /** The selected setup as last observed in the list, which carries its latest saved values. */
+    private fun selectedSetup(): ScriptPackageInstance? {
+        val selected = hierarchicalListViewModel.selectedChild ?: return null
+        return tasksListObserver.childrenByGroupState.values
+            .flatten()
+            .firstOrNull { it.id.id == selected.id }
+            ?.id ?: selected
+    }
+
+    private fun updateConcurrentTaskStepper() {
+        val setup = selectedSetup()
+        val mainTasks =
+            tasks.orEmpty().filter { it.scriptInstance is MainScriptInstance && it.scriptInstance.packageInstance.id == setup?.id }
+        concurrentTaskStepper.value =
+            setup?.let { concurrentTaskCounts(it, mainTasks) }?.let { counts ->
+                val count = setup.numberOfConcurrentTasks
+                ConcurrentTaskStepperState(count, canDecrease = count - 1 >= counts.first, canIncrease = count + 1 <= counts.last)
+            }
+    }
+
     fun showConfiguration(scriptPackageInstance: ScriptPackageInstance) {
         dialogManager.showConfiguration(scriptPackageInstance)
     }
@@ -524,6 +566,7 @@ class TasksViewModel(
         tasksListObserver.observeTaskGroups(scope, hierarchicalListViewModel) { newState ->
             hierarchicalListState.value = newState
             ensureSetupSelected()
+            updateConcurrentTaskStepper()
         }
     }
 
@@ -572,6 +615,7 @@ class TasksViewModel(
                 scriptPackageInstance,
             )
         updateUserInteractions()
+        updateConcurrentTaskStepper()
         if (scriptPackageInstance == null) {
             observeLogEventsForTask(null)
             observeArtifactsForTask(null)

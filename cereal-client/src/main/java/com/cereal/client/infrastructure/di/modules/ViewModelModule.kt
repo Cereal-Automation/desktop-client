@@ -135,6 +135,7 @@ object ViewModelModule {
                     get(),
                     get(),
                     get(),
+                    get(),
                 )
             }
             factory { (scope: CoroutineScope) ->
