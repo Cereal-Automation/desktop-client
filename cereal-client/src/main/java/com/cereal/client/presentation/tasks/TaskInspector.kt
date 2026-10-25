@@ -28,6 +28,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -58,7 +59,10 @@ import com.cereal_automation.cereal_client.generated.resources.task_values
 import org.jetbrains.compose.resources.painterResource
 import org.jetbrains.compose.resources.stringResource
 
-internal val InspectorWidth = 400.dp
+/** Narrowest the inspector gets: room for the log's level filter and auto-scroll toggle on one line. */
+internal val InspectorMinWidth = 400.dp
+
+internal const val TASK_INSPECTOR_TEST_TAG = "task_inspector"
 
 /** The selected task beside the list: its status, actions, latest message, values, log and artifacts. */
 @Composable
@@ -73,7 +77,7 @@ internal fun TaskInspector(
     modifier: Modifier = Modifier,
 ) {
     val task = state.task
-    Column(modifier.fillMaxHeight().background(CerealTheme.colorScheme.cardDark)) {
+    Column(modifier.testTag(TASK_INSPECTOR_TEST_TAG).fillMaxHeight().background(CerealTheme.colorScheme.cardDark)) {
         Row(
             modifier = Modifier.fillMaxWidth().height(56.dp).padding(start = PanePadding, end = 12.dp),
             verticalAlignment = Alignment.CenterVertically,

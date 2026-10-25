@@ -5,7 +5,6 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
@@ -54,7 +53,6 @@ fun TasksEmptyState(
             onClick = onNewTaskSetup,
             text = stringResource(Res.string.new_task_setup),
             type = CerealButtonType.Primary,
-            modifier = Modifier.fillMaxWidth(),
         )
         CerealText(
             text = stringResource(Res.string.tasks_empty_home_link),

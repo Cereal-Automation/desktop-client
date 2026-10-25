@@ -1,15 +1,24 @@
 package com.cereal.client.presentation.tasks
 
 import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.requiredWidth
+import androidx.compose.ui.Modifier
 import androidx.compose.ui.test.ExperimentalTestApi
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsEnabled
 import androidx.compose.ui.test.assertIsNotEnabled
+import androidx.compose.ui.test.getUnclippedBoundsInRoot
 import androidx.compose.ui.test.onAllNodesWithContentDescription
+import androidx.compose.ui.test.onAllNodesWithTag
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithContentDescription
+import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.width
 import com.cereal.client.domain.model.task.JobTask
 import com.cereal.client.domain.model.task.ScriptPackageGroup
 import com.cereal.client.domain.model.task.TaskStatus
@@ -22,6 +31,7 @@ import org.koin.java.KoinJavaComponent
 import testutil.runScreenTest
 import testutil.setScreenContent
 import kotlin.test.Test
+import kotlin.test.assertEquals
 import kotlin.time.Clock
 import kotlin.time.Duration.Companion.milliseconds
 import kotlin.time.ExperimentalTime
@@ -96,6 +106,41 @@ class TasksScreenTest {
             onNodeWithContentDescription("Close").performClick()
             waitUntil { onAllNodesWithText("Task #1").fetchSemanticsNodes().isEmpty() }
         }
+
+    @Test
+    fun clickingAnywhereOnASetupRowCollapsesAndExpandsIt() =
+        runScreenTest {
+            seedOneSetupWithTwoTasks()
+            setScreenContent { TasksScreen() }
+            waitUntil { onAllNodesWithText("Sold out").fetchSemanticsNodes().isNotEmpty() }
+
+            // The task count is plain text on the row, away from the chevron and the name.
+            onNodeWithText("2 tasks").performClick()
+            waitUntil { onAllNodesWithText("Sold out").fetchSemanticsNodes().isEmpty() }
+
+            onNodeWithText("2 tasks").performClick()
+            waitUntil { onAllNodesWithText("Sold out").fetchSemanticsNodes().isNotEmpty() }
+        }
+
+    @Test
+    fun theInspectorTakesAThirdOfTheWidthButNoLessThanItsMinimum() {
+        assertEquals(500.dp, inspectorWidthWhenScreenIs(1500.dp))
+        assertEquals(InspectorMinWidth, inspectorWidthWhenScreenIs(900.dp))
+    }
+
+    private fun inspectorWidthWhenScreenIs(screenWidth: Dp): Dp {
+        var width = 0.dp
+        runScreenTest {
+            seedOneSetupWithTwoTasks()
+            setScreenContent { Box(Modifier.requiredWidth(screenWidth)) { TasksScreen() } }
+            waitUntil { onAllNodesWithText("Sold out").fetchSemanticsNodes().isNotEmpty() }
+
+            onNodeWithText("Sold out").performClick()
+            waitUntil { onAllNodesWithTag(TASK_INSPECTOR_TEST_TAG).fetchSemanticsNodes().isNotEmpty() }
+            width = onNodeWithTag(TASK_INSPECTOR_TEST_TAG).getUnclippedBoundsInRoot().width
+        }
+        return width
+    }
 
     @Test
     fun aSetupsEditEntryIsDisabledWhileItsTasksRun() =

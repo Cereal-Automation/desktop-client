@@ -2,6 +2,7 @@ package com.cereal.client.presentation.tasks
 
 import androidx.compose.foundation.VerticalScrollbar
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -91,48 +92,52 @@ fun TasksScreen(
             onNewTaskSetup = viewModel::onAddScriptClicked,
         )
         // The inspector sits beside the filter bar and list, under the header.
-        Row(Modifier.weight(1.0f).fillMaxWidth()) {
-            Column(Modifier.weight(1.0f).fillMaxHeight()) {
-                (listState as? TaskViewState.ListState.Filled)?.let { state ->
-                    TaskFilterBar(state.chips, state.groupFilter, viewModel::onStatusFilterSelected, viewModel::onGroupFilterSelected)
-                }
-                Box(Modifier.weight(1.0f).fillMaxWidth()) {
-                    when (val state = listState) {
-                        is TaskViewState.ListState.Filled -> {
-                            TaskListContent(state, viewModel)
-                        }
+        // With the inspector open it takes a third of the width (never narrower than its content needs).
+        BoxWithConstraints(Modifier.weight(1.0f).fillMaxWidth()) {
+            val inspectorWidth = maxOf(maxWidth / 3, InspectorMinWidth)
+            Row(Modifier.fillMaxSize()) {
+                Column(Modifier.weight(1.0f).fillMaxHeight()) {
+                    (listState as? TaskViewState.ListState.Filled)?.let { state ->
+                        TaskFilterBar(state.chips, state.groupFilter, viewModel::onStatusFilterSelected, viewModel::onGroupFilterSelected)
+                    }
+                    Box(Modifier.weight(1.0f).fillMaxWidth()) {
+                        when (val state = listState) {
+                            is TaskViewState.ListState.Filled -> {
+                                TaskListContent(state, viewModel)
+                            }
 
-                        TaskViewState.ListState.Empty -> {
-                            TasksEmptyState(
-                                onNewTaskSetup = viewModel::onAddScriptClicked,
-                                onNavigateToHome = onNavigateToHome,
-                            )
-                        }
+                            TaskViewState.ListState.Empty -> {
+                                TasksEmptyState(
+                                    onNewTaskSetup = viewModel::onAddScriptClicked,
+                                    onNavigateToHome = onNavigateToHome,
+                                )
+                            }
 
-                        // Loading is the brief window before the groups first load. Render nothing here so the
-                        // empty-state CTA never flashes ahead of the real list.
-                        TaskViewState.ListState.Loading -> {}
+                            // Loading is the brief window before the groups first load. Render nothing here so the
+                            // empty-state CTA never flashes ahead of the real list.
+                            TaskViewState.ListState.Loading -> {}
+                        }
                     }
                 }
-            }
 
-            viewModel.inspector.value?.let { inspector ->
-                VerticalDivider()
-                val openFileDialog = rememberFileDialogLauncher()
-                TaskInspector(
-                    state = inspector,
-                    events = viewModel.logViewerMessages.value,
-                    artifacts = viewModel.artifacts.value,
-                    onClose = viewModel::closeInspector,
-                    onAction = viewModel::onInspectorAction,
-                    onClearLog = viewModel::clearLogs,
-                    onDownloadArtifact = { artifact ->
-                        openFileDialog(FileDialog.SAVE)?.let { file ->
-                            viewModel.onDownloadArtifact(artifact, file)
-                        }
-                    },
-                    modifier = Modifier.width(InspectorWidth),
-                )
+                viewModel.inspector.value?.let { inspector ->
+                    VerticalDivider()
+                    val openFileDialog = rememberFileDialogLauncher()
+                    TaskInspector(
+                        state = inspector,
+                        events = viewModel.logViewerMessages.value,
+                        artifacts = viewModel.artifacts.value,
+                        onClose = viewModel::closeInspector,
+                        onAction = viewModel::onInspectorAction,
+                        onClearLog = viewModel::clearLogs,
+                        onDownloadArtifact = { artifact ->
+                            openFileDialog(FileDialog.SAVE)?.let { file ->
+                                viewModel.onDownloadArtifact(artifact, file)
+                            }
+                        },
+                        modifier = Modifier.width(inspectorWidth),
+                    )
+                }
             }
         }
     }

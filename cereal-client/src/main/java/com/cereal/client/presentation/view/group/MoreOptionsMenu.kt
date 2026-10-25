@@ -23,11 +23,12 @@ import org.jetbrains.compose.resources.stringResource
 @Composable
 internal fun MoreOptionsMenu(
     tint: Color,
+    buttonModifier: Modifier = Modifier,
     items: @Composable (close: () -> Unit) -> Unit,
 ) {
     var expanded by remember { mutableStateOf(false) }
     Box {
-        CerealIconButton(onClick = { expanded = true }) {
+        CerealIconButton(onClick = { expanded = true }, modifier = buttonModifier) {
             Icon(
                 imageVector = Icons.Filled.MoreHoriz,
                 contentDescription = stringResource(Res.string.more_options),

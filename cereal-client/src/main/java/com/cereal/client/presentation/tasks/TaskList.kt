@@ -14,7 +14,6 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
@@ -129,7 +128,8 @@ internal fun TaskGroupLabel(
     onMenuOptionSelected: (GroupMenuOption) -> Unit,
 ) {
     Row(
-        modifier = Modifier.fillMaxWidth().padding(start = PanePadding, end = 8.dp, top = 18.dp, bottom = 8.dp),
+        // The 28dp "···" sits inside the row, so its hover never spills under the setup card below.
+        modifier = Modifier.fillMaxWidth().padding(start = PanePadding, end = 16.dp, top = 12.dp, bottom = 2.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         SectionLabel(
@@ -137,14 +137,11 @@ internal fun TaskGroupLabel(
             contentPadding = PaddingValues(),
         )
         Spacer(Modifier.weight(1f))
-        // Takes no height, so the 40dp button overhangs the label's padding instead of stretching the line.
-        Box(Modifier.height(0.dp).wrapContentHeight(unbounded = true)) {
-            MoreOptionsMenu(tint = CerealTheme.colorScheme.contentSubtle) { close ->
-                GroupMenuOption.entries.forEach { option ->
-                    MenuItem(stringResource(option.label)) {
-                        close()
-                        onMenuOptionSelected(option)
-                    }
+        MoreOptionsMenu(tint = CerealTheme.colorScheme.contentSubtle, buttonModifier = Modifier.size(28.dp)) { close ->
+            GroupMenuOption.entries.forEach { option ->
+                MenuItem(stringResource(option.label)) {
+                    close()
+                    onMenuOptionSelected(option)
                 }
             }
         }
@@ -162,8 +159,16 @@ internal fun TaskSetupRow(
     onIncreaseTasks: () -> Unit,
     onMenuOptionSelected: (SetupMenuOption) -> Unit,
 ) {
+    // The whole row toggles collapse; its buttons (stepper, Start/Stop all, "···") keep their own clicks.
+    // The highlight follows the card's rounded top, and its rounded bottom while the setup is collapsed.
+    val bottomRadius = if (section.expanded) 0.dp else CardRadius
     Row(
-        modifier = Modifier.fillMaxWidth().padding(start = 12.dp, top = 10.dp, end = 8.dp, bottom = 10.dp),
+        modifier =
+            Modifier
+                .fillMaxWidth()
+                .clip(RoundedCornerShape(CardRadius, CardRadius, bottomRadius, bottomRadius))
+                .clickable(onClick = onToggleExpanded)
+                .padding(start = 12.dp, top = 10.dp, end = 8.dp, bottom = 10.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(10.dp),
     ) {
@@ -176,7 +181,7 @@ internal fun TaskSetupRow(
             )
         }
         SetupAvatar(section.name)
-        Column(modifier = Modifier.weight(1f).clickable(onClick = onToggleExpanded)) {
+        Column(modifier = Modifier.weight(1f)) {
             CerealText(text = section.name, style = CerealTypography.rowTitle, color = MaterialTheme.colorScheme.onSurface, maxLines = 1)
             if (!section.subtitle.isNullOrEmpty()) {
                 CerealText(
