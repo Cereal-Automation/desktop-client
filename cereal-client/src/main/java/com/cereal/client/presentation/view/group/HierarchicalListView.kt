@@ -307,8 +307,6 @@ private fun <P, C> GroupHeaderRow(
     onMenuOptionClick: (com.cereal.client.presentation.tasks.MenuOption) -> Unit,
     onToggle: () -> Unit,
 ) {
-    var menuExpanded by remember { mutableStateOf(false) }
-
     Row(
         modifier =
             Modifier
@@ -351,30 +349,7 @@ private fun <P, C> GroupHeaderRow(
         Spacer(Modifier.weight(1f))
 
         if (menuOptions.isNotEmpty()) {
-            Box {
-                CerealIconButton(onClick = { menuExpanded = true }) {
-                    Icon(
-                        imageVector = Icons.Filled.MoreHoriz,
-                        contentDescription = stringResource(Res.string.more_options),
-                        modifier = Modifier.size(18.dp),
-                        tint = CerealTheme.colorScheme.contentSubtle,
-                    )
-                }
-                DropdownMenu(
-                    expanded = menuExpanded,
-                    onDismissRequest = { menuExpanded = false },
-                ) {
-                    menuOptions.forEach { option ->
-                        DropdownMenuItem(
-                            text = { CerealText(stringResource(option.stringResource)) },
-                            onClick = {
-                                onMenuOptionClick(option)
-                                menuExpanded = false
-                            },
-                        )
-                    }
-                }
-            }
+            MoreOptionsMenu(menuOptions, onMenuOptionClick, tint = CerealTheme.colorScheme.contentSubtle)
         }
     }
 }
