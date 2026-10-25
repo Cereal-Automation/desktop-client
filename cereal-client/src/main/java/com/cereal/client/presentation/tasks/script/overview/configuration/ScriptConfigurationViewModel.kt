@@ -19,7 +19,6 @@ import com.cereal.client.domain.model.script.configuration.ConfigSection
 import com.cereal.client.domain.model.script.configuration.ConfigurationItem
 import com.cereal.client.domain.model.script.configuration.ListRows
 import com.cereal.client.domain.model.script.configuration.ScriptConfigurationItemDefinition
-import com.cereal.client.domain.model.script.configuration.isGroup
 import com.cereal.client.domain.model.script.entryInstructions
 import com.cereal.client.domain.model.script.entryName
 import com.cereal.client.presentation.error.ErrorResolver
@@ -54,7 +53,6 @@ class ScriptConfigurationViewModel(
     private val readListFileInteractor: ReadListFileInteractor,
 ) {
     val scriptConfigurationForm: MutableState<ConfigurationItemsForm?> = mutableStateOf(null)
-    val showConcurrentTasks: MutableState<Boolean> = mutableStateOf(false)
     val notificationOverridesForm = NotificationOverridesForm()
     val showIndicatesRequiredFieldsHint = mutableStateOf(true)
     val errorAction = errorResolver.errorAction
@@ -101,10 +99,6 @@ class ScriptConfigurationViewModel(
                 variantId = variantId,
             ),
         ) { result ->
-            val allItems =
-                result.mainConfiguration +
-                    result.childConfigurations.values.flatten()
-            showConcurrentTasks.value = allItems.any { it.definition.type.isGroup }
             scriptConfigurationForm.value =
                 ConfigurationItemsForm(
                     mainConfiguration = result.mainConfiguration,
@@ -317,10 +311,7 @@ class ScriptConfigurationViewModel(
 
     private fun validateConfigurationForm(): Boolean {
         val form = scriptConfigurationForm.value ?: return true
-        val fields =
-            form
-                .getAllFormFieldStates()
-                .filter { it != form.numberOfConcurrentTasks || showConcurrentTasks.value }
+        val fields = form.getAllFormFieldStates()
         var isValid = true
 
         fields.forEach {

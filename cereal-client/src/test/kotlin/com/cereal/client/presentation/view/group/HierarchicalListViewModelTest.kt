@@ -12,7 +12,6 @@ class HierarchicalListViewModelTest {
     private val childSelections = mutableListOf<String?>()
     private val parentMenu = mutableListOf<Pair<String, MenuOption>>()
     private val childMenu = mutableListOf<Pair<String, MenuOption>>()
-    private val addChildClicks = mutableListOf<String>()
 
     private fun createViewModel() =
         HierarchicalListViewModel<String, String>(
@@ -22,7 +21,6 @@ class HierarchicalListViewModelTest {
             onChildSelectedChange = { childSelections.add(it) },
             onParentMenuOptionSelected = { item, option -> parentMenu.add(item to option) },
             onChildMenuOptionSelected = { item, option -> childMenu.add(item to option) },
-            onAddChildClicked = { addChildClicks.add(it) },
         )
 
     private fun content(id: String) = GroupListItemContent(id = id, title = "Title $id")
@@ -164,18 +162,16 @@ class HierarchicalListViewModelTest {
     }
 
     @Test
-    fun `menu and add-child callbacks are forwarded`() {
+    fun `menu callbacks are forwarded`() {
         val viewModel = createViewModel()
         val parentItem = HierarchicalListItem.Parent<String, String>(content("p1"), emptyList(), expanded = true, selected = false)
         val childItem = HierarchicalListItem.Child(content("c1"), parentId = "p1", selected = false)
 
         viewModel.onParentMenuOptionClick(parentItem, MenuOption.EDIT)
         viewModel.onChildMenuOptionClick(childItem, MenuOption.DELETE)
-        viewModel.onAddChildClick(parentItem)
 
         assertEquals(listOf("p1" to MenuOption.EDIT), parentMenu)
         assertEquals(listOf("c1" to MenuOption.DELETE), childMenu)
-        assertEquals(listOf("p1"), addChildClicks)
     }
 
     @Test

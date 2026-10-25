@@ -25,6 +25,12 @@ interface ScriptInstanceRepository {
         newGroupId: String,
     )
 
+    /**
+     * Replaces the configuration of a stored setup: main and child configurations, number of concurrent tasks and
+     * notification overrides. Its id, group and createdAt keep their stored values.
+     */
+    suspend fun updateScriptPackageInstance(scriptPackageInstance: ScriptPackageInstance)
+
     suspend fun addScriptPackageInstance(
         groupId: String,
         scriptPackageInstance: ScriptPackageInstance,

@@ -140,6 +140,9 @@ interface ScriptInstanceDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertScriptConfigurations(entities: List<ScriptConfigurationEntity>)
 
+    @Query("DELETE FROM script_configuration WHERE package_id = :packageId")
+    suspend fun deleteScriptConfigurationsByPackageId(packageId: UUID)
+
     // Script Configuration Item operations
     @Query("SELECT * FROM script_configuration_item WHERE configuration_id = :configurationId")
     suspend fun getScriptConfigurationItemsByConfigurationId(configurationId: UUID): List<ScriptConfigurationItemEntity>

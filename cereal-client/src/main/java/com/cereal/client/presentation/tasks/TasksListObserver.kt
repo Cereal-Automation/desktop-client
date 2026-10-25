@@ -47,13 +47,8 @@ class TasksListObserver(
                 withContext(dispatcherProvider.main) {
                     mappedResult.handleFailureOrElse(errorResolver) { taskGroupsUi ->
                         // Update hierarchical list with groups (parents will be updated with children later)
-                        updateHierarchicalList(scope, taskGroupsUi, hierarchicalListViewModel)
-
-                        if (taskGroupsUi.isEmpty()) {
-                            onGroupsStateChanged(TaskViewState.GroupViewState.Empty)
-                        } else {
-                            onGroupsStateChanged(TaskViewState.GroupViewState.Filled(hierarchicalListViewModel))
-                        }
+                        updateHierarchicalList(scope, taskGroupsUi, hierarchicalListViewModel, onGroupsStateChanged)
+                        groupsState(taskGroupsUi, hierarchicalListViewModel)?.let(onGroupsStateChanged)
                     }
                 }
             }
@@ -64,6 +59,7 @@ class TasksListObserver(
         scope: CoroutineScope,
         groups: List<GroupListItemContent<ScriptPackageGroup>>,
         hierarchicalListViewModel: HierarchicalListViewModel<ScriptPackageGroup, ScriptPackageInstance>,
+        onGroupsStateChanged: (TaskViewState.GroupViewState) -> Unit,
     ) {
         // Cancel previous jobs
         getScriptsInGroupInteractorJob?.cancel()
@@ -112,6 +108,7 @@ class TasksListObserver(
                                             childrenByGroupState.toMap(),
                                             true,
                                         )
+                                        groupsState(groups, hierarchicalListViewModel)?.let(onGroupsStateChanged)
                                     }
                                 }
                             }
@@ -119,6 +116,21 @@ class TasksListObserver(
                 }
             }
     }
+
+    /**
+     * Empty while there are no task setups (unless the user made extra groups to show), Filled otherwise.
+     * Null until every group's setups have loaded, so the empty state never flashes ahead of the list.
+     */
+    private fun groupsState(
+        groups: List<GroupListItemContent<ScriptPackageGroup>>,
+        hierarchicalListViewModel: HierarchicalListViewModel<ScriptPackageGroup, ScriptPackageInstance>,
+    ): TaskViewState.GroupViewState? =
+        when {
+            groups.isEmpty() -> TaskViewState.GroupViewState.Empty
+            groups.any { it.id !in childrenByGroupState } -> null
+            groups.size == 1 && childrenByGroupState.values.all { it.isEmpty() } -> TaskViewState.GroupViewState.Empty
+            else -> TaskViewState.GroupViewState.Filled(hierarchicalListViewModel)
+        }
 
     fun observeTasks(
         scope: CoroutineScope,

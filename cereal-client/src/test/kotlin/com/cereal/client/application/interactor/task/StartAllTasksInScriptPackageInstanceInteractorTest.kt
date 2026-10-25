@@ -21,11 +21,7 @@ class StartAllTasksInScriptPackageInstanceInteractorTest {
     // interactor delegates start-to-concurrency-limit once per script instance.
     private val taskManager = mockk<TaskManager>(relaxed = true)
 
-    /**
-     * The shared [InMemoryScriptInstanceRepository.getScriptInstances] always returns empty, which
-     * would make the happy path indistinguishable from a no-op. We delegate to it and return a
-     * caller-provided set of script instances instead.
-     */
+    /** Returns a caller-provided set of script instances, so a test controls exactly what gets started. */
     private class FixedScriptInstancesRepository(
         private val scriptInstances: List<ScriptInstance>,
         private val delegate: InMemoryScriptInstanceRepository = InMemoryScriptInstanceRepository(),

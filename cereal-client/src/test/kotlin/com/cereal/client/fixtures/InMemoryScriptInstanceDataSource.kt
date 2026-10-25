@@ -111,6 +111,21 @@ class InMemoryScriptInstanceDataSource : ScriptInstanceDataSource {
             packageInstances.value + (user.id to (userInstances + (scriptPackageInstance.id to updated)))
     }
 
+    override suspend fun updateScriptPackageInstance(
+        user: User,
+        scriptPackageInstance: ScriptPackageInstance,
+    ) {
+        val userInstances = packageInstances.value[user.id].orEmpty()
+        val existing = userInstances[scriptPackageInstance.id] ?: return
+        val updated =
+            existing.copy(
+                instance = scriptPackageInstance,
+                main = existing.main.copy(configuration = scriptPackageInstance.mainConfiguration, packageInstance = scriptPackageInstance),
+            )
+        packageInstances.value =
+            packageInstances.value + (user.id to (userInstances + (scriptPackageInstance.id to updated)))
+    }
+
     override suspend fun addScriptPackageInstance(
         user: User,
         scriptPackageInstance: ScriptPackageInstance,

@@ -7,9 +7,11 @@ import com.cereal.client.application.interactor.notification.HasNotificationChan
 import com.cereal.client.application.interactor.script.GetScriptCapacityInteractor
 import com.cereal.client.application.interactor.script.GetScriptsInteractor
 import com.cereal.client.application.interactor.script.GetSdkVersionInteractor
+import com.cereal.client.application.interactor.script.NumberOfConcurrentTasksConflictException
 import com.cereal.client.application.interactor.script.StartScriptInteractor
 import com.cereal.client.application.interactor.script.SyncScriptsOnScriptSelectionInteractor
 import com.cereal.client.application.interactor.settings.ai.HasLlmProviderConfigInteractor
+import com.cereal.client.application.interactor.task.UpdateScriptPackageInstanceInteractor
 import com.cereal.client.application.script.ScriptLicenseChecker
 import com.cereal.client.domain.model.llm.LlmProviderConfig
 import com.cereal.client.domain.model.llm.LlmProviderType
@@ -65,6 +67,7 @@ class ScriptSelectionViewModelTest {
     private val getSdkVersionInteractor: GetSdkVersionInteractor = mockk(relaxed = true)
     private val syncScriptsOnScriptSelectionInteractor: SyncScriptsOnScriptSelectionInteractor = mockk(relaxed = true)
     private val startScriptInteractor: StartScriptInteractor = mockk(relaxed = true)
+    private val updateScriptPackageInstanceInteractor: UpdateScriptPackageInstanceInteractor = mockk(relaxed = true)
     private val hasNotificationChannelsConfiguredInteractor: HasNotificationChannelsConfiguredInteractor = mockk(relaxed = true)
     private val llmProviderConfigRepository = InMemoryLlmProviderConfigRepository()
     private val errorResolver: ErrorResolver = mockk(relaxed = true)
@@ -100,25 +103,30 @@ class ScriptSelectionViewModelTest {
         stopKoin()
     }
 
-    private fun createViewModel(initialPublicIdentifier: String? = null) =
-        ScriptSelectionViewModel(
-            scope = CoroutineScope(dispatcher),
-            scriptPackageGroup = group,
-            initialScriptPackageInstance = null,
-            initialRequest = initialPublicIdentifier?.let(::ScriptRequest),
-            dispatcherProvider = dispatcherProvider,
-            getScriptsInteractor = getScriptsInteractor,
-            getScriptCapacityInteractor =
-                GetScriptCapacityInteractor(
-                    ScriptLicenseChecker(InMemoryAuthProvider(subscriptions = subscriptions), preferences),
-                ),
-            getSdkVersionInteractor = getSdkVersionInteractor,
-            syncScriptsOnScriptSelectionInteractor = syncScriptsOnScriptSelectionInteractor,
-            startScriptInteractor = startScriptInteractor,
-            hasNotificationChannelsConfiguredInteractor = hasNotificationChannelsConfiguredInteractor,
-            hasLlmProviderConfigInteractor = HasLlmProviderConfigInteractor(llmProviderConfigRepository),
-            errorResolver = errorResolver,
-        )
+    private fun createViewModel(
+        initialPublicIdentifier: String? = null,
+        initialScriptPackageInstance: ScriptPackageInstance? = null,
+        editing: Boolean = false,
+    ) = ScriptSelectionViewModel(
+        scope = CoroutineScope(dispatcher),
+        scriptPackageGroup = group,
+        initialScriptPackageInstance = initialScriptPackageInstance,
+        initialRequest = initialPublicIdentifier?.let(::ScriptRequest),
+        editing = editing,
+        dispatcherProvider = dispatcherProvider,
+        getScriptsInteractor = getScriptsInteractor,
+        getScriptCapacityInteractor =
+            GetScriptCapacityInteractor(
+                ScriptLicenseChecker(InMemoryAuthProvider(subscriptions = subscriptions), preferences),
+            ),
+        getSdkVersionInteractor = getSdkVersionInteractor,
+        syncScriptsOnScriptSelectionInteractor = syncScriptsOnScriptSelectionInteractor,
+        startScriptInteractor = startScriptInteractor,
+        updateScriptPackageInstanceInteractor = updateScriptPackageInstanceInteractor,
+        hasNotificationChannelsConfiguredInteractor = hasNotificationChannelsConfiguredInteractor,
+        hasLlmProviderConfigInteractor = HasLlmProviderConfigInteractor(llmProviderConfigRepository),
+        errorResolver = errorResolver,
+    )
 
     private fun stubSdkVersion(version: SemVer) {
         val callbackSlot = slot<suspend (SuspendableResult<SemVer, Exception>) -> Unit>()
@@ -303,6 +311,37 @@ class ScriptSelectionViewModelTest {
         val viewModel = createViewModel(initialPublicIdentifier = "com.example.ai")
         dispatcher.scheduler.advanceUntilIdle()
         return viewModel
+    }
+
+    @Test
+    fun `saving an edit asks to confirm a concurrency conflict, then saves the setup accepting it`() {
+        val setup = fixtures.aScriptPackageInstance("setup-1", "com.example.ai")
+        coEvery { getScriptsInteractor(any()) } returns flowOf(SuspendableResult.Success(listOf(aScriptPackage("com.example.ai", "AI"))))
+        val saved = slot<UpdateScriptPackageInstanceInteractor.Params>()
+        coEvery { updateScriptPackageInstanceInteractor(capture(saved), any()) } coAnswers {
+            val result: SuspendableResult<ScriptPackageInstance, Exception> =
+                if (firstArg<UpdateScriptPackageInstanceInteractor.Params>().ignoreConcurrencyConflicts) {
+                    SuspendableResult.Success(setup)
+                } else {
+                    SuspendableResult.Failure(NumberOfConcurrentTasksConflictException(setup.numberOfConcurrentTasks, emptyList(), null))
+                }
+            secondArg<suspend (SuspendableResult<ScriptPackageInstance, Exception>) -> Unit>()(result)
+        }
+        val viewModel = createViewModel(initialScriptPackageInstance = setup, editing = true)
+        dispatcher.scheduler.advanceUntilIdle()
+
+        viewModel.saveEdit()
+        dispatcher.scheduler.advanceUntilIdle()
+
+        assertNotNull(viewModel.startScriptWarningConfirmation.value)
+        assertNull(viewModel.scriptInstanceStarted.value)
+
+        viewModel.onStartScriptWarningConfirmationAccepted()
+        dispatcher.scheduler.advanceUntilIdle()
+
+        assertEquals("setup-1", saved.captured.scriptPackageInstance.id)
+        assertEquals(setup, viewModel.scriptInstanceStarted.value)
+        coVerify(exactly = 0) { startScriptInteractor(any(), any()) }
     }
 
     private fun launch(viewModel: ScriptSelectionViewModel) {

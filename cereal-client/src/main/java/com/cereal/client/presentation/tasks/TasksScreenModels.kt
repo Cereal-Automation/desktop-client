@@ -27,15 +27,18 @@ internal data class TaskCounts(
 
 @Immutable
 internal data class TaskQuickActionsState(
-    val startAllEnabled: Boolean,
-    val stopAllEnabled: Boolean,
-    val restartErroredEnabled: Boolean,
+    val counts: TaskCounts,
     val filter: TaskFilter,
+    /** One toggle: Stop all while any task runs, otherwise Start all; hidden when there is nothing to start. */
+    val showStopAll: Boolean,
+    val showStartAll: Boolean,
+    val showRestartErrored: Boolean,
+    val restartErroredEnabled: Boolean,
 )
 
 @Stable
 internal class TaskQuickActionsCallbacks(
-    val onFilterChange: (TaskFilter) -> Unit,
+    val onStatusChipClick: (TaskFilter) -> Unit,
     val onStartAll: () -> Unit,
     val onStopAll: () -> Unit,
     val onRestartErrored: () -> Unit,
@@ -47,7 +50,7 @@ internal fun TaskFilter.matches(task: TaskUiModel): Boolean =
         TaskFilter.RUNNING -> task.isRunning
         TaskFilter.ERROR -> task.isError
         TaskFilter.SUCCESS -> task.isSuccess
-        TaskFilter.IDLE -> !task.isRunning && !task.isError && !task.isSuccess
+        TaskFilter.IDLE -> task.isIdle
     }
 
 internal fun TaskFilter.labelRes() =
@@ -58,3 +61,10 @@ internal fun TaskFilter.labelRes() =
         TaskFilter.SUCCESS -> Res.string.success
         TaskFilter.ERROR -> Res.string.errored
     }
+
+/** The detail header's `− count +` stepper for the selected setup's number of concurrent tasks. */
+data class ConcurrentTaskStepperState(
+    val count: Int,
+    val canDecrease: Boolean,
+    val canIncrease: Boolean,
+)

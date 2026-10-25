@@ -11,6 +11,7 @@ import com.cereal.client.application.interactor.script.StartScriptInteractor
 import com.cereal.client.application.interactor.settings.ai.HasLlmProviderConfigInteractor
 import com.cereal.client.application.script.ScriptInstanceFactory
 import com.cereal.client.application.script.ScriptLicenseChecker
+import com.cereal.client.application.script.TaskSetupLimits
 import com.cereal.client.domain.model.ScopeLinker
 import com.cereal.client.domain.model.script.ScriptCapacity
 import com.cereal.client.domain.model.script.ScriptEntitlement
@@ -131,10 +132,11 @@ class ScriptSelectionViewModelVariantTest {
             StartScriptInteractor(
                 scriptInstanceRepository = scriptInstanceRepository,
                 taskManager = mockk(relaxed = true),
-                scriptLicenseChecker = ScriptLicenseChecker(authProvider, preferences),
+                taskSetupLimits = TaskSetupLimits(ScriptLicenseChecker(authProvider, preferences)),
                 applicationRepository = InMemoryApplicationRepository(),
                 scriptInstanceFactory = ScriptInstanceFactory(noOpScopeLinker),
             ),
+        updateScriptPackageInstanceInteractor = mockk(relaxed = true),
         hasNotificationChannelsConfiguredInteractor = HasNotificationChannelsConfiguredInteractor(InMemoryNotificationSettingsRepository()),
         hasLlmProviderConfigInteractor = HasLlmProviderConfigInteractor(InMemoryLlmProviderConfigRepository()),
         errorResolver = ErrorResolver(),

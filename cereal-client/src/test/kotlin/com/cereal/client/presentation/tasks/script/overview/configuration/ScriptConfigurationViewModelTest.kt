@@ -103,7 +103,6 @@ class ScriptConfigurationViewModelTest {
         dispatcher.scheduler.advanceUntilIdle()
 
         assertNotNull(viewModel.scriptConfigurationForm.value)
-        assertFalse(viewModel.showConcurrentTasks.value)
     }
 
     @Test

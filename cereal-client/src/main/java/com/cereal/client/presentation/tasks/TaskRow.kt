@@ -18,7 +18,11 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ripple
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -29,6 +33,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.cereal.client.domain.model.task.UserInteraction
+import com.cereal.client.presentation.notification.formatRelativeTime
 import com.cereal.client.presentation.tasks.model.TaskUiModel
 import com.cereal.client.presentation.theme.CerealTheme
 import com.cereal.client.presentation.view.ActivityIndicator
@@ -44,10 +49,17 @@ import com.cereal_automation.cereal_client.generated.resources.continue_task
 import com.cereal_automation.cereal_client.generated.resources.ic_play
 import com.cereal_automation.cereal_client.generated.resources.ic_stop
 import com.cereal_automation.cereal_client.generated.resources.report_issue
+import com.cereal_automation.cereal_client.generated.resources.seconds_ago
 import com.cereal_automation.cereal_client.generated.resources.start_task
 import com.cereal_automation.cereal_client.generated.resources.stop_task
+import com.cereal_automation.cereal_client.generated.resources.task_ready
+import kotlinx.coroutines.delay
 import org.jetbrains.compose.resources.painterResource
 import org.jetbrains.compose.resources.stringResource
+import kotlin.time.Clock
+import kotlin.time.Duration.Companion.seconds
+import kotlin.time.ExperimentalTime
+import kotlin.time.Instant
 
 private val RowSelectedBg = Color(0xFF1F1F1F)
 
@@ -71,7 +83,8 @@ internal fun TaskRow(
                 .background(if (isSelected) RowSelectedBg else Color.Transparent)
                 .clickable(
                     onClick = onRowClick,
-                    indication = ripple(color = accent),
+                    // Neutral indication: a red ripple/focus overlay made the selected row look errored.
+                    indication = ripple(),
                     interactionSource = interactionSource,
                 ),
     ) {
@@ -108,8 +121,9 @@ internal fun TaskRow(
 
             Column(modifier = Modifier.weight(1f)) {
                 CerealText(
-                    text = taskItem.message,
-                    color = MaterialTheme.colorScheme.onSurface,
+                    // An idle task's status message ("Press start") stays in its status history.
+                    text = if (taskItem.isIdle) stringResource(Res.string.task_ready) else taskItem.message,
+                    color = if (taskItem.isIdle) CerealTheme.colorScheme.contentTertiary else MaterialTheme.colorScheme.onSurface,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
                     style =
@@ -131,6 +145,8 @@ internal fun TaskRow(
                     )
                 }
             }
+
+            TimeSince(taskItem.statusSince)
 
             if (taskItem.isRunning) {
                 ActivityIndicator(size = 18.dp)
@@ -190,6 +206,31 @@ internal fun TaskRow(
                     .background(CerealTheme.colorScheme.progressTrack),
         )
     }
+}
+
+/** Time since [since]: seconds under a minute ("12s ago"), then [formatRelativeTime]; re-rendered every second. */
+@OptIn(ExperimentalTime::class)
+@Composable
+private fun TimeSince(since: Instant) {
+    var now by remember { mutableStateOf(Clock.System.now()) }
+    LaunchedEffect(since) {
+        while (true) {
+            now = Clock.System.now()
+            delay(1.seconds)
+        }
+    }
+    val elapsed = now - since
+    CerealText(
+        text =
+            if (elapsed.inWholeMinutes < 1) {
+                stringResource(Res.string.seconds_ago, elapsed.inWholeSeconds.coerceAtLeast(0))
+            } else {
+                formatRelativeTime(since.toEpochMilliseconds(), now.toEpochMilliseconds())
+            },
+        color = CerealTheme.colorScheme.contentTertiary,
+        maxLines = 1,
+        style = MaterialTheme.typography.labelMedium,
+    )
 }
 
 @Composable

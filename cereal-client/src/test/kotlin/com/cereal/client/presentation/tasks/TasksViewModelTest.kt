@@ -156,6 +156,8 @@ class TasksViewModelTest {
             openUrlInteractor,
             observeArtifactsInteractor,
             saveArtifactToFileInteractor,
+            LastSelectedTaskSetup(),
+            mockk(relaxed = true),
         )
     }
 
@@ -174,18 +176,6 @@ class TasksViewModelTest {
             // Regression: this used to be Empty, which renders the full "create your first
             // group" CTA before the real groups arrive — the entry flicker the user reported.
             assertIs<TaskViewState.GroupViewState.Loading>(viewModel.hierarchicalListState.value)
-        }
-
-    @Test
-    fun `groups list becomes Filled once groups load`() =
-        runTest {
-            coEvery { getTaskGroupsInteractor(any()) } returns
-                flowOf(SuspendableResult.Success(listOf(ScriptPackageGroup("1", "Group 1"))))
-
-            createViewModel()
-            dispatcher.scheduler.advanceUntilIdle()
-
-            assertIs<TaskViewState.GroupViewState.Filled<*, *>>(viewModel.hierarchicalListState.value)
         }
 
     @Test
@@ -365,6 +355,8 @@ class TasksViewModelTest {
                     status = "Error",
                     configuration = "",
                     stackTrace = "java.lang.Exception: Error occurred",
+                    isIdle = false,
+                    statusSince = Clock.System.now(),
                 )
 
             val slot = slot<ReportScriptIssueInteractor.Params>()
@@ -426,6 +418,8 @@ class TasksViewModelTest {
                     status = "Error",
                     configuration = "",
                     stackTrace = null,
+                    isIdle = false,
+                    statusSince = Clock.System.now(),
                 )
 
             coEvery { reportScriptIssueInteractor(any(), any()) } returns Unit
@@ -444,11 +438,12 @@ class TasksViewModelTest {
             // Arrange
             val group = ScriptPackageGroup("1", "Group 1", 0)
             val groupWithScript = ScriptPackageGroup("1", "Group 1", 1) // Count updated
+            val otherGroup = ScriptPackageGroup("2", "Group 2", 0) // Group headers only show with 2+ groups
 
             // Use a MutableSharedFlow to control emissions
             val taskGroupsFlow =
                 kotlinx.coroutines.flow.MutableSharedFlow<SuspendableResult<List<ScriptPackageGroup>, Exception>>(replay = 1)
-            taskGroupsFlow.emit(SuspendableResult.Success(listOf(group)))
+            taskGroupsFlow.emit(SuspendableResult.Success(listOf(group, otherGroup)))
             coEvery { getTaskGroupsInteractor(any()) } returns taskGroupsFlow
 
             // Scripts flow that DOES NOT emit initially (simulating delay)
@@ -460,18 +455,18 @@ class TasksViewModelTest {
             dispatcher.scheduler.advanceUntilIdle()
 
             // Initial check
-            assertEquals(1, viewModel.hierarchicalListViewModel.state.value.size)
+            assertEquals(2, viewModel.hierarchicalListViewModel.state.value.size)
             assertEquals(
                 "0",
                 (viewModel.hierarchicalListViewModel.state.value[0] as HierarchicalListItem.Parent).content.badge,
             )
 
             // Act - Update groups (simulate script added)
-            taskGroupsFlow.emit(SuspendableResult.Success(listOf(groupWithScript)))
+            taskGroupsFlow.emit(SuspendableResult.Success(listOf(groupWithScript, otherGroup)))
             dispatcher.scheduler.advanceUntilIdle()
 
             // Assert - Badge should be "1" IMMEDIATELY, even though scriptsFlow hasn't emitted yet
-            assertEquals(1, viewModel.hierarchicalListViewModel.state.value.size)
+            assertEquals(2, viewModel.hierarchicalListViewModel.state.value.size)
             assertEquals(
                 "1",
                 (viewModel.hierarchicalListViewModel.state.value[0] as HierarchicalListItem.Parent).content.badge,
@@ -527,6 +522,8 @@ class TasksViewModelTest {
                     openUrlInteractor,
                     observeArtifactsInteractor,
                     saveArtifactToFileInteractor,
+                    LastSelectedTaskSetup(),
+                    mockk(relaxed = true),
                 )
 
             vm.onTaskSelected(task)
@@ -618,6 +615,8 @@ class TasksViewModelTest {
                     openUrlInteractor,
                     observeArtifactsInteractor,
                     saveArtifactToFileInteractor,
+                    LastSelectedTaskSetup(),
+                    mockk(relaxed = true),
                 )
 
             vm.onTaskSelected(task)
@@ -641,6 +640,8 @@ class TasksViewModelTest {
         status = "Idle",
         configuration = "",
         stackTrace = null,
+        isIdle = true,
+        statusSince = Clock.System.now(),
     )
 
     @Test
@@ -949,16 +950,6 @@ class TasksViewModelTest {
     }
 
     @Test
-    fun `add-child click opens script selection for the group`() {
-        createViewModel()
-        val group = ScriptPackageGroup("1", "Group 1")
-
-        viewModel.hierarchicalListViewModel.onAddChildClick(parentItem(group))
-
-        assertIs<TaskViewState.DialogState.SelectingScript>(viewModel.dialogState.value)
-    }
-
-    @Test
     fun `selecting and deselecting a group runs the selection callbacks`() {
         createViewModel()
         val group = ScriptPackageGroup("1", "Group 1")
@@ -1020,8 +1011,11 @@ class TasksViewModelTest {
         createViewModel()
         dispatcher.scheduler.advanceUntilIdle()
 
-        val parent = viewModel.hierarchicalListViewModel.state.value[0] as HierarchicalListItem.Parent
-        assertEquals(listOf("Checkout"), parent.children.map { it.content.title })
+        // A single group is shown flat, so the instance summaries are the top-level rows.
+        val children =
+            viewModel.hierarchicalListViewModel.state.value
+                .filterIsInstance<HierarchicalListItem.Child<*, *>>()
+        assertEquals(listOf("Checkout"), children.map { it.content.title })
     }
 
     private fun aVariantInstance() =

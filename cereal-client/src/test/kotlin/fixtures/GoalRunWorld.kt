@@ -9,6 +9,7 @@ import com.cereal.client.application.interactor.task.GetOrCreateDefaultTaskGroup
 import com.cereal.client.application.interactor.task.StartAllTasksInScriptPackageInstanceInteractor
 import com.cereal.client.application.script.ScriptInstanceFactory
 import com.cereal.client.application.script.ScriptLicenseChecker
+import com.cereal.client.application.script.TaskSetupLimits
 import com.cereal.client.application.task.TaskManager
 import com.cereal.client.domain.model.ScopeLinker
 import com.cereal.client.domain.model.script.MainScriptInstance
@@ -56,10 +57,12 @@ class GoalRunWorld {
         StartScriptInteractor(
             scriptInstanceRepository = scriptInstances,
             taskManager = taskManager,
-            scriptLicenseChecker =
-                ScriptLicenseChecker(
-                    InMemoryAuthProvider(subscriptions = listOf(agentSubscription())),
-                    InMemoryApplicationPreferenceRepository(),
+            taskSetupLimits =
+                TaskSetupLimits(
+                    ScriptLicenseChecker(
+                        InMemoryAuthProvider(subscriptions = listOf(agentSubscription())),
+                        InMemoryApplicationPreferenceRepository(),
+                    ),
                 ),
             applicationRepository = InMemoryApplicationRepository(),
             scriptInstanceFactory = ScriptInstanceFactory(noOpScopeLinker),

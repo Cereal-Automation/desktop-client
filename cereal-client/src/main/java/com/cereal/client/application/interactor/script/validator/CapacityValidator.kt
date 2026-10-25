@@ -14,7 +14,7 @@ import com.cereal.client.domain.model.script.entry
  * size — `mainScript.configuration.groupedConfigurationDefinition()` resolved against the configured
  * value's [Group.numberOfItems] — or `0` when the main script has no grouped dataset (nothing to cap).
  * The capacity unit maps to the records of that primary dataset, the same figure
- * [ScriptConcurrencyValidator] treats as the run's record pool.
+ * [com.cereal.client.domain.model.script.ScriptConcurrencyValidator] treats as the run's record pool.
  *
  * Child grouped datasets are intentionally **excluded**: they are secondary configurations, and summing
  * heterogeneous datasets against a single "records" entitlement would over-count. Revisit here if the

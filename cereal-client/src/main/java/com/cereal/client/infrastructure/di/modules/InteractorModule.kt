@@ -97,10 +97,12 @@ import com.cereal.client.application.interactor.task.EditScriptInstanceGroupInte
 import com.cereal.client.application.interactor.task.GetOrCreateDefaultTaskGroupInteractor
 import com.cereal.client.application.interactor.task.GetTaskGroupsInteractor
 import com.cereal.client.application.interactor.task.ObserveTasksInteractor
+import com.cereal.client.application.interactor.task.SetConcurrentTaskCountInteractor
 import com.cereal.client.application.interactor.task.StartAllTasksInScriptPackageInstanceInteractor
 import com.cereal.client.application.interactor.task.StartTaskInteractor
 import com.cereal.client.application.interactor.task.StopTaskInteractor
 import com.cereal.client.application.interactor.task.StopTasksInScriptPackageInstanceInteractor
+import com.cereal.client.application.interactor.task.UpdateScriptPackageInstanceInteractor
 import com.cereal.client.application.interactor.task.UserInteractionDismissedInteractor
 import com.cereal.client.application.script.GitHubIssueUrlBuilder
 import org.koin.dsl.module
@@ -148,6 +150,8 @@ object InteractorModule {
             factory { StartTaskInteractor(get()) }
             factory { StopTaskInteractor(get()) }
             factory { StopTasksInScriptPackageInstanceInteractor(get(), get()) }
+            factory { UpdateScriptPackageInstanceInteractor(get(), get(), get(), get()) }
+            factory { SetConcurrentTaskCountInteractor(get(), get(), get(), get()) }
             factory { StartAllTasksInScriptPackageInstanceInteractor(get(), get()) }
             factory { UserInteractionDismissedInteractor(get()) }
             // Proxies

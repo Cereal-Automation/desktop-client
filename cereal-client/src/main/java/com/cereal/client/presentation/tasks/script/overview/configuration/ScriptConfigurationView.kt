@@ -39,7 +39,6 @@ import com.cereal.client.domain.model.script.configuration.ScriptConfigurationIt
 import com.cereal.client.domain.model.script.configuration.getScriptIdentifierValue
 import com.cereal.client.presentation.error.errorView
 import com.cereal.client.presentation.tasks.dialog.ImportFromFileDialog
-import com.cereal.client.presentation.tasks.script.overview.configuration.model.ConfigurationItemsForm
 import com.cereal.client.presentation.theme.CerealTheme
 import com.cereal.client.presentation.view.CaptionText
 import com.cereal.client.presentation.view.CerealButton
@@ -190,16 +189,6 @@ fun ScriptConfigurationView(viewModel: ScriptConfigurationViewModel) {
                 }
             }
         }
-        if (scriptConfigurationForm != null && viewModel.showConcurrentTasks.value) {
-            ConfigField(
-                title = "# of concurrent tasks",
-                description = "The number of tasks to run concurrently for this script (Max: ${ConfigurationItemsForm.MAX_CONCURRENT_TASKS}).",
-                isRequired = true,
-            ) {
-                TextField("# of concurrent tasks", scriptConfigurationForm.numberOfConcurrentTasks, labelVisible = false)
-            }
-        }
-
         // Notification Overrides Section
         NotificationOverridesSection(viewModel.notificationOverridesForm)
 

@@ -102,6 +102,10 @@ interface Root {
                                         backStack.newRoot(Routing.Marketplace)
                                         onNavigateTo?.invoke(Routing.Marketplace)
                                     },
+                                    onNavigateToHome = {
+                                        backStack.newRoot(Routing.Home)
+                                        onNavigateTo?.invoke(Routing.Home)
+                                    },
                                     openScriptSelectionFor = (backStack.last() as? Routing.Tasks)?.openScriptSelectionFor,
                                     focusTaskId = (backStack.last() as? Routing.Tasks)?.focusTaskId,
                                 )

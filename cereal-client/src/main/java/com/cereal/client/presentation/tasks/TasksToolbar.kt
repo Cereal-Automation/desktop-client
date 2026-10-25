@@ -1,7 +1,8 @@
 package com.cereal.client.presentation.tasks
 
+import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.TooltipArea
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -12,52 +13,45 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.HelpOutline
-import androidx.compose.material.icons.filled.KeyboardArrowDown
+import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Refresh
+import androidx.compose.material.icons.filled.Remove
 import androidx.compose.material.icons.filled.Tune
 import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.DropdownMenu
-import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Surface
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.unit.TextUnit
-import androidx.compose.ui.unit.TextUnitType
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import com.cereal.client.presentation.theme.CerealTheme
 import com.cereal.client.presentation.theme.CerealTypography
+import com.cereal.client.presentation.view.CerealIconButton
 import com.cereal.client.presentation.view.CerealText
 import com.cereal.client.presentation.view.SectionLabel
-import com.cereal.client.presentation.view.StatusDot
 import com.cereal.client.presentation.view.button.CerealToolbarButton
 import com.cereal.client.presentation.view.button.CerealToolbarButtonVariant
+import com.cereal.client.presentation.view.chip.Pill
+import com.cereal.client.presentation.view.group.MoreOptionsMenu
 import com.cereal_automation.cereal_client.generated.resources.Res
 import com.cereal_automation.cereal_client.generated.resources.contact_support
-import com.cereal_automation.cereal_client.generated.resources.errored
-import com.cereal_automation.cereal_client.generated.resources.filter_label
+import com.cereal_automation.cereal_client.generated.resources.edit
+import com.cereal_automation.cereal_client.generated.resources.fewer_concurrent_tasks
 import com.cereal_automation.cereal_client.generated.resources.ic_cancel
 import com.cereal_automation.cereal_client.generated.resources.ic_play
-import com.cereal_automation.cereal_client.generated.resources.idle
+import com.cereal_automation.cereal_client.generated.resources.more_concurrent_tasks
 import com.cereal_automation.cereal_client.generated.resources.restart_errored
-import com.cereal_automation.cereal_client.generated.resources.running
 import com.cereal_automation.cereal_client.generated.resources.start_all
 import com.cereal_automation.cereal_client.generated.resources.start_all_tasks
 import com.cereal_automation.cereal_client.generated.resources.stop_all
 import com.cereal_automation.cereal_client.generated.resources.stop_all_tasks
-import com.cereal_automation.cereal_client.generated.resources.success
+import com.cereal_automation.cereal_client.generated.resources.stop_tasks_to_edit
 import com.cereal_automation.cereal_client.generated.resources.view_config
 import org.jetbrains.compose.resources.painterResource
 import org.jetbrains.compose.resources.stringResource
@@ -68,6 +62,13 @@ internal fun TasksToolbar(
     subtitle: String?,
     onViewConfig: (() -> Unit)? = null,
     onContactSupport: (() -> Unit)? = null,
+    menuOptions: List<MenuOption> = emptyList(),
+    onMenuOptionSelected: (MenuOption) -> Unit = {},
+    onEdit: (() -> Unit)? = null,
+    editEnabled: Boolean = true,
+    stepper: ConcurrentTaskStepperState? = null,
+    onDecreaseTasks: () -> Unit = {},
+    onIncreaseTasks: () -> Unit = {},
 ) {
     Column(modifier = Modifier.fillMaxWidth()) {
         Row(
@@ -91,9 +92,10 @@ internal fun TasksToolbar(
                     color = CerealTheme.colorScheme.contentTertiary,
                 )
             }
-            if (onViewConfig != null || onContactSupport != null) {
-                Spacer(Modifier.weight(1f))
+            if (stepper != null) {
+                ConcurrentTaskStepper(stepper, onDecreaseTasks, onIncreaseTasks)
             }
+            Spacer(Modifier.weight(1f))
             if (onContactSupport != null) {
                 CerealToolbarButton(
                     variant = CerealToolbarButtonVariant.Ghost,
@@ -106,6 +108,9 @@ internal fun TasksToolbar(
                     )
                     CerealText(text = stringResource(Res.string.contact_support))
                 }
+            }
+            if (onEdit != null) {
+                EditButton(onEdit, editEnabled)
             }
             if (onViewConfig != null) {
                 CerealToolbarButton(
@@ -120,6 +125,9 @@ internal fun TasksToolbar(
                     CerealText(text = stringResource(Res.string.view_config))
                 }
             }
+            if (menuOptions.isNotEmpty()) {
+                MoreOptionsMenu(menuOptions, onMenuOptionSelected, tint = CerealTheme.colorScheme.contentSecondary)
+            }
         }
         Box(
             modifier =
@@ -131,77 +139,70 @@ internal fun TasksToolbar(
     }
 }
 
+/** `− count +`: the setup's number of concurrent tasks. */
 @Composable
-internal fun TaskStatsStrip(counts: TaskCounts) {
-    Row(
-        modifier =
-            Modifier
-                .fillMaxWidth()
-                .padding(horizontal = PanePadding, vertical = 16.dp),
-        horizontalArrangement = Arrangement.spacedBy(12.dp),
-    ) {
-        StatTile(
-            label = stringResource(Res.string.idle),
-            value = counts.idle,
-            swatch = CerealTheme.colorScheme.contentSecondary,
-            modifier = Modifier.weight(1f),
-        )
-        StatTile(
-            label = stringResource(Res.string.running),
-            value = counts.running,
-            swatch = CerealTheme.colorScheme.warning,
-            modifier = Modifier.weight(1f),
-        )
-        StatTile(
-            label = stringResource(Res.string.success),
-            value = counts.finished,
-            swatch = CerealTheme.colorScheme.success,
-            modifier = Modifier.weight(1f),
-        )
-        StatTile(
-            label = stringResource(Res.string.errored),
-            value = counts.errored,
-            swatch = MaterialTheme.colorScheme.primary,
-            modifier = Modifier.weight(1f),
-        )
+private fun ConcurrentTaskStepper(
+    state: ConcurrentTaskStepperState,
+    onDecrease: () -> Unit,
+    onIncrease: () -> Unit,
+) {
+    Row(verticalAlignment = Alignment.CenterVertically) {
+        CerealIconButton(onClick = onDecrease, enabled = state.canDecrease) {
+            Icon(
+                imageVector = Icons.Filled.Remove,
+                contentDescription = stringResource(Res.string.fewer_concurrent_tasks),
+                modifier = Modifier.size(18.dp),
+            )
+        }
+        CerealText(text = state.count.toString(), style = MaterialTheme.typography.bodyMedium)
+        CerealIconButton(onClick = onIncrease, enabled = state.canIncrease) {
+            Icon(
+                imageVector = Icons.Filled.Add,
+                contentDescription = stringResource(Res.string.more_concurrent_tasks),
+                modifier = Modifier.size(18.dp),
+            )
+        }
     }
 }
 
+/** Edit is disabled while a task runs; hovering it then explains why. */
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
-private fun StatTile(
-    label: String,
-    value: Int,
-    swatch: Color,
-    modifier: Modifier = Modifier,
+private fun EditButton(
+    onEdit: () -> Unit,
+    enabled: Boolean,
 ) {
-    Column(
-        modifier =
-            modifier
-                .clip(RoundedCornerShape(8.dp))
-                .background(CerealTheme.colorScheme.cardDark)
-                .border(1.dp, CerealTheme.colorScheme.border, RoundedCornerShape(8.dp))
-                .padding(horizontal = 14.dp, vertical = 12.dp),
-        verticalArrangement = Arrangement.spacedBy(4.dp),
-    ) {
-        Row(
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(6.dp),
+    val button = @Composable {
+        CerealToolbarButton(
+            variant = CerealToolbarButtonVariant.Ghost,
+            onClick = onEdit,
+            enabled = enabled,
         ) {
-            StatusDot(color = swatch)
-            CerealText(
-                text = label.uppercase(),
-                style = CerealTypography.sectionLabel,
-                color = CerealTheme.colorScheme.contentTertiary,
+            Icon(
+                imageVector = Icons.Filled.Edit,
+                contentDescription = null,
+                modifier = Modifier.size(ButtonDefaults.IconSize),
             )
+            CerealText(text = stringResource(Res.string.edit))
         }
-        CerealText(
-            text = value.toString(),
-            style =
-                MaterialTheme.typography.headlineMedium.copy(
-                    letterSpacing = TextUnit(-0.025f, TextUnitType.Em),
-                ),
-            color = MaterialTheme.colorScheme.onSurface,
-        )
+    }
+    if (enabled) {
+        button()
+        return
+    }
+    TooltipArea(
+        tooltip = {
+            Surface(modifier = Modifier.shadow(4.dp), shape = MaterialTheme.shapes.extraSmall) {
+                CerealText(
+                    text = stringResource(Res.string.stop_tasks_to_edit),
+                    modifier = Modifier.padding(CerealTheme.spacing.sm),
+                    style = MaterialTheme.typography.bodySmall,
+                )
+            }
+        },
+        delayMillis = 0,
+    ) {
+        button()
     }
 }
 
@@ -219,49 +220,64 @@ internal fun TasksQuickActions(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(8.dp),
         ) {
-            CerealToolbarButton(
-                variant = CerealToolbarButtonVariant.Green,
-                onClick = callbacks.onStartAll,
-                enabled = state.startAllEnabled,
-            ) {
-                Icon(
-                    painter = painterResource(Res.drawable.ic_play),
-                    contentDescription = stringResource(Res.string.start_all_tasks),
-                    modifier = Modifier.size(ButtonDefaults.IconSize),
-                )
-                CerealText(text = stringResource(Res.string.start_all))
-            }
-            CerealToolbarButton(
-                variant = CerealToolbarButtonVariant.Flat,
-                onClick = callbacks.onStopAll,
-                enabled = state.stopAllEnabled,
-            ) {
-                Icon(
-                    painter = painterResource(Res.drawable.ic_cancel),
-                    contentDescription = stringResource(Res.string.stop_all_tasks),
-                    modifier = Modifier.size(ButtonDefaults.IconSize),
-                )
-                CerealText(text = stringResource(Res.string.stop_all))
-            }
-            CerealToolbarButton(
-                variant = CerealToolbarButtonVariant.Ghost,
-                onClick = callbacks.onRestartErrored,
-                enabled = state.restartErroredEnabled,
-            ) {
-                Icon(
-                    imageVector = Icons.Filled.Refresh,
-                    contentDescription = null,
-                    modifier = Modifier.size(ButtonDefaults.IconSize),
-                )
-                CerealText(text = stringResource(Res.string.restart_errored))
-            }
+            StatusChip(TaskFilter.IDLE, state.counts.idle, CerealTheme.colorScheme.contentSecondary, state, callbacks)
+            StatusChip(TaskFilter.RUNNING, state.counts.running, CerealTheme.colorScheme.warning, state, callbacks)
+            StatusChip(TaskFilter.SUCCESS, state.counts.finished, CerealTheme.colorScheme.success, state, callbacks)
+            StatusChip(
+                filter = TaskFilter.ERROR,
+                count = state.counts.errored,
+                // Red means "needs you": only when something actually errored.
+                color =
+                    if (state.counts.errored > 0) {
+                        MaterialTheme.colorScheme.primary
+                    } else {
+                        CerealTheme.colorScheme.contentTertiary
+                    },
+                state = state,
+                callbacks = callbacks,
+            )
 
             Spacer(Modifier.weight(1f))
 
-            TaskFilterControl(
-                filter = state.filter,
-                onFilterChange = callbacks.onFilterChange,
-            )
+            if (state.showRestartErrored) {
+                CerealToolbarButton(
+                    variant = CerealToolbarButtonVariant.Ghost,
+                    onClick = callbacks.onRestartErrored,
+                    enabled = state.restartErroredEnabled,
+                ) {
+                    Icon(
+                        imageVector = Icons.Filled.Refresh,
+                        contentDescription = null,
+                        modifier = Modifier.size(ButtonDefaults.IconSize),
+                    )
+                    CerealText(text = stringResource(Res.string.restart_errored))
+                }
+            }
+            if (state.showStopAll) {
+                CerealToolbarButton(
+                    variant = CerealToolbarButtonVariant.Flat,
+                    onClick = callbacks.onStopAll,
+                ) {
+                    Icon(
+                        painter = painterResource(Res.drawable.ic_cancel),
+                        contentDescription = stringResource(Res.string.stop_all_tasks),
+                        modifier = Modifier.size(ButtonDefaults.IconSize),
+                    )
+                    CerealText(text = stringResource(Res.string.stop_all))
+                }
+            } else if (state.showStartAll) {
+                CerealToolbarButton(
+                    variant = CerealToolbarButtonVariant.Green,
+                    onClick = callbacks.onStartAll,
+                ) {
+                    Icon(
+                        painter = painterResource(Res.drawable.ic_play),
+                        contentDescription = stringResource(Res.string.start_all_tasks),
+                        modifier = Modifier.size(ButtonDefaults.IconSize),
+                    )
+                    CerealText(text = stringResource(Res.string.start_all))
+                }
+            }
         }
         Box(
             modifier =
@@ -271,6 +287,26 @@ internal fun TasksQuickActions(
                     .background(CerealTheme.colorScheme.border),
         )
     }
+}
+
+/** "Idle 3"-style chip; clicking it filters the task list to [filter], clicking it again clears the filter. */
+@Composable
+private fun StatusChip(
+    filter: TaskFilter,
+    count: Int,
+    color: Color,
+    state: TaskQuickActionsState,
+    callbacks: TaskQuickActionsCallbacks,
+) {
+    val active = state.filter == filter
+    Pill(
+        text = "${stringResource(filter.labelRes())} $count",
+        contentColor = color,
+        backgroundColor = if (active) color.copy(alpha = 0.15f) else Color.Transparent,
+        borderColor = if (active) color else CerealTheme.colorScheme.border,
+        leadingDot = true,
+        onClick = { callbacks.onStatusChipClick(filter) },
+    )
 }
 
 @Composable
@@ -285,49 +321,4 @@ internal fun TaskGroupTitle(title: String) {
                 bottom = 8.dp,
             ),
     )
-}
-
-@Composable
-private fun TaskFilterControl(
-    filter: TaskFilter,
-    onFilterChange: (TaskFilter) -> Unit,
-) {
-    var menuExpanded by remember { mutableStateOf(false) }
-    Row(
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(6.dp),
-    ) {
-        CerealText(
-            text = stringResource(Res.string.filter_label),
-            color = CerealTheme.colorScheme.contentTertiary,
-            style = CerealTypography.controlLabel,
-        )
-        Box {
-            CerealToolbarButton(
-                variant = CerealToolbarButtonVariant.Flat,
-                onClick = { menuExpanded = true },
-            ) {
-                CerealText(text = stringResource(filter.labelRes()))
-                Icon(
-                    imageVector = Icons.Filled.KeyboardArrowDown,
-                    contentDescription = null,
-                    modifier = Modifier.size(ButtonDefaults.IconSize),
-                )
-            }
-            DropdownMenu(
-                expanded = menuExpanded,
-                onDismissRequest = { menuExpanded = false },
-            ) {
-                TaskFilter.entries.forEach { option ->
-                    DropdownMenuItem(
-                        text = { CerealText(stringResource(option.labelRes())) },
-                        onClick = {
-                            onFilterChange(option)
-                            menuExpanded = false
-                        },
-                    )
-                }
-            }
-        }
-    }
 }
