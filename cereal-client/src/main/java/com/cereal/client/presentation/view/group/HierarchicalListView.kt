@@ -86,15 +86,14 @@ fun <P, C> ScriptsColumn(
     onChildLongClick: ((HierarchicalListItem.Child<P, C>?) -> Unit)? = null,
 ) {
     val items = viewModel.state.value
-    val parents =
+    // Parents carry their children even when collapsed; without parents (single group) the children are top-level.
+    val children =
         remember(items) {
-            items.filterIsInstance<HierarchicalListItem.Parent<P, C>>()
+            val parents = items.filterIsInstance<HierarchicalListItem.Parent<P, C>>()
+            if (parents.isEmpty()) items.filterIsInstance<HierarchicalListItem.Child<P, C>>() else parents.flatMap { it.children }
         }
-    val totalScripts = remember(parents) { parents.sumOf { it.children.size } }
-    val runningScripts =
-        remember(parents) {
-            parents.sumOf { p -> p.children.count { it.content.isRunning } }
-        }
+    val totalScripts = children.size
+    val runningScripts = remember(children) { children.count { it.content.isRunning } }
 
     Column(
         modifier =
@@ -212,6 +211,18 @@ fun <P, C> HierarchicalListView(
             modifier = Modifier.padding(vertical = 6.dp),
             state = listState,
         ) {
+            if (groupedItems.isEmpty()) {
+                // Single group: the view model emits its children without a parent, rendered as a flat list.
+                items(viewModel.state.value.filterIsInstance<HierarchicalListItem.Child<P, C>>(), key = { it.content.id as Any }) { child ->
+                    ScriptRow(
+                        child = child,
+                        menuOptions = viewModel.childMenuOptions,
+                        onMenuOptionClick = { option -> viewModel.onChildMenuOptionClick(child, option) },
+                        onClick = { viewModel.onChildClick(child) },
+                        onLongClick = { onChildLongClick?.invoke(child) },
+                    )
+                }
+            }
             items(groupedItems, key = { it.parent.content.id as Any }) { groupedItem ->
                 GroupSection(
                     parent = groupedItem.parent,
