@@ -67,7 +67,10 @@ class MainViewModel(
     private var selectedRoute: Root.Routing = landingRoute
     private var username: String? = null
     private var isUpdateAvailable: Boolean = false
-    private var activeTaskCount: Int = 0
+    private var runningTaskCount: Int = 0
+
+    /** Tasks that need the user: errored or waiting for input. */
+    private var attentionTaskCount: Int = 0
     private var unseenNotificationCount: Int = 0
 
     val menuItems = mutableStateOf(buildMenuItems())
@@ -128,9 +131,12 @@ class MainViewModel(
         scope.launch(dispatcherProvider.io) {
             observeTasksInteractor(Interactor.None()).collectLatest { result ->
                 if (result is SuspendableResult.Success) {
-                    val count = result.value.count { it.status is TaskStatus.Running || it.status is TaskStatus.Idle }
+                    val tasks = result.value
+                    val running = tasks.count { it.status is TaskStatus.Running }
+                    val attention = tasks.count { it.status is TaskStatus.Error || it.userInteraction != null }
                     withContext(dispatcherProvider.main) {
-                        activeTaskCount = count
+                        runningTaskCount = running
+                        attentionTaskCount = attention
                         menuItems.value = buildMenuItems()
                     }
                 }
@@ -182,7 +188,9 @@ class MainViewModel(
                     resourcePath = IconSource.Vector(Icons.Filled.Bolt),
                     titleResource = Res.string.tasks,
                     section = MenuSection.AGENT,
-                    badge = activeTaskCount.takeIf { it > 0 },
+                    // Red only when something needs the user; otherwise a neutral running count.
+                    badge = (if (attentionTaskCount > 0) attentionTaskCount else runningTaskCount).takeIf { it > 0 },
+                    isBadgeAttention = attentionTaskCount > 0,
                 )
             this +=
                 createMenuItem(
@@ -250,6 +258,7 @@ class MainViewModel(
         titleOverride: String? = null,
         hasNotificationDot: Boolean = false,
         badge: Int? = null,
+        isBadgeAttention: Boolean = true,
     ): MenuItemUiModel =
         MenuItemUiModel(
             route,
@@ -264,5 +273,6 @@ class MainViewModel(
             section,
             hasNotificationDot,
             badge,
+            isBadgeAttention,
         )
 }

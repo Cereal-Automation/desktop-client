@@ -1,6 +1,7 @@
 package com.cereal.client.presentation.tasks
 
 import androidx.compose.runtime.State
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.mutableStateOf
 import com.cereal.client.application.CoroutinesDispatcherProvider
 import com.cereal.client.application.Interactor
@@ -19,6 +20,7 @@ import com.cereal.client.domain.model.task.Task
 import com.cereal.client.domain.model.task.TaskStatus
 import com.cereal.client.domain.repository.LogEventRepository
 import com.cereal.client.presentation.error.ErrorResolver
+import com.cereal.client.presentation.tasks.model.ScriptInstanceUiModel
 import com.cereal.client.presentation.tasks.model.TaskUiModel
 import com.cereal.client.presentation.util.InteractorRunner
 import com.cereal.client.presentation.view.group.HierarchicalListItem
@@ -88,17 +90,7 @@ class TasksViewModel(
                     onEditTaskGroup(group)
                 }
             },
-            onChildMenuOptionSelected = { scriptInstance, menuItem ->
-                if (menuItem == MenuOption.DELETE) {
-                    onDeleteScriptInstance(scriptInstance)
-                } else if (menuItem == MenuOption.VIEW_CONFIGURATION) {
-                    showConfiguration(scriptInstance)
-                } else if (menuItem == MenuOption.DUPLICATE) {
-                    duplicateScriptInstance(scriptInstance)
-                } else if (menuItem == MenuOption.MOVE_TO_GROUP) {
-                    moveScriptToGroup(scriptInstance)
-                }
-            },
+            onChildMenuOptionSelected = { scriptInstance, menuItem -> onSetupMenuOptionSelected(scriptInstance, menuItem) },
         )
 
     // Start in Loading, not Empty: the groups flow has not emitted yet on screen entry, and
@@ -280,6 +272,28 @@ class TasksViewModel(
         }
     }
 
+    /** The detail header's "···" menu: the list context menu's setup actions, applied to the selected setup. */
+    val headerMenuOptions = listOf(MenuOption.DUPLICATE, MenuOption.MOVE_TO_GROUP, MenuOption.DELETE)
+
+    fun onHeaderMenuOptionSelected(option: MenuOption) {
+        hierarchicalListViewModel.selectedChild?.let { onSetupMenuOptionSelected(it, option) }
+    }
+
+    private fun onSetupMenuOptionSelected(
+        scriptInstance: ScriptPackageInstance,
+        option: MenuOption,
+    ) {
+        if (option == MenuOption.DELETE) {
+            onDeleteScriptInstance(scriptInstance)
+        } else if (option == MenuOption.VIEW_CONFIGURATION) {
+            showConfiguration(scriptInstance)
+        } else if (option == MenuOption.DUPLICATE) {
+            duplicateScriptInstance(scriptInstance)
+        } else if (option == MenuOption.MOVE_TO_GROUP) {
+            moveScriptToGroup(scriptInstance)
+        }
+    }
+
     fun showConfiguration(scriptPackageInstance: ScriptPackageInstance) {
         dialogManager.showConfiguration(scriptPackageInstance)
     }
@@ -350,6 +364,44 @@ class TasksViewModel(
 
     private var restartErroredJob: Job? = null
     val restartErroredInFlight = mutableStateOf(false)
+
+    private val taskFilter = mutableStateOf(TaskFilter.ALL)
+
+    /** Status chip click: filters the task list to that status; clicking the active chip clears the filter. */
+    internal fun onStatusChipClicked(filter: TaskFilter) {
+        taskFilter.value = if (taskFilter.value == filter) TaskFilter.ALL else filter
+    }
+
+    /** Status chips, Start/Stop all toggle and Restart errored for the selected setup; null while it has no tasks. */
+    internal val taskControls: State<TaskQuickActionsState?> =
+        derivedStateOf {
+            val filled = tasksViewState.value as? TaskViewState.DetailViewState.Filled ?: return@derivedStateOf null
+            TaskQuickActionsState(
+                counts =
+                    TaskCounts(
+                        idle = filled.idleTasksCount,
+                        running = filled.runningTasksCount,
+                        finished = filled.finishedTasksCount,
+                        errored = filled.erroredTasksCount,
+                    ),
+                filter = taskFilter.value,
+                showStopAll = filled.stopAllTasksEnabled,
+                startAllEnabled = filled.startAllTasksEnabled,
+                showRestartErrored = filled.erroredTasksCount > 0,
+                restartErroredEnabled = !restartErroredInFlight.value,
+            )
+        }
+
+    /** The selected setup's scripts with their tasks narrowed to the active status filter; scripts left empty are dropped. */
+    internal val visibleTasks: State<List<Pair<ScriptInstanceUiModel, List<TaskUiModel>>>> =
+        derivedStateOf {
+            val filled = tasksViewState.value as? TaskViewState.DetailViewState.Filled ?: return@derivedStateOf emptyList()
+            val filter = taskFilter.value
+            filled.scriptInstances.mapNotNull { scriptInstance ->
+                val tasks = scriptInstance.tasks.filter { filter.matches(it) }
+                if (tasks.isEmpty()) null else scriptInstance to tasks
+            }
+        }
 
     fun restartErroredTasks() {
         // Guard against duplicate submissions: the button stays enabled while errored > 0,

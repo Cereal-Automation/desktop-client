@@ -3,7 +3,7 @@ package com.cereal.client.application.interactor.script
 import com.cereal.client.application.FlowInteractor
 import com.cereal.client.domain.model.script.ScriptPackageInstance
 import com.cereal.client.domain.model.script.getScriptPackageInstance
-import com.cereal.client.domain.model.task.JobTask
+import com.cereal.client.domain.model.task.TaskStatus
 import com.cereal.client.domain.repository.ScriptInstanceRepository
 import com.cereal.client.domain.repository.TasksRepository
 import kotlinx.coroutines.FlowPreview
@@ -19,11 +19,14 @@ class GetScriptsInGroupInteractor(
         val scriptInstancesFlow = scriptInstanceRepository.getScriptPackageInstancesInGroupFlow(params.groupId)
 
         return combine(scriptInstancesFlow, tasksRepository.getAllTasks()) { scriptInstances, tasks ->
-            scriptInstances.map {
+            scriptInstances.map { instance ->
+                val instanceTasks = tasks.filter { it.scriptInstance.getScriptPackageInstance().id == instance.id }
                 ScriptInstanceInGroup(
-                    it,
-                    tasks.getCountForScriptInstance(it),
-                    tasks.getRunningCountForScriptInstance(it),
+                    instance,
+                    instanceTasks.size,
+                    instanceTasks.count { it.status.isRunning() },
+                    erroredTaskCount = instanceTasks.count { it.status is TaskStatus.Error },
+                    awaitingUserTaskCount = instanceTasks.count { it.userInteraction != null },
                 )
             }
         }
@@ -34,20 +37,11 @@ class GetScriptsInGroupInteractor(
     )
 }
 
-fun List<JobTask>.getCountForScriptInstance(scriptPackageInstance: ScriptPackageInstance): Int {
-    // Note: this is somewhat inefficient, maybe add some caching.
-    return this.count {
-        it.scriptInstance.getScriptPackageInstance().id == scriptPackageInstance.id
-    }
-}
-
-private fun List<JobTask>.getRunningCountForScriptInstance(scriptPackageInstance: ScriptPackageInstance): Int =
-    this.count {
-        it.scriptInstance.getScriptPackageInstance().id == scriptPackageInstance.id && it.status.isRunning()
-    }
-
 data class ScriptInstanceInGroup(
     val scriptPackageInstance: ScriptPackageInstance,
     val taskCount: Int,
     val runningTaskCount: Int,
+    val erroredTaskCount: Int = 0,
+    /** Tasks waiting for the user (browser, text input, Continue). */
+    val awaitingUserTaskCount: Int = 0,
 )

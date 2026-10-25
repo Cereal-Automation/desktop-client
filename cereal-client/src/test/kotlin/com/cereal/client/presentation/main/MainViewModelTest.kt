@@ -12,6 +12,7 @@ import com.cereal.client.domain.model.app.Version
 import com.cereal.client.domain.model.script.ScriptPackage
 import com.cereal.client.domain.model.task.Task
 import com.cereal.client.domain.model.task.TaskStatus
+import com.cereal.client.domain.model.task.UserInteraction
 import com.cereal.client.domain.model.user.User
 import com.cereal.client.presentation.navigation.MenuReselectionCoordinator
 import com.cereal.client.presentation.navigation.Root
@@ -30,6 +31,8 @@ import kotlinx.coroutines.test.setMain
 import net.swiftzer.semver.SemVer
 import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.Assertions.assertEquals
+import org.junit.jupiter.api.Assertions.assertFalse
+import org.junit.jupiter.api.Assertions.assertNull
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
@@ -152,16 +155,68 @@ class MainViewModelTest {
         assertEquals(2, viewModel.activeScriptCount.value)
     }
 
-    @Test
-    fun `running tasks produce a badge on the tasks menu item`() {
+    private fun task(
+        status: TaskStatus,
+        userInteraction: UserInteraction? = null,
+    ): Task {
         val task = mockk<Task>(relaxed = true)
-        every { task.status } returns TaskStatus.Running(timestamp = Clock.System.now())
-        coEvery { observeTasksInteractor(any()) } returns flowOf(SuspendableResult.Success(listOf(task)))
+        every { task.status } returns status
+        every { task.userInteraction } returns userInteraction
+        return task
+    }
+
+    private fun tasksMenuItemFor(vararg tasks: Task): MenuItemUiModel {
+        coEvery { observeTasksInteractor(any()) } returns flowOf(SuspendableResult.Success(tasks.toList()))
         val viewModel = createViewModel()
         dispatcher.scheduler.advanceUntilIdle()
+        return viewModel.menuItems.value.first { it.route is Root.Routing.Tasks }
+    }
 
-        val tasks = viewModel.menuItems.value.first { it.route is Root.Routing.Tasks }
+    @Test
+    fun `running tasks produce a neutral running count badge on the tasks menu item`() {
+        val now = Clock.System.now()
+
+        val tasks =
+            tasksMenuItemFor(
+                task(TaskStatus.Running(timestamp = now)),
+                task(TaskStatus.Running(timestamp = now)),
+                task(TaskStatus.Idle(timestamp = now)),
+            )
+
+        assertEquals(2, tasks.badge)
+        assertFalse(tasks.isBadgeAttention)
+    }
+
+    @Test
+    fun `idle tasks produce no badge on the tasks menu item`() {
+        val tasks = tasksMenuItemFor(task(TaskStatus.Idle(timestamp = Clock.System.now())))
+
+        assertNull(tasks.badge)
+    }
+
+    @Test
+    fun `an errored task turns the tasks menu badge into an attention badge`() {
+        val now = Clock.System.now()
+
+        val tasks =
+            tasksMenuItemFor(
+                task(TaskStatus.Running(timestamp = now)),
+                task(TaskStatus.Error("Failed", timestamp = now)),
+            )
+
         assertEquals(1, tasks.badge)
+        assertTrue(tasks.isBadgeAttention)
+    }
+
+    @Test
+    fun `a task waiting for user input turns the tasks menu badge into an attention badge`() {
+        val tasks =
+            tasksMenuItemFor(
+                task(TaskStatus.Running(timestamp = Clock.System.now()), UserInteraction.ContinueButton(mockk(relaxed = true))),
+            )
+
+        assertEquals(1, tasks.badge)
+        assertTrue(tasks.isBadgeAttention)
     }
 
     @Test

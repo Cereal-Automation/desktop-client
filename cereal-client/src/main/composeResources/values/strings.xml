@@ -99,7 +99,6 @@
     <string name="expand">Expand</string>
     <string name="expand_output">Expand output</string>
     <string name="filter_all">All</string>
-    <string name="filter_label">Filter:</string>
     <string name="filter_action_label">Filter</string>
     <string name="filter_section_price">Price</string>
     <string name="filter_section_creator">Creator</string>
@@ -244,6 +243,7 @@
     <string name="notification_channel_system">System</string>
     <string name="name">Name</string>
     <string name="name_placeholder">Enter your name</string>
+    <string name="needs_attention">Needs attention</string>
     <string name="new_group">New group</string>
     <string name="new_task_setup">New task setup</string>
     <string name="new_script">New script</string>
