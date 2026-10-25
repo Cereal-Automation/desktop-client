@@ -42,6 +42,7 @@ import com.cereal.client.infrastructure.data.repository.inmemory.InMemoryScriptI
 import com.cereal.client.infrastructure.data.repository.inmemory.InMemoryTasksRepository
 import com.cereal.client.infrastructure.provider.inmemory.InMemorySystemProvider
 import com.cereal.client.presentation.error.ErrorResolver
+import com.cereal.client.presentation.tasks.LastSelectedTaskSetup
 import com.cereal.client.presentation.tasks.TasksActionHandler
 import com.cereal.client.presentation.tasks.TasksListObserver
 import com.cereal.client.presentation.tasks.TasksViewModel
@@ -70,6 +71,9 @@ class TasksScreenWorld(
     val artifactRepository = InMemoryArtifactRepository()
     val systemProvider = InMemorySystemProvider()
     val errorResolver = ErrorResolver()
+
+    /** Session-wide, like its Koin single: shared by every [viewModel] (screen visit) of this world. */
+    val lastSelectedTaskSetup = LastSelectedTaskSetup()
 
     private val noOpScopeLinker =
         object : ScopeLinker {
@@ -122,6 +126,7 @@ class TasksScreenWorld(
             OpenUrlInteractor(systemProvider),
             ObserveArtifactsInteractor(artifactRepository),
             SaveArtifactToFileInteractor(artifactRepository),
+            lastSelectedTaskSetup,
         )
 
     /** The "Default" group, created the same way the screen does on entry. */

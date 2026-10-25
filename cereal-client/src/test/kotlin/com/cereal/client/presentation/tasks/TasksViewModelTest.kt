@@ -155,6 +155,7 @@ class TasksViewModelTest {
             openUrlInteractor,
             observeArtifactsInteractor,
             saveArtifactToFileInteractor,
+            LastSelectedTaskSetup(),
         )
     }
 
@@ -515,6 +516,7 @@ class TasksViewModelTest {
                     openUrlInteractor,
                     observeArtifactsInteractor,
                     saveArtifactToFileInteractor,
+                    LastSelectedTaskSetup(),
                 )
 
             vm.onTaskSelected(task)
@@ -606,6 +608,7 @@ class TasksViewModelTest {
                     openUrlInteractor,
                     observeArtifactsInteractor,
                     saveArtifactToFileInteractor,
+                    LastSelectedTaskSetup(),
                 )
 
             vm.onTaskSelected(task)
