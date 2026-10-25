@@ -28,6 +28,7 @@ import com.cereal.client.presentation.proxy.provider.ProxyProviderViewModel
 import com.cereal.client.presentation.proxy.provider.SyncProxiesViewModel
 import com.cereal.client.presentation.settings.ApplicationSettingsViewModel
 import com.cereal.client.presentation.settings.ai.AiSettingsViewModel
+import com.cereal.client.presentation.tasks.LastSelectedTaskSetup
 import com.cereal.client.presentation.tasks.TasksActionHandler
 import com.cereal.client.presentation.tasks.TasksListObserver
 import com.cereal.client.presentation.tasks.TasksViewModel
@@ -118,8 +119,10 @@ object ViewModelModule {
                     get(),
                 )
             }
+            single { LastSelectedTaskSetup() }
             factory {
                 TasksViewModel(
+                    get(),
                     get(),
                     get(),
                     get(),

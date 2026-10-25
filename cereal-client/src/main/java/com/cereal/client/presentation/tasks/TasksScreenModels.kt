@@ -27,15 +27,18 @@ internal data class TaskCounts(
 
 @Immutable
 internal data class TaskQuickActionsState(
-    val startAllEnabled: Boolean,
-    val stopAllEnabled: Boolean,
-    val restartErroredEnabled: Boolean,
+    val counts: TaskCounts,
     val filter: TaskFilter,
+    /** One toggle: Stop all while any task runs, otherwise Start all. */
+    val showStopAll: Boolean,
+    val startAllEnabled: Boolean,
+    val showRestartErrored: Boolean,
+    val restartErroredEnabled: Boolean,
 )
 
 @Stable
 internal class TaskQuickActionsCallbacks(
-    val onFilterChange: (TaskFilter) -> Unit,
+    val onStatusChipClick: (TaskFilter) -> Unit,
     val onStartAll: () -> Unit,
     val onStopAll: () -> Unit,
     val onRestartErrored: () -> Unit,

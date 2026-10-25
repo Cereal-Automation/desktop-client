@@ -12,7 +12,6 @@ import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
@@ -31,6 +30,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Error
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.MoreHoriz
 import androidx.compose.material.icons.filled.Warning
@@ -64,11 +64,12 @@ import com.cereal.client.presentation.theme.CerealTypography
 import com.cereal.client.presentation.util.initialsOf
 import com.cereal.client.presentation.view.CerealIconButton
 import com.cereal.client.presentation.view.CerealText
-import com.cereal.client.presentation.view.chip.Pill
+import com.cereal.client.presentation.view.StatusDot
 import com.cereal_automation.cereal_client.generated.resources.Res
 import com.cereal_automation.cereal_client.generated.resources.collapse
 import com.cereal_automation.cereal_client.generated.resources.expand
 import com.cereal_automation.cereal_client.generated.resources.more_options
+import com.cereal_automation.cereal_client.generated.resources.needs_attention
 import com.cereal_automation.cereal_client.generated.resources.new_group
 import com.cereal_automation.cereal_client.generated.resources.new_task_setup
 import com.cereal_automation.cereal_client.generated.resources.scripts_column_title
@@ -85,15 +86,14 @@ fun <P, C> ScriptsColumn(
     onChildLongClick: ((HierarchicalListItem.Child<P, C>?) -> Unit)? = null,
 ) {
     val items = viewModel.state.value
-    val parents =
+    // Parents carry their children even when collapsed; without parents (single group) the children are top-level.
+    val children =
         remember(items) {
-            items.filterIsInstance<HierarchicalListItem.Parent<P, C>>()
+            val parents = items.filterIsInstance<HierarchicalListItem.Parent<P, C>>()
+            if (parents.isEmpty()) items.filterIsInstance<HierarchicalListItem.Child<P, C>>() else parents.flatMap { it.children }
         }
-    val totalScripts = remember(parents) { parents.sumOf { it.children.size } }
-    val runningScripts =
-        remember(parents) {
-            parents.sumOf { p -> p.children.count { it.content.isRunning } }
-        }
+    val totalScripts = children.size
+    val runningScripts = remember(children) { children.count { it.content.isRunning } }
 
     Column(
         modifier =
@@ -211,6 +211,18 @@ fun <P, C> HierarchicalListView(
             modifier = Modifier.padding(vertical = 6.dp),
             state = listState,
         ) {
+            if (groupedItems.isEmpty()) {
+                // Single group: the view model emits its children without a parent, rendered as a flat list.
+                items(viewModel.state.value.filterIsInstance<HierarchicalListItem.Child<P, C>>(), key = { it.content.id as Any }) { child ->
+                    ScriptRow(
+                        child = child,
+                        menuOptions = viewModel.childMenuOptions,
+                        onMenuOptionClick = { option -> viewModel.onChildMenuOptionClick(child, option) },
+                        onClick = { viewModel.onChildClick(child) },
+                        onLongClick = { onChildLongClick?.invoke(child) },
+                    )
+                }
+            }
             items(groupedItems, key = { it.parent.content.id as Any }) { groupedItem ->
                 GroupSection(
                     parent = groupedItem.parent,
@@ -445,19 +457,16 @@ private fun <P, C> ScriptRow(
                 }
             }
 
-            if (child.content.isRunning) {
-                RunningDot()
-            }
-
-            if (!child.content.badge.isNullOrEmpty()) {
-                Pill(
-                    text = child.content.badge,
-                    contentColor = Color.White,
-                    backgroundColor = accent,
-                    textStyle = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Bold),
-                    contentPadding = CountPillPadding,
+            if (child.content.needsAttention) {
+                Icon(
+                    imageVector = Icons.Filled.Error,
+                    contentDescription = stringResource(Res.string.needs_attention),
+                    tint = MaterialTheme.colorScheme.error,
+                    modifier = Modifier.size(16.dp),
                 )
             }
+
+            child.content.status?.let { SetupStatusDot(it) }
 
             if (menuOptions.isNotEmpty()) {
                 Box {
@@ -546,7 +555,14 @@ private fun RunningDot() {
     }
 }
 
-private val CountPillPadding = PaddingValues(horizontal = 8.dp, vertical = 2.dp)
+@Composable
+private fun SetupStatusDot(status: ItemStatus) {
+    when (status) {
+        ItemStatus.RUNNING -> RunningDot()
+        ItemStatus.ERROR -> StatusDot(color = MaterialTheme.colorScheme.error, size = 8.dp)
+        ItemStatus.IDLE -> StatusDot(color = CerealTheme.colorScheme.contentSubtle, size = 8.dp)
+    }
+}
 
 @OptIn(ExperimentalFoundationApi::class)
 @Composable

@@ -1,16 +1,24 @@
 package com.cereal.client.presentation.tasks
 
+import com.cereal.client.domain.model.script.ScriptPackageInstance
 import com.cereal.client.domain.model.script.configuration.ConfigValue
+import com.cereal.client.domain.model.task.ScriptPackageGroup
 import com.cereal.client.presentation.error.ErrorAction
+import com.cereal.client.presentation.view.group.GroupListItemContent
+import com.cereal.client.presentation.view.group.HierarchicalListItem
+import com.cereal.client.presentation.view.group.ItemStatus
 import fixtures.TasksScreenWorld
+import fixtures.errored
 import fixtures.idle
 import fixtures.running
+import fixtures.succeeded
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.runTest
 import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertFalse
+import org.junit.jupiter.api.Assertions.assertNull
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
 import kotlin.test.assertIs
@@ -119,5 +127,96 @@ class TaskSetupsViewModelTest {
 
             assertIs<ErrorAction.Message>(world.errorResolver.errorAction.value)
             assertEquals(emptyMap<String, ConfigValue>(), world.scriptInstances.getScriptPackageInstance("setup-1").mainConfiguration)
+        }
+
+    @Test
+    fun `a setup card shows a status dot for its most urgent task instead of a task count`() =
+        runTest {
+            val idleSetup = world.setup("idle", null, idle(), succeeded())
+            val runningSetup = world.setup("running", null, idle(), running())
+            val erroredSetup = world.setup("errored", null, running(), errored())
+
+            val viewModel = start()
+
+            assertEquals(ItemStatus.IDLE, viewModel.setupCard(idleSetup).status)
+            assertEquals(ItemStatus.RUNNING, viewModel.setupCard(runningSetup).status)
+            assertEquals(ItemStatus.ERROR, viewModel.setupCard(erroredSetup).status)
+            assertNull(viewModel.setupCard(runningSetup).badge)
+        }
+
+    @Test
+    fun `a setup needs attention only when a task errored or waits for the user`() =
+        runTest {
+            val idleSetup = world.setup("idle", null, idle(), idle())
+            val runningSetup = world.setup("running", null, running())
+            val erroredSetup = world.setup("errored", null, idle(), errored())
+            val waitingSetup = world.setup("waiting", null, idle(), running())
+            world.awaitUserInput("waiting-task-2")
+
+            val viewModel = start()
+
+            assertFalse(viewModel.setupCard(idleSetup).needsAttention)
+            assertFalse(viewModel.setupCard(runningSetup).needsAttention)
+            assertTrue(viewModel.setupCard(erroredSetup).needsAttention)
+            assertTrue(viewModel.setupCard(waitingSetup).needsAttention)
+        }
+
+    private fun TasksViewModel.setupCard(setup: ScriptPackageInstance): GroupListItemContent<*> =
+        assertIs<TaskViewState.GroupViewState.Filled<*, *>>(hierarchicalListState.value)
+            .hierarchicalViewModel.state.value
+            .flatMap { item ->
+                when (item) {
+                    is HierarchicalListItem.Parent -> item.children
+                    is HierarchicalListItem.Child -> listOf(item)
+                }
+            }.single { it.content.id == setup }
+            .content
+
+    @Test
+    fun `lists task setups flat while only the default group exists`() =
+        runTest {
+            world.setup("setup-1", null, idle())
+            world.setup("setup-2", null, idle())
+
+            val viewModel = start()
+
+            assertEquals(listOf("setup-1", "setup-2"), viewModel.listLabels())
+        }
+
+    @Test
+    fun `shows every group with its header once a second group exists`() =
+        runTest {
+            val default = world.defaultGroup()
+            val work = world.group("Work")
+            world.setup("setup-1", default, idle())
+            world.setup("setup-2", work, idle())
+
+            val viewModel = start()
+
+            assertEquals(listOf("Default", "setup-1", "Work", "setup-2"), viewModel.listLabels())
+        }
+
+    @Test
+    fun `switches between flat and grouped as a second group comes and goes`() =
+        runTest {
+            world.setup("setup-1", null, idle())
+            val viewModel = start()
+
+            val work = world.group("Work")
+            world.dispatcher.scheduler.advanceUntilIdle()
+            assertEquals(listOf("Default", "setup-1", "Work"), viewModel.listLabels())
+
+            world.tasksRepository.deleteTaskGroup(work)
+            world.dispatcher.scheduler.advanceUntilIdle()
+            assertEquals(listOf("setup-1"), viewModel.listLabels())
+        }
+
+    /** Group names (headers) and setup ids, in the order the list shows them. */
+    private fun TasksViewModel.listLabels(): List<String> = hierarchicalListViewModel.state.value.map { it.label() }
+
+    private fun HierarchicalListItem<*, *>.label(): String =
+        when (this) {
+            is HierarchicalListItem.Parent -> (content.id as ScriptPackageGroup).name
+            is HierarchicalListItem.Child -> (content.id as ScriptPackageInstance).id
         }
 }

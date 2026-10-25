@@ -33,6 +33,7 @@ import com.cereal.client.domain.model.script.ScriptPackageInstance
 import com.cereal.client.domain.model.task.JobTask
 import com.cereal.client.domain.model.task.ScriptPackageGroup
 import com.cereal.client.domain.model.task.TaskStatus
+import com.cereal.client.domain.model.task.UserInteraction
 import com.cereal.client.infrastructure.data.repository.inmemory.InMemoryApplicationPreferenceRepository
 import com.cereal.client.infrastructure.data.repository.inmemory.InMemoryArtifactRepository
 import com.cereal.client.infrastructure.data.repository.inmemory.InMemoryCustomDatasetRepository
@@ -42,9 +43,11 @@ import com.cereal.client.infrastructure.data.repository.inmemory.InMemoryScriptI
 import com.cereal.client.infrastructure.data.repository.inmemory.InMemoryTasksRepository
 import com.cereal.client.infrastructure.provider.inmemory.InMemorySystemProvider
 import com.cereal.client.presentation.error.ErrorResolver
+import com.cereal.client.presentation.tasks.LastSelectedTaskSetup
 import com.cereal.client.presentation.tasks.TasksActionHandler
 import com.cereal.client.presentation.tasks.TasksListObserver
 import com.cereal.client.presentation.tasks.TasksViewModel
+import io.mockk.mockk
 import kotlinx.coroutines.test.TestDispatcher
 import java.util.UUID
 import kotlin.time.Clock
@@ -69,6 +72,9 @@ class TasksScreenWorld(
     val artifactRepository = InMemoryArtifactRepository()
     val systemProvider = InMemorySystemProvider()
     val errorResolver = ErrorResolver()
+
+    /** Session-wide, like its Koin single: shared by every [viewModel] (screen visit) of this world. */
+    val lastSelectedTaskSetup = LastSelectedTaskSetup()
 
     private val noOpScopeLinker =
         object : ScopeLinker {
@@ -121,6 +127,7 @@ class TasksScreenWorld(
             OpenUrlInteractor(systemProvider),
             ObserveArtifactsInteractor(artifactRepository),
             SaveArtifactToFileInteractor(artifactRepository),
+            lastSelectedTaskSetup,
             UpdateScriptPackageInstanceInteractor(scriptInstances, tasksRepository, taskManager),
         )
 
@@ -155,6 +162,9 @@ class TasksScreenWorld(
         )
         return packageInstance
     }
+
+    /** Puts [taskId] in the "waiting for the user" state (a pending Continue button). */
+    suspend fun awaitUserInput(taskId: String) = tasksRepository.setUserInteraction(taskId, UserInteraction.ContinueButton(mockk(relaxed = true)))
 }
 
 @OptIn(ExperimentalTime::class)

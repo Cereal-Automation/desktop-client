@@ -13,7 +13,7 @@ import kotlin.test.assertEquals
 
 /**
  * Render + interaction tests for [ScriptsColumn]. Builds a [HierarchicalListViewModel] with one
- * expanded parent group containing a child, then asserts the "Tasks" header, group and child render,
+ * expanded parent group containing a child, then asserts the "Tasks" header and child render (the only group's header doesn't),
  * and that "+" and the "···" menu's New group invoke their callbacks.
  */
 @OptIn(ExperimentalTestApi::class, ExperimentalFoundationApi::class)
@@ -36,7 +36,7 @@ class ScriptsColumnUiTest {
     }
 
     @Test
-    fun rendersHeaderGroupAndChild() =
+    fun rendersHeaderAndChildWithoutTheOnlyGroupsHeader() =
         runScreenTest {
             val viewModel = createViewModel()
 
@@ -50,7 +50,7 @@ class ScriptsColumnUiTest {
 
             onNodeWithText("Tasks").assertIsDisplayed()
             onNodeWithText("1 setup · 0 running").assertIsDisplayed()
-            onNodeWithText("My Group").assertIsDisplayed()
+            onNodeWithText("My Group").assertDoesNotExist()
             onNodeWithText("My Script").assertIsDisplayed()
             onNodeWithText("Add Script").assertDoesNotExist()
         }

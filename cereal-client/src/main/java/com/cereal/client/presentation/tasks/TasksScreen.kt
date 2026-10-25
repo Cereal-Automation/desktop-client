@@ -17,10 +17,7 @@ import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.saveable.rememberSaveable
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
@@ -126,17 +123,6 @@ fun TasksScreen(
             Box {
                 Column(Modifier.fillMaxSize()) {
                     val filled = detailsViewState as? TaskViewState.DetailViewState.Filled
-                    val counts =
-                        remember(filled) {
-                            filled?.let {
-                                TaskCounts(
-                                    idle = it.idleTasksCount,
-                                    running = it.runningTasksCount,
-                                    finished = it.finishedTasksCount,
-                                    errored = it.erroredTasksCount,
-                                )
-                            }
-                        }
 
                     val supportUrl =
                         viewModel.hierarchicalListViewModel.selectedChild
@@ -167,24 +153,13 @@ fun TasksScreen(
                         editEnabled = viewModel.editEnabled,
                     )
 
-                    var taskFilter by rememberSaveable { mutableStateOf(TaskFilter.ALL) }
-
-                    if (filled != null && counts != null) {
-                        TaskStatsStrip(counts = counts)
-
+                    viewModel.taskControls.value?.let { controls ->
                         TasksQuickActions(
-                            state =
-                                TaskQuickActionsState(
-                                    startAllEnabled = filled.startAllTasksEnabled,
-                                    stopAllEnabled = filled.stopAllTasksEnabled,
-                                    restartErroredEnabled =
-                                        counts.errored > 0 && !viewModel.restartErroredInFlight.value,
-                                    filter = taskFilter,
-                                ),
+                            state = controls,
                             callbacks =
                                 remember(viewModel) {
                                     TaskQuickActionsCallbacks(
-                                        onFilterChange = { taskFilter = it },
+                                        onStatusChipClick = { viewModel.onStatusChipClicked(it) },
                                         onStartAll = { viewModel.startAllTasks() },
                                         onStopAll = { viewModel.stopAllTasks() },
                                         onRestartErrored = { viewModel.restartErroredTasks() },
@@ -202,18 +177,8 @@ fun TasksScreen(
                                 scriptSelected = viewModel.hierarchicalListViewModel.selectedChild != null,
                             )
                         }
-                        filled?.let { filledState ->
-                            // Pre-filter and group outside the LazyColumn content lambda so this
-                            // only re-runs when the data or the filter actually changes, not on
-                            // every recomposition of the list.
-                            val visibleGroups =
-                                remember(filledState, taskFilter) {
-                                    filledState.scriptInstances.mapNotNull { scriptInstance ->
-                                        val visibleTasks =
-                                            scriptInstance.tasks.filter { task -> taskFilter.matches(task) }
-                                        if (visibleTasks.isEmpty()) null else scriptInstance to visibleTasks
-                                    }
-                                }
+                        filled?.let {
+                            val visibleGroups = viewModel.visibleTasks.value
                             LazyColumn(state = listState) {
                                 visibleGroups.forEach { (scriptInstance, visibleTasks) ->
                                     scriptInstance.title?.let { title ->
@@ -262,6 +227,7 @@ fun TasksScreen(
                         events = viewModel.logViewerMessages.value,
                         onClear = viewModel::clearLogs,
                         artifacts = viewModel.artifacts.value,
+                        taskNumber = viewModel.selectedTaskNumber,
                         onDownloadArtifact = { artifact ->
                             openFileDialog(FileDialog.SAVE)?.let { file ->
                                 viewModel.onDownloadArtifact(artifact, file)
