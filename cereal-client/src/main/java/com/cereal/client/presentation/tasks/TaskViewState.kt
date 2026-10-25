@@ -93,6 +93,11 @@ sealed class TaskViewState {
             val scriptPackageInstance: ScriptPackageInstance,
         ) : DialogState()
 
+        class EditingScript(
+            val scriptPackageGroup: ScriptPackageGroup,
+            val scriptPackageInstance: ScriptPackageInstance,
+        ) : DialogState()
+
         class MovingScript(
             val scriptPackageInstance: ScriptPackageInstance,
             val currentGroup: ScriptPackageGroup,

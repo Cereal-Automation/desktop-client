@@ -44,6 +44,7 @@ fun ScriptInstance.toUiModel(): ScriptInstanceUiModel {
     return ScriptInstanceUiModel(this, name)
 }
 
+@OptIn(ExperimentalTime::class)
 fun Task.toUiModel(taskNumber: Int): TaskUiModel =
     TaskUiModel(
         this,
@@ -51,6 +52,7 @@ fun Task.toUiModel(taskNumber: Int): TaskUiModel =
         status.isRunning(),
         isError = status is TaskStatus.Error,
         isSuccess = status is TaskStatus.Success,
+        isIdle = status is TaskStatus.Idle,
         hasSupportUrl = scriptInstance.packageInstance.definition.manifest.supportUrl != null,
         status.toDisplayMessage(),
         status.toDisplayStatus(),
@@ -61,6 +63,8 @@ fun Task.toUiModel(taskNumber: Int): TaskUiModel =
                 it.value is ConfigValue.ProxyValue || it.value is ConfigValue.CustomDatasetItemValue
             }.joinToString(scriptInstance.definition.configuration),
         stackTrace = (status as? TaskStatus.Error)?.stackTrace,
+        // A task without status history reports an unset (epoch) timestamp; it hasn't changed since its creation.
+        statusSince = status.timestamp.takeIf { it.toEpochMilliseconds() > 0 } ?: createdAt,
     )
 
 @OptIn(ExperimentalTime::class)

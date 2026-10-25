@@ -10,7 +10,6 @@
     <string name="add">Add</string>
     <string name="add_row">Add row</string>
     <string name="clear">Clear</string>
-    <string name="add_script">Add Script</string>
     <string name="already_have_account_label">Already have an account?</string>
     <string name="app_icon">App Icon</string>
     <string name="app_name">Cereal</string>
@@ -45,9 +44,9 @@
     <string name="default_error_message">An unexpected error occurred, we are notified about this and will fix it asap.</string>
     <string name="delete">Delete</string>
     <string name="delete_all">Delete all</string>
-    <string name="delete_group_confirmation_message">This group contains script instances. Deleting the group will also delete all script instances within it. Are you sure you want to continue?</string>
+    <string name="delete_group_confirmation_message">This group contains task setups. Deleting the group will also delete all task setups within it. Are you sure you want to continue?</string>
     <string name="delete_group_confirmation_title">Delete Group</string>
-    <string name="delete_script_instance_confirmation_title">Delete Script Instance?</string>
+    <string name="delete_script_instance_confirmation_title">Delete task setup?</string>
     <string name="delete_script_instance_confirmation_message">Delete &#8220;%1$s&#8221;? This will stop and remove all running tasks.</string>
     <string name="desktop_notifications">Desktop</string>
     <string name="desktop_notifications_desc">Enable desktop notifications.</string>
@@ -100,7 +99,6 @@
     <string name="expand">Expand</string>
     <string name="expand_output">Expand output</string>
     <string name="filter_all">All</string>
-    <string name="filter_label">Filter:</string>
     <string name="filter_action_label">Filter</string>
     <string name="filter_section_price">Price</string>
     <string name="filter_section_creator">Creator</string>
@@ -245,7 +243,9 @@
     <string name="notification_channel_system">System</string>
     <string name="name">Name</string>
     <string name="name_placeholder">Enter your name</string>
+    <string name="needs_attention">Needs attention</string>
     <string name="new_group">New group</string>
+    <string name="new_task_setup">New task setup</string>
     <string name="new_script">New script</string>
     <string name="new_to_platform_action">Create an account</string>
     <string name="new_to_platform_label">New to Cereal?</string>
@@ -264,6 +264,7 @@
     <string name="notifications">Notifications</string>
     <string name="open">Open</string>
     <string name="output">Output</string>
+    <string name="output_task">Output · Task #%1$d</string>
     <string name="output_tab_logs">Logs</string>
     <string name="output_tab_artifacts">Artifacts</string>
     <string name="download_artifact">Download</string>
@@ -451,8 +452,11 @@
         <item quantity="one">%1$d script</item>
         <item quantity="other">%1$d scripts</item>
     </plurals>
-    <string name="scripts_column_title">Scripts</string>
-    <string name="scripts_column_summary">%1$d total · %2$d running</string>
+    <string name="scripts_column_title">Tasks</string>
+    <plurals name="task_setups_summary">
+        <item quantity="one">%1$d setup · %2$d running</item>
+        <item quantity="other">%1$d setups · %2$d running</item>
+    </plurals>
     <string name="search_marketplace_for_scripts">Search for scripts in the marketplace</string>
     <string name="select_script">Select script</string>
     <string name="select_script_to_configure">Please, select a script to configure.</string>
@@ -520,6 +524,9 @@
     <string name="update_required_title">Update required</string>
     <string name="update_required_message">This version is no longer supported. Please update to continue.</string>
     <string name="view_config">View config</string>
+    <string name="fewer_concurrent_tasks">Fewer tasks</string>
+    <string name="more_concurrent_tasks">More tasks</string>
+    <string name="stop_tasks_to_edit">Stop tasks to edit</string>
     <string name="view_full_configuration">View full configuration</string>
     <string name="view_profile">View profile</string>
     <string name="view_profile_desc">View and edit your profile online.</string>
@@ -550,14 +557,15 @@
     <string name="my_scripts_empty_action_browse">Browse marketplace</string>
     <string name="my_scripts_update_available">Update available</string>
     <string name="my_scripts_running_tasks">Running tasks</string>
-    <string name="tasks_empty_title">No tasks yet</string>
-    <string name="tasks_empty_message">Describe a goal on Home, or add a ready-made script.</string>
-    <string name="tasks_empty_action_create_group">Create group</string>
-    <string name="tasks_empty_action_add_script">Add script</string>
-    <string name="tasks_no_script_selected_title">No script selected</string>
-    <string name="tasks_no_script_selected_message">Select a script on the left to see its tasks.</string>
+    <string name="tasks_empty_title">No task setups yet</string>
+    <string name="tasks_empty_message">A task setup runs a ready-made script with your settings.</string>
+    <string name="tasks_empty_home_link">or describe a goal on Home</string>
+    <string name="tasks_no_script_selected_title">No task setup selected</string>
+    <string name="tasks_no_script_selected_message">Select a task setup on the left to see its tasks.</string>
     <string name="tasks_no_tasks_title">No tasks yet</string>
-    <string name="tasks_no_tasks_message">This script has no tasks. Tasks will appear here once they are created.</string>
+    <string name="task_ready">Ready</string>
+    <string name="seconds_ago">%1$ds ago</string>
+    <string name="tasks_no_tasks_message">This task setup has no tasks. Tasks will appear here once they are created.</string>
     <string name="ai">AI</string>
     <string name="ai_provider">Provider</string>
     <string name="ai_provider_desc">Pick the model the AI browser agent and scripts use.</string>

@@ -87,6 +87,7 @@ import com.cereal_automation.cereal_client.generated.resources.no_artifacts
 import com.cereal_automation.cereal_client.generated.resources.output
 import com.cereal_automation.cereal_client.generated.resources.output_tab_artifacts
 import com.cereal_automation.cereal_client.generated.resources.output_tab_logs
+import com.cereal_automation.cereal_client.generated.resources.output_task
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import org.jetbrains.compose.resources.stringResource
@@ -126,6 +127,7 @@ fun LogOutputView(
     onClear: () -> Unit,
     artifacts: List<Artifact> = emptyList(),
     onDownloadArtifact: (Artifact) -> Unit = {},
+    taskNumber: Int? = null,
 ) {
     var expanded by rememberSaveable { mutableStateOf(true) }
     var autoScrollEnabled by rememberSaveable { mutableStateOf(true) }
@@ -231,6 +233,7 @@ fun LogOutputView(
             onCopyAll = onCopyAll,
             copyEnabled = filteredEvents.isNotEmpty(),
             copied = copied,
+            taskNumber = taskNumber,
         )
 
         if (expanded) {
@@ -282,6 +285,7 @@ private fun OutputHeader(
     onCopyAll: () -> Unit,
     copyEnabled: Boolean,
     copied: Boolean,
+    taskNumber: Int?,
 ) {
     Row(
         modifier =
@@ -304,7 +308,7 @@ private fun OutputHeader(
         )
 
         CerealText(
-            text = stringResource(Res.string.output),
+            text = taskNumber?.let { stringResource(Res.string.output_task, it) } ?: stringResource(Res.string.output),
             color = Color.White,
             style =
                 MaterialTheme.typography.titleMedium.copy(

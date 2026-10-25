@@ -17,10 +17,7 @@ import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.saveable.rememberSaveable
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
@@ -35,6 +32,7 @@ import com.cereal.client.presentation.tasks.script.overview.ScriptSelectionDialo
 import com.cereal.client.presentation.view.ConfirmationDialog
 import com.cereal.client.presentation.view.VerticalDivider
 import com.cereal.client.presentation.view.group.ScriptsColumn
+import com.cereal.client.presentation.view.group.ScriptsColumnHeader
 import com.cereal.client.presentation.view.rememberFileDialogLauncher
 import com.cereal_automation.cereal_client.generated.resources.Res
 import com.cereal_automation.cereal_client.generated.resources.cancel
@@ -54,6 +52,7 @@ import kotlin.coroutines.resume
 @Composable
 fun TasksScreen(
     onNavigateToMarketplace: () -> Unit = {},
+    onNavigateToHome: () -> Unit = {},
     openScriptSelectionForPackage: String? = null,
     focusTaskId: String? = null,
     viewModel: TasksViewModel =
@@ -88,6 +87,7 @@ fun TasksScreen(
                     is TaskViewState.GroupViewState.Filled<*, *> -> {
                         ScriptsColumn(
                             viewModel = viewModel.hierarchicalListViewModel,
+                            onNewTaskSetup = { viewModel.onAddScriptClicked() },
                             onCreateGroup = { viewModel.onCreateTaskGroup() },
                             onChildLongClick = { child ->
                                 child?.let {
@@ -98,10 +98,18 @@ fun TasksScreen(
                     }
 
                     TaskViewState.GroupViewState.Empty -> {
-                        TasksEmptyState(
-                            onCreateGroup = { viewModel.onCreateTaskGroup() },
-                            onAddScript = { viewModel.onAddScriptClicked() },
-                        )
+                        Column {
+                            ScriptsColumnHeader(
+                                totalScripts = 0,
+                                runningScripts = 0,
+                                onNewTaskSetup = { viewModel.onAddScriptClicked() },
+                                onCreateGroup = { viewModel.onCreateTaskGroup() },
+                            )
+                            TasksEmptyState(
+                                onNewTaskSetup = { viewModel.onAddScriptClicked() },
+                                onNavigateToHome = onNavigateToHome,
+                            )
+                        }
                     }
 
                     // Loading is the brief window before the groups flow first emits. Render
@@ -115,17 +123,6 @@ fun TasksScreen(
             Box {
                 Column(Modifier.fillMaxSize()) {
                     val filled = detailsViewState as? TaskViewState.DetailViewState.Filled
-                    val counts =
-                        remember(filled) {
-                            filled?.let {
-                                TaskCounts(
-                                    idle = it.idleTasksCount,
-                                    running = it.runningTasksCount,
-                                    finished = it.finishedTasksCount,
-                                    errored = it.erroredTasksCount,
-                                )
-                            }
-                        }
 
                     val supportUrl =
                         viewModel.hierarchicalListViewModel.selectedChild
@@ -150,26 +147,22 @@ fun TasksScreen(
                             } else {
                                 null
                             },
+                        menuOptions = if (filled != null) viewModel.headerMenuOptions else emptyList(),
+                        onMenuOptionSelected = viewModel::onHeaderMenuOptionSelected,
+                        onEdit = filled?.let { viewModel::onEditClicked },
+                        editEnabled = viewModel.editEnabled,
+                        stepper = viewModel.concurrentTaskStepper.value.takeIf { filled != null },
+                        onDecreaseTasks = viewModel::decreaseConcurrentTasks,
+                        onIncreaseTasks = viewModel::increaseConcurrentTasks,
                     )
 
-                    var taskFilter by rememberSaveable { mutableStateOf(TaskFilter.ALL) }
-
-                    if (filled != null && counts != null) {
-                        TaskStatsStrip(counts = counts)
-
+                    viewModel.taskControls.value?.let { controls ->
                         TasksQuickActions(
-                            state =
-                                TaskQuickActionsState(
-                                    startAllEnabled = filled.startAllTasksEnabled,
-                                    stopAllEnabled = filled.stopAllTasksEnabled,
-                                    restartErroredEnabled =
-                                        counts.errored > 0 && !viewModel.restartErroredInFlight.value,
-                                    filter = taskFilter,
-                                ),
+                            state = controls,
                             callbacks =
                                 remember(viewModel) {
                                     TaskQuickActionsCallbacks(
-                                        onFilterChange = { taskFilter = it },
+                                        onStatusChipClick = { viewModel.onStatusChipClicked(it) },
                                         onStartAll = { viewModel.startAllTasks() },
                                         onStopAll = { viewModel.stopAllTasks() },
                                         onRestartErrored = { viewModel.restartErroredTasks() },
@@ -187,18 +180,8 @@ fun TasksScreen(
                                 scriptSelected = viewModel.hierarchicalListViewModel.selectedChild != null,
                             )
                         }
-                        filled?.let { filledState ->
-                            // Pre-filter and group outside the LazyColumn content lambda so this
-                            // only re-runs when the data or the filter actually changes, not on
-                            // every recomposition of the list.
-                            val visibleGroups =
-                                remember(filledState, taskFilter) {
-                                    filledState.scriptInstances.mapNotNull { scriptInstance ->
-                                        val visibleTasks =
-                                            scriptInstance.tasks.filter { task -> taskFilter.matches(task) }
-                                        if (visibleTasks.isEmpty()) null else scriptInstance to visibleTasks
-                                    }
-                                }
+                        filled?.let {
+                            val visibleGroups = viewModel.visibleTasks.value
                             LazyColumn(state = listState) {
                                 visibleGroups.forEach { (scriptInstance, visibleTasks) ->
                                     scriptInstance.title?.let { title ->
@@ -247,6 +230,7 @@ fun TasksScreen(
                         events = viewModel.logViewerMessages.value,
                         onClear = viewModel::clearLogs,
                         artifacts = viewModel.artifacts.value,
+                        taskNumber = viewModel.selectedTaskNumber,
                         onDownloadArtifact = { artifact ->
                             openFileDialog(FileDialog.SAVE)?.let { file ->
                                 viewModel.onDownloadArtifact(artifact, file)
@@ -299,6 +283,16 @@ fun TasksScreen(
                     viewModel.closeDialog()
                     onNavigateToMarketplace()
                 },
+            )
+        }
+
+        is TaskViewState.DialogState.EditingScript -> {
+            ScriptSelectionDialog(
+                scriptPackageGroup = state.scriptPackageGroup,
+                initialScriptPackageInstance = state.scriptPackageInstance,
+                editing = true,
+                onDismissRequest = { viewModel.closeDialog() },
+                onScriptInstanceCreated = viewModel::onScriptInstanceCreated,
             )
         }
 

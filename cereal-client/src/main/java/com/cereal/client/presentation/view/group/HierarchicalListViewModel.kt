@@ -13,7 +13,6 @@ class HierarchicalListViewModel<P, C>(
     private val onChildSelectedChange: (C?) -> Unit,
     private val onParentMenuOptionSelected: ((item: P, menuItem: MenuOption) -> Unit)? = null,
     private val onChildMenuOptionSelected: ((item: C, menuItem: MenuOption) -> Unit)? = null,
-    private val onAddChildClicked: ((parentId: P) -> Unit)? = null,
 ) {
     val state = mutableStateOf<List<HierarchicalListItem<P, C>>>(emptyList())
 
@@ -25,6 +24,10 @@ class HierarchicalListViewModel<P, C>(
         private set
     var selectedChild: C? = null
         private set
+
+    /** Every child in list order, including those of collapsed parents and of a single (hidden) parent. */
+    val allChildren: List<GroupListItemContent<C>>
+        get() = parents.flatMap { childrenByParent[it.id].orEmpty() }
 
     fun updateItems(
         parents: List<GroupListItemContent<P>>,
@@ -137,6 +140,19 @@ class HierarchicalListViewModel<P, C>(
     }
 
     private fun updateState() {
+        // A single parent is not shown: its children render as a flat list until a second parent exists.
+        parents.singleOrNull()?.let { only ->
+            state.value =
+                childrenByParent[only.id].orEmpty().map { childContent ->
+                    HierarchicalListItem.Child(
+                        content = childContent,
+                        parentId = only.id,
+                        selected = childContent.id == selectedChild,
+                    )
+                }
+            return
+        }
+
         val items = mutableListOf<HierarchicalListItem<P, C>>()
 
         for (parentContent in parents) {
@@ -169,9 +185,5 @@ class HierarchicalListViewModel<P, C>(
         }
 
         state.value = items
-    }
-
-    fun onAddChildClick(parent: HierarchicalListItem.Parent<P, C>) {
-        onAddChildClicked?.invoke(parent.content.id)
     }
 }

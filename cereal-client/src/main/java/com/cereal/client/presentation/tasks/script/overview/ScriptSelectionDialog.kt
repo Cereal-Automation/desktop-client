@@ -67,6 +67,7 @@ import com.cereal_automation.cereal_client.generated.resources.no_installed_scri
 import com.cereal_automation.cereal_client.generated.resources.notification_warning_continue
 import com.cereal_automation.cereal_client.generated.resources.notification_warning_message
 import com.cereal_automation.cereal_client.generated.resources.notification_warning_title
+import com.cereal_automation.cereal_client.generated.resources.save
 import com.cereal_automation.cereal_client.generated.resources.script_capacity_label
 import com.cereal_automation.cereal_client.generated.resources.search_marketplace_for_scripts
 import com.cereal_automation.cereal_client.generated.resources.select_script_to_configure
@@ -85,17 +86,21 @@ fun ScriptSelectionDialog(
     scriptPackageGroup: ScriptPackageGroup,
     initialScriptPackageInstance: ScriptPackageInstance? = null,
     initialPublicIdentifier: String? = null,
+    // Saves [initialScriptPackageInstance] in place instead of creating a setup from it.
+    editing: Boolean = false,
     coroutineScope: CoroutineScope = rememberCoroutineScope(),
     viewModel: ScriptSelectionViewModel =
         remember {
             KoinJavaComponent.get(
                 ScriptSelectionViewModel::class.java,
-                parameters = { parametersOf(coroutineScope, scriptPackageGroup, initialScriptPackageInstance, initialPublicIdentifier) },
+                parameters = { parametersOf(coroutineScope, scriptPackageGroup, initialScriptPackageInstance, initialPublicIdentifier, editing) },
             )
         },
+    // The created setup or, when editing, the saved one.
     onScriptInstanceCreated: ((scriptPackageInstance: ScriptPackageInstance) -> Unit),
     onDismissRequest: (() -> Unit),
-    onNavigateToMarketplace: () -> Unit,
+    // Only reachable while choosing a script, so not when editing.
+    onNavigateToMarketplace: () -> Unit = {},
 ) {
     val scriptInstanceStarted = viewModel.scriptInstanceStarted.value
     LaunchedEffect(scriptInstanceStarted) {
@@ -128,21 +133,24 @@ fun ScriptSelectionDialog(
                         .border(1.dp, CerealTheme.colorScheme.borderDark, DialogShape)
                         .background(CerealTheme.colorScheme.cardDark),
             ) {
-                when (val state = viewModel.overviewViewState.value) {
-                    is ScriptSelectionState.Overview.Filled -> {
-                        ScriptRail(count = state.viewModel.state.value.size, viewModel = viewModel) {
-                            GroupedListView(viewModel = state.viewModel)
+                // An edit keeps its script, so there is nothing to choose.
+                if (!viewModel.editing) {
+                    when (val state = viewModel.overviewViewState.value) {
+                        is ScriptSelectionState.Overview.Filled -> {
+                            ScriptRail(count = state.viewModel.state.value.size, viewModel = viewModel) {
+                                GroupedListView(viewModel = state.viewModel)
+                            }
                         }
-                    }
 
-                    is ScriptSelectionState.Overview.Empty -> {
-                        ScriptRail(count = 0, viewModel = viewModel) {
-                            NoScriptsAvailableView(onNavigateToMarketplace)
+                        is ScriptSelectionState.Overview.Empty -> {
+                            ScriptRail(count = 0, viewModel = viewModel) {
+                                NoScriptsAvailableView(onNavigateToMarketplace)
+                            }
                         }
-                    }
 
-                    // Nothing to choose from, so the configuration takes the full width.
-                    is ScriptSelectionState.Overview.Single -> {}
+                        // Nothing to choose from, so the configuration takes the full width.
+                        is ScriptSelectionState.Overview.Single -> {}
+                    }
                 }
 
                 val configState = viewModel.configurationViewState.value
@@ -170,9 +178,10 @@ fun ScriptSelectionDialog(
                         capacity = scriptCapacityText(viewModel.selectedScriptCapacity.value),
                         enabled = configState is ScriptSelectionState.Config.Selected && !viewModel.selectedScriptUpdateRequired.value,
                         isLaunching = viewModel.scriptLaunchLoadState.value is LoadState.Loading,
+                        isEditing = viewModel.editing,
                         onStart = {
                             if (viewModel.validate()) {
-                                viewModel.launchScript()
+                                if (viewModel.editing) viewModel.saveEdit() else viewModel.launchScript()
                             }
                         },
                     )
@@ -200,7 +209,7 @@ private fun StartScriptWarningConfirmationDialog(viewModel: ScriptSelectionViewM
             },
             confirmButton = {
                 CerealTextButton(onClick = { viewModel.onStartScriptWarningConfirmationAccepted() }) {
-                    CerealText(stringResource(Res.string.start_script))
+                    CerealText(stringResource(if (viewModel.editing) Res.string.save else Res.string.start_script))
                 }
             },
             dismissButton = {
@@ -325,6 +334,7 @@ private fun ConfigFooter(
     capacity: String?,
     enabled: Boolean,
     isLaunching: Boolean,
+    isEditing: Boolean,
     onStart: () -> Unit,
 ) {
     HorizontalDivider(color = DividerColor)
@@ -362,15 +372,15 @@ private fun ConfigFooter(
                     color = MaterialTheme.colorScheme.onPrimary,
                     strokeWidth = 2.dp,
                 )
-            } else {
+            } else if (!isEditing) {
                 Icon(
                     painterResource(Res.drawable.ic_play),
                     contentDescription = null,
                     modifier = Modifier.size(ButtonDefaults.IconSize),
                 )
             }
-            Spacer(Modifier.width(ButtonDefaults.IconSpacing))
-            CerealText(stringResource(Res.string.start_task))
+            if (isLaunching || !isEditing) Spacer(Modifier.width(ButtonDefaults.IconSpacing))
+            CerealText(stringResource(if (isEditing) Res.string.save else Res.string.start_task))
         }
     }
 }

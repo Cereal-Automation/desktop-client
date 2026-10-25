@@ -9,8 +9,10 @@ import com.cereal.client.domain.model.script.configuration.ScriptConfigurationDe
 import com.cereal.client.domain.model.task.JobTask
 import com.cereal.client.domain.model.task.TaskStatus
 import com.cereal.client.domain.repository.ScriptInstanceRepository
+import com.cereal.client.infrastructure.data.repository.inmemory.InMemoryScriptInstanceRepository
 import com.cereal.client.infrastructure.data.repository.inmemory.InMemoryTasksRepository
 import com.cereal.sdk.ScriptConfiguration
+import fixtures.proxyGroup
 import io.mockk.coEvery
 import io.mockk.mockk
 import kotlinx.coroutines.test.runTest
@@ -167,5 +169,36 @@ class TaskManagerTest {
             assertTrue(restoredStatus is TaskStatus.Idle) {
                 "Expected an interrupted task to be restored as Idle, but was $restoredStatus"
             }
+        }
+
+    /**
+     * Tasks capture their setup when created. After the stepper raises the count, a task created before the change
+     * must be allowed to start next to a running one: the start check reads the stored count, not the captured one.
+     */
+    @Test
+    fun `startTask uses the setup's stored count, not the one its task captured`() =
+        runTest {
+            val tasksRepository = InMemoryTasksRepository()
+            val scriptInstances = InMemoryScriptInstanceRepository()
+            val captured = packageInstance.copy(mainConfiguration = proxyGroup(), numberOfConcurrentTasks = 1)
+            val capturedScript = scriptInstance.copy(configuration = captured.mainConfiguration, packageInstance = captured)
+            scriptInstances.addScriptPackageInstance("default", captured, capturedScript)
+            scriptInstances.updateScriptPackageInstance(captured.copy(numberOfConcurrentTasks = 2))
+
+            val taskManager =
+                TaskManager(
+                    dispatcherProvider = CoroutinesDispatcherProvider(),
+                    tasksRepository = tasksRepository,
+                    taskConfigurationBuilder = taskConfigurationBuilder,
+                    scriptInstanceRepository = scriptInstances,
+                    jobTaskFactory = mockk(relaxed = true),
+                    artifactRepository = mockk(relaxed = true),
+                )
+            tasksRepository.addTask(buildTask("running", listOf(TaskStatus.Running("Working", Clock.System.now()))).copy(scriptInstance = capturedScript))
+            tasksRepository.addTask(buildTask("idle").copy(scriptInstance = capturedScript))
+
+            taskManager.startTask("idle")
+
+            assertTrue(tasksRepository.getTask("idle")!!.statusHistory.any { it is TaskStatus.Running })
         }
 }

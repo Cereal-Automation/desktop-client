@@ -34,6 +34,14 @@ class ScriptInstanceRepositoryImpl(
         scriptInstanceDataSource.updateScriptPackageInstanceGroup(user, scriptPackageInstance, newGroupId)
     }
 
+    override suspend fun updateScriptPackageInstance(scriptPackageInstance: ScriptPackageInstance) {
+        // Script scopes keep their script instance as source; close them so they are rebuilt on the new configuration.
+        getScriptInstances(scriptPackageInstance).forEach {
+            getKoin().getScopeOrNull(it.id)?.close()
+        }
+        scriptInstanceDataSource.updateScriptPackageInstance(userSession.requireUser(), scriptPackageInstance)
+    }
+
     override suspend fun addScriptPackageInstance(
         groupId: String,
         scriptPackageInstance: ScriptPackageInstance,

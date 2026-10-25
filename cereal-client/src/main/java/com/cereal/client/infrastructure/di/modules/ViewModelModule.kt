@@ -28,6 +28,7 @@ import com.cereal.client.presentation.proxy.provider.ProxyProviderViewModel
 import com.cereal.client.presentation.proxy.provider.SyncProxiesViewModel
 import com.cereal.client.presentation.settings.ApplicationSettingsViewModel
 import com.cereal.client.presentation.settings.ai.AiSettingsViewModel
+import com.cereal.client.presentation.tasks.LastSelectedTaskSetup
 import com.cereal.client.presentation.tasks.TasksActionHandler
 import com.cereal.client.presentation.tasks.TasksListObserver
 import com.cereal.client.presentation.tasks.TasksViewModel
@@ -118,8 +119,11 @@ object ViewModelModule {
                     get(),
                 )
             }
+            single { LastSelectedTaskSetup() }
             factory {
                 TasksViewModel(
+                    get(),
+                    get(),
                     get(),
                     get(),
                     get(),
@@ -207,14 +211,16 @@ object ViewModelModule {
                     get(),
                 )
             }
-            // Koin parameter holder unpacks four injected values for this factory.
+            // Koin parameter holder unpacks five injected values for this factory.
             @Suppress("DestructuringDeclarationWithTooManyEntries")
-            factory { (scope: CoroutineScope, scriptPackageGroup: ScriptPackageGroup, initialScriptPackageInstance: ScriptPackageInstance?, initialPublicIdentifier: String?) ->
+            factory { (scope: CoroutineScope, scriptPackageGroup: ScriptPackageGroup, initialScriptPackageInstance: ScriptPackageInstance?, initialPublicIdentifier: String?, editing: Boolean) ->
                 ScriptSelectionViewModel(
                     scope,
                     scriptPackageGroup,
                     initialScriptPackageInstance,
                     initialPublicIdentifier,
+                    editing,
+                    get(),
                     get(),
                     get(),
                     get(),

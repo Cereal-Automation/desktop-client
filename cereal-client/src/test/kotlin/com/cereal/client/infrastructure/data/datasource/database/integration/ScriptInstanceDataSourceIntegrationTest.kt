@@ -3,6 +3,9 @@ package com.cereal.client.infrastructure.data.datasource.database.integration
 import com.cereal.client.application.ApplicationConfig
 import com.cereal.client.application.script.ScriptInstanceFactory
 import com.cereal.client.application.task.JobTaskFactory
+import com.cereal.client.domain.model.notification.DiscordOverrides
+import com.cereal.client.domain.model.notification.ScriptNotificationOverrides
+import com.cereal.client.domain.model.notification.TelegramOverrides
 import com.cereal.client.domain.model.script.ChildScript
 import com.cereal.client.domain.model.script.ChildScriptInstance
 import com.cereal.client.domain.model.script.MainScript
@@ -1133,6 +1136,84 @@ class ScriptInstanceDataSourceIntegrationTest {
                 // This is where we suspect the bug might be (group disappearing due to join/group by issue)
                 assertEquals(1, groups.size, "Group should still be visible after adding a script")
                 assertEquals(1, groups.first().totalScriptPackages, "Group should have 1 script package")
+            } finally {
+                tearDownForImplementation(implementation)
+            }
+        }
+
+    @OptIn(ExperimentalTime::class)
+    @ParameterizedTest(name = "test update script package instance - {0}")
+    @EnumSource(value = DatabaseImplementation::class, names = ["ROOM"])
+    fun `test update script package instance replaces its configuration in place`(implementation: DatabaseImplementation) =
+        runTest {
+            setupForImplementation(implementation)
+            try {
+                // Given a stored setup with a configuration, notification overrides and a task with history
+                val nameDefinition =
+                    ScriptConfigurationDefinition(
+                        scriptConfigurationClass = ScriptConfiguration::class,
+                        configurationItems = listOf(listFieldDefinition("name", ConfigItemType.StringConfigItem)),
+                    )
+                val definition =
+                    ScriptPackage(
+                        source = File("/test/script.jar"),
+                        manifest = Manifest(packageName = "com.test.script", name = "Test Script", versionCode = 1L),
+                        mainScript = mockk<MainScript> { every { configuration } returns nameDefinition },
+                        childScripts = mapOf("child" to mockk<ChildScript> { every { configuration } returns nameDefinition }),
+                    )
+                val group = createTestScriptPackageGroup()
+                scriptInstanceDataSource.createScriptInstanceGroup(testUser, group)
+                val original =
+                    ScriptPackageInstance(
+                        id = UUID.randomUUID().toString(),
+                        mainConfiguration = mapOf("name" to ConfigValue.StringValue("old main")),
+                        childConfigurations = mapOf("child" to mapOf("name" to ConfigValue.StringValue("old child"))),
+                        definition = definition,
+                        createdAt = Clock.System.now(),
+                        numberOfConcurrentTasks = 1,
+                        notificationOverrides = ScriptNotificationOverrides(discordOverrides = DiscordOverrides("https://old")),
+                    )
+                val mainScriptInstance =
+                    MainScriptInstance(
+                        id = UUID.randomUUID().toString(),
+                        definition = definition.mainScript,
+                        configuration = original.mainConfiguration,
+                        createdAt = Clock.System.now(),
+                        packageInstance = original,
+                    )
+                scriptInstanceDataSource.addScriptPackageInstance(testUser, original, mainScriptInstance, group.id)
+                val task = createTestTask(mainScriptInstance)
+                scriptInstanceDataSource.addTask(testUser, task)
+
+                // When
+                val edited =
+                    original.copy(
+                        mainConfiguration = mapOf("name" to ConfigValue.StringValue("new main")),
+                        childConfigurations = mapOf("child" to mapOf("name" to ConfigValue.StringValue("new child"))),
+                        numberOfConcurrentTasks = 3,
+                        notificationOverrides = ScriptNotificationOverrides(telegramOverrides = TelegramOverrides("token", "chat")),
+                    )
+                scriptInstanceDataSource.updateScriptPackageInstance(testUser, edited)
+
+                // Then the same setup, in the same group, reads back with the new values
+                val stored =
+                    scriptInstanceDataSource
+                        .getScriptPackageInstancesInGroup(testUser, group.id, mapOf("com.test.script" to definition))
+                        .single()
+                assertEquals(original.id, stored.id)
+                assertEquals(original.createdAt.toEpochMilliseconds(), stored.createdAt.toEpochMilliseconds())
+                assertEquals(edited.mainConfiguration, stored.mainConfiguration)
+                assertEquals(edited.childConfigurations, stored.childConfigurations)
+                assertEquals(3, stored.numberOfConcurrentTasks)
+                assertEquals(edited.notificationOverrides, stored.notificationOverrides)
+
+                // And the main script and its task (with history) are untouched
+                val mainScript = scriptInstanceDataSource.getScriptInstances(testUser, stored).single()
+                assertEquals(mainScriptInstance.id, mainScript.id)
+                assertEquals(edited.mainConfiguration, mainScript.configuration)
+                val restoredTask = scriptInstanceDataSource.getJobTasksFromHistory(testUser, mainScript).single()
+                assertEquals(task.id, restoredTask.id)
+                assertEquals(task.statusHistory.size, restoredTask.statusHistory.size)
             } finally {
                 tearDownForImplementation(implementation)
             }

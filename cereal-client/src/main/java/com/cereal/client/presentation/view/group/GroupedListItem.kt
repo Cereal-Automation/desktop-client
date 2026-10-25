@@ -12,4 +12,10 @@ data class GroupListItemContent<T>(
     val subTitle: String? = null,
     val badge: String? = null,
     val isRunning: Boolean = false,
+    /** Status dot of the item; null shows none. */
+    val status: ItemStatus? = null,
+    /** Red marker: something in the item needs the user (an error or a pending interaction). */
+    val needsAttention: Boolean = false,
 )
+
+enum class ItemStatus { IDLE, RUNNING, ERROR }

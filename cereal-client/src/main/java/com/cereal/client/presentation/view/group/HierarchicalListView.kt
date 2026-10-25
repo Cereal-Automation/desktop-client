@@ -12,7 +12,6 @@ import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
@@ -31,7 +30,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.CreateNewFolder
+import androidx.compose.material.icons.filled.Error
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.MoreHoriz
 import androidx.compose.material.icons.filled.Warning
@@ -52,14 +51,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.draw.shadow
-import androidx.compose.ui.geometry.CornerRadius
-import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.PathEffect
-import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.input.pointer.PointerButton
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.DpOffset
@@ -71,34 +64,31 @@ import com.cereal.client.presentation.theme.CerealTypography
 import com.cereal.client.presentation.util.initialsOf
 import com.cereal.client.presentation.view.CerealIconButton
 import com.cereal.client.presentation.view.CerealText
-import com.cereal.client.presentation.view.chip.Pill
+import com.cereal.client.presentation.view.StatusDot
 import com.cereal_automation.cereal_client.generated.resources.Res
-import com.cereal_automation.cereal_client.generated.resources.add_script
 import com.cereal_automation.cereal_client.generated.resources.collapse
 import com.cereal_automation.cereal_client.generated.resources.expand
 import com.cereal_automation.cereal_client.generated.resources.more_options
+import com.cereal_automation.cereal_client.generated.resources.needs_attention
 import com.cereal_automation.cereal_client.generated.resources.new_group
-import com.cereal_automation.cereal_client.generated.resources.scripts_column_summary
+import com.cereal_automation.cereal_client.generated.resources.new_task_setup
 import com.cereal_automation.cereal_client.generated.resources.scripts_column_title
+import com.cereal_automation.cereal_client.generated.resources.task_setups_summary
 import com.cereal_automation.cereal_client.generated.resources.warning
+import org.jetbrains.compose.resources.pluralStringResource
 import org.jetbrains.compose.resources.stringResource
 
 @Composable
 fun <P, C> ScriptsColumn(
     viewModel: HierarchicalListViewModel<P, C>,
+    onNewTaskSetup: () -> Unit,
     onCreateGroup: () -> Unit,
     onChildLongClick: ((HierarchicalListItem.Child<P, C>?) -> Unit)? = null,
 ) {
     val items = viewModel.state.value
-    val parents =
-        remember(items) {
-            items.filterIsInstance<HierarchicalListItem.Parent<P, C>>()
-        }
-    val totalScripts = remember(parents) { parents.sumOf { it.children.size } }
-    val runningScripts =
-        remember(parents) {
-            parents.sumOf { p -> p.children.count { it.content.isRunning } }
-        }
+    val children = remember(items) { viewModel.allChildren }
+    val totalScripts = children.size
+    val runningScripts = remember(children) { children.count { it.isRunning } }
 
     Column(
         modifier =
@@ -109,6 +99,7 @@ fun <P, C> ScriptsColumn(
         ScriptsColumnHeader(
             totalScripts = totalScripts,
             runningScripts = runningScripts,
+            onNewTaskSetup = onNewTaskSetup,
             onCreateGroup = onCreateGroup,
         )
         HierarchicalListView(
@@ -118,12 +109,15 @@ fun <P, C> ScriptsColumn(
     }
 }
 
+/** The "Tasks" pane header: setup counts, "+" (New task setup) and a "···" menu with New group. */
 @Composable
-private fun ScriptsColumnHeader(
+internal fun ScriptsColumnHeader(
     totalScripts: Int,
     runningScripts: Int,
+    onNewTaskSetup: () -> Unit,
     onCreateGroup: () -> Unit,
 ) {
+    var menuExpanded by remember { mutableStateOf(false) }
     Column(modifier = Modifier.fillMaxWidth()) {
         Row(
             modifier =
@@ -143,8 +137,9 @@ private fun ScriptsColumnHeader(
                 )
                 CerealText(
                     text =
-                        stringResource(
-                            Res.string.scripts_column_summary,
+                        pluralStringResource(
+                            Res.plurals.task_setups_summary,
+                            totalScripts,
                             totalScripts,
                             runningScripts,
                         ),
@@ -154,13 +149,35 @@ private fun ScriptsColumnHeader(
                 )
             }
 
-            CerealIconButton(onClick = onCreateGroup) {
+            CerealIconButton(onClick = onNewTaskSetup) {
                 Icon(
-                    imageVector = Icons.Filled.CreateNewFolder,
-                    contentDescription = stringResource(Res.string.new_group),
+                    imageVector = Icons.Filled.Add,
+                    contentDescription = stringResource(Res.string.new_task_setup),
                     modifier = Modifier.size(18.dp),
                     tint = CerealTheme.colorScheme.contentSecondary,
                 )
+            }
+            Box {
+                CerealIconButton(onClick = { menuExpanded = true }) {
+                    Icon(
+                        imageVector = Icons.Filled.MoreHoriz,
+                        contentDescription = stringResource(Res.string.more_options),
+                        modifier = Modifier.size(18.dp),
+                        tint = CerealTheme.colorScheme.contentSecondary,
+                    )
+                }
+                DropdownMenu(
+                    expanded = menuExpanded,
+                    onDismissRequest = { menuExpanded = false },
+                ) {
+                    DropdownMenuItem(
+                        text = { CerealText(stringResource(Res.string.new_group)) },
+                        onClick = {
+                            menuExpanded = false
+                            onCreateGroup()
+                        },
+                    )
+                }
             }
         }
         Box(
@@ -189,6 +206,12 @@ fun <P, C> HierarchicalListView(
             modifier = Modifier.padding(vertical = 6.dp),
             state = listState,
         ) {
+            if (groupedItems.isEmpty()) {
+                // Single group: the view model emits its children without a parent, rendered as a flat list.
+                items(viewModel.state.value.filterIsInstance<HierarchicalListItem.Child<P, C>>(), key = { it.content.id as Any }) { child ->
+                    ChildRow(child, viewModel, onChildLongClick)
+                }
+            }
             items(groupedItems, key = { it.parent.content.id as Any }) { groupedItem ->
                 GroupSection(
                     parent = groupedItem.parent,
@@ -257,18 +280,24 @@ private fun <P, C> GroupSection(
         )
 
         if (parent.expanded) {
-            children.forEach { child ->
-                ScriptRow(
-                    child = child,
-                    menuOptions = viewModel.childMenuOptions,
-                    onMenuOptionClick = { option -> viewModel.onChildMenuOptionClick(child, option) },
-                    onClick = { viewModel.onChildClick(child) },
-                    onLongClick = { onChildLongClick?.invoke(child) },
-                )
-            }
-            AddScriptRow(onClick = { viewModel.onAddChildClick(parent) })
+            children.forEach { child -> ChildRow(child, viewModel, onChildLongClick) }
         }
     }
+}
+
+@Composable
+private fun <P, C> ChildRow(
+    child: HierarchicalListItem.Child<P, C>,
+    viewModel: HierarchicalListViewModel<P, C>,
+    onChildLongClick: ((HierarchicalListItem.Child<P, C>?) -> Unit)?,
+) {
+    ScriptRow(
+        child = child,
+        menuOptions = viewModel.childMenuOptions,
+        onMenuOptionClick = { option -> viewModel.onChildMenuOptionClick(child, option) },
+        onClick = { viewModel.onChildClick(child) },
+        onLongClick = { onChildLongClick?.invoke(child) },
+    )
 }
 
 @Composable
@@ -278,8 +307,6 @@ private fun <P, C> GroupHeaderRow(
     onMenuOptionClick: (com.cereal.client.presentation.tasks.MenuOption) -> Unit,
     onToggle: () -> Unit,
 ) {
-    var menuExpanded by remember { mutableStateOf(false) }
-
     Row(
         modifier =
             Modifier
@@ -322,30 +349,7 @@ private fun <P, C> GroupHeaderRow(
         Spacer(Modifier.weight(1f))
 
         if (menuOptions.isNotEmpty()) {
-            Box {
-                CerealIconButton(onClick = { menuExpanded = true }) {
-                    Icon(
-                        imageVector = Icons.Filled.MoreHoriz,
-                        contentDescription = stringResource(Res.string.more_options),
-                        modifier = Modifier.size(18.dp),
-                        tint = CerealTheme.colorScheme.contentSubtle,
-                    )
-                }
-                DropdownMenu(
-                    expanded = menuExpanded,
-                    onDismissRequest = { menuExpanded = false },
-                ) {
-                    menuOptions.forEach { option ->
-                        DropdownMenuItem(
-                            text = { CerealText(stringResource(option.stringResource)) },
-                            onClick = {
-                                onMenuOptionClick(option)
-                                menuExpanded = false
-                            },
-                        )
-                    }
-                }
-            }
+            MoreOptionsMenu(menuOptions, onMenuOptionClick, tint = CerealTheme.colorScheme.contentSubtle)
         }
     }
 }
@@ -424,19 +428,16 @@ private fun <P, C> ScriptRow(
                 }
             }
 
-            if (child.content.isRunning) {
-                RunningDot()
-            }
-
-            if (!child.content.badge.isNullOrEmpty()) {
-                Pill(
-                    text = child.content.badge,
-                    contentColor = Color.White,
-                    backgroundColor = accent,
-                    textStyle = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Bold),
-                    contentPadding = CountPillPadding,
+            if (child.content.needsAttention) {
+                Icon(
+                    imageVector = Icons.Filled.Error,
+                    contentDescription = stringResource(Res.string.needs_attention),
+                    tint = MaterialTheme.colorScheme.error,
+                    modifier = Modifier.size(16.dp),
                 )
             }
+
+            child.content.status?.let { SetupStatusDot(it) }
 
             if (menuOptions.isNotEmpty()) {
                 Box {
@@ -525,56 +526,12 @@ private fun RunningDot() {
     }
 }
 
-private val CountPillPadding = PaddingValues(horizontal = 8.dp, vertical = 2.dp)
-
 @Composable
-private fun AddScriptRow(onClick: () -> Unit) {
-    val border = CerealTheme.colorScheme.border
-    Row(
-        modifier =
-            Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 8.dp, vertical = 1.dp)
-                .clip(RoundedCornerShape(6.dp))
-                .drawBehind {
-                    val strokeWidth = 1.dp.toPx()
-                    val dash = 4.dp.toPx()
-                    val cornerPx = 6.dp.toPx()
-                    drawRoundRect(
-                        color = border,
-                        topLeft = Offset(strokeWidth / 2f, strokeWidth / 2f),
-                        size = Size(size.width - strokeWidth, size.height - strokeWidth),
-                        cornerRadius = CornerRadius(cornerPx, cornerPx),
-                        style =
-                            Stroke(
-                                width = strokeWidth,
-                                pathEffect = PathEffect.dashPathEffect(floatArrayOf(dash, dash), 0f),
-                            ),
-                    )
-                }.clickable(
-                    onClick = onClick,
-                    indication = ripple(color = MaterialTheme.colorScheme.primary),
-                    interactionSource = remember { MutableInteractionSource() },
-                ).padding(horizontal = 8.dp, vertical = 8.dp),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(10.dp),
-    ) {
-        Box(
-            modifier = Modifier.size(32.dp),
-            contentAlignment = Alignment.Center,
-        ) {
-            Icon(
-                imageVector = Icons.Default.Add,
-                contentDescription = null,
-                modifier = Modifier.size(14.dp),
-                tint = CerealTheme.colorScheme.contentSubtle,
-            )
-        }
-        CerealText(
-            text = stringResource(Res.string.add_script),
-            style = CerealTypography.rowTitle,
-            color = CerealTheme.colorScheme.contentSubtle,
-        )
+private fun SetupStatusDot(status: ItemStatus) {
+    when (status) {
+        ItemStatus.RUNNING -> RunningDot()
+        ItemStatus.ERROR -> StatusDot(color = MaterialTheme.colorScheme.error, size = 8.dp)
+        ItemStatus.IDLE -> StatusDot(color = CerealTheme.colorScheme.contentSubtle, size = 8.dp)
     }
 }
 

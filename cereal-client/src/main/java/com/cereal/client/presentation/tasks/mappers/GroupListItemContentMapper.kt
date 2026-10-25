@@ -4,6 +4,7 @@ import com.cereal.client.application.interactor.script.ScriptInstanceInGroup
 import com.cereal.client.domain.model.script.ScriptPackageInstance
 import com.cereal.client.domain.model.script.configuration.getScriptIdentifierValue
 import com.cereal.client.presentation.view.group.GroupListItemContent
+import com.cereal.client.presentation.view.group.ItemStatus
 
 object GroupListItemContentMapper {
     fun fromScriptInstanceInGroup(scriptInstanceInGroup: ScriptInstanceInGroup): GroupListItemContent<ScriptPackageInstance> {
@@ -15,11 +16,17 @@ object GroupListItemContentMapper {
         // Note: Warning message should be filled when there's no valid config: scriptInstanceInGroup.scriptPackageInstance.hasValidConfiguration(). Need to optimize performance first.
         return GroupListItemContent(
             scriptInstanceInGroup.scriptPackageInstance,
-            badge = scriptInstanceInGroup.taskCount.toString(),
             title = scriptName,
             subTitle = identifierValue,
             warningMessage = null,
             isRunning = scriptInstanceInGroup.runningTaskCount > 0,
+            status =
+                when {
+                    scriptInstanceInGroup.erroredTaskCount > 0 -> ItemStatus.ERROR
+                    scriptInstanceInGroup.runningTaskCount > 0 -> ItemStatus.RUNNING
+                    else -> ItemStatus.IDLE
+                },
+            needsAttention = scriptInstanceInGroup.attentionTaskCount > 0,
         )
     }
 }
