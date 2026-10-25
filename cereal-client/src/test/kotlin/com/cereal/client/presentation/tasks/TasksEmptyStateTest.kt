@@ -11,8 +11,8 @@ import kotlin.test.Test
 import kotlin.test.assertTrue
 
 /**
- * Renders [TasksEmptyState] in isolation and verifies both its static content and that its two
- * action buttons invoke the supplied callbacks.
+ * Renders [TasksEmptyState] in isolation and verifies its content and that its main button and
+ * Home link invoke the supplied callbacks.
  */
 @OptIn(ExperimentalTestApi::class, ExperimentalFoundationApi::class)
 class TasksEmptyStateTest {
@@ -20,43 +20,38 @@ class TasksEmptyStateTest {
     fun rendersEmptyStateContent() =
         runScreenTest {
             setScreenContent {
-                TasksEmptyState(onCreateGroup = {}, onAddScript = {})
+                TasksEmptyState(onNewTaskSetup = {}, onNavigateToHome = {})
             }
 
-            onNodeWithText("No tasks yet").assertIsDisplayed()
-            onNodeWithText("Create group").assertIsDisplayed()
-            onNodeWithText("Add script").assertIsDisplayed()
+            onNodeWithText("No task setups yet").assertIsDisplayed()
+            onNodeWithText("New task setup").assertIsDisplayed()
+            onNodeWithText("or describe a goal on Home").assertIsDisplayed()
+            onNodeWithText("Create group").assertDoesNotExist()
         }
 
     @Test
-    fun clickingCreateGroupFiresCallback() =
+    fun clickingNewTaskSetupFiresCallback() =
         runScreenTest {
-            var createGroupClicked = false
+            var clicked = false
             setScreenContent {
-                TasksEmptyState(
-                    onCreateGroup = { createGroupClicked = true },
-                    onAddScript = {},
-                )
+                TasksEmptyState(onNewTaskSetup = { clicked = true }, onNavigateToHome = {})
             }
 
-            onNodeWithText("Create group").performClick()
+            onNodeWithText("New task setup").performClick()
 
-            assertTrue(createGroupClicked, "onCreateGroup should be invoked when Create group is clicked")
+            assertTrue(clicked, "onNewTaskSetup should be invoked when New task setup is clicked")
         }
 
     @Test
-    fun clickingAddScriptFiresCallback() =
+    fun clickingHomeLinkFiresCallback() =
         runScreenTest {
-            var addScriptClicked = false
+            var clicked = false
             setScreenContent {
-                TasksEmptyState(
-                    onCreateGroup = {},
-                    onAddScript = { addScriptClicked = true },
-                )
+                TasksEmptyState(onNewTaskSetup = {}, onNavigateToHome = { clicked = true })
             }
 
-            onNodeWithText("Add script").performClick()
+            onNodeWithText("or describe a goal on Home").performClick()
 
-            assertTrue(addScriptClicked, "onAddScript should be invoked when Add script is clicked")
+            assertTrue(clicked, "onNavigateToHome should be invoked when the Home link is clicked")
         }
 }

@@ -2,6 +2,7 @@ package com.cereal.client.presentation.tasks
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -21,14 +22,15 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.unit.dp
 import com.cereal.client.presentation.theme.CerealTheme
 import com.cereal.client.presentation.view.CerealButton
 import com.cereal.client.presentation.view.CerealButtonType
 import com.cereal.client.presentation.view.CerealText
 import com.cereal_automation.cereal_client.generated.resources.Res
-import com.cereal_automation.cereal_client.generated.resources.tasks_empty_action_add_script
-import com.cereal_automation.cereal_client.generated.resources.tasks_empty_action_create_group
+import com.cereal_automation.cereal_client.generated.resources.new_task_setup
+import com.cereal_automation.cereal_client.generated.resources.tasks_empty_home_link
 import com.cereal_automation.cereal_client.generated.resources.tasks_empty_message
 import com.cereal_automation.cereal_client.generated.resources.tasks_empty_title
 import com.cereal_automation.cereal_client.generated.resources.tasks_no_script_selected_message
@@ -39,8 +41,8 @@ import org.jetbrains.compose.resources.stringResource
 
 @Composable
 fun TasksEmptyState(
-    onCreateGroup: () -> Unit,
-    onAddScript: () -> Unit,
+    onNewTaskSetup: () -> Unit,
+    onNavigateToHome: () -> Unit,
 ) {
     Column(
         modifier =
@@ -64,16 +66,16 @@ fun TasksEmptyState(
             textAlign = TextAlign.Center,
         )
         CerealButton(
-            onClick = onCreateGroup,
-            text = stringResource(Res.string.tasks_empty_action_create_group),
+            onClick = onNewTaskSetup,
+            text = stringResource(Res.string.new_task_setup),
             type = CerealButtonType.Primary,
             modifier = Modifier.fillMaxWidth(),
         )
-        CerealButton(
-            onClick = onAddScript,
-            text = stringResource(Res.string.tasks_empty_action_add_script),
-            type = CerealButtonType.Surface,
-            modifier = Modifier.fillMaxWidth(),
+        CerealText(
+            text = stringResource(Res.string.tasks_empty_home_link),
+            style = MaterialTheme.typography.bodyMedium.copy(textDecoration = TextDecoration.Underline),
+            color = CerealTheme.colorScheme.contentSecondary,
+            modifier = Modifier.clickable(onClick = onNavigateToHome),
         )
     }
 }

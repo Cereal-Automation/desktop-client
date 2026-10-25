@@ -32,6 +32,7 @@ class DeleteTaskGroupInteractorTest {
                     aScriptPackageInstance("instance-1", "com.example.one"),
                     aScriptPackageInstance("instance-2", "com.example.two"),
                 ),
+                groupId = group.id,
             )
 
             interactor.run(DeleteTaskGroupInteractor.Params(group))

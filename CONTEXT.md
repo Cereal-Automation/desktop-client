@@ -16,6 +16,10 @@ _Avoid_: classic script, legacy script, bot
 One Start from the agent home's goal composer, which creates one ordinary task in Tasks (there is no separate list). Within a goal run, the agent script's per-attempt unit is a **check** in client copy. The agent repo's `CONTEXT.md` uses "goal run" for one attempt; the client does not adopt that meaning.
 _Avoid_: agent task, job, session, attempt (for the whole run)
 
+**Task setup**:
+One configured ready-made script (or AI browser agent) in Tasks: its config plus a number of concurrent **tasks**, each one run of it. Shown as Group → Task setup → Task. A copy term only; the code type is `ScriptPackageInstance`. "Script" means only the thing a user buys or owns.
+_Avoid_: script, script instance (in copy)
+
 ## White-label
 
 **White-label build**:

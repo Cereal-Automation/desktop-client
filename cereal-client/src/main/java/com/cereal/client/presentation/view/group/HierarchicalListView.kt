@@ -31,7 +31,6 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.CreateNewFolder
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.MoreHoriz
 import androidx.compose.material.icons.filled.Warning
@@ -52,14 +51,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.draw.shadow
-import androidx.compose.ui.geometry.CornerRadius
-import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.PathEffect
-import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.input.pointer.PointerButton
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.DpOffset
@@ -73,19 +66,21 @@ import com.cereal.client.presentation.view.CerealIconButton
 import com.cereal.client.presentation.view.CerealText
 import com.cereal.client.presentation.view.chip.Pill
 import com.cereal_automation.cereal_client.generated.resources.Res
-import com.cereal_automation.cereal_client.generated.resources.add_script
 import com.cereal_automation.cereal_client.generated.resources.collapse
 import com.cereal_automation.cereal_client.generated.resources.expand
 import com.cereal_automation.cereal_client.generated.resources.more_options
 import com.cereal_automation.cereal_client.generated.resources.new_group
-import com.cereal_automation.cereal_client.generated.resources.scripts_column_summary
+import com.cereal_automation.cereal_client.generated.resources.new_task_setup
 import com.cereal_automation.cereal_client.generated.resources.scripts_column_title
+import com.cereal_automation.cereal_client.generated.resources.task_setups_summary
 import com.cereal_automation.cereal_client.generated.resources.warning
+import org.jetbrains.compose.resources.pluralStringResource
 import org.jetbrains.compose.resources.stringResource
 
 @Composable
 fun <P, C> ScriptsColumn(
     viewModel: HierarchicalListViewModel<P, C>,
+    onNewTaskSetup: () -> Unit,
     onCreateGroup: () -> Unit,
     onChildLongClick: ((HierarchicalListItem.Child<P, C>?) -> Unit)? = null,
 ) {
@@ -109,6 +104,7 @@ fun <P, C> ScriptsColumn(
         ScriptsColumnHeader(
             totalScripts = totalScripts,
             runningScripts = runningScripts,
+            onNewTaskSetup = onNewTaskSetup,
             onCreateGroup = onCreateGroup,
         )
         HierarchicalListView(
@@ -118,12 +114,15 @@ fun <P, C> ScriptsColumn(
     }
 }
 
+/** The "Tasks" pane header: setup counts, "+" (New task setup) and a "···" menu with New group. */
 @Composable
-private fun ScriptsColumnHeader(
+internal fun ScriptsColumnHeader(
     totalScripts: Int,
     runningScripts: Int,
+    onNewTaskSetup: () -> Unit,
     onCreateGroup: () -> Unit,
 ) {
+    var menuExpanded by remember { mutableStateOf(false) }
     Column(modifier = Modifier.fillMaxWidth()) {
         Row(
             modifier =
@@ -143,8 +142,9 @@ private fun ScriptsColumnHeader(
                 )
                 CerealText(
                     text =
-                        stringResource(
-                            Res.string.scripts_column_summary,
+                        pluralStringResource(
+                            Res.plurals.task_setups_summary,
+                            totalScripts,
                             totalScripts,
                             runningScripts,
                         ),
@@ -154,13 +154,35 @@ private fun ScriptsColumnHeader(
                 )
             }
 
-            CerealIconButton(onClick = onCreateGroup) {
+            CerealIconButton(onClick = onNewTaskSetup) {
                 Icon(
-                    imageVector = Icons.Filled.CreateNewFolder,
-                    contentDescription = stringResource(Res.string.new_group),
+                    imageVector = Icons.Filled.Add,
+                    contentDescription = stringResource(Res.string.new_task_setup),
                     modifier = Modifier.size(18.dp),
                     tint = CerealTheme.colorScheme.contentSecondary,
                 )
+            }
+            Box {
+                CerealIconButton(onClick = { menuExpanded = true }) {
+                    Icon(
+                        imageVector = Icons.Filled.MoreHoriz,
+                        contentDescription = stringResource(Res.string.more_options),
+                        modifier = Modifier.size(18.dp),
+                        tint = CerealTheme.colorScheme.contentSecondary,
+                    )
+                }
+                DropdownMenu(
+                    expanded = menuExpanded,
+                    onDismissRequest = { menuExpanded = false },
+                ) {
+                    DropdownMenuItem(
+                        text = { CerealText(stringResource(Res.string.new_group)) },
+                        onClick = {
+                            menuExpanded = false
+                            onCreateGroup()
+                        },
+                    )
+                }
             }
         }
         Box(
@@ -266,7 +288,6 @@ private fun <P, C> GroupSection(
                     onLongClick = { onChildLongClick?.invoke(child) },
                 )
             }
-            AddScriptRow(onClick = { viewModel.onAddChildClick(parent) })
         }
     }
 }
@@ -526,57 +547,6 @@ private fun RunningDot() {
 }
 
 private val CountPillPadding = PaddingValues(horizontal = 8.dp, vertical = 2.dp)
-
-@Composable
-private fun AddScriptRow(onClick: () -> Unit) {
-    val border = CerealTheme.colorScheme.border
-    Row(
-        modifier =
-            Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 8.dp, vertical = 1.dp)
-                .clip(RoundedCornerShape(6.dp))
-                .drawBehind {
-                    val strokeWidth = 1.dp.toPx()
-                    val dash = 4.dp.toPx()
-                    val cornerPx = 6.dp.toPx()
-                    drawRoundRect(
-                        color = border,
-                        topLeft = Offset(strokeWidth / 2f, strokeWidth / 2f),
-                        size = Size(size.width - strokeWidth, size.height - strokeWidth),
-                        cornerRadius = CornerRadius(cornerPx, cornerPx),
-                        style =
-                            Stroke(
-                                width = strokeWidth,
-                                pathEffect = PathEffect.dashPathEffect(floatArrayOf(dash, dash), 0f),
-                            ),
-                    )
-                }.clickable(
-                    onClick = onClick,
-                    indication = ripple(color = MaterialTheme.colorScheme.primary),
-                    interactionSource = remember { MutableInteractionSource() },
-                ).padding(horizontal = 8.dp, vertical = 8.dp),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(10.dp),
-    ) {
-        Box(
-            modifier = Modifier.size(32.dp),
-            contentAlignment = Alignment.Center,
-        ) {
-            Icon(
-                imageVector = Icons.Default.Add,
-                contentDescription = null,
-                modifier = Modifier.size(14.dp),
-                tint = CerealTheme.colorScheme.contentSubtle,
-            )
-        }
-        CerealText(
-            text = stringResource(Res.string.add_script),
-            style = CerealTypography.rowTitle,
-            color = CerealTheme.colorScheme.contentSubtle,
-        )
-    }
-}
 
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
