@@ -39,7 +39,6 @@ import com.cereal.client.presentation.theme.CerealTheme
 import com.cereal.client.presentation.view.ActivityIndicator
 import com.cereal.client.presentation.view.CerealOutlinedIconButton
 import com.cereal.client.presentation.view.CerealText
-import com.cereal.client.presentation.view.CerealTextButton
 import com.cereal.client.presentation.view.button.CerealToolbarButton
 import com.cereal.client.presentation.view.button.CerealToolbarButtonVariant
 import com.cereal.client.presentation.view.chip.Pill
@@ -48,7 +47,6 @@ import com.cereal_automation.cereal_client.generated.resources.continue_action
 import com.cereal_automation.cereal_client.generated.resources.continue_task
 import com.cereal_automation.cereal_client.generated.resources.ic_play
 import com.cereal_automation.cereal_client.generated.resources.ic_stop
-import com.cereal_automation.cereal_client.generated.resources.report_issue
 import com.cereal_automation.cereal_client.generated.resources.seconds_ago
 import com.cereal_automation.cereal_client.generated.resources.start_task
 import com.cereal_automation.cereal_client.generated.resources.stop_task
@@ -71,7 +69,6 @@ internal fun TaskRow(
     onStopTask: () -> Unit,
     onRowClick: () -> Unit,
     onContinueClick: (() -> Unit)? = null,
-    onReportIssue: (() -> Unit)? = null,
 ) {
     val accent = MaterialTheme.colorScheme.primary
     val interactionSource = remember { MutableInteractionSource() }
@@ -150,14 +147,6 @@ internal fun TaskRow(
 
             if (taskItem.isRunning) {
                 ActivityIndicator(size = 18.dp)
-            }
-
-            if (taskItem.isError && onReportIssue != null) {
-                CerealTextButton(
-                    onClick = onReportIssue,
-                ) {
-                    CerealText(text = stringResource(Res.string.report_issue))
-                }
             }
 
             StatusChip(
@@ -249,7 +238,7 @@ private fun TaskActionIcon(
 }
 
 @Composable
-private fun StatusChip(
+internal fun StatusChip(
     status: String,
     isRunning: Boolean,
     isError: Boolean,

@@ -144,26 +144,6 @@ class TaskRowTest {
             onNodeWithText("#1").performClick()
             assertTrue(clicked)
         }
-
-    @Test
-    fun erroredTaskShowsReportIssueAndFiresCallback() =
-        runScreenTest {
-            var reported = false
-            setScreenContent {
-                TaskRow(
-                    taskItem = taskUiModel(isError = true, status = "Errored"),
-                    isSelected = false,
-                    onStartTask = {},
-                    onStopTask = {},
-                    onRowClick = {},
-                    onReportIssue = { reported = true },
-                )
-            }
-
-            onNodeWithText("Report Issue").assertIsDisplayed()
-            onNodeWithText("Report Issue").performClick()
-            assertTrue(reported)
-        }
 }
 
 private fun taskUiModel(

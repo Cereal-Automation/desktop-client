@@ -67,3 +67,11 @@ data class ConcurrentTaskStepperState(
     val canDecrease: Boolean,
     val canIncrease: Boolean,
 )
+
+/** The task inspector: the selected task, live, and the actions its status allows. */
+data class TaskInspectorState(
+    val task: TaskUiModel,
+    val actions: List<TaskInspectorAction>,
+)
+
+enum class TaskInspectorAction { STOP, START, RESTART, REPORT_ISSUE }
