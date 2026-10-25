@@ -13,18 +13,26 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.HelpOutline
+import androidx.compose.material.icons.filled.MoreHoriz
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Tune
 import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import com.cereal.client.presentation.theme.CerealTheme
 import com.cereal.client.presentation.theme.CerealTypography
+import com.cereal.client.presentation.view.CerealIconButton
 import com.cereal.client.presentation.view.CerealText
 import com.cereal.client.presentation.view.SectionLabel
 import com.cereal.client.presentation.view.button.CerealToolbarButton
@@ -34,6 +42,7 @@ import com.cereal_automation.cereal_client.generated.resources.Res
 import com.cereal_automation.cereal_client.generated.resources.contact_support
 import com.cereal_automation.cereal_client.generated.resources.ic_cancel
 import com.cereal_automation.cereal_client.generated.resources.ic_play
+import com.cereal_automation.cereal_client.generated.resources.more_options
 import com.cereal_automation.cereal_client.generated.resources.restart_errored
 import com.cereal_automation.cereal_client.generated.resources.start_all
 import com.cereal_automation.cereal_client.generated.resources.start_all_tasks
@@ -49,6 +58,8 @@ internal fun TasksToolbar(
     subtitle: String?,
     onViewConfig: (() -> Unit)? = null,
     onContactSupport: (() -> Unit)? = null,
+    menuOptions: List<MenuOption> = emptyList(),
+    onMenuOptionSelected: (MenuOption) -> Unit = {},
 ) {
     Column(modifier = Modifier.fillMaxWidth()) {
         Row(
@@ -72,7 +83,7 @@ internal fun TasksToolbar(
                     color = CerealTheme.colorScheme.contentTertiary,
                 )
             }
-            if (onViewConfig != null || onContactSupport != null) {
+            if (onViewConfig != null || onContactSupport != null || menuOptions.isNotEmpty()) {
                 Spacer(Modifier.weight(1f))
             }
             if (onContactSupport != null) {
@@ -99,6 +110,33 @@ internal fun TasksToolbar(
                         modifier = Modifier.size(ButtonDefaults.IconSize),
                     )
                     CerealText(text = stringResource(Res.string.view_config))
+                }
+            }
+            if (menuOptions.isNotEmpty()) {
+                var menuExpanded by remember { mutableStateOf(false) }
+                Box {
+                    CerealIconButton(onClick = { menuExpanded = true }) {
+                        Icon(
+                            imageVector = Icons.Filled.MoreHoriz,
+                            contentDescription = stringResource(Res.string.more_options),
+                            modifier = Modifier.size(18.dp),
+                            tint = CerealTheme.colorScheme.contentSecondary,
+                        )
+                    }
+                    DropdownMenu(
+                        expanded = menuExpanded,
+                        onDismissRequest = { menuExpanded = false },
+                    ) {
+                        menuOptions.forEach { option ->
+                            DropdownMenuItem(
+                                text = { CerealText(stringResource(option.stringResource)) },
+                                onClick = {
+                                    menuExpanded = false
+                                    onMenuOptionSelected(option)
+                                },
+                            )
+                        }
+                    }
                 }
             }
         }

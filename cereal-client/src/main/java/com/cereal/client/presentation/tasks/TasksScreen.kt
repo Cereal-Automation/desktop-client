@@ -147,6 +147,8 @@ fun TasksScreen(
                             } else {
                                 null
                             },
+                        menuOptions = if (filled != null) viewModel.headerMenuOptions else emptyList(),
+                        onMenuOptionSelected = viewModel::onHeaderMenuOptionSelected,
                     )
 
                     viewModel.taskControls.value?.let { controls ->
