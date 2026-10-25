@@ -105,6 +105,9 @@ class TasksViewModel(
     val hierarchicalListState =
         mutableStateOf<TaskViewState.GroupViewState>(TaskViewState.GroupViewState.Loading)
     val tasksViewState = mutableStateOf<TaskViewState.DetailViewState>(TaskViewState.DetailViewState.NoSelection)
+
+    /** The detail header's concurrent-task stepper for the selected setup; declared before `init`, which updates it. */
+    val concurrentTaskStepper = mutableStateOf<ConcurrentTaskStepperState?>(null)
     private val dialogManager = TaskDialogManager()
     val dialogState get() = dialogManager.dialogState
     val logViewerMessages = mutableStateOf<List<LoggingEvent>>(emptyList())
@@ -332,9 +335,6 @@ class TasksViewModel(
             UpdateScriptPackageInstanceInteractor.Params(scriptPackageInstance),
         ) { closeDialog() }
     }
-
-    /** The detail header's concurrent-task stepper for the selected setup. */
-    val concurrentTaskStepper = mutableStateOf<ConcurrentTaskStepperState?>(null)
 
     fun increaseConcurrentTasks() = changeConcurrentTaskCount(+1)
 
