@@ -21,12 +21,16 @@ object TasksViewStateBuilder {
      * With more than one group, [groupFilter] (a group id; null, or a group that is gone, means all groups) narrows the
      * list and the chip counts to that group. A [statusFilter] other than All then keeps only matching task rows and
      * drops setups (and groups) left without any; the chip counts ignore it.
+     *
+     * A setup in [collapsedSetupIds] is collapsed, except while a [statusFilter] other than All shows every listed
+     * setup expanded.
      */
     fun buildListState(
         groups: List<Pair<ScriptPackageGroup, List<ScriptPackageInstance>>>?,
         tasks: List<Task>,
         statusFilter: TaskFilter = TaskFilter.ALL,
         groupFilter: String? = null,
+        collapsedSetupIds: Set<String> = emptySet(),
     ): TaskViewState.ListState {
         if (groups == null) return TaskViewState.ListState.Loading
         if (groups.isEmpty() || (groups.size == 1 && groups.single().second.isEmpty())) return TaskViewState.ListState.Empty
@@ -37,7 +41,7 @@ object TasksViewStateBuilder {
             groups =
                 shownGroups
                     .map { (group, setups) ->
-                        val sections = setups.map { buildSetupSection(it, tasksBySetup[it.id].orEmpty(), statusFilter) }
+                        val sections = setups.map { buildSetupSection(it, tasksBySetup[it.id].orEmpty(), statusFilter, expanded = statusFilter != TaskFilter.ALL || it.id !in collapsedSetupIds) }
                         TaskGroupSection(group, group.name, if (statusFilter == TaskFilter.ALL) sections else sections.filter { it.scripts.isNotEmpty() })
                     }.filter { statusFilter == TaskFilter.ALL || it.setups.isNotEmpty() },
             setupCount = groups.sumOf { it.second.size },
@@ -61,6 +65,7 @@ object TasksViewStateBuilder {
         setup: ScriptPackageInstance,
         tasks: List<Task>,
         statusFilter: TaskFilter,
+        expanded: Boolean,
     ): TaskSetupSection {
         val failed = tasks.count { it.status is TaskStatus.Error }
         val running = tasks.count { it.status is TaskStatus.Running }
@@ -86,6 +91,7 @@ object TasksViewStateBuilder {
                     if (setup.definition.manifest.supportUrl != null) add(MenuOption.CONTACT_SUPPORT)
                     add(MenuOption.DELETE)
                 },
+            expanded = expanded,
             scripts = scriptRows(tasks, statusFilter),
         )
     }

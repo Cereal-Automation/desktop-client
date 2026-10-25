@@ -293,13 +293,16 @@ private sealed interface TaskListItem {
     }
 }
 
-/** Group labels, then each setup as a card: its header row, then its task rows (child scripts under their title). */
+/**
+ * Group labels, then each setup as a card: its header row, then (unless collapsed) its task rows (child scripts under
+ * their title).
+ */
 private fun TaskViewState.ListState.Filled.items(): List<TaskListItem> =
     groups.flatMap { group ->
         listOf(TaskListItem.GroupLabel(group)) +
             group.setups.flatMap { setup ->
                 val rows =
-                    setup.scripts.flatMap { script ->
+                    setup.scripts.takeIf { setup.expanded }.orEmpty().flatMap { script ->
                         listOfNotNull(script.title?.let { TaskListItem.ScriptTitle(script, it) }) + script.tasks.map { TaskListItem.Row(it, last = false) }
                     }
                 val lastRow = rows.lastOrNull() as? TaskListItem.Row
@@ -339,6 +342,7 @@ private fun TaskListContent(
                         Box(Modifier.setupCardSlice(first = true, last = item.last, fill = cardFill, border = cardBorder)) {
                             TaskSetupRow(
                                 section = item.section,
+                                onToggleExpanded = { viewModel.onSetupExpandToggled(setup) },
                                 onStartAll = { viewModel.startAllTasks(setup) },
                                 onStopAll = { viewModel.stopAllTasks(setup) },
                                 onDecreaseTasks = { viewModel.decreaseConcurrentTasks(setup) },

@@ -76,6 +76,8 @@ data class TaskSetupSection(
     /** Start all has something to start. */
     val canStartAll: Boolean,
     val menuOptions: List<MenuOption>,
+    /** False while the user has collapsed it: its task rows are not shown. */
+    val expanded: Boolean,
     /** Task rows per script: the main script first, then child scripts (which carry a title). */
     val scripts: List<ScriptInstanceUiModel>,
 )

@@ -1,6 +1,7 @@
 package com.cereal.client.presentation.tasks
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -13,8 +14,10 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.CreateNewFolder
+import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.Remove
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Icon
@@ -47,6 +50,8 @@ import com.cereal.client.presentation.view.button.CerealToolbarButton
 import com.cereal.client.presentation.view.button.CerealToolbarButtonVariant
 import com.cereal.client.presentation.view.group.MoreOptionsMenu
 import com.cereal_automation.cereal_client.generated.resources.Res
+import com.cereal_automation.cereal_client.generated.resources.collapse
+import com.cereal_automation.cereal_client.generated.resources.expand
 import com.cereal_automation.cereal_client.generated.resources.fewer_concurrent_tasks
 import com.cereal_automation.cereal_client.generated.resources.ic_play
 import com.cereal_automation.cereal_client.generated.resources.ic_stop
@@ -136,10 +141,11 @@ internal fun TaskGroupLabel(
 
 private val GroupMenuOptions = listOf(MenuOption.RENAME, MenuOption.DELETE)
 
-/** A task setup's header row: avatar, name, counts, stepper, Start all / Stop all and its "···" menu. */
+/** A task setup's header row: chevron, avatar, name, counts, stepper, Start all / Stop all and its "···" menu. */
 @Composable
 internal fun TaskSetupRow(
     section: TaskSetupSection,
+    onToggleExpanded: () -> Unit,
     onStartAll: () -> Unit,
     onStopAll: () -> Unit,
     onDecreaseTasks: () -> Unit,
@@ -151,8 +157,16 @@ internal fun TaskSetupRow(
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(10.dp),
     ) {
+        CerealIconButton(onClick = onToggleExpanded, modifier = Modifier.size(28.dp)) {
+            Icon(
+                imageVector = if (section.expanded) Icons.Filled.KeyboardArrowDown else Icons.AutoMirrored.Filled.KeyboardArrowRight,
+                contentDescription = stringResource(if (section.expanded) Res.string.collapse else Res.string.expand),
+                tint = CerealTheme.colorScheme.contentTertiary,
+                modifier = Modifier.size(16.dp),
+            )
+        }
         SetupAvatar(section.name)
-        Column(modifier = Modifier.weight(1f)) {
+        Column(modifier = Modifier.weight(1f).clickable(onClick = onToggleExpanded)) {
             CerealText(text = section.name, style = CerealTypography.rowTitle, color = MaterialTheme.colorScheme.onSurface, maxLines = 1)
             if (!section.subtitle.isNullOrEmpty()) {
                 CerealText(

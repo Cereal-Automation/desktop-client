@@ -68,12 +68,23 @@ class TasksViewModel(
     private val statusFilter = mutableStateOf(TaskFilter.ALL)
     private val groupFilter = mutableStateOf<String?>(null)
 
+    // In memory only: every setup starts expanded on each screen visit.
+    private val collapsedSetupIds = mutableStateOf(emptySet<String>())
+
     /**
      * Every task setup under its group, with its tasks. Starts in Loading, not Empty: rendering the empty state before
      * the groups first load would flicker ahead of the real list.
      */
     val listState: State<TaskViewState.ListState> =
-        derivedStateOf { TasksViewStateBuilder.buildListState(groupedSetups.value, allTasks.value, statusFilter.value, groupFilter.value) }
+        derivedStateOf {
+            TasksViewStateBuilder.buildListState(
+                groupedSetups.value,
+                allTasks.value,
+                statusFilter.value,
+                groupFilter.value,
+                collapsedSetupIds.value,
+            )
+        }
 
     /** A task the list should scroll to (set by [focusTask]); the screen clears it with [onScrolledToTask]. */
     val scrollToTaskId = mutableStateOf<String?>(null)
@@ -161,7 +172,8 @@ class TasksViewModel(
     }
 
     /**
-     * Selects [taskId] and scrolls the list to it, so the Tasks screen lands on a notification's source task. The
+     * Selects [taskId] and scrolls the list to it, so the Tasks screen lands on a notification's source task: its setup
+     * is expanded and a status chip or group filter that would hide it is cleared. The
      * tasks and the list load asynchronously after screen entry, so this polls briefly until the task is listed.
      */
     fun focusTask(taskId: String) {
@@ -175,7 +187,11 @@ class TasksViewModel(
 
     private fun tryFocusTask(taskId: String): Boolean {
         val task = tasks.firstOrNull { it.id == taskId } ?: return false
-        observedSetup(task.scriptInstance.packageInstance.id) ?: return false
+        val (group, setup) = observedSetup(task.scriptInstance.packageInstance.id) ?: return false
+        // Land on the task: open its setup and drop any filter that would hide it.
+        collapsedSetupIds.value -= setup.id
+        if (!statusFilter.value.matches(task.status)) statusFilter.value = TaskFilter.ALL
+        if (groupFilter.value != null && groupFilter.value != group.id) groupFilter.value = null
         onTaskSelected(task)
         scrollToTaskId.value = taskId
         return true
@@ -189,6 +205,12 @@ class TasksViewModel(
     /** The group filter: one group's id, or null for all groups. */
     fun onGroupFilterSelected(groupId: String?) {
         groupFilter.value = groupId
+    }
+
+    /** A setup row's chevron or name: collapses or expands its tasks. */
+    fun onSetupExpandToggled(setup: ScriptPackageInstance) {
+        val collapsed = collapsedSetupIds.value
+        collapsedSetupIds.value = if (setup.id in collapsed) collapsed - setup.id else collapsed + setup.id
     }
 
     fun onScrolledToTask() {
