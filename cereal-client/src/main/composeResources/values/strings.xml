@@ -26,7 +26,6 @@
     <string name="checking_for_updates">Checking for updates</string>
     <string name="close">Close</string>
     <string name="collapse">Collapse</string>
-    <string name="collapse_output">Collapse output</string>
     <string name="configuration_for">Configuration for "%1$s"</string>
     <string name="crash_reporting">Send crash reports</string>
     <string name="crash_reporting_desc">When Cereal crashes, the error and stack trace go to Sentry, our crash-reporting provider, together with your operating system, app version, the path to your Cereal folder, and the names, sizes and checksums of your installed script files. Nothing else leaves your machine: no product analytics, and never script contents, passwords or proxies. Switching this off shuts the reporter down straight away — no restart needed.</string>
@@ -96,7 +95,6 @@
     <string name="error">Error</string>
     <string name="error_refreshing_scripts">Error refreshing scripts</string>
     <string name="expand">Expand</string>
-    <string name="expand_output">Expand output</string>
     <string name="filter_all">All</string>
     <string name="filter_all_groups">All groups</string>
     <string name="filter_failed">Failed</string>
@@ -264,12 +262,7 @@
     <string name="ai_warning_title">AI provider not set up</string>
     <string name="notifications">Notifications</string>
     <string name="open">Open</string>
-    <string name="output">Output</string>
-    <string name="output_task">Output · Task #%1$d</string>
-    <string name="output_tab_logs">Logs</string>
-    <string name="output_tab_artifacts">Artifacts</string>
     <string name="download_artifact">Download</string>
-    <string name="no_artifacts">No artifacts produced yet.</string>
     <string name="override_discord_settings">Override Discord Settings</string>
     <string name="override_discord_settings_desc">Use custom Discord webhook URL for this script</string>
     <string name="override_email_settings">Override Email Settings</string>
@@ -655,4 +648,13 @@
     </plurals>
     <string name="ai_connection_bad_key">Bad API key: the provider rejected it.</string>
     <string name="ai_connection_unreachable">Unreachable: check the base URL and your connection.</string>
+    <string name="artifacts">Artifacts</string>
+    <string name="latest_message">Latest message</string>
+    <string name="log">Log</string>
+    <string name="no_output_yet">No output yet</string>
+    <string name="none_yet">None yet</string>
+    <string name="start">Start</string>
+    <string name="stop">Stop</string>
+    <string name="task_number">Task #%1$d</string>
+    <string name="task_values">Task values</string>
 </resources>

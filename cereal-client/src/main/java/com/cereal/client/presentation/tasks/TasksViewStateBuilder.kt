@@ -132,6 +132,29 @@ object TasksViewStateBuilder {
         return main + children.sortedByDescending { it.id.createdAt.epochSeconds }
     }
 
+    /** The inspector for [taskId], numbered as in the list; null when the task no longer exists. */
+    fun buildInspectorState(
+        taskId: String,
+        tasks: List<Task>,
+    ): TaskInspectorState? {
+        val task = tasks.firstOrNull { it.id == taskId } ?: return null
+        val setupId = task.scriptInstance.getScriptPackageInstance().id
+        val number = numberTasks(tasks.filter { it.scriptInstance.getScriptPackageInstance().id == setupId }).getValue(taskId)
+        val model = task.toUiModel(number)
+        val actions =
+            buildList {
+                add(
+                    when (task.status) {
+                        is TaskStatus.Running -> TaskInspectorAction.STOP
+                        is TaskStatus.Idle -> TaskInspectorAction.START
+                        is TaskStatus.Error, is TaskStatus.Success -> TaskInspectorAction.RESTART
+                    },
+                )
+                if (model.isError && model.hasSupportUrl) add(TaskInspectorAction.REPORT_ISSUE)
+            }
+        return TaskInspectorState(model, actions)
+    }
+
     private fun numberTasks(tasksInSetup: List<Task>): Map<String, Int> = tasksInSetup.sortedBy { it.createdAt }.mapIndexed { index, task -> task.id to index + 1 }.toMap()
 
     /**

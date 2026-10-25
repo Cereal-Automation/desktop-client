@@ -4,9 +4,11 @@ import androidx.compose.foundation.VerticalScrollbar
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
@@ -23,7 +25,6 @@ import androidx.compose.ui.unit.dp
 import com.cereal.client.domain.model.task.UserInteraction
 import com.cereal.client.presentation.error.errorView
 import com.cereal.client.presentation.group.GroupNameDialog
-import com.cereal.client.presentation.logs.LogOutputView
 import com.cereal.client.presentation.tasks.dialog.MoveScriptDialog
 import com.cereal.client.presentation.tasks.dialog.ViewConfigurationDialog
 import com.cereal.client.presentation.tasks.model.ScriptInstanceUiModel
@@ -31,6 +32,7 @@ import com.cereal.client.presentation.tasks.model.TaskUiModel
 import com.cereal.client.presentation.tasks.script.overview.ScriptSelectionDialog
 import com.cereal.client.presentation.theme.CerealTheme
 import com.cereal.client.presentation.view.ConfirmationDialog
+import com.cereal.client.presentation.view.VerticalDivider
 import com.cereal.client.presentation.view.rememberFileDialogLauncher
 import com.cereal_automation.cereal_client.generated.resources.Res
 import com.cereal_automation.cereal_client.generated.resources.cancel
@@ -88,41 +90,51 @@ fun TasksScreen(
             onNewGroup = viewModel::onCreateTaskGroup,
             onNewTaskSetup = viewModel::onAddScriptClicked,
         )
-        (listState as? TaskViewState.ListState.Filled)?.let { state ->
-            TaskFilterBar(state.chips, state.groupFilter, viewModel::onStatusFilterSelected, viewModel::onGroupFilterSelected)
-        }
-
-        Box(Modifier.weight(1.0f).fillMaxWidth()) {
-            when (val state = listState) {
-                is TaskViewState.ListState.Filled -> {
-                    TaskListContent(state, viewModel)
+        // The inspector sits beside the filter bar and list, under the header.
+        Row(Modifier.weight(1.0f).fillMaxWidth()) {
+            Column(Modifier.weight(1.0f).fillMaxHeight()) {
+                (listState as? TaskViewState.ListState.Filled)?.let { state ->
+                    TaskFilterBar(state.chips, state.groupFilter, viewModel::onStatusFilterSelected, viewModel::onGroupFilterSelected)
                 }
+                Box(Modifier.weight(1.0f).fillMaxWidth()) {
+                    when (val state = listState) {
+                        is TaskViewState.ListState.Filled -> {
+                            TaskListContent(state, viewModel)
+                        }
 
-                TaskViewState.ListState.Empty -> {
-                    TasksEmptyState(
-                        onNewTaskSetup = viewModel::onAddScriptClicked,
-                        onNavigateToHome = onNavigateToHome,
-                    )
+                        TaskViewState.ListState.Empty -> {
+                            TasksEmptyState(
+                                onNewTaskSetup = viewModel::onAddScriptClicked,
+                                onNavigateToHome = onNavigateToHome,
+                            )
+                        }
+
+                        // Loading is the brief window before the groups first load. Render nothing here so the
+                        // empty-state CTA never flashes ahead of the real list.
+                        TaskViewState.ListState.Loading -> {}
+                    }
                 }
+            }
 
-                // Loading is the brief window before the groups first load. Render nothing here so the
-                // empty-state CTA never flashes ahead of the real list.
-                TaskViewState.ListState.Loading -> {}
+            viewModel.inspector.value?.let { inspector ->
+                VerticalDivider()
+                val openFileDialog = rememberFileDialogLauncher()
+                TaskInspector(
+                    state = inspector,
+                    events = viewModel.logViewerMessages.value,
+                    artifacts = viewModel.artifacts.value,
+                    onClose = viewModel::closeInspector,
+                    onAction = viewModel::onInspectorAction,
+                    onClearLog = viewModel::clearLogs,
+                    onDownloadArtifact = { artifact ->
+                        openFileDialog(FileDialog.SAVE)?.let { file ->
+                            viewModel.onDownloadArtifact(artifact, file)
+                        }
+                    },
+                    modifier = Modifier.width(InspectorWidth),
+                )
             }
         }
-
-        val openFileDialog = rememberFileDialogLauncher()
-        LogOutputView(
-            events = viewModel.logViewerMessages.value,
-            onClear = viewModel::clearLogs,
-            artifacts = viewModel.artifacts.value,
-            taskNumber = viewModel.selectedTaskNumber,
-            onDownloadArtifact = { artifact ->
-                openFileDialog(FileDialog.SAVE)?.let { file ->
-                    viewModel.onDownloadArtifact(artifact, file)
-                }
-            },
-        )
     }
 
     when (val state = dialogState) {
@@ -384,7 +396,7 @@ private fun TaskListRow(
         isSelected = viewModel.selectedTask.value?.id == task.id.id,
         onStartTask = { viewModel.startTask(task) },
         onStopTask = { viewModel.stopTask(task) },
-        onRowClick = { viewModel.onTaskSelected(task.id) },
+        onRowClick = { viewModel.onTaskClicked(task.id) },
         onContinueClick = {
             // The button lingers until the cleared interaction propagates; a second
             // click must not resume the continuation again.
@@ -395,11 +407,5 @@ private fun TaskListRow(
                     viewModel.finishUserInteraction(task)
                 }
         },
-        onReportIssue =
-            if (task.isError && task.hasSupportUrl) {
-                { viewModel.reportIssue(task) }
-            } else {
-                null
-            },
     )
 }

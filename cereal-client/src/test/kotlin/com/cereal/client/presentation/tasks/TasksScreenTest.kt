@@ -4,7 +4,9 @@ import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.ui.test.ExperimentalTestApi
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.onAllNodesWithText
+import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
+import androidx.compose.ui.test.performClick
 import com.cereal.client.domain.model.task.JobTask
 import com.cereal.client.domain.model.task.ScriptPackageGroup
 import com.cereal.client.domain.model.task.TaskStatus
@@ -42,24 +44,7 @@ class TasksScreenTest {
     @Test
     fun rendersASeededTaskSetupAsASectionWithItsRows() =
         runScreenTest {
-            runBlocking {
-                val group = KoinJavaComponent.get<TasksRepository>(TasksRepository::class.java).createScriptInstanceGroup(ScriptPackageGroup.createDefault())
-                val setup = aScriptPackageInstance("setup-1", "com.example.monitor")
-                val main = aScriptInstance(setup)
-                KoinJavaComponent.get<ScriptInstanceRepository>(ScriptInstanceRepository::class.java).addScriptPackageInstance(group.id, setup, main)
-                val now = Clock.System.now()
-                KoinJavaComponent.get<TasksRepository>(TasksRepository::class.java).addAllTasks(
-                    listOf("Watching stock", "Sold out").mapIndexed { index, message ->
-                        JobTask(
-                            id = "task-${index + 1}",
-                            scriptInstance = main,
-                            configuration = emptyMap(),
-                            statusHistory = listOf(if (index == 0) TaskStatus.Running(message, now) else TaskStatus.Error(message, timestamp = now)),
-                            createdAt = now + index.milliseconds,
-                        )
-                    },
-                )
-            }
+            seedOneSetupWithTwoTasks()
 
             setScreenContent { TasksScreen() }
             waitUntil { onAllNodesWithText("Watching stock").fetchSemanticsNodes().isNotEmpty() }
@@ -71,5 +56,62 @@ class TasksScreenTest {
             onNodeWithText("1 failed").assertIsDisplayed()
             onNodeWithText("Watching stock").assertIsDisplayed()
             onNodeWithText("Sold out").assertIsDisplayed()
+            // No bottom Output panel; a task's output lives in the inspector, which is closed until a row is clicked.
+            onNodeWithText("Output").assertDoesNotExist()
+            onNodeWithText("Task #2").assertDoesNotExist()
+        }
+
+    @Test
+    fun clickingARowOpensTheInspectorAndClickingItAgainClosesIt() =
+        runScreenTest {
+            seedOneSetupWithTwoTasks()
+            setScreenContent { TasksScreen() }
+            waitUntil { onAllNodesWithText("Sold out").fetchSemanticsNodes().isNotEmpty() }
+
+            onNodeWithText("Sold out").performClick()
+            waitUntil { onAllNodesWithText("Task #2").fetchSemanticsNodes().isNotEmpty() }
+            onNodeWithText("LATEST MESSAGE").assertIsDisplayed()
+            onNodeWithText("Restart").assertIsDisplayed()
+            onNodeWithText("LOG").assertIsDisplayed()
+            onNodeWithText("None yet").assertExists()
+
+            onAllNodesWithText("Sold out")[0].performClick()
+            waitUntil { onAllNodesWithText("Task #2").fetchSemanticsNodes().isEmpty() }
+        }
+
+    @Test
+    fun closingTheInspectorHidesIt() =
+        runScreenTest {
+            seedOneSetupWithTwoTasks()
+            setScreenContent { TasksScreen() }
+            waitUntil { onAllNodesWithText("Watching stock").fetchSemanticsNodes().isNotEmpty() }
+
+            onNodeWithText("Watching stock").performClick()
+            waitUntil { onAllNodesWithText("Task #1").fetchSemanticsNodes().isNotEmpty() }
+            onNodeWithText("Stop").assertIsDisplayed()
+
+            onNodeWithContentDescription("Close").performClick()
+            waitUntil { onAllNodesWithText("Task #1").fetchSemanticsNodes().isEmpty() }
+        }
+
+    /** One setup in the default group: task 1 running ("Watching stock"), task 2 failed ("Sold out"). */
+    private fun seedOneSetupWithTwoTasks() =
+        runBlocking {
+            val group = KoinJavaComponent.get<TasksRepository>(TasksRepository::class.java).createScriptInstanceGroup(ScriptPackageGroup.createDefault())
+            val setup = aScriptPackageInstance("setup-1", "com.example.monitor")
+            val main = aScriptInstance(setup)
+            KoinJavaComponent.get<ScriptInstanceRepository>(ScriptInstanceRepository::class.java).addScriptPackageInstance(group.id, setup, main)
+            val now = Clock.System.now()
+            KoinJavaComponent.get<TasksRepository>(TasksRepository::class.java).addAllTasks(
+                listOf("Watching stock", "Sold out").mapIndexed { index, message ->
+                    JobTask(
+                        id = "task-${index + 1}",
+                        scriptInstance = main,
+                        configuration = emptyMap(),
+                        statusHistory = listOf(if (index == 0) TaskStatus.Running(message, now) else TaskStatus.Error(message, timestamp = now)),
+                        createdAt = now + index.milliseconds,
+                    )
+                },
+            )
         }
 }

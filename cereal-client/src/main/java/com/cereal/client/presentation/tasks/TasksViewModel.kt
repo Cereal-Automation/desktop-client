@@ -119,18 +119,10 @@ class TasksViewModel(
             return _selectedTask
         }
 
-    /** Number of the selected task within its setup, for the Output header ("Output · Task #n"). */
-    val selectedTaskNumber: Int?
-        get() {
-            val selectedId = _selectedTask.value?.id ?: return null
-            val filled = listState.value as? TaskViewState.ListState.Filled ?: return null
-            return filled.groups
-                .flatMap { it.setups }
-                .flatMap { it.scripts }
-                .flatMap { it.tasks }
-                .firstOrNull { it.id.id == selectedId }
-                ?.taskNumber
-        }
+    /** The inspector for the selected task, live; null while no task is selected. */
+    val inspector: State<TaskInspectorState?> =
+        derivedStateOf { _selectedTask.value?.let { TasksViewStateBuilder.buildInspectorState(it.id, allTasks.value) } }
+
     val userInteractions = mutableStateOf<List<TaskUiModel>>(emptyList())
 
     private var logObservationJob: Job? = null
@@ -158,6 +150,24 @@ class TasksViewModel(
         _selectedTask.value = task
         observeLogEventsForTask(task)
         observeArtifactsForTask(task)
+    }
+
+    /** A task row click opens the inspector for [task], or closes it when [task] is already selected. */
+    fun onTaskClicked(task: Task) {
+        onTaskSelected(task.takeUnless { it.id == _selectedTask.value?.id })
+    }
+
+    fun closeInspector() {
+        onTaskSelected(null)
+    }
+
+    fun onInspectorAction(action: TaskInspectorAction) {
+        val task = inspector.value?.task ?: return
+        when (action) {
+            TaskInspectorAction.STOP -> stopTask(task)
+            TaskInspectorAction.START, TaskInspectorAction.RESTART -> startTask(task)
+            TaskInspectorAction.REPORT_ISSUE -> reportIssue(task)
+        }
     }
 
     fun onCreateTaskGroup() {
@@ -466,6 +476,9 @@ class TasksViewModel(
             allTasks.value = updatedTasks.orEmpty()
             tasksFlow.value = updatedTasks.orEmpty()
             updateUserInteractions()
+            // The selected task is gone (its setup was deleted, or its count shrank): close the inspector.
+            val selectedId = _selectedTask.value?.id
+            if (selectedId != null && tasks.none { it.id == selectedId }) onTaskSelected(null)
         }
     }
 

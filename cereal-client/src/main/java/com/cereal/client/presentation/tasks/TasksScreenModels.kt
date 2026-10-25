@@ -5,6 +5,7 @@ import com.cereal.client.domain.model.script.ScriptPackageInstance
 import com.cereal.client.domain.model.task.ScriptPackageGroup
 import com.cereal.client.domain.model.task.TaskStatus
 import com.cereal.client.presentation.tasks.model.ScriptInstanceUiModel
+import com.cereal.client.presentation.tasks.model.TaskUiModel
 import com.cereal_automation.cereal_client.generated.resources.Res
 import com.cereal_automation.cereal_client.generated.resources.filter_all
 import com.cereal_automation.cereal_client.generated.resources.filter_failed
@@ -88,3 +89,11 @@ data class ConcurrentTaskStepperState(
     val canDecrease: Boolean,
     val canIncrease: Boolean,
 )
+
+/** The task inspector: the selected task, live, and the actions its status allows. */
+data class TaskInspectorState(
+    val task: TaskUiModel,
+    val actions: List<TaskInspectorAction>,
+)
+
+enum class TaskInspectorAction { STOP, START, RESTART, REPORT_ISSUE }

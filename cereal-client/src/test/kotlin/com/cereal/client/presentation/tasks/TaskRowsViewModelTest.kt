@@ -15,7 +15,6 @@ import kotlinx.coroutines.test.runTest
 import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertFalse
-import org.junit.jupiter.api.Assertions.assertNull
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
 import kotlin.test.assertIs
@@ -23,9 +22,9 @@ import kotlin.time.Clock
 import kotlin.time.Duration.Companion.seconds
 import kotlin.time.ExperimentalTime
 
-/** Task row content and the Output header (#208), on the real graph (see [TasksScreenWorld]). */
+/** Task row content (#208), on the real graph (see [TasksScreenWorld]). */
 @OptIn(ExperimentalCoroutinesApi::class, ExperimentalTime::class)
-class TaskRowsAndOutputViewModelTest {
+class TaskRowsViewModelTest {
     private val world = TasksScreenWorld(StandardTestDispatcher())
     private var viewModel: TasksViewModel? = null
 
@@ -93,27 +92,5 @@ class TaskRowsAndOutputViewModelTest {
             val viewModel = start()
 
             assertEquals(createdAt, viewModel.row("never-run").statusSince)
-        }
-
-    @Test
-    fun `the output header names the selected task by its number`() =
-        runTest {
-            world.setup("s", null, idle(), running("Monitoring"))
-            val viewModel = start()
-
-            viewModel.onTaskSelected(viewModel.row("s-task-2").id)
-
-            assertEquals(2, viewModel.selectedTaskNumber)
-        }
-
-    @Test
-    fun `the output header names no task while none is selected`() =
-        runTest {
-            world.setup("s", null, idle())
-            val viewModel = start()
-
-            viewModel.onTaskSelected(null)
-
-            assertNull(viewModel.selectedTaskNumber)
         }
 }
