@@ -29,9 +29,9 @@ internal data class TaskCounts(
 internal data class TaskQuickActionsState(
     val counts: TaskCounts,
     val filter: TaskFilter,
-    /** One toggle: Stop all while any task runs, otherwise Start all. */
+    /** One toggle: Stop all while any task runs, otherwise Start all; hidden when there is nothing to start. */
     val showStopAll: Boolean,
-    val startAllEnabled: Boolean,
+    val showStartAll: Boolean,
     val showRestartErrored: Boolean,
     val restartErroredEnabled: Boolean,
 )

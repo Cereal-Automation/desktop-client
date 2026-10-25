@@ -116,6 +116,17 @@ class TasksToolbarTest {
         }
 
     @Test
+    fun startAllIsHiddenWhenThereIsNothingToStart() =
+        runScreenTest {
+            setScreenContent {
+                TasksQuickActions(quickActionsState().copy(showStartAll = false), callbacks())
+            }
+
+            onNodeWithText("Start all").assertDoesNotExist()
+            onNodeWithText("Stop all").assertDoesNotExist()
+        }
+
+    @Test
     fun toggleShowsStopAllWhileTasksRun() =
         runScreenTest {
             var stopped = false
@@ -148,7 +159,7 @@ class TasksToolbarTest {
         counts = TaskCounts(idle = 1, running = 0, finished = 0, errored = 0),
         filter = TaskFilter.ALL,
         showStopAll = showStopAll,
-        startAllEnabled = true,
+        showStartAll = !showStopAll,
         showRestartErrored = showRestartErrored,
         restartErroredEnabled = true,
     )

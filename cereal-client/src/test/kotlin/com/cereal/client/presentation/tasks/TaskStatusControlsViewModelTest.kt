@@ -92,7 +92,18 @@ class TaskStatusControlsViewModelTest {
             val controls = assertNotNull(open(setup).taskControls.value)
 
             assertFalse(controls.showStopAll)
-            assertTrue(controls.startAllEnabled)
+            assertTrue(controls.showStartAll)
+        }
+
+    @Test
+    fun `Start all is hidden when no task can start`() =
+        runTest {
+            val setup = world.setup("setup-1", null, succeeded(), errored())
+
+            val controls = assertNotNull(open(setup).taskControls.value)
+
+            assertFalse(controls.showStopAll)
+            assertFalse(controls.showStartAll)
         }
 
     @Test

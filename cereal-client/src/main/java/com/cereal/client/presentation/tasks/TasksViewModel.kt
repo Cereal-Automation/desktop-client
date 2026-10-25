@@ -463,7 +463,7 @@ class TasksViewModel(
                     ),
                 filter = taskFilter.value,
                 showStopAll = filled.stopAllTasksEnabled,
-                startAllEnabled = filled.startAllTasksEnabled,
+                showStartAll = !filled.stopAllTasksEnabled && filled.startAllTasksEnabled,
                 showRestartErrored = filled.erroredTasksCount > 0,
                 restartErroredEnabled = !restartErroredInFlight.value,
             )

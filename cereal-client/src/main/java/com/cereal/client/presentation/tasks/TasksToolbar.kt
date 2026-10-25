@@ -296,11 +296,10 @@ internal fun TasksQuickActions(
                     )
                     CerealText(text = stringResource(Res.string.stop_all))
                 }
-            } else {
+            } else if (state.showStartAll) {
                 CerealToolbarButton(
                     variant = CerealToolbarButtonVariant.Green,
                     onClick = callbacks.onStartAll,
-                    enabled = state.startAllEnabled,
                 ) {
                     Icon(
                         painter = painterResource(Res.drawable.ic_play),
