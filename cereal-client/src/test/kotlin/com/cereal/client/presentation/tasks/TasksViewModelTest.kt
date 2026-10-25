@@ -983,4 +983,52 @@ class TasksViewModelTest {
         // updateTasks ran for the selected child (no tasks → not a NoSelection state).
         assertTrue(viewModel.tasksViewState.value !is TaskViewState.DetailViewState.NoSelection)
     }
+
+    @Test
+    fun `a variant instance shows the variant's name in the task list header`() {
+        createViewModel()
+        viewModel.hierarchicalListViewModel.selectParent(ScriptPackageGroup("1", "Group 1"))
+
+        viewModel.hierarchicalListViewModel.selectChild(aVariantInstance())
+        dispatcher.scheduler.advanceUntilIdle()
+
+        val state = viewModel.tasksViewState.value
+        assertIs<TaskViewState.DetailViewState.Empty>(state)
+        assertEquals("Checkout", state.headerTitle)
+    }
+
+    @Test
+    fun `a default-entry instance keeps the package name in the task list header`() {
+        createViewModel()
+        viewModel.hierarchicalListViewModel.selectParent(ScriptPackageGroup("1", "Group 1"))
+
+        viewModel.hierarchicalListViewModel.selectChild(fixtures.aScriptPackageInstance(id = "1", packageName = "com.example"))
+        dispatcher.scheduler.advanceUntilIdle()
+
+        val state = viewModel.tasksViewState.value
+        assertIs<TaskViewState.DetailViewState.Empty>(state)
+        assertEquals("Test", state.headerTitle)
+    }
+
+    @Test
+    fun `a variant instance shows the variant's name in its instance summary`() {
+        val group = ScriptPackageGroup("1", "Group 1", 1)
+        coEvery { getTaskGroupsInteractor(any()) } returns flowOf(SuspendableResult.Success(listOf(group)))
+        coEvery { getScriptsInGroupInteractor(any()) } returns
+            flowOf(SuspendableResult.Success(listOf(ScriptInstanceInGroup(aVariantInstance(), 0, 0))))
+
+        createViewModel()
+        dispatcher.scheduler.advanceUntilIdle()
+
+        val parent = viewModel.hierarchicalListViewModel.state.value[0] as HierarchicalListItem.Parent
+        assertEquals(listOf("Checkout"), parent.children.map { it.content.title })
+    }
+
+    private fun aVariantInstance() =
+        fixtures.aScriptPackageInstance(
+            id = "1",
+            packageName = "com.example",
+            definition = fixtures.aScriptPackageWithVariant("com.example", variantId = "checkout", variantName = "Checkout"),
+            variantId = "checkout",
+        )
 }
