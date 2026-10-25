@@ -3,11 +3,13 @@ package com.cereal.client.presentation.tasks
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.ui.test.ExperimentalTestApi
 import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import testutil.runScreenTest
 import testutil.setScreenContent
 import kotlin.test.Test
+import kotlin.test.assertEquals
 import kotlin.test.assertTrue
 
 /**
@@ -45,6 +47,24 @@ class TasksToolbarTest {
             onNodeWithText("View config").assertIsDisplayed()
             onNodeWithText("View config").performClick()
             assertTrue(viewed)
+        }
+
+    @Test
+    fun moreOptionsMenuFiresSelectedOption() =
+        runScreenTest {
+            var selected: MenuOption? = null
+            setScreenContent {
+                TasksToolbar(
+                    title = "My setup",
+                    subtitle = null,
+                    menuOptions = listOf(MenuOption.DUPLICATE, MenuOption.MOVE_TO_GROUP, MenuOption.DELETE),
+                    onMenuOptionSelected = { selected = it },
+                )
+            }
+
+            onNodeWithContentDescription("More options").performClick()
+            onNodeWithText("Delete").performClick()
+            assertEquals(MenuOption.DELETE, selected)
         }
 
     @Test
