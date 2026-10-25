@@ -10,6 +10,7 @@ import com.cereal.client.domain.model.script.configuration.ConfigValue
 import com.cereal.client.domain.model.script.configuration.ConfigurationItem
 import com.cereal.client.domain.model.script.configuration.ScriptConfigurationDefinition
 import com.cereal.client.domain.model.script.configuration.isValidReturnType
+import com.cereal.client.domain.model.script.entry
 import com.cereal.client.domain.repository.CustomDatasetRepository
 import com.cereal.client.domain.repository.ProxyRepository
 import kotlinx.coroutines.flow.firstOrNull
@@ -20,7 +21,9 @@ class GetScriptConfigDefinitionInteractor(
 ) : Interactor<GetScriptConfigDefinitionInteractor.Result, GetScriptConfigDefinitionInteractor.Params>() {
     override suspend fun run(params: Params): Result {
         val mainItems =
-            params.scriptPackage.mainScript.configuration
+            params.scriptPackage
+                .entry(params.variantId)
+                .configuration
                 .toConfigurationItems(params.scriptPackageInstance?.mainConfiguration)
                 .toMutableList()
 
@@ -42,6 +45,8 @@ class GetScriptConfigDefinitionInteractor(
     data class Params(
         val scriptPackage: ScriptPackage,
         val scriptPackageInstance: ScriptPackageInstance?,
+        /** The entry whose form is built; null is the default entry. Pass the instance's [ScriptPackageInstance.variantId]. */
+        val variantId: String? = null,
     )
 
     data class Result(

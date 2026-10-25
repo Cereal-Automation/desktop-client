@@ -55,7 +55,7 @@ class ScriptSelectionViewModel(
     private val interactorRunner = InteractorRunner(scope, dispatcherProvider, errorResolver)
 
     private val scriptsListViewModel =
-        GroupedListViewModel<ScriptPackage>(onSelectedItemChange = {
+        GroupedListViewModel<ScriptEntryRow>(onSelectedItemChange = {
             updateConfig()
         })
 
@@ -101,14 +101,16 @@ class ScriptSelectionViewModel(
                 withContext(dispatcherProvider.main) {
                     result.handleFailureOrElse(errorResolver) {
                         val items =
-                            it.map { script ->
+                            it.flatMap { script ->
                                 val needsUpdate = sdkVersion?.let { version -> script.isClientUpdateRequired(version) } ?: false
-                                GroupListItemContent(
-                                    id = script,
-                                    title = script.manifest.name,
-                                    warningMessage = if (needsUpdate) UPDATE_REQUIRED_MESSAGE else null,
-                                    badge = if (needsUpdate) UPDATE_REQUIRED_BADGE else null,
-                                )
+                                script.entryRows().map { row ->
+                                    GroupListItemContent(
+                                        id = row,
+                                        title = row.title,
+                                        warningMessage = if (needsUpdate) UPDATE_REQUIRED_MESSAGE else null,
+                                        badge = if (needsUpdate) UPDATE_REQUIRED_BADGE else null,
+                                    )
+                                }
                             }
 
                         if (items.isEmpty()) {
@@ -119,7 +121,10 @@ class ScriptSelectionViewModel(
                                 initialScriptPackageInstance?.definition?.manifest?.packageName ?: initialPublicIdentifier
                             val initialScript =
                                 initialPackageName?.takeUnless { initialSelectionApplied }?.let { packageName ->
-                                    items.find { item -> item.id.manifest.packageName == packageName }
+                                    items.find { item ->
+                                        item.id.scriptPackage.manifest.packageName == packageName &&
+                                            item.id.variantId == initialScriptPackageInstance?.variantId
+                                    }
                                 }
                             scriptsListViewModel.updateItems(items, selectFirstWhenNoSelection = initialScript == null)
                             initialScript?.let { scriptItem ->
@@ -144,22 +149,21 @@ class ScriptSelectionViewModel(
     private fun updateConfig() {
         selectedScriptUpdateRequired.value =
             scriptsListViewModel.selectedItem?.let { selected ->
-                sdkVersion?.let { version -> selected.isClientUpdateRequired(version) }
+                sdkVersion?.let { version -> selected.scriptPackage.isClientUpdateRequired(version) }
             } ?: false
         // Reset first so a previous script's cap never lingers while the new one's capacity loads.
         selectedScriptCapacity.value = ScriptCapacity.None
-        scriptsListViewModel.selectedItem?.let { selectedScript ->
-            // Only pass initial instance if the selected script matches the initial instance's script.
+        scriptsListViewModel.selectedItem?.let { selectedRow ->
+            val selectedScript = selectedRow.scriptPackage
+            // Only pass initial instance if the selected entry matches the initial instance's entry.
             val initialInstance =
-                if (initialScriptPackageInstance?.definition?.manifest?.packageName == selectedScript.manifest.packageName) {
-                    initialScriptPackageInstance
-                } else {
-                    null
+                initialScriptPackageInstance?.takeIf {
+                    it.definition.manifest.packageName == selectedScript.manifest.packageName && it.variantId == selectedRow.variantId
                 }
             val configViewModel =
                 KoinJavaComponent.get<ScriptConfigurationViewModel>(
                     ScriptConfigurationViewModel::class.java,
-                    parameters = { parametersOf(scope, selectedScript, initialInstance) },
+                    parameters = { parametersOf(scope, selectedScript, initialInstance, selectedRow.variantId) },
                 )
             scriptConfigurationViewModel = configViewModel
             configurationViewState.value = ScriptSelectionState.Config.Selected(configViewModel)
@@ -193,7 +197,11 @@ class ScriptSelectionViewModel(
      * missing provider breaks the script; the notification check follows.
      */
     fun launchScript() {
-        if (scriptsListViewModel.selectedItem?.manifest?.declares(ScriptFeature.LLM) != true) {
+        if (scriptsListViewModel.selectedItem
+                ?.scriptPackage
+                ?.manifest
+                ?.declares(ScriptFeature.LLM) != true
+        ) {
             checkNotificationChannelsThenLaunch()
             return
         }
@@ -251,7 +259,8 @@ class ScriptSelectionViewModel(
             startScriptInteractor(
                 StartScriptInteractor.Params(
                     groupId = taskGroupId,
-                    scriptPackage = scriptsListViewModel.selectedItem!!,
+                    scriptPackage = scriptsListViewModel.selectedItem!!.scriptPackage,
+                    variantId = scriptsListViewModel.selectedItem!!.variantId,
                     mainScriptConfiguration =
                         scriptConfigurationViewModel
                             ?.scriptConfigurationForm
@@ -353,3 +362,15 @@ class ScriptSelectionViewModel(
             "This script requires a newer version of Cereal. Update your client to use it."
     }
 }
+
+/** One selectable row in script selection: a package's default entry ([variantId] null) or one of its variants. */
+data class ScriptEntryRow(
+    val scriptPackage: ScriptPackage,
+    val variantId: String? = null,
+) {
+    // ponytail: the default row keeps the package name; #199 owns entry names everywhere else.
+    val title: String get() = variantId?.let { scriptPackage.variants.getValue(it).name } ?: scriptPackage.manifest.name
+}
+
+/** The default entry first, then each variant in manifest order. */
+private fun ScriptPackage.entryRows(): List<ScriptEntryRow> = listOf(ScriptEntryRow(this)) + variants.keys.map { ScriptEntryRow(this, it) }

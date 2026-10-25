@@ -5,6 +5,8 @@ import com.cereal.client.application.exception.LoadScriptException
 import com.cereal.client.domain.model.script.Release
 import com.cereal.client.domain.model.user.User
 import com.cereal.client.infrastructure.data.datasource.filesystem.security.Encryption
+import fixtures.scripts.CheckoutVariantScript
+import fixtures.scripts.DefaultEntryScript
 import io.mockk.every
 import io.mockk.mockk
 import kotlinx.coroutines.flow.first
@@ -16,6 +18,8 @@ import org.junit.jupiter.api.assertThrows
 import org.junit.jupiter.api.io.TempDir
 import java.io.File
 import java.nio.file.Path
+import java.util.jar.JarEntry
+import java.util.jar.JarOutputStream
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
 import kotlin.test.assertNotEquals
@@ -57,6 +61,69 @@ class FileSystemScriptsDataSourceTest {
         // Ensure user script directory exists
         val userDir = File(tempDir.toFile(), testUser.id)
         userDir.mkdirs()
+    }
+
+    @Test
+    fun `a jar whose manifest declares variants loads them alongside the default entry`() =
+        runTest {
+            writeJar(
+                """
+                {
+                    "package_name": "com.example.agent", "name": "Agent", "version_code": 1,
+                    "script": "fixtures.scripts.DefaultEntryScript",
+                    "variants": [
+                        { "id": "checkout", "name": "Checkout", "script": "fixtures.scripts.CheckoutVariantScript",
+                          "instructions": "Paste a product URL." }
+                    ]
+                }
+                """,
+            )
+
+            val scriptPackage = realBuilderDataSource().getScriptPackageDefinition("com.example.agent", testUser)!!.toScriptPackage(null)
+
+            assertEquals(DefaultEntryScript::class, scriptPackage.mainScript.clazz)
+            val variant = scriptPackage.variants.getValue("checkout")
+            assertEquals("Checkout", variant.name)
+            assertEquals("Paste a product URL.", variant.instructions)
+            assertEquals(CheckoutVariantScript::class, variant.script.clazz)
+            assertEquals(
+                listOf("productUrl"),
+                variant.script.configuration.configurationItems
+                    .map { it.key },
+            )
+        }
+
+    @Test
+    fun `a jar whose manifest declares no variants loads with none`() =
+        runTest {
+            writeJar(
+                """
+                { "package_name": "com.example.plain", "name": "Plain", "version_code": 1,
+                  "script": "fixtures.scripts.DefaultEntryScript" }
+                """,
+            )
+
+            val scriptPackage = realBuilderDataSource().getScriptPackageDefinition("com.example.plain", testUser)!!.toScriptPackage(null)
+
+            assertEquals(
+                listOf("goal"),
+                scriptPackage.mainScript.configuration.configurationItems
+                    .map { it.key },
+            )
+            assertTrue(scriptPackage.variants.isEmpty())
+        }
+
+    private fun realBuilderDataSource() = FileSystemScriptsDataSource(mockConfig, ScriptConfigurationDefinitionBuilder(), Encryption())
+
+    /** Writes an unencrypted, manifest-only jar into the user's script directory; its classes come from the test classpath. */
+    private fun writeJar(manifest: String) {
+        File(File(tempDir.toFile(), testUser.id), "script.jar").outputStream().use { out ->
+            JarOutputStream(out).use { jar ->
+                jar.putNextEntry(JarEntry("manifest.json"))
+                jar.write(manifest.trimIndent().toByteArray())
+                jar.closeEntry()
+            }
+        }
     }
 
     @Test

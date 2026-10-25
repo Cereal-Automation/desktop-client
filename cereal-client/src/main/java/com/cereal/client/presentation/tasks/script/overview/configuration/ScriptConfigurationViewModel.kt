@@ -40,6 +40,8 @@ import java.io.File
 class ScriptConfigurationViewModel(
     private val scriptPackage: ScriptPackage,
     val initialScriptPackageInstance: ScriptPackageInstance?,
+    /** The entry being configured; null is the package's default entry. */
+    private val variantId: String? = null,
     private val scope: CoroutineScope,
     private val errorResolver: ErrorResolver,
     private val dispatcherProvider: CoroutinesDispatcherProvider,
@@ -79,7 +81,8 @@ class ScriptConfigurationViewModel(
                 packageName = scriptPackage.manifest.packageName,
             )
         interactorRunner.launch(getScriptPackageInstancesByPackageNameInteractor, params) { instances ->
-            existingInstances.value = instances
+            // Copying settings only makes sense between instances of the same entry.
+            existingInstances.value = instances.filter { it.variantId == variantId }
         }
     }
 
@@ -93,6 +96,7 @@ class ScriptConfigurationViewModel(
             GetScriptConfigDefinitionInteractor.Params(
                 scriptPackage = scriptPackage,
                 scriptPackageInstance = null,
+                variantId = variantId,
             ),
         ) { result ->
             val allItems =

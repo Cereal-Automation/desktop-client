@@ -24,4 +24,19 @@ data class ManifestJson(
     @SerialName("sdk_version") val sdkVersion: String? = null,
     /** Script features the script uses, as raw manifest values. Missing means none. */
     @SerialName("features") val features: List<String> = emptyList(),
+    /** Additional entry scripts. Missing means the package only has its default entry, [scriptPackageClass]. */
+    @SerialName("variants") val variants: List<VariantJson> = emptyList(),
+)
+
+/** An additional entry script of a package, listed in the manifest's `variants`. */
+@Serializable
+data class VariantJson(
+    /** Stable id the client persists; unique within the package. */
+    @SerialName("id") val id: String,
+    /** Display name; may change between releases. */
+    @SerialName("name") val name: String,
+    /** Fully qualified class name of the variant's script. */
+    @SerialName("script") val scriptClass: String,
+    /** Optional instructions to display at the top of the variant's configuration screen. */
+    @SerialName("instructions") val instructions: String? = null,
 )

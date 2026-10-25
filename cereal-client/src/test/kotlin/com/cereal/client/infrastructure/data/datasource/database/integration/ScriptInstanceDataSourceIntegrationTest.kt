@@ -43,6 +43,8 @@ import com.cereal.client.infrastructure.data.datasource.filesystem.security.Encr
 import com.cereal.client.infrastructure.di.KoinScopeLinker
 import com.cereal.client.infrastructure.di.UserScopeProvider
 import com.cereal.sdk.ScriptConfiguration
+import fixtures.aScriptPackageInstance
+import fixtures.aScriptPackageWithVariant
 import io.mockk.every
 import io.mockk.mockk
 import io.mockk.mockkObject
@@ -70,6 +72,8 @@ import kotlin.time.ExperimentalTime
  * Integration test for ScriptInstanceDataSource Room implementation.
  */
 @Suppress("LargeClass")
+private const val PACKAGE = "com.test.variants"
+
 class ScriptInstanceDataSourceIntegrationTest {
     private lateinit var scriptInstanceDataSource: ScriptInstanceDataSource
     private lateinit var roomDatabases: RoomDatabases
@@ -615,6 +619,53 @@ class ScriptInstanceDataSourceIntegrationTest {
                 tearDownForImplementation(implementation)
             }
         }
+
+    @ParameterizedTest(name = "test variant id round-trips - {0}")
+    @EnumSource(value = DatabaseImplementation::class, names = ["ROOM"])
+    fun `test variant id round-trips`(implementation: DatabaseImplementation) =
+        runTest {
+            setupForImplementation(implementation)
+            try {
+                val (group, instance) = addVariantInstance(variantId = "checkout")
+
+                val retrieved = scriptInstanceDataSource.getScriptPackageInstance(testUser, instance.id, instance.definition)
+
+                assertEquals("checkout", retrieved!!.variantId)
+                assertEquals(listOf("checkout"), scriptInstanceDataSource.getScriptPackageInstancesInGroup(testUser, group.id, mapOf(PACKAGE to instance.definition)).map { it.variantId })
+            } finally {
+                tearDownForImplementation(implementation)
+            }
+        }
+
+    @ParameterizedTest(name = "test instance of a removed variant fails to load - {0}")
+    @EnumSource(value = DatabaseImplementation::class, names = ["ROOM"])
+    fun `test instance of a removed variant fails to load`(implementation: DatabaseImplementation) =
+        runTest {
+            setupForImplementation(implementation)
+            try {
+                val (_, instance) = addVariantInstance(variantId = "checkout")
+                val newerJar = aScriptPackageWithVariant(PACKAGE, variantId = "other")
+
+                assertNull(scriptInstanceDataSource.getScriptPackageInstance(testUser, instance.id, newerJar))
+                assertEquals(emptyList<ScriptPackageInstance>(), scriptInstanceDataSource.getScriptPackageInstances(testUser, mapOf(PACKAGE to newerJar)))
+            } finally {
+                tearDownForImplementation(implementation)
+            }
+        }
+
+    private suspend fun addVariantInstance(variantId: String): Pair<ScriptPackageGroup, ScriptPackageInstance> {
+        val group = createTestScriptPackageGroup()
+        scriptInstanceDataSource.createScriptInstanceGroup(testUser, group)
+        val instance =
+            aScriptPackageInstance(
+                id = UUID.randomUUID().toString(),
+                packageName = PACKAGE,
+                definition = aScriptPackageWithVariant(PACKAGE, variantId = variantId),
+                variantId = variantId,
+            )
+        scriptInstanceDataSource.addScriptPackageInstance(testUser, instance, createTestMainScriptInstance(instance), group.id)
+        return group to instance
+    }
 
     @ParameterizedTest(name = "test get script package name by id - {0}")
     @EnumSource(value = DatabaseImplementation::class, names = ["ROOM"])

@@ -98,6 +98,7 @@ class ScriptInstanceMapper(
             numberOfConcurrentTasks = scriptPackageInstance.numberOfConcurrentTasks,
             createdAt = scriptPackageInstance.createdAt,
             updatedAt = now,
+            variantId = scriptPackageInstance.variantId,
         )
     }
 

@@ -251,10 +251,11 @@ object ViewModelModule {
             factory { (scope: CoroutineScope) -> BrandPaywallViewModel(scope, get(), get(), get(), get(), get(), get()) }
             factory { ErrorResolver() }
             factory { (scope: CoroutineScope) -> AiSettingsViewModel(scope, get(), get(), get(), get(), get(), get()) }
-            factory { (scope: CoroutineScope, scriptPackage: ScriptPackage, initialScriptPackageInstance: ScriptPackageInstance?) ->
+            factory { (scope: CoroutineScope, scriptPackage: ScriptPackage, initialScriptPackageInstance: ScriptPackageInstance?, variantId: String?) ->
                 ScriptConfigurationViewModel(
                     scriptPackage,
                     initialScriptPackageInstance,
+                    variantId,
                     scope,
                     get(),
                     get(),

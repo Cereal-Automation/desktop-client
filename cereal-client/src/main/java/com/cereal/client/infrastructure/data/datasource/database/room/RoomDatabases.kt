@@ -95,7 +95,7 @@ abstract class ApplicationRoomDatabase : RoomDatabase() {
         NotificationHistoryAttemptEntity::class,
         ArtifactEntity::class,
     ],
-    version = 13,
+    version = 14,
     exportSchema = true,
 )
 @TypeConverters(

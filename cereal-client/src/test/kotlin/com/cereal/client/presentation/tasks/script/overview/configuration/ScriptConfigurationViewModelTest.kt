@@ -104,7 +104,7 @@ class ScriptConfigurationViewModelTest {
 
     @Test
     fun `init loads existing instances`() {
-        val instance = mockk<ScriptPackageInstance>(relaxed = true)
+        val instance = fixtures.aScriptPackageInstance(id = "1", packageName = "com.example")
         coEvery { getScriptPackageInstancesByPackageNameInteractor(any(), any()) } coAnswers {
             secondArg<suspend (SuspendableResult<List<ScriptPackageInstance>, Exception>) -> Unit>()(
                 SuspendableResult.Success(listOf(instance)),

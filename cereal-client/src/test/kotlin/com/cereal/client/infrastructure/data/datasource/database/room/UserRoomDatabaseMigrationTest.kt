@@ -396,6 +396,27 @@ class UserRoomDatabaseMigrationTest {
         }
     }
 
+    @Test
+    fun `testMigration13To14 adds a nullable variant id and existing instances read back as the default entry`() {
+        val driver = BundledSQLiteDriver()
+        val connection = driver.open(":memory:")
+
+        try {
+            connection.execSQL("CREATE TABLE script_package (id TEXT NOT NULL PRIMARY KEY, package_name TEXT NOT NULL)")
+            connection.execSQL("INSERT INTO script_package (id, package_name) VALUES ('p1', 'com.example')")
+
+            DatabaseConnector.MIGRATION_13_14.migrate(connection)
+
+            connection.prepare("SELECT package_name, variant_id FROM script_package WHERE id = 'p1'").use { stmt ->
+                assertTrue(stmt.step(), "Existing row should still be present after migration")
+                assertEquals("com.example", stmt.getText(0))
+                assertTrue(stmt.isNull(1), "variant_id should be null for pre-migration rows")
+            }
+        } finally {
+            connection.close()
+        }
+    }
+
     /**
      * The version-12 shape of the three tables holding typed values, each seeded with one row per type
      * the migration touches plus a plain string row that must survive.

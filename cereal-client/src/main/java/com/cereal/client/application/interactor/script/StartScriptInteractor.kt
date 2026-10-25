@@ -43,6 +43,7 @@ class StartScriptInteractor(
                 params.scriptPackage,
                 params.mainScriptConfiguration,
                 params.childConfigurations,
+                params.variantId,
             )
         configValuesValidator.validate()
 
@@ -63,6 +64,7 @@ class StartScriptInteractor(
                 Clock.System.now(),
                 params.numberOfConcurrentTasks,
                 params.notificationOverrides,
+                params.variantId,
             )
 
         val scriptInstance =
@@ -101,6 +103,7 @@ class StartScriptInteractor(
             CapacityValidator(
                 params.scriptPackage,
                 params.mainScriptConfiguration,
+                params.variantId,
             ).runRecordCount()
 
         if (!entitlement.allows(recordCount)) {
@@ -119,6 +122,7 @@ class StartScriptInteractor(
                 params.mainScriptConfiguration,
                 params.childConfigurations,
                 params.numberOfConcurrentTasks,
+                params.variantId,
             )
         val numberOfConcurrentTasksLimited = validator.validateTaskLimits()
         val recordsUsedByMultipleTasks = validator.validateRecordsReused()
@@ -140,6 +144,8 @@ class StartScriptInteractor(
         val numberOfConcurrentTasks: Int,
         val ignoreConcurrencyConflicts: Boolean,
         val notificationOverrides: ScriptNotificationOverrides? = null,
+        /** The [ScriptPackage.variants] id to start; null starts the default entry. */
+        val variantId: String? = null,
     )
 }
 

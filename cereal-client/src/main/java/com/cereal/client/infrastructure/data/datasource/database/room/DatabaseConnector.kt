@@ -258,6 +258,17 @@ object DatabaseConnector {
         }
 
     /**
+     * Migration from version 13 to 14: a script package instance remembers which of its package's variants it
+     * runs. Existing rows stay null, the default entry.
+     */
+    internal val MIGRATION_13_14 =
+        object : Migration(13, 14) {
+            override fun migrate(connection: SQLiteConnection) {
+                connection.execSQL("ALTER TABLE script_package ADD COLUMN variant_id TEXT")
+            }
+        }
+
+    /**
      * Connect to an application Room database
      *
      * @param directory The directory where the database file should be stored
@@ -306,6 +317,7 @@ object DatabaseConnector {
                 MIGRATION_10_11,
                 MIGRATION_11_12,
                 MIGRATION_12_13,
+                MIGRATION_13_14,
             )
         }
     }

@@ -33,6 +33,9 @@ class ScriptJarReader(
         mutableMapOf()
     var manifest: ManifestDefinition? = null
 
+    /** Variants whose script class loaded, by manifest id. */
+    val variants: MutableMap<String, LoadedVariant> = mutableMapOf()
+
     init {
         // First, read the manifest from the root of the jar
         val manifestJson = readManifest()
@@ -53,6 +56,15 @@ class ScriptJarReader(
                 loadScript(mainScriptClassName)?.let { (scriptClass, configurationClass) ->
                     mainScriptCls = scriptClass
                     mainScriptConfigurationCls = configurationClass
+                }
+            }
+
+            // ponytail: a variant whose class doesn't load is skipped; rejecting the package with a reason is #198.
+            json.variants.forEach { variant ->
+                loadScript(variant.scriptClass)?.let { (scriptClass, configurationClass) ->
+                    configurationClass?.let { configuration ->
+                        variants[variant.id] = LoadedVariant(variant.name, variant.instructions, scriptClass, configuration)
+                    }
                 }
             }
 
@@ -120,6 +132,13 @@ class ScriptJarReader(
         }
         return null
     }
+
+    data class LoadedVariant(
+        val name: String,
+        val instructions: String?,
+        val scriptCls: KClass<Script<*>>,
+        val configurationCls: KClass<ScriptConfiguration>,
+    )
 
     companion object {
         private const val MANIFEST_FILE_NAME = "manifest.json"

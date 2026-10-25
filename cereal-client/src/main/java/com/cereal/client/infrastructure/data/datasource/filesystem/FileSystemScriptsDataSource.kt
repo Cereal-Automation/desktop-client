@@ -7,6 +7,7 @@ import com.cereal.client.domain.model.extensions.isJar
 import com.cereal.client.domain.model.script.MainScript
 import com.cereal.client.domain.model.script.Release
 import com.cereal.client.domain.model.script.ScriptPackage
+import com.cereal.client.domain.model.script.ScriptVariant
 import com.cereal.client.domain.model.script.isClientUpdateRequired
 import com.cereal.client.domain.model.user.User
 import com.cereal.client.infrastructure.data.datasource.filesystem.reader.ScriptJarReader
@@ -184,6 +185,14 @@ class FileSystemScriptsDataSource(
                         scriptConfigurationDefinitionBuilder.createFrom(scriptJarReader.mainScriptConfigurationCls!!),
                     ),
                 childScripts = childScripts,
+                variants =
+                    scriptJarReader.variants.mapValues { (_, variant) ->
+                        ScriptVariant(
+                            name = variant.name,
+                            instructions = variant.instructions,
+                            script = MainScript(variant.scriptCls, scriptConfigurationDefinitionBuilder.createFrom(variant.configurationCls)),
+                        )
+                    },
             )
         } catch (e: ClientUpdateRequiredException) {
             throw e
