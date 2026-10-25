@@ -431,11 +431,12 @@ class TasksViewModelTest {
             // Arrange
             val group = ScriptPackageGroup("1", "Group 1", 0)
             val groupWithScript = ScriptPackageGroup("1", "Group 1", 1) // Count updated
+            val otherGroup = ScriptPackageGroup("2", "Group 2", 0) // Group headers only show with 2+ groups
 
             // Use a MutableSharedFlow to control emissions
             val taskGroupsFlow =
                 kotlinx.coroutines.flow.MutableSharedFlow<SuspendableResult<List<ScriptPackageGroup>, Exception>>(replay = 1)
-            taskGroupsFlow.emit(SuspendableResult.Success(listOf(group)))
+            taskGroupsFlow.emit(SuspendableResult.Success(listOf(group, otherGroup)))
             coEvery { getTaskGroupsInteractor(any()) } returns taskGroupsFlow
 
             // Scripts flow that DOES NOT emit initially (simulating delay)
@@ -447,18 +448,18 @@ class TasksViewModelTest {
             dispatcher.scheduler.advanceUntilIdle()
 
             // Initial check
-            assertEquals(1, viewModel.hierarchicalListViewModel.state.value.size)
+            assertEquals(2, viewModel.hierarchicalListViewModel.state.value.size)
             assertEquals(
                 "0",
                 (viewModel.hierarchicalListViewModel.state.value[0] as HierarchicalListItem.Parent).content.badge,
             )
 
             // Act - Update groups (simulate script added)
-            taskGroupsFlow.emit(SuspendableResult.Success(listOf(groupWithScript)))
+            taskGroupsFlow.emit(SuspendableResult.Success(listOf(groupWithScript, otherGroup)))
             dispatcher.scheduler.advanceUntilIdle()
 
             // Assert - Badge should be "1" IMMEDIATELY, even though scriptsFlow hasn't emitted yet
-            assertEquals(1, viewModel.hierarchicalListViewModel.state.value.size)
+            assertEquals(2, viewModel.hierarchicalListViewModel.state.value.size)
             assertEquals(
                 "1",
                 (viewModel.hierarchicalListViewModel.state.value[0] as HierarchicalListItem.Parent).content.badge,

@@ -136,6 +136,19 @@ class HierarchicalListViewModel<P, C>(
     }
 
     private fun updateState() {
+        // A single parent is not shown: its children render as a flat list until a second parent exists.
+        parents.singleOrNull()?.let { only ->
+            state.value =
+                childrenByParent[only.id].orEmpty().map { childContent ->
+                    HierarchicalListItem.Child(
+                        content = childContent,
+                        parentId = only.id,
+                        selected = childContent.id == selectedChild,
+                    )
+                }
+            return
+        }
+
         val items = mutableListOf<HierarchicalListItem<P, C>>()
 
         for (parentContent in parents) {
