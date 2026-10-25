@@ -99,7 +99,6 @@
     <string name="expand">Expand</string>
     <string name="expand_output">Expand output</string>
     <string name="filter_all">All</string>
-    <string name="filter_label">Filter:</string>
     <string name="filter_action_label">Filter</string>
     <string name="filter_section_price">Price</string>
     <string name="filter_section_creator">Creator</string>
