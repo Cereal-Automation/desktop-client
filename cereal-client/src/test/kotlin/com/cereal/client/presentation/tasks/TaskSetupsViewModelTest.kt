@@ -112,8 +112,7 @@ class TaskSetupsViewModelTest {
                     is HierarchicalListItem.Parent -> item.children
                     is HierarchicalListItem.Child -> listOf(item)
                 }
-            }
-            .single { it.content.id == setup }
+            }.single { it.content.id == setup }
             .content
 
     @Test
