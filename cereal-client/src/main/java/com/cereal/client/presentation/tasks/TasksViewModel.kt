@@ -10,6 +10,7 @@ import com.cereal.client.application.interactor.script.ReportScriptIssueInteract
 import com.cereal.client.application.interactor.settings.OpenUrlInteractor
 import com.cereal.client.application.interactor.settings.developers.ObserveShowDebugLogsInteractor
 import com.cereal.client.application.interactor.task.GetOrCreateDefaultTaskGroupInteractor
+import com.cereal.client.application.interactor.task.UpdateScriptPackageInstanceInteractor
 import com.cereal.client.domain.model.artifact.Artifact
 import com.cereal.client.domain.model.logging.LoggingEvent
 import com.cereal.client.domain.model.logging.LoggingPriority
@@ -55,6 +56,7 @@ class TasksViewModel(
     private val openUrlInteractor: OpenUrlInteractor,
     private val observeArtifactsInteractor: ObserveArtifactsInteractor,
     private val saveArtifactToFileInteractor: SaveArtifactToFileInteractor,
+    private val updateScriptPackageInstanceInteractor: UpdateScriptPackageInstanceInteractor,
 ) {
     private val scope = CoroutineScope(SupervisorJob() + dispatcherProvider.main)
     private val interactorRunner = InteractorRunner(scope, dispatcherProvider, errorResolver)
@@ -286,6 +288,29 @@ class TasksViewModel(
         } else if (option == MenuOption.MOVE_TO_GROUP) {
             moveScriptToGroup(scriptInstance)
         }
+    }
+
+    /** Edit in the detail header: only while none of the selected setup's tasks runs. */
+    val editEnabled: Boolean
+        get() =
+            hierarchicalListViewModel.selectedChild != null &&
+                (tasksViewState.value as? TaskViewState.DetailViewState.Filled)?.runningTasksCount?.let { it == 0 } ?: true
+
+    fun onEditClicked() {
+        val selected = hierarchicalListViewModel.selectedChild ?: return
+        if (!editEnabled) return
+        // Prefer the setup from the observed list, which carries its latest saved configuration.
+        val (group, items) =
+            tasksListObserver.childrenByGroupState.entries
+                .firstOrNull { (_, items) -> items.any { it.id.id == selected.id } } ?: return
+        dialogManager.showEditScript(group, items.first { it.id.id == selected.id }.id)
+    }
+
+    fun saveEdit(scriptPackageInstance: ScriptPackageInstance) {
+        interactorRunner.launch(
+            updateScriptPackageInstanceInteractor,
+            UpdateScriptPackageInstanceInteractor.Params(scriptPackageInstance),
+        ) { closeDialog() }
     }
 
     fun showConfiguration(scriptPackageInstance: ScriptPackageInstance) {

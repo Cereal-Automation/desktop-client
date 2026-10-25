@@ -2,6 +2,7 @@ package com.cereal.client.infrastructure.data.datasource.database.room
 
 import com.cereal.client.domain.model.script.ChildScriptInstance
 import com.cereal.client.domain.model.script.MainScriptInstance
+import com.cereal.client.domain.model.script.ScriptConfigurationValues
 import com.cereal.client.domain.model.script.ScriptInstance
 import com.cereal.client.domain.model.script.ScriptPackage
 import com.cereal.client.domain.model.script.ScriptPackageInstance
@@ -17,6 +18,8 @@ import com.cereal.client.infrastructure.data.datasource.database.room.mapper.Scr
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 import java.util.UUID
+import kotlin.time.Clock
+import kotlin.time.ExperimentalTime
 
 /**
  * Room implementation of [ScriptPackageInstanceDataSource].
@@ -68,52 +71,85 @@ class RoomScriptPackageInstanceDataSource(
                 )
             dao.insertScript(mainScriptEntity)
 
-            // Create main script configuration (depends on script package)
-            val mainScriptConfiguration =
-                scriptInstanceMapper.createMainScriptConfigurationEntity(
-                    scriptPackageEntity.id,
-                )
-            dao.insertScriptConfiguration(mainScriptConfiguration)
+            insertConfiguration(dao, scriptPackageInstance, mainScriptInstance.configuration)
+        }
+    }
 
-            // Create main script configuration items (depends on script configuration)
-            val mainScriptConfigurationItems =
-                scriptInstanceMapper.createScriptConfigurationItemEntities(
-                    mainScriptInstance.configuration,
-                    mainScriptConfiguration.id,
-                )
-            dao.insertScriptConfigurationItems(mainScriptConfigurationItems)
+    @OptIn(ExperimentalTime::class)
+    override suspend fun updateScriptPackageInstance(
+        user: User,
+        scriptPackageInstance: ScriptPackageInstance,
+    ) {
+        val userDatabase = roomDatabases.getUserDatabase(user)
+        val packageId = UUID.fromString(scriptPackageInstance.id)
+        userDatabase.immediateWriteTransaction {
+            val dao = userDatabase.scriptInstanceDao()
+            val packageEntity = dao.getScriptPackageById(packageId) ?: return@immediateWriteTransaction
+            dao.updateScriptPackage(
+                packageEntity.copy(
+                    numberOfConcurrentTasks = scriptPackageInstance.numberOfConcurrentTasks,
+                    updatedAt = Clock.System.now(),
+                ),
+            )
+            // Configuration items cascade with their configuration rows.
+            dao.deleteScriptConfigurationsByPackageId(packageId)
+            dao.deleteScriptNotificationOverrideByPackageId(packageId)
+            insertConfiguration(dao, scriptPackageInstance, scriptPackageInstance.mainConfiguration)
+        }
+    }
 
-            // Create child script configurations (depends on script package)
-            val childScriptConfigurations =
-                scriptInstanceMapper.createChildScriptConfigurationEntities(
-                    scriptPackageInstance,
-                    scriptPackageEntity.id,
-                )
-            dao.insertScriptConfigurations(childScriptConfigurations)
+    /** Inserts the main and child configurations and the notification overrides of [scriptPackageInstance]. */
+    private suspend fun insertConfiguration(
+        dao: ScriptInstanceDao,
+        scriptPackageInstance: ScriptPackageInstance,
+        mainConfiguration: ScriptConfigurationValues,
+    ) {
+        val packageId = UUID.fromString(scriptPackageInstance.id)
+        // Create main script configuration (depends on script package)
+        val mainScriptConfiguration =
+            scriptInstanceMapper.createMainScriptConfigurationEntity(
+                packageId,
+            )
+        dao.insertScriptConfiguration(mainScriptConfiguration)
 
-            // Create child script configuration items (depends on script configurations)
-            childScriptConfigurations.forEach { childConfig ->
-                val childConfigurationValues = scriptPackageInstance.childConfigurations[childConfig.scriptId]
-                if (childConfigurationValues != null) {
-                    val childConfigurationItems =
-                        scriptInstanceMapper.createScriptConfigurationItemEntities(
-                            childConfigurationValues,
-                            childConfig.id,
-                        )
-                    dao.insertScriptConfigurationItems(childConfigurationItems)
-                }
+        // Create main script configuration items (depends on script configuration)
+        val mainScriptConfigurationItems =
+            scriptInstanceMapper.createScriptConfigurationItemEntities(
+                mainConfiguration,
+                mainScriptConfiguration.id,
+            )
+        dao.insertScriptConfigurationItems(mainScriptConfigurationItems)
+
+        // Create child script configurations (depends on script package)
+        val childScriptConfigurations =
+            scriptInstanceMapper.createChildScriptConfigurationEntities(
+                scriptPackageInstance,
+                packageId,
+            )
+        dao.insertScriptConfigurations(childScriptConfigurations)
+
+        // Create child script configuration items (depends on script configurations)
+        childScriptConfigurations.forEach { childConfig ->
+            val childConfigurationValues = scriptPackageInstance.childConfigurations[childConfig.scriptId]
+            if (childConfigurationValues != null) {
+                val childConfigurationItems =
+                    scriptInstanceMapper.createScriptConfigurationItemEntities(
+                        childConfigurationValues,
+                        childConfig.id,
+                    )
+                dao.insertScriptConfigurationItems(childConfigurationItems)
             }
+        }
 
-            // Create notification overrides if present
-            scriptPackageInstance.notificationOverrides?.let { overrides ->
-                if (overrides.hasAnyOverrides()) {
-                    val overrideEntity =
-                        notificationOverrideMapper.toEntity(
-                            scriptPackageInstance.id,
-                            overrides,
-                        )
-                    dao.insertScriptNotificationOverride(overrideEntity)
-                }
+        // Create notification overrides if present
+        scriptPackageInstance.notificationOverrides?.let { overrides ->
+            if (overrides.hasAnyOverrides()) {
+                val overrideEntity =
+                    notificationOverrideMapper.toEntity(
+                        scriptPackageInstance.id,
+                        overrides,
+                    )
+                dao.insertScriptNotificationOverride(overrideEntity)
             }
         }
     }

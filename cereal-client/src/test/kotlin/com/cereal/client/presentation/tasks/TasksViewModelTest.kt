@@ -155,6 +155,7 @@ class TasksViewModelTest {
             openUrlInteractor,
             observeArtifactsInteractor,
             saveArtifactToFileInteractor,
+            mockk(relaxed = true),
         )
     }
 
@@ -514,6 +515,7 @@ class TasksViewModelTest {
                     openUrlInteractor,
                     observeArtifactsInteractor,
                     saveArtifactToFileInteractor,
+                    mockk(relaxed = true),
                 )
 
             vm.onTaskSelected(task)
@@ -605,6 +607,7 @@ class TasksViewModelTest {
                     openUrlInteractor,
                     observeArtifactsInteractor,
                     saveArtifactToFileInteractor,
+                    mockk(relaxed = true),
                 )
 
             vm.onTaskSelected(task)

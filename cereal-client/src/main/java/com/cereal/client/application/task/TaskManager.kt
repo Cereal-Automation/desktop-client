@@ -92,6 +92,29 @@ class TaskManager(
         return tasks
     }
 
+    /**
+     * Rebuilds the tasks of [scriptPackageInstance] on its stored configuration, keeping their ids, status history and
+     * creation time. Tasks are reassigned configurations oldest first; tasks beyond the new count are deleted and
+     * missing ones are created. None of the tasks may be running.
+     */
+    suspend fun reconfigureTasks(scriptPackageInstance: ScriptPackageInstance) {
+        scriptInstanceRepository.getScriptInstances(scriptPackageInstance).forEach { scriptInstance ->
+            val existing = tasksRepository.getTasks(scriptInstance).sortedBy { it.createdAt }
+            existing.forEach { tasksRepository.removeTask(it) }
+
+            val configurations = taskConfigurationBuilder.get(scriptInstance)
+            val reconfigured =
+                existing.zip(configurations) { task, configuration ->
+                    jobTaskFactory.create(task.id, scriptInstance, configuration, task.statusHistory, createdAt = task.createdAt)
+                }
+            tasksRepository.addAllTasks(reconfigured)
+            // Started tasks are persisted with their configuration, so a restart must not bring back the old one.
+            reconfigured.filter { it.statusHistory.isNotEmpty() }.forEach { tasksRepository.createPersistedTask(it.id) }
+            existing.drop(configurations.size).forEach { deleteTask(it) }
+            createTasks(scriptInstance)
+        }
+    }
+
     suspend fun deleteTask(task: JobTask) {
         stopTask(task.id)
         // Remove the task's artifact files. The DB rows cascade when the task row is deleted, but the on-disk bytes

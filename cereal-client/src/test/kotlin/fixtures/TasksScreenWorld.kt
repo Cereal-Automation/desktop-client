@@ -20,6 +20,7 @@ import com.cereal.client.application.interactor.task.StartAllTasksInScriptPackag
 import com.cereal.client.application.interactor.task.StartTaskInteractor
 import com.cereal.client.application.interactor.task.StopTaskInteractor
 import com.cereal.client.application.interactor.task.StopTasksInScriptPackageInstanceInteractor
+import com.cereal.client.application.interactor.task.UpdateScriptPackageInstanceInteractor
 import com.cereal.client.application.interactor.task.UserInteractionDismissedInteractor
 import com.cereal.client.application.script.GitHubIssueUrlBuilder
 import com.cereal.client.application.script.ScriptInstanceManager
@@ -120,6 +121,7 @@ class TasksScreenWorld(
             OpenUrlInteractor(systemProvider),
             ObserveArtifactsInteractor(artifactRepository),
             SaveArtifactToFileInteractor(artifactRepository),
+            UpdateScriptPackageInstanceInteractor(scriptInstances, tasksRepository, taskManager),
         )
 
     /** The "Default" group, created the same way the screen does on entry. */

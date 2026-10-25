@@ -101,6 +101,7 @@ import com.cereal.client.application.interactor.task.StartAllTasksInScriptPackag
 import com.cereal.client.application.interactor.task.StartTaskInteractor
 import com.cereal.client.application.interactor.task.StopTaskInteractor
 import com.cereal.client.application.interactor.task.StopTasksInScriptPackageInstanceInteractor
+import com.cereal.client.application.interactor.task.UpdateScriptPackageInstanceInteractor
 import com.cereal.client.application.interactor.task.UserInteractionDismissedInteractor
 import com.cereal.client.application.script.GitHubIssueUrlBuilder
 import org.koin.dsl.module
@@ -148,6 +149,7 @@ object InteractorModule {
             factory { StartTaskInteractor(get()) }
             factory { StopTaskInteractor(get()) }
             factory { StopTasksInScriptPackageInstanceInteractor(get(), get()) }
+            factory { UpdateScriptPackageInstanceInteractor(get(), get(), get()) }
             factory { StartAllTasksInScriptPackageInstanceInteractor(get(), get()) }
             factory { UserInteractionDismissedInteractor(get()) }
             // Proxies

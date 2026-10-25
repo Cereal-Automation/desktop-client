@@ -188,6 +188,18 @@ class ScriptSelectionViewModel(
 
     fun validate(): Boolean = scriptConfigurationViewModel?.validate() ?: false
 
+    /** The initial setup with the form's values, for saving an edit in place; null until its form is loaded. */
+    fun editedInstance(): ScriptPackageInstance? {
+        val original = initialScriptPackageInstance ?: return null
+        val form = scriptConfigurationViewModel?.scriptConfigurationForm?.value ?: return null
+        return original.copy(
+            mainConfiguration = form.mainConfigurationFormSection.getScriptConfigurationValues(),
+            childConfigurations = form.childConfigurationFormSections.mapValues { it.value.getScriptConfigurationValues() },
+            numberOfConcurrentTasks = form.getNumberOfConcurrentTasks(),
+            notificationOverrides = scriptConfigurationViewModel?.notificationOverridesForm?.toOverrides(),
+        )
+    }
+
     /**
      * Runs the pre-launch checks, then starts the script. The AI provider check comes first because a
      * missing provider breaks the script; the notification check follows.

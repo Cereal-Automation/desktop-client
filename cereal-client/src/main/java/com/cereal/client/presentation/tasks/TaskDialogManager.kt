@@ -48,6 +48,13 @@ class TaskDialogManager {
         dialogState.value = TaskViewState.DialogState.DuplicatingScript(group, scriptPackageInstance)
     }
 
+    fun showEditScript(
+        group: ScriptPackageGroup,
+        scriptPackageInstance: ScriptPackageInstance,
+    ) {
+        dialogState.value = TaskViewState.DialogState.EditingScript(group, scriptPackageInstance)
+    }
+
     fun showConfirmTaskRestart(taskUiModel: TaskUiModel) {
         dialogState.value = TaskViewState.DialogState.ConfirmTaskRestart(taskUiModel)
     }
