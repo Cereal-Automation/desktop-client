@@ -12,14 +12,22 @@ data class ScriptPackage(
     val childScripts: Map<String, ChildScript>,
     /** Additional entry scripts by their stable manifest id. The [mainScript] is the default entry. */
     val variants: Map<String, ScriptVariant> = emptyMap(),
-)
+) {
+    init {
+        require(variants.keys.none { it.isBlank() }) { "A variant id must not be blank." }
+    }
+}
 
 /** An additional, user-selectable entry script of a package, declared in the manifest's `variants`. */
 data class ScriptVariant(
     val name: String,
     val instructions: String?,
     val script: MainScript,
-)
+) {
+    init {
+        require(name.isNotBlank()) { "A variant name must not be blank." }
+    }
+}
 
 /**
  * The entry script for [variantId]: the [ScriptPackage.mainScript] when null, otherwise that variant. An id the

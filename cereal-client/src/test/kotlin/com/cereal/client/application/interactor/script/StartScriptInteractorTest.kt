@@ -162,7 +162,7 @@ class StartScriptInteractorTest {
         }
 
     @Test
-    fun `run starts the chosen variant's script and remembers the variant on the instance`() =
+    fun `run should start the variant's script and remember the variant on the instance when a variant is chosen`() =
         runTest {
             val scriptPackage = fixtures.aScriptPackageWithVariant(PACKAGE, variantId = "checkout")
             val started = slot<ScriptInstance>()
@@ -178,7 +178,7 @@ class StartScriptInteractorTest {
         }
 
     @Test
-    fun `run refuses a variant the package doesn't contain and never starts the default entry`() =
+    fun `run should fail without starting the default entry when the package doesn't contain the variant`() =
         runTest {
             val scriptPackage = fixtures.aScriptPackageWithVariant(PACKAGE, variantId = "checkout")
 

@@ -5,7 +5,8 @@ import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.mutableStateOf
 import com.cereal.client.application.CoroutinesDispatcherProvider
 import com.cereal.client.application.Interactor
-import com.cereal.client.application.agent.isAiBrowserAgent
+import com.cereal.client.application.agent.canUninstall
+import com.cereal.client.application.agent.readyMadeEntryIds
 import com.cereal.client.application.interactor.marketplace.GetMarketplaceListingsInteractor
 import com.cereal.client.application.interactor.marketplace.GetPackagesWithRunningTasksInteractor
 import com.cereal.client.application.interactor.marketplace.RemoveMarketplaceScriptInteractor
@@ -61,8 +62,8 @@ class MyScriptsViewModel(
         val name: String
             get() = variantId?.let(scriptPackage::entryName) ?: listing?.title ?: scriptPackage.manifest.name
 
-        /** Uninstalling removes the whole jar, so it stays hidden for every row of the AI browser agent package. */
-        val canUninstall: Boolean get() = !scriptPackage.isAiBrowserAgent
+        /** Uninstall removes the whole jar, so it stays hidden for every row of a package that can't be uninstalled. */
+        val canUninstall: Boolean get() = scriptPackage.canUninstall
     }
 
     private val installedScripts = mutableStateOf<List<ScriptPackage>>(emptyList())
@@ -78,11 +79,8 @@ class MyScriptsViewModel(
     val rows: State<List<InstalledScriptRow>> =
         derivedStateOf {
             installedScripts.value
-                .flatMap { pkg ->
-                    // The agent's default entry lives on Home; only its variants are listed here.
-                    val variantIds = if (pkg.isAiBrowserAgent) pkg.variants.keys.toList() else listOf(null)
-                    variantIds.map { pkg to it }
-                }.map { (pkg, variantId) ->
+                .flatMap { pkg -> pkg.readyMadeEntryIds.map { pkg to it } }
+                .map { (pkg, variantId) ->
                     val packageName = pkg.manifest.packageName
                     val listing = listings.value[packageName]
                     val running = packageName in packagesWithRunningTasks.value

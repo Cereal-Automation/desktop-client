@@ -193,6 +193,10 @@ class ScriptJarReaderTest {
                 """{ "id": "checkout", "name": " ", "script": "fixtures.scripts.CheckoutVariantScript" }""" to
                     "Variant 'checkout' has no name",
                 """{ "id": "checkout", "name": "Checkout", "script": "" }""" to "Variant 'checkout' has no script",
+                """{ "name": "Checkout", "script": "fixtures.scripts.CheckoutVariantScript" }""" to "has no id",
+                """{ "id": "checkout", "script": "fixtures.scripts.CheckoutVariantScript" }""" to
+                    "Variant 'checkout' has no name",
+                """{ "id": "checkout", "name": "Checkout" }""" to "Variant 'checkout' has no script",
                 "$checkout, $checkout" to "Duplicate variant id 'checkout'",
                 """{ "id": "checkout", "name": "Checkout", "script": "fixtures.scripts.DoesNotExist" }""" to
                     "Variant 'checkout' script fixtures.scripts.DoesNotExist could not be loaded as a Script",

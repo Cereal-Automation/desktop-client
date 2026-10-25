@@ -28,15 +28,18 @@ data class ManifestJson(
     @SerialName("variants") val variants: List<VariantJson> = emptyList(),
 )
 
-/** An additional entry script of a package, listed in the manifest's `variants`. */
+/**
+ * An additional entry script of a package, listed in the manifest's `variants`. Required fields are nullable so a
+ * missing key is rejected by the reader with a reason naming it, like a blank value.
+ */
 @Serializable
 data class VariantJson(
     /** Stable id the client persists; unique within the package. */
-    @SerialName("id") val id: String,
+    @SerialName("id") val id: String? = null,
     /** Display name; may change between releases. */
-    @SerialName("name") val name: String,
+    @SerialName("name") val name: String? = null,
     /** Fully qualified class name of the variant's script. */
-    @SerialName("script") val scriptClass: String,
+    @SerialName("script") val scriptClass: String? = null,
     /** Optional instructions to display at the top of the variant's configuration screen. */
     @SerialName("instructions") val instructions: String? = null,
 )

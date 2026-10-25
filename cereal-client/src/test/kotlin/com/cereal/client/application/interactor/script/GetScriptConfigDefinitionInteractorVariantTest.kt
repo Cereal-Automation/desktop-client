@@ -13,7 +13,7 @@ class GetScriptConfigDefinitionInteractorVariantTest {
     private val scriptPackage = aScriptPackageWithVariant("com.example", variantId = "checkout")
 
     @Test
-    fun `a variant's configuration form shows the variant's own fields`() =
+    fun `run should return the variant's own fields when a variant is requested`() =
         runTest {
             val result = interactor.run(GetScriptConfigDefinitionInteractor.Params(scriptPackage, null, variantId = "checkout"))
 
@@ -21,7 +21,7 @@ class GetScriptConfigDefinitionInteractorVariantTest {
         }
 
     @Test
-    fun `the default entry's configuration form shows the main script's fields`() =
+    fun `run should return the main script's fields when no variant is requested`() =
         runTest {
             val result = interactor.run(GetScriptConfigDefinitionInteractor.Params(scriptPackage, null))
 

@@ -5,8 +5,8 @@ import androidx.compose.runtime.mutableStateOf
 import com.cereal.client.application.CoroutinesDispatcherProvider
 import com.cereal.client.application.Interactor
 import com.cereal.client.application.agent.goalRunDetails
-import com.cereal.client.application.agent.isAiBrowserAgent
 import com.cereal.client.application.agent.isAiBrowserAgentDefaultEntry
+import com.cereal.client.application.agent.readyMadeEntryIds
 import com.cereal.client.application.interactor.script.GetScriptsInteractor
 import com.cereal.client.application.interactor.task.ObserveTasksInteractor
 import com.cereal.client.domain.model.script.entryName
@@ -68,13 +68,7 @@ class HomeActivityViewModel(
                 if (result is SuspendableResult.Success) {
                     val scripts =
                         result.value.flatMap { pkg ->
-                            val packageName = pkg.manifest.packageName
-                            // The agent's default entry is the goal composer; its variants are ready-made scripts.
-                            if (pkg.isAiBrowserAgent) {
-                                pkg.variants.keys.map { id -> ReadyMadeScriptUiModel(packageName, pkg.entryName(id), id) }
-                            } else {
-                                listOf(ReadyMadeScriptUiModel(packageName, pkg.entryName(null)))
-                            }
+                            pkg.readyMadeEntryIds.map { id -> ReadyMadeScriptUiModel(pkg.manifest.packageName, pkg.entryName(id), id) }
                         }
                     withContext(dispatcherProvider.main) { _readyMadeScripts.value = scripts }
                 }

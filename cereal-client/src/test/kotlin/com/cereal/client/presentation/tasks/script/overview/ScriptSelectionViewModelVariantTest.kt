@@ -86,12 +86,12 @@ class ScriptSelectionViewModelVariantTest {
         startKoin {
             modules(
                 module {
-                    factory { (scope: CoroutineScope, scriptPackage: ScriptPackage, instance: ScriptPackageInstance?, variantId: String?) ->
+                    factory { params ->
                         ScriptConfigurationViewModel(
-                            scriptPackage = scriptPackage,
-                            initialScriptPackageInstance = instance,
-                            variantId = variantId,
-                            scope = scope,
+                            scriptPackage = params.get<ScriptPackage>(1),
+                            initialScriptPackageInstance = params.get<ScriptPackageInstance?>(2),
+                            variantId = params.get<String?>(3),
+                            scope = params.get<CoroutineScope>(0),
                             errorResolver = ErrorResolver(),
                             dispatcherProvider = dispatcherProvider,
                             getScriptConfigDefinitionInteractor =

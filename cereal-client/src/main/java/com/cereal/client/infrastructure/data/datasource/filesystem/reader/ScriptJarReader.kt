@@ -63,14 +63,14 @@ class ScriptJarReader(
             // A malformed variant rejects the whole package: the caller treats the exception like an unreadable jar.
             json.variants.forEach { variant ->
                 fun reject(reason: String): Nothing = throw InvalidManifestException("Invalid variant in manifest: $reason")
-                if (variant.id.isBlank()) reject("a variant has no id.")
-                if (variant.name.isBlank()) reject("Variant '${variant.id}' has no name.")
-                if (variant.scriptClass.isBlank()) reject("Variant '${variant.id}' has no script.")
-                if (variant.id in variants) reject("Duplicate variant id '${variant.id}'.")
+                val id = variant.id?.takeIf { it.isNotBlank() } ?: reject("a variant has no id.")
+                val name = variant.name?.takeIf { it.isNotBlank() } ?: reject("Variant '$id' has no name.")
+                val script = variant.scriptClass?.takeIf { it.isNotBlank() } ?: reject("Variant '$id' has no script.")
+                if (id in variants) reject("Duplicate variant id '$id'.")
                 val (scriptClass, configurationClass) =
-                    loadScript(variant.scriptClass)?.takeIf { it.second != null }
-                        ?: reject("Variant '${variant.id}' script ${variant.scriptClass} could not be loaded as a Script.")
-                variants[variant.id] = LoadedVariant(variant.name, variant.instructions, scriptClass, configurationClass!!)
+                    loadScript(script)?.let { (cls, config) -> config?.let { cls to it } }
+                        ?: reject("Variant '$id' script $script could not be loaded as a Script.")
+                variants[id] = LoadedVariant(name, variant.instructions, scriptClass, configurationClass)
             }
 
             json.childScriptPackageClasses?.forEach { childScriptClassName ->
