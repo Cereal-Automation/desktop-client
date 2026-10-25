@@ -44,4 +44,6 @@ data class MenuItemUiModel(
     val section: MenuSection?,
     val hasNotificationDot: Boolean = false,
     val badge: Int? = null,
+    /** Red badge when true (something needs the user); neutral otherwise. */
+    val isBadgeAttention: Boolean = true,
 )

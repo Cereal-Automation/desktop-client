@@ -84,17 +84,7 @@ class TasksViewModel(
                     onEditTaskGroup(group)
                 }
             },
-            onChildMenuOptionSelected = { scriptInstance, menuItem ->
-                if (menuItem == MenuOption.DELETE) {
-                    onDeleteScriptInstance(scriptInstance)
-                } else if (menuItem == MenuOption.VIEW_CONFIGURATION) {
-                    showConfiguration(scriptInstance)
-                } else if (menuItem == MenuOption.DUPLICATE) {
-                    duplicateScriptInstance(scriptInstance)
-                } else if (menuItem == MenuOption.MOVE_TO_GROUP) {
-                    moveScriptToGroup(scriptInstance)
-                }
-            },
+            onChildMenuOptionSelected = { scriptInstance, menuItem -> onSetupMenuOptionSelected(scriptInstance, menuItem) },
         )
 
     // Start in Loading, not Empty: the groups flow has not emitted yet on screen entry, and
@@ -283,6 +273,28 @@ class TasksViewModel(
                 hierarchicalListViewModel.selectChild(null)
             }
             closeDialog()
+        }
+    }
+
+    /** The detail header's "···" menu: the list context menu's setup actions, applied to the selected setup. */
+    val headerMenuOptions = listOf(MenuOption.DUPLICATE, MenuOption.MOVE_TO_GROUP, MenuOption.DELETE)
+
+    fun onHeaderMenuOptionSelected(option: MenuOption) {
+        hierarchicalListViewModel.selectedChild?.let { onSetupMenuOptionSelected(it, option) }
+    }
+
+    private fun onSetupMenuOptionSelected(
+        scriptInstance: ScriptPackageInstance,
+        option: MenuOption,
+    ) {
+        if (option == MenuOption.DELETE) {
+            onDeleteScriptInstance(scriptInstance)
+        } else if (option == MenuOption.VIEW_CONFIGURATION) {
+            showConfiguration(scriptInstance)
+        } else if (option == MenuOption.DUPLICATE) {
+            duplicateScriptInstance(scriptInstance)
+        } else if (option == MenuOption.MOVE_TO_GROUP) {
+            moveScriptToGroup(scriptInstance)
         }
     }
 
