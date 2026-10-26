@@ -12,9 +12,19 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.ArrowDropDown
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -22,6 +32,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.cereal.client.domain.model.task.TaskSetupSort
 import com.cereal.client.presentation.theme.CerealTheme
 import com.cereal.client.presentation.theme.CerealTypography
 import com.cereal.client.presentation.view.CerealText
@@ -29,15 +40,18 @@ import com.cereal.client.presentation.view.HorizontalDivider
 import com.cereal.client.presentation.view.StatusDot
 import com.cereal_automation.cereal_client.generated.resources.Res
 import com.cereal_automation.cereal_client.generated.resources.filter_all_groups
+import com.cereal_automation.cereal_client.generated.resources.sort_by
 import org.jetbrains.compose.resources.stringResource
 
-/** The status chips across every task setup and, with more than one group, the group filter. */
+/** The status chips across every task setup, with more than one group the group filter, and the sort dropdown. */
 @Composable
 internal fun TaskFilterBar(
     chips: List<TaskFilterChip>,
     groupFilter: GroupFilterState?,
+    sort: TaskSetupSort,
     onStatusFilterSelected: (TaskFilter) -> Unit,
     onGroupFilterSelected: (String?) -> Unit,
+    onSortSelected: (TaskSetupSort) -> Unit,
 ) {
     Column(Modifier.fillMaxWidth()) {
         Row(
@@ -71,8 +85,37 @@ internal fun TaskFilterBar(
                     }
                 }
             }
+            SortMenu(sort, onSortSelected)
         }
         HorizontalDivider()
+    }
+}
+
+/** "Sort: Newest first ▾", opening a menu of every sort. */
+@Composable
+private fun SortMenu(
+    sort: TaskSetupSort,
+    onSortSelected: (TaskSetupSort) -> Unit,
+) {
+    var expanded by remember { mutableStateOf(false) }
+    Box {
+        Segments {
+            Segment(selected = false, onClick = { expanded = true }) {
+                SegmentLabel(stringResource(Res.string.sort_by, stringResource(sort.labelRes())), selected = false)
+                Icon(Icons.Default.ArrowDropDown, contentDescription = null, modifier = Modifier.size(16.dp), tint = CerealTheme.colorScheme.contentTertiary)
+            }
+        }
+        DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
+            TaskSetupSort.entries.forEach { option ->
+                DropdownMenuItem(
+                    text = { CerealText(stringResource(option.labelRes())) },
+                    onClick = {
+                        expanded = false
+                        onSortSelected(option)
+                    },
+                )
+            }
+        }
     }
 }
 

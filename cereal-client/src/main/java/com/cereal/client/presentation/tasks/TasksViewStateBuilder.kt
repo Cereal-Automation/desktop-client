@@ -7,6 +7,7 @@ import com.cereal.client.domain.model.script.configuration.getScriptIdentifierVa
 import com.cereal.client.domain.model.script.getScriptPackageInstance
 import com.cereal.client.domain.model.task.ScriptPackageGroup
 import com.cereal.client.domain.model.task.Task
+import com.cereal.client.domain.model.task.TaskSetupSort
 import com.cereal.client.domain.model.task.TaskStatus
 import com.cereal.client.presentation.tasks.mappers.taskStatusSortOrder
 import com.cereal.client.presentation.tasks.mappers.toUiModel
@@ -23,7 +24,7 @@ object TasksViewStateBuilder {
      * drops setups (and groups) left without any; the chip counts ignore it.
      *
      * A setup in [collapsedSetupIds] is collapsed, except while a [statusFilter] other than All shows every listed
-     * setup expanded.
+     * setup expanded. Each group's setups are ordered by [sort].
      */
     fun buildListState(
         groups: List<Pair<ScriptPackageGroup, List<ScriptPackageInstance>>>?,
@@ -31,6 +32,7 @@ object TasksViewStateBuilder {
         statusFilter: TaskFilter = TaskFilter.ALL,
         groupFilter: String? = null,
         collapsedSetupIds: Set<String> = emptySet(),
+        sort: TaskSetupSort = TaskSetupSort.Default,
     ): TaskViewState.ListState {
         if (groups == null) return TaskViewState.ListState.Loading
         if (groups.isEmpty() || (groups.size == 1 && groups.single().second.isEmpty())) return TaskViewState.ListState.Empty
@@ -41,13 +43,14 @@ object TasksViewStateBuilder {
             groups =
                 shownGroups
                     .map { (group, setups) ->
-                        val sections = setups.map { buildSetupSection(it, tasksBySetup[it.id].orEmpty(), statusFilter, expanded = statusFilter != TaskFilter.ALL || it.id !in collapsedSetupIds) }
+                        val sections = sort.sort(setups, tasksBySetup).map { buildSetupSection(it, tasksBySetup[it.id].orEmpty(), statusFilter, expanded = statusFilter != TaskFilter.ALL || it.id !in collapsedSetupIds) }
                         TaskGroupSection(group.id, group.name, if (statusFilter == TaskFilter.ALL) sections else sections.filter { it.scripts.isNotEmpty() })
                     }.filter { statusFilter == TaskFilter.ALL || it.setups.isNotEmpty() },
             setupCount = groups.sumOf { it.second.size },
             taskCount = groups.sumOf { (_, setups) -> setups.sumOf { tasksBySetup[it.id].orEmpty().size } },
             chips = chips(shownGroups.flatMap { (_, setups) -> setups.flatMap { tasksBySetup[it.id].orEmpty() } }, statusFilter),
             groupFilter = if (groups.size > 1) GroupFilterState(groups.map { (group) -> GroupFilterOption(group.id, group.name) }, pickedGroupId) else null,
+            sort = sort,
         )
     }
 

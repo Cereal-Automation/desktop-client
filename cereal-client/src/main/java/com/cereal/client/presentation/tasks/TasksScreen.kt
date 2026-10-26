@@ -98,7 +98,7 @@ fun TasksScreen(
             Row(Modifier.fillMaxSize()) {
                 Column(Modifier.weight(1.0f).fillMaxHeight()) {
                     (listState as? TaskViewState.ListState.Filled)?.let { state ->
-                        TaskFilterBar(state.chips, state.groupFilter, viewModel::onStatusFilterSelected, viewModel::onGroupFilterSelected)
+                        TaskFilterBar(state.chips, state.groupFilter, state.sort, viewModel::onStatusFilterSelected, viewModel::onGroupFilterSelected, viewModel::onSortSelected)
                     }
                     Box(Modifier.weight(1.0f).fillMaxWidth()) {
                         when (val state = listState) {

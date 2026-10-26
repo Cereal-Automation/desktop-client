@@ -1,6 +1,7 @@
 package com.cereal.client.infrastructure.data.repository.inmemory
 
 import com.cereal.client.domain.model.settings.ProxyHealthCheckInterval
+import com.cereal.client.domain.model.task.TaskSetupSort
 import com.cereal.client.domain.repository.ApplicationPreferenceRepository
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -14,6 +15,7 @@ class InMemoryApplicationPreferenceRepository : ApplicationPreferenceRepository 
     private val discordActivityStatusEnabled = MutableStateFlow(true)
     private val showDebugLogs = MutableStateFlow(false)
     private val proxyHealthCheckInterval = MutableStateFlow(ProxyHealthCheckInterval.Default)
+    private val taskSetupSort = MutableStateFlow(TaskSetupSort.Default)
 
     override suspend fun setDiscordActivityStatusEnabled(enabled: Boolean) {
         discordActivityStatusEnabled.value = enabled
@@ -38,4 +40,10 @@ class InMemoryApplicationPreferenceRepository : ApplicationPreferenceRepository 
     }
 
     override suspend fun getProxyHealthCheckInterval(): Flow<ProxyHealthCheckInterval> = proxyHealthCheckInterval
+
+    override suspend fun setTaskSetupSort(sort: TaskSetupSort) {
+        taskSetupSort.value = sort
+    }
+
+    override suspend fun getTaskSetupSort(): Flow<TaskSetupSort> = taskSetupSort
 }

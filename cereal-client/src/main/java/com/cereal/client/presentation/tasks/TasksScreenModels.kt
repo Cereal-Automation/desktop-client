@@ -1,6 +1,7 @@
 package com.cereal.client.presentation.tasks
 
 import androidx.compose.ui.unit.dp
+import com.cereal.client.domain.model.task.TaskSetupSort
 import com.cereal.client.domain.model.task.TaskStatus
 import com.cereal.client.presentation.tasks.model.ScriptInstanceUiModel
 import com.cereal.client.presentation.tasks.model.TaskUiModel
@@ -17,6 +18,10 @@ import com.cereal_automation.cereal_client.generated.resources.new_task_setup
 import com.cereal_automation.cereal_client.generated.resources.rename
 import com.cereal_automation.cereal_client.generated.resources.restart_failed_count
 import com.cereal_automation.cereal_client.generated.resources.running
+import com.cereal_automation.cereal_client.generated.resources.sort_name
+import com.cereal_automation.cereal_client.generated.resources.sort_needs_attention
+import com.cereal_automation.cereal_client.generated.resources.sort_newest_first
+import com.cereal_automation.cereal_client.generated.resources.sort_oldest_first
 import com.cereal_automation.cereal_client.generated.resources.success
 import com.cereal_automation.cereal_client.generated.resources.view_full_configuration
 import org.jetbrains.compose.resources.StringResource
@@ -42,6 +47,14 @@ internal fun TaskFilter.labelRes() =
         TaskFilter.IDLE -> Res.string.idle
         TaskFilter.SUCCESS -> Res.string.success
         TaskFilter.ERROR -> Res.string.filter_failed
+    }
+
+internal fun TaskSetupSort.labelRes() =
+    when (this) {
+        TaskSetupSort.NEWEST_FIRST -> Res.string.sort_newest_first
+        TaskSetupSort.OLDEST_FIRST -> Res.string.sort_oldest_first
+        TaskSetupSort.NAME -> Res.string.sort_name
+        TaskSetupSort.NEEDS_ATTENTION -> Res.string.sort_needs_attention
     }
 
 /** A status chip: its tasks across every listed setup, whatever chip is active. */

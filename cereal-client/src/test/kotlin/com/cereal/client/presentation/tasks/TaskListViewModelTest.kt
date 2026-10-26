@@ -211,7 +211,8 @@ class TaskListViewModelTest {
             world.setup("new", null, idle(), idle())
             settle()
 
-            assertEquals(listOf("a", "new"), viewModel.groups().flatMap { it.setups }.map { it.setupId })
+            // Newest first by default.
+            assertEquals(listOf("new", "a"), viewModel.groups().flatMap { it.setups }.map { it.setupId })
             assertEquals(Triple(0, 0, 2), viewModel.section("new").counts())
         }
 

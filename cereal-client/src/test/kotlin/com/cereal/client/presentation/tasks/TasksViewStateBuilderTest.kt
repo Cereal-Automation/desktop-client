@@ -76,10 +76,25 @@ class TasksViewStateBuilderTest {
             ).groups
                 .single()
                 .setups
+                .associateBy { it.setupId }
 
-        assertEquals("s1", setups[0].singleTask?.id?.id)
-        assertEquals(null, setups[1].singleTask)
-        assertEquals(listOf("m1"), setups[1].scripts.flatMap { it.tasks }.map { it.id.id })
+        assertEquals(
+            "s1",
+            setups
+                .getValue("pkg1")
+                .singleTask
+                ?.id
+                ?.id,
+        )
+        assertEquals(null, setups.getValue("pkg2").singleTask)
+        assertEquals(
+            listOf("m1"),
+            setups
+                .getValue("pkg2")
+                .scripts
+                .flatMap { it.tasks }
+                .map { it.id.id },
+        )
     }
 
     @Test

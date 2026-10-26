@@ -12,13 +12,16 @@ import com.cereal.client.application.interactor.script.ReportScriptIssueInteract
 import com.cereal.client.application.interactor.settings.OpenUrlInteractor
 import com.cereal.client.application.interactor.settings.developers.ObserveShowDebugLogsInteractor
 import com.cereal.client.application.interactor.task.GetOrCreateDefaultTaskGroupInteractor
+import com.cereal.client.application.interactor.task.ObserveTaskSetupSortInteractor
 import com.cereal.client.application.interactor.task.SetConcurrentTaskCountInteractor
+import com.cereal.client.application.interactor.task.SetTaskSetupSortInteractor
 import com.cereal.client.domain.model.artifact.Artifact
 import com.cereal.client.domain.model.logging.LoggingEvent
 import com.cereal.client.domain.model.logging.LoggingPriority
 import com.cereal.client.domain.model.script.ScriptPackageInstance
 import com.cereal.client.domain.model.task.ScriptPackageGroup
 import com.cereal.client.domain.model.task.Task
+import com.cereal.client.domain.model.task.TaskSetupSort
 import com.cereal.client.domain.model.task.TaskStatus
 import com.cereal.client.domain.repository.LogEventRepository
 import com.cereal.client.presentation.error.ErrorResolver
@@ -58,6 +61,8 @@ class TasksViewModel(
     private val observeArtifactsInteractor: ObserveArtifactsInteractor,
     private val saveArtifactToFileInteractor: SaveArtifactToFileInteractor,
     private val setConcurrentTaskCountInteractor: SetConcurrentTaskCountInteractor,
+    private val observeTaskSetupSortInteractor: ObserveTaskSetupSortInteractor,
+    private val setTaskSetupSortInteractor: SetTaskSetupSortInteractor,
 ) {
     private val scope = CoroutineScope(SupervisorJob() + dispatcherProvider.main)
     private val interactorRunner = InteractorRunner(scope, dispatcherProvider, errorResolver)
@@ -67,6 +72,7 @@ class TasksViewModel(
     private val allTasks = mutableStateOf<List<Task>>(emptyList())
     private val statusFilter = mutableStateOf(TaskFilter.ALL)
     private val groupFilter = mutableStateOf<String?>(null)
+    private val setupSort = mutableStateOf(TaskSetupSort.Default)
 
     // In memory only: every setup starts expanded on each screen visit.
     private val collapsedSetupIds = mutableStateOf(emptySet<String>())
@@ -83,6 +89,7 @@ class TasksViewModel(
                 statusFilter.value,
                 groupFilter.value,
                 collapsedSetupIds.value,
+                setupSort.value,
             )
         }
 
@@ -137,6 +144,7 @@ class TasksViewModel(
         ensureDefaultGroupExists()
         observeTaskGroups()
         observeTasks()
+        observeSetupSort()
     }
 
     private fun ensureDefaultGroupExists() {
@@ -215,6 +223,12 @@ class TasksViewModel(
     /** The group filter: one group's id, or null for all groups. */
     fun onGroupFilterSelected(groupId: String?) {
         groupFilter.value = groupId
+    }
+
+    /** The sort dropdown: reorders every group's setups and remembers the choice. */
+    fun onSortSelected(sort: TaskSetupSort) {
+        setupSort.value = sort
+        interactorRunner.launch(setTaskSetupSortInteractor, SetTaskSetupSortInteractor.Params(sort))
     }
 
     /** A setup row's chevron or name: collapses or expands its tasks. */
@@ -434,6 +448,14 @@ class TasksViewModel(
 
     private fun observeTaskGroups() {
         tasksListObserver.observeTaskGroups(scope) { groupedSetups.value = it }
+    }
+
+    private fun observeSetupSort() {
+        scope.launch {
+            observeTaskSetupSortInteractor(Interactor.None()).collect { result ->
+                if (result is SuspendableResult.Success) setupSort.value = result.value
+            }
+        }
     }
 
     private fun updateUserInteractions() {

@@ -1,6 +1,7 @@
 package com.cereal.client.domain.repository
 
 import com.cereal.client.domain.model.settings.ProxyHealthCheckInterval
+import com.cereal.client.domain.model.task.TaskSetupSort
 import kotlinx.coroutines.flow.Flow
 
 /**
@@ -23,4 +24,8 @@ interface ApplicationPreferenceRepository {
     suspend fun setProxyHealthCheckInterval(interval: ProxyHealthCheckInterval)
 
     suspend fun getProxyHealthCheckInterval(): Flow<ProxyHealthCheckInterval>
+
+    suspend fun setTaskSetupSort(sort: TaskSetupSort)
+
+    suspend fun getTaskSetupSort(): Flow<TaskSetupSort>
 }

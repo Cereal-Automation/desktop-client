@@ -2,6 +2,7 @@ package com.cereal.client.presentation.tasks
 
 import com.cereal.client.domain.model.script.ScriptPackageInstance
 import com.cereal.client.domain.model.task.ScriptPackageGroup
+import com.cereal.client.domain.model.task.TaskSetupSort
 import com.cereal.client.presentation.tasks.model.TaskUiModel
 
 sealed class TaskViewState {
@@ -23,6 +24,8 @@ sealed class TaskViewState {
             val chips: List<TaskFilterChip>,
             /** Offered only with more than one group. */
             val groupFilter: GroupFilterState?,
+            /** How each group's setups are ordered. */
+            val sort: TaskSetupSort,
         ) : ListState()
     }
 
