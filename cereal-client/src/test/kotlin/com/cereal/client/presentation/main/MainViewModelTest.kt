@@ -3,6 +3,7 @@ package com.cereal.client.presentation.main
 import com.cereal.client.application.ApplicationConfig
 import com.cereal.client.application.CoroutinesDispatcherProvider
 import com.cereal.client.application.app.UpdateCheckResult
+import com.cereal.client.application.exception.CerealException
 import com.cereal.client.application.interactor.app.CheckForUpdatesInteractor
 import com.cereal.client.application.interactor.app.ObserveSidebarCollapsedInteractor
 import com.cereal.client.application.interactor.app.SetSidebarCollapsedInteractor
@@ -16,6 +17,7 @@ import com.cereal.client.domain.model.task.JobTask
 import com.cereal.client.domain.model.task.TaskStatus
 import com.cereal.client.domain.model.task.UserInteraction
 import com.cereal.client.domain.model.user.User
+import com.cereal.client.domain.repository.ApplicationPreferenceRepository
 import com.cereal.client.infrastructure.data.repository.inmemory.InMemoryApplicationPreferenceRepository
 import com.cereal.client.infrastructure.data.repository.inmemory.InMemoryTasksRepository
 import com.cereal.client.presentation.navigation.MenuReselectionCoordinator
@@ -29,6 +31,7 @@ import io.mockk.mockk
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.launch
@@ -77,7 +80,7 @@ class MainViewModelTest {
         Dispatchers.resetMain()
     }
 
-    private fun createViewModel() =
+    private fun createViewModel(preferences: ApplicationPreferenceRepository = preferenceRepository) =
         MainViewModel(
             dispatcherProvider = dispatcherProvider,
             getAuthenticatedUserInteractor = getAuthenticatedUserInteractor,
@@ -87,8 +90,8 @@ class MainViewModelTest {
             getScriptsInteractor = getScriptsInteractor,
             observeTasksInteractor = observeTasksInteractor,
             observeUnseenNotificationCountInteractor = observeUnseenNotificationCountInteractor,
-            observeSidebarCollapsedInteractor = ObserveSidebarCollapsedInteractor(preferenceRepository),
-            setSidebarCollapsedInteractor = SetSidebarCollapsedInteractor(preferenceRepository),
+            observeSidebarCollapsedInteractor = ObserveSidebarCollapsedInteractor(preferences),
+            setSidebarCollapsedInteractor = SetSidebarCollapsedInteractor(preferences),
         )
 
     @Test
@@ -157,6 +160,36 @@ class MainViewModelTest {
 
         assertTrue(viewModel.isSidebarCollapsed.value)
         assertTrue(runBlocking { preferenceRepository.isSidebarCollapsed().first() })
+    }
+
+    @Test
+    fun `a sidebar toggle that fails to save is undone`() {
+        val failingPreferences =
+            object : ApplicationPreferenceRepository by preferenceRepository {
+                override suspend fun setSidebarCollapsed(collapsed: Boolean): Unit = throw CerealException("not saved")
+            }
+        val viewModel = createViewModel(failingPreferences)
+        dispatcher.scheduler.advanceUntilIdle()
+
+        viewModel.onToggleSidebar()
+        dispatcher.scheduler.advanceUntilIdle()
+
+        assertFalse(viewModel.isSidebarCollapsed.value)
+    }
+
+    @Test
+    fun `logging out resets the sidebar to expanded`() {
+        val authenticatedUser = MutableStateFlow<SuspendableResult<User?, Exception>>(SuspendableResult.Success(user()))
+        coEvery { getAuthenticatedUserInteractor(any()) } returns authenticatedUser
+        runBlocking { preferenceRepository.setSidebarCollapsed(true) }
+        val viewModel = createViewModel()
+        dispatcher.scheduler.advanceUntilIdle()
+        assertTrue(viewModel.isSidebarCollapsed.value)
+
+        authenticatedUser.value = SuspendableResult.Success(null)
+        dispatcher.scheduler.advanceUntilIdle()
+
+        assertFalse(viewModel.isSidebarCollapsed.value)
     }
 
     @Test

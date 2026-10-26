@@ -42,6 +42,7 @@ import kotlinx.collections.immutable.toImmutableList
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.emptyFlow
 import kotlinx.coroutines.flow.flatMapLatest
@@ -82,6 +83,9 @@ class MainViewModel(
     val menuItems = mutableStateOf(buildMenuItems())
     val activeScriptCount = mutableStateOf(0)
     val isSidebarCollapsed = mutableStateOf(false)
+
+    /** Toggles waiting to be saved; conflated, so a burst of clicks only saves the latest choice. */
+    private val sidebarWrites = Channel<Boolean>(Channel.CONFLATED)
 
     init {
         scope.launch(dispatcherProvider.io) {
@@ -127,7 +131,13 @@ class MainViewModel(
             getAuthenticatedUserInteractor(Interactor.None())
                 .map { (it as? SuspendableResult.Success)?.value }
                 .flatMapLatest { user ->
-                    if (user == null) emptyFlow() else observeSidebarCollapsedInteractor(Interactor.None())
+                    if (user == null) {
+                        // Don't carry one user's choice over to the next login.
+                        isSidebarCollapsed.value = false
+                        emptyFlow()
+                    } else {
+                        observeSidebarCollapsedInteractor(Interactor.None())
+                    }
                 }.collectLatest { result ->
                     if (result is SuspendableResult.Success) {
                         val collapsed = result.value
@@ -136,6 +146,20 @@ class MainViewModel(
                         }
                     }
                 }
+        }
+
+        // A single consumer saves toggles in click order, so a quick double-click can't land out of order.
+        scope.launch(dispatcherProvider.io) {
+            for (collapsed in sidebarWrites) {
+                setSidebarCollapsedInteractor(SetSidebarCollapsedInteractor.Params(collapsed)) { result ->
+                    if (result is SuspendableResult.Failure) {
+                        withContext(dispatcherProvider.main) {
+                            // Not saved: undo the optimistic flip, unless the user has toggled again since.
+                            if (isSidebarCollapsed.value == collapsed) isSidebarCollapsed.value = !collapsed
+                        }
+                    }
+                }
+            }
         }
 
         scope.launch(dispatcherProvider.io) {
@@ -197,9 +221,7 @@ class MainViewModel(
         val collapsed = !isSidebarCollapsed.value
         // Flip immediately for a responsive toggle; the observed preference then confirms it.
         isSidebarCollapsed.value = collapsed
-        scope.launch(dispatcherProvider.io) {
-            setSidebarCollapsedInteractor(SetSidebarCollapsedInteractor.Params(collapsed))
-        }
+        sidebarWrites.trySend(collapsed)
     }
 
     private fun buildMenuItems(): ImmutableList<MenuItemUiModel> =
