@@ -15,8 +15,10 @@ import com.cereal.client.application.interactor.task.DeleteTaskGroupInteractor
 import com.cereal.client.application.interactor.task.EditScriptInstanceGroupInteractor
 import com.cereal.client.application.interactor.task.GetOrCreateDefaultTaskGroupInteractor
 import com.cereal.client.application.interactor.task.GetTaskGroupsInteractor
+import com.cereal.client.application.interactor.task.ObserveTaskSetupSortInteractor
 import com.cereal.client.application.interactor.task.ObserveTasksInteractor
 import com.cereal.client.application.interactor.task.SetConcurrentTaskCountInteractor
+import com.cereal.client.application.interactor.task.SetTaskSetupSortInteractor
 import com.cereal.client.application.interactor.task.StartAllTasksInScriptPackageInstanceInteractor
 import com.cereal.client.application.interactor.task.StartTaskInteractor
 import com.cereal.client.application.interactor.task.StopTaskInteractor
@@ -46,6 +48,7 @@ import com.cereal.client.domain.model.task.ScriptPackageGroup
 import com.cereal.client.domain.model.task.TaskStatus
 import com.cereal.client.domain.model.task.UserInteraction
 import com.cereal.client.domain.model.user.Subscription
+import com.cereal.client.domain.repository.ApplicationPreferenceRepository
 import com.cereal.client.infrastructure.data.repository.inmemory.InMemoryApplicationPreferenceRepository
 import com.cereal.client.infrastructure.data.repository.inmemory.InMemoryArtifactRepository
 import com.cereal.client.infrastructure.data.repository.inmemory.InMemoryCustomDatasetRepository
@@ -56,6 +59,7 @@ import com.cereal.client.infrastructure.data.repository.inmemory.InMemoryTasksRe
 import com.cereal.client.infrastructure.provider.inmemory.InMemoryAuthProvider
 import com.cereal.client.infrastructure.provider.inmemory.InMemorySystemProvider
 import com.cereal.client.presentation.error.ErrorResolver
+import com.cereal.client.presentation.tasks.TaskInspectorLayoutState
 import com.cereal.client.presentation.tasks.TasksActionHandler
 import com.cereal.client.presentation.tasks.TasksListObserver
 import com.cereal.client.presentation.tasks.TasksViewModel
@@ -64,6 +68,7 @@ import kotlinx.coroutines.test.TestDispatcher
 import java.util.UUID
 import kotlin.time.Clock
 import kotlin.time.Duration.Companion.milliseconds
+import kotlin.time.Duration.Companion.seconds
 import kotlin.time.ExperimentalTime
 
 /**
@@ -76,6 +81,7 @@ import kotlin.time.ExperimentalTime
 @OptIn(ExperimentalTime::class)
 class TasksScreenWorld(
     val dispatcher: TestDispatcher,
+    val preferences: ApplicationPreferenceRepository = InMemoryApplicationPreferenceRepository(),
 ) {
     val dispatcherProvider = CoroutinesDispatcherProvider(dispatcher, dispatcher, dispatcher)
     val tasksRepository = InMemoryTasksRepository()
@@ -103,6 +109,10 @@ class TasksScreenWorld(
         )
 
     private val getOrCreateDefaultTaskGroupInteractor = GetOrCreateDefaultTaskGroupInteractor(tasksRepository)
+
+    // Each setup is created a second after the previous one, so creation order is never a tie.
+    private val firstSetupCreatedAt = Clock.System.now()
+    private var setupsCreated = 0
 
     /** The user's subscriptions; [setup] licenses its script here unless told otherwise. */
     val subscriptions = mutableListOf<Subscription>()
@@ -147,6 +157,9 @@ class TasksScreenWorld(
             ObserveArtifactsInteractor(artifactRepository),
             SaveArtifactToFileInteractor(artifactRepository),
             setConcurrentTaskCountInteractor,
+            ObserveTaskSetupSortInteractor(preferences),
+            SetTaskSetupSortInteractor(preferences),
+            TaskInspectorLayoutState(),
         )
 
     /** The "Default" group, created the same way the screen does on entry. */
@@ -183,6 +196,7 @@ class TasksScreenWorld(
                 mainConfiguration = configuration,
                 definition = definition,
                 numberOfConcurrentTasks = taskStatuses.size.coerceAtLeast(1),
+                createdAt = firstSetupCreatedAt + (setupsCreated++).seconds,
             )
         val main = aScriptInstance(packageInstance).copy(definition = definition.mainScript, configuration = configuration)
         scriptInstances.addScriptPackageInstance((group ?: defaultGroup()).id, packageInstance, main)

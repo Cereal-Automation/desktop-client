@@ -60,4 +60,24 @@ class TaskFilterBarScreenTest {
             onNodeWithText("Watching stock").assertDoesNotExist()
             onNodeWithText("Sold out").assertIsDisplayed()
         }
+
+    @Test
+    fun theSortDropdownShowsTheCurrentSortAndSwitchesIt() =
+        runScreenTest {
+            runBlocking {
+                val tasksRepository = KoinJavaComponent.get<TasksRepository>(TasksRepository::class.java)
+                val group = tasksRepository.createScriptInstanceGroup(ScriptPackageGroup.createDefault())
+                val setup = aScriptPackageInstance("setup-1", "com.example.monitor")
+                KoinJavaComponent.get<ScriptInstanceRepository>(ScriptInstanceRepository::class.java).addScriptPackageInstance(group.id, setup, aScriptInstance(setup))
+            }
+
+            setScreenContent { TasksScreen() }
+            waitUntil { onAllNodesWithText("Sort: Newest first").fetchSemanticsNodes().isNotEmpty() }
+
+            onNodeWithText("Sort: Newest first").performClick()
+            onNodeWithText("Needs attention").performClick()
+            waitForIdle()
+
+            onNodeWithText("Sort: Needs attention").assertIsDisplayed()
+        }
 }

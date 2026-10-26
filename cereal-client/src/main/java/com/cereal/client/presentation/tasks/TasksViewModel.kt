@@ -4,6 +4,7 @@ import androidx.compose.runtime.State
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.referentialEqualityPolicy
+import androidx.compose.ui.unit.Dp
 import com.cereal.client.application.CoroutinesDispatcherProvider
 import com.cereal.client.application.Interactor
 import com.cereal.client.application.interactor.artifact.ObserveArtifactsInteractor
@@ -12,16 +13,20 @@ import com.cereal.client.application.interactor.script.ReportScriptIssueInteract
 import com.cereal.client.application.interactor.settings.OpenUrlInteractor
 import com.cereal.client.application.interactor.settings.developers.ObserveShowDebugLogsInteractor
 import com.cereal.client.application.interactor.task.GetOrCreateDefaultTaskGroupInteractor
+import com.cereal.client.application.interactor.task.ObserveTaskSetupSortInteractor
 import com.cereal.client.application.interactor.task.SetConcurrentTaskCountInteractor
+import com.cereal.client.application.interactor.task.SetTaskSetupSortInteractor
 import com.cereal.client.domain.model.artifact.Artifact
 import com.cereal.client.domain.model.logging.LoggingEvent
 import com.cereal.client.domain.model.logging.LoggingPriority
 import com.cereal.client.domain.model.script.ScriptPackageInstance
 import com.cereal.client.domain.model.task.ScriptPackageGroup
 import com.cereal.client.domain.model.task.Task
+import com.cereal.client.domain.model.task.TaskSetupSort
 import com.cereal.client.domain.model.task.TaskStatus
 import com.cereal.client.domain.repository.LogEventRepository
 import com.cereal.client.presentation.error.ErrorResolver
+import com.cereal.client.presentation.error.handleFailureOrElse
 import com.cereal.client.presentation.tasks.model.TaskUiModel
 import com.cereal.client.presentation.util.InteractorRunner
 import com.github.kittinunf.result.coroutines.SuspendableResult
@@ -34,6 +39,7 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.joinAll
 import kotlinx.coroutines.launch
@@ -58,6 +64,9 @@ class TasksViewModel(
     private val observeArtifactsInteractor: ObserveArtifactsInteractor,
     private val saveArtifactToFileInteractor: SaveArtifactToFileInteractor,
     private val setConcurrentTaskCountInteractor: SetConcurrentTaskCountInteractor,
+    private val observeTaskSetupSortInteractor: ObserveTaskSetupSortInteractor,
+    private val setTaskSetupSortInteractor: SetTaskSetupSortInteractor,
+    private val inspectorLayout: TaskInspectorLayoutState,
 ) {
     private val scope = CoroutineScope(SupervisorJob() + dispatcherProvider.main)
     private val interactorRunner = InteractorRunner(scope, dispatcherProvider, errorResolver)
@@ -68,6 +77,11 @@ class TasksViewModel(
     private val statusFilter = mutableStateOf(TaskFilter.ALL)
     private val groupFilter = mutableStateOf<String?>(null)
 
+    // Null until the saved sort loads, so the list never first renders in the default order.
+    private val setupSort = mutableStateOf<TaskSetupSort?>(null)
+    private var loadSortJob: Job? = null
+    private var saveSortJob: Job? = null
+
     // In memory only: every setup starts expanded on each screen visit.
     private val collapsedSetupIds = mutableStateOf(emptySet<String>())
 
@@ -77,12 +91,14 @@ class TasksViewModel(
      */
     val listState: State<TaskViewState.ListState> =
         derivedStateOf {
+            val sort = setupSort.value ?: return@derivedStateOf TaskViewState.ListState.Loading
             TasksViewStateBuilder.buildListState(
                 groupedSetups.value,
                 allTasks.value,
                 statusFilter.value,
                 groupFilter.value,
                 collapsedSetupIds.value,
+                sort,
             )
         }
 
@@ -123,6 +139,13 @@ class TasksViewModel(
     val inspector: State<TaskInspectorState?> =
         derivedStateOf { _selectedTask.value?.let { TasksViewStateBuilder.buildInspectorState(it.id, allTasks.value) } }
 
+    /** The inspector width the user dragged to; null until they drag it. */
+    val inspectorWidth: State<Dp?> = inspectorLayout.width
+
+    fun onInspectorResized(width: Dp) {
+        inspectorLayout.setWidth(width)
+    }
+
     val userInteractions = mutableStateOf<List<TaskUiModel>>(emptyList())
 
     private var logObservationJob: Job? = null
@@ -137,6 +160,7 @@ class TasksViewModel(
         ensureDefaultGroupExists()
         observeTaskGroups()
         observeTasks()
+        loadSetupSort()
     }
 
     private fun ensureDefaultGroupExists() {
@@ -215,6 +239,22 @@ class TasksViewModel(
     /** The group filter: one group's id, or null for all groups. */
     fun onGroupFilterSelected(groupId: String?) {
         groupFilter.value = groupId
+    }
+
+    /**
+     * The sort dropdown: reorders every group's setups and remembers the choice. Saves run one after another, so the
+     * last pick is the one stored.
+     */
+    fun onSortSelected(sort: TaskSetupSort) {
+        // A pick wins over a saved sort still loading.
+        loadSortJob?.cancel()
+        setupSort.value = sort
+        val previousSave = saveSortJob
+        saveSortJob =
+            scope.launch {
+                previousSave?.join()
+                interactorRunner.launch(setTaskSetupSortInteractor, SetTaskSetupSortInteractor.Params(sort)).join()
+            }
     }
 
     /** A setup row's chevron or name: collapses or expands its tasks. */
@@ -434,6 +474,17 @@ class TasksViewModel(
 
     private fun observeTaskGroups() {
         tasksListObserver.observeTaskGroups(scope) { groupedSetups.value = it }
+    }
+
+    /** Reads the saved sort once; only this screen changes it, and it already knows its own picks. */
+    private fun loadSetupSort() {
+        loadSortJob =
+            scope.launch {
+                val result = withContext(dispatcherProvider.io) { observeTaskSetupSortInteractor(Interactor.None()).first() }
+                // On failure, show the list in the default order rather than loading forever.
+                setupSort.value = TaskSetupSort.Default
+                result.handleFailureOrElse(errorResolver) { setupSort.value = it }
+            }
     }
 
     private fun updateUserInteractions() {

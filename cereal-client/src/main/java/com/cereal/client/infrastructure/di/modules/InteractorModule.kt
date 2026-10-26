@@ -98,8 +98,10 @@ import com.cereal.client.application.interactor.task.DeleteTaskGroupInteractor
 import com.cereal.client.application.interactor.task.EditScriptInstanceGroupInteractor
 import com.cereal.client.application.interactor.task.GetOrCreateDefaultTaskGroupInteractor
 import com.cereal.client.application.interactor.task.GetTaskGroupsInteractor
+import com.cereal.client.application.interactor.task.ObserveTaskSetupSortInteractor
 import com.cereal.client.application.interactor.task.ObserveTasksInteractor
 import com.cereal.client.application.interactor.task.SetConcurrentTaskCountInteractor
+import com.cereal.client.application.interactor.task.SetTaskSetupSortInteractor
 import com.cereal.client.application.interactor.task.StartAllTasksInScriptPackageInstanceInteractor
 import com.cereal.client.application.interactor.task.StartTaskInteractor
 import com.cereal.client.application.interactor.task.StopTaskInteractor
@@ -158,6 +160,8 @@ object InteractorModule {
             factory { SetConcurrentTaskCountInteractor(get(), get(), get(), get()) }
             factory { StartAllTasksInScriptPackageInstanceInteractor(get(), get()) }
             factory { UserInteractionDismissedInteractor(get()) }
+            factory { ObserveTaskSetupSortInteractor(get()) }
+            factory { SetTaskSetupSortInteractor(get()) }
             // Proxies
             factory { GetProxyGroupsInteractor(get()) }
             factory { CreateProxyGroupInteractor(get()) }

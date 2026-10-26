@@ -52,6 +52,8 @@ sealed class ApplicationPreferenceKey<T>(
     object ProxyHealthCheckInterval :
         ApplicationPreferenceKey<String>(KEY_PROXY_HEALTH_CHECK_INTERVAL, "off")
 
+    object TaskSetupSort : ApplicationPreferenceKey<String>(KEY_TASK_SETUP_SORT, "newest_first")
+
     object NotificationCenterLastSeenAt :
         ApplicationPreferenceKey<Long>(KEY_NOTIFICATION_CENTER_LAST_SEEN_AT, 0L)
 
@@ -82,6 +84,7 @@ sealed class ApplicationPreferenceKey<T>(
         const val KEY_SHOW_DEBUG_LOGS = "key_show_debug_logs"
         const val KEY_SIDEBAR_COLLAPSED = "key_sidebar_collapsed"
         const val KEY_PROXY_HEALTH_CHECK_INTERVAL = "key_proxy_health_check_interval"
+        const val KEY_TASK_SETUP_SORT = "key_task_setup_sort"
         const val KEY_NOTIFICATION_CENTER_LAST_SEEN_AT = "key_notification_center_last_seen_at"
         const val KEY_MARS_PROXIES_API_TOKEN = "key_mars_proxies_api_token"
         const val KEY_LLM_PROVIDER_CONFIG = "key_llm_provider_config"

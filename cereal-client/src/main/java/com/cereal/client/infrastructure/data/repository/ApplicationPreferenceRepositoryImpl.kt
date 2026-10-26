@@ -1,6 +1,7 @@
 package com.cereal.client.infrastructure.data.repository
 
 import com.cereal.client.domain.model.settings.ProxyHealthCheckInterval
+import com.cereal.client.domain.model.task.TaskSetupSort
 import com.cereal.client.domain.repository.ApplicationPreferenceRepository
 import com.cereal.client.infrastructure.data.datasource.auth.UserSession
 import com.cereal.client.infrastructure.data.datasource.database.KeyValueDataSource
@@ -77,6 +78,18 @@ class ApplicationPreferenceRepositoryImpl(
         val key = ApplicationPreferenceKey.ProxyHealthCheckInterval.key
         return keyValueDataSource.getStringByKey(key, userSession.requireUser()).map {
             ProxyHealthCheckInterval.fromStorageValue(it)
+        }
+    }
+
+    override suspend fun setTaskSetupSort(sort: TaskSetupSort) {
+        val key = ApplicationPreferenceKey.TaskSetupSort.key
+        keyValueDataSource.setStringByKey(key, sort.storageValue, userSession.requireUser())
+    }
+
+    override suspend fun getTaskSetupSort(): Flow<TaskSetupSort> {
+        val key = ApplicationPreferenceKey.TaskSetupSort.key
+        return keyValueDataSource.getStringByKey(key, userSession.requireUser()).map {
+            TaskSetupSort.fromStorageValue(it)
         }
     }
 }

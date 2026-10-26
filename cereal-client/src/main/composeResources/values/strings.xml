@@ -99,6 +99,11 @@
     <string name="filter_all">All</string>
     <string name="filter_all_groups">All groups</string>
     <string name="filter_failed">Failed</string>
+    <string name="sort_by">Sort: %1$s</string>
+    <string name="sort_newest_first">Newest first</string>
+    <string name="sort_oldest_first">Oldest first</string>
+    <string name="sort_name">Name A–Z</string>
+    <string name="sort_needs_attention">Needs attention</string>
     <string name="filter_action_label">Filter</string>
     <string name="filter_section_price">Price</string>
     <string name="filter_section_creator">Creator</string>

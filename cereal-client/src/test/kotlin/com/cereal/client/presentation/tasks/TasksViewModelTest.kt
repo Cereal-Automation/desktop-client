@@ -15,7 +15,9 @@ import com.cereal.client.application.interactor.task.DeleteTaskGroupInteractor
 import com.cereal.client.application.interactor.task.EditScriptInstanceGroupInteractor
 import com.cereal.client.application.interactor.task.GetOrCreateDefaultTaskGroupInteractor
 import com.cereal.client.application.interactor.task.GetTaskGroupsInteractor
+import com.cereal.client.application.interactor.task.ObserveTaskSetupSortInteractor
 import com.cereal.client.application.interactor.task.ObserveTasksInteractor
+import com.cereal.client.application.interactor.task.SetTaskSetupSortInteractor
 import com.cereal.client.application.interactor.task.StartAllTasksInScriptPackageInstanceInteractor
 import com.cereal.client.application.interactor.task.StartTaskInteractor
 import com.cereal.client.application.interactor.task.StopTaskInteractor
@@ -30,6 +32,7 @@ import com.cereal.client.domain.model.task.ScriptPackageGroup
 import com.cereal.client.domain.model.task.Task
 import com.cereal.client.domain.model.task.TaskStatus
 import com.cereal.client.domain.repository.LogEventRepository
+import com.cereal.client.infrastructure.data.repository.inmemory.InMemoryApplicationPreferenceRepository
 import com.cereal.client.presentation.error.ErrorResolver
 import com.cereal.client.presentation.tasks.model.TaskUiModel
 import com.github.kittinunf.result.coroutines.SuspendableResult
@@ -154,6 +157,9 @@ class TasksViewModelTest {
             observeArtifactsInteractor,
             saveArtifactToFileInteractor,
             mockk(relaxed = true),
+            ObserveTaskSetupSortInteractor(InMemoryApplicationPreferenceRepository()),
+            SetTaskSetupSortInteractor(InMemoryApplicationPreferenceRepository()),
+            TaskInspectorLayoutState(),
         )
     }
 
@@ -313,6 +319,9 @@ class TasksViewModelTest {
                     observeArtifactsInteractor,
                     saveArtifactToFileInteractor,
                     mockk(relaxed = true),
+                    ObserveTaskSetupSortInteractor(InMemoryApplicationPreferenceRepository()),
+                    SetTaskSetupSortInteractor(InMemoryApplicationPreferenceRepository()),
+                    TaskInspectorLayoutState(),
                 )
 
             vm.onTaskClicked(task)
@@ -405,6 +414,9 @@ class TasksViewModelTest {
                     observeArtifactsInteractor,
                     saveArtifactToFileInteractor,
                     mockk(relaxed = true),
+                    ObserveTaskSetupSortInteractor(InMemoryApplicationPreferenceRepository()),
+                    SetTaskSetupSortInteractor(InMemoryApplicationPreferenceRepository()),
+                    TaskInspectorLayoutState(),
                 )
 
             vm.onTaskClicked(task)

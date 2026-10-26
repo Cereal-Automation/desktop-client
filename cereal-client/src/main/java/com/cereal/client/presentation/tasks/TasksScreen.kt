@@ -1,6 +1,9 @@
 package com.cereal.client.presentation.tasks
 
 import androidx.compose.foundation.VerticalScrollbar
+import androidx.compose.foundation.gestures.Orientation
+import androidx.compose.foundation.gestures.draggable
+import androidx.compose.foundation.gestures.rememberDraggableState
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
@@ -22,6 +25,7 @@ import androidx.compose.runtime.key
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.dp
 import com.cereal.client.domain.model.task.UserInteraction
 import com.cereal.client.presentation.error.errorView
@@ -34,6 +38,7 @@ import com.cereal.client.presentation.tasks.script.overview.ScriptSelectionDialo
 import com.cereal.client.presentation.theme.CerealTheme
 import com.cereal.client.presentation.view.ConfirmationDialog
 import com.cereal.client.presentation.view.VerticalDivider
+import com.cereal.client.presentation.view.cursorForHorizontalResize
 import com.cereal.client.presentation.view.rememberFileDialogLauncher
 import com.cereal_automation.cereal_client.generated.resources.Res
 import com.cereal_automation.cereal_client.generated.resources.cancel
@@ -91,14 +96,25 @@ fun TasksScreen(
             onNewGroup = viewModel::onCreateTaskGroup,
             onNewTaskSetup = viewModel::onAddScriptClicked,
         )
-        // The inspector sits beside the filter bar and list, under the header.
-        // With the inspector open it takes a third of the width (never narrower than its content needs).
+        // The inspector sits beside the filter bar and list, under the header. It opens at a third of the width (never
+        // narrower than its content needs); the user can drag its left edge to resize it, within clampInspectorWidth's
+        // bounds.
         BoxWithConstraints(Modifier.weight(1.0f).fillMaxWidth()) {
-            val inspectorWidth = maxOf(maxWidth / 3, InspectorMinWidth)
+            val available = maxWidth
+            val density = LocalDensity.current
+
+            fun currentInspectorWidth() = clampInspectorWidth(viewModel.inspectorWidth.value ?: (available / 3), available)
+            val inspectorWidth = currentInspectorWidth()
+            // Stores the clamped width, so dragging past a bound doesn't build up overshoot to drag back through.
+            val resizeState =
+                rememberDraggableState { delta ->
+                    val dragged = currentInspectorWidth() - with(density) { delta.toDp() }
+                    viewModel.onInspectorResized(clampInspectorWidth(dragged, available))
+                }
             Row(Modifier.fillMaxSize()) {
                 Column(Modifier.weight(1.0f).fillMaxHeight()) {
                     (listState as? TaskViewState.ListState.Filled)?.let { state ->
-                        TaskFilterBar(state.chips, state.groupFilter, viewModel::onStatusFilterSelected, viewModel::onGroupFilterSelected)
+                        TaskFilterBar(state.chips, state.groupFilter, state.sort, viewModel::onStatusFilterSelected, viewModel::onGroupFilterSelected, viewModel::onSortSelected)
                     }
                     Box(Modifier.weight(1.0f).fillMaxWidth()) {
                         when (val state = listState) {
@@ -123,20 +139,30 @@ fun TasksScreen(
                 viewModel.inspector.value?.let { inspector ->
                     VerticalDivider()
                     val openFileDialog = rememberFileDialogLauncher()
-                    TaskInspector(
-                        state = inspector,
-                        events = viewModel.logViewerMessages.value,
-                        artifacts = viewModel.artifacts.value,
-                        onClose = viewModel::closeInspector,
-                        onAction = viewModel::onInspectorAction,
-                        onClearLog = viewModel::clearLogs,
-                        onDownloadArtifact = { artifact ->
-                            openFileDialog(FileDialog.SAVE)?.let { file ->
-                                viewModel.onDownloadArtifact(artifact, file)
-                            }
-                        },
-                        modifier = Modifier.width(inspectorWidth),
-                    )
+                    Box(Modifier.width(inspectorWidth).fillMaxHeight()) {
+                        TaskInspector(
+                            state = inspector,
+                            events = viewModel.logViewerMessages.value,
+                            artifacts = viewModel.artifacts.value,
+                            onClose = viewModel::closeInspector,
+                            onAction = viewModel::onInspectorAction,
+                            onClearLog = viewModel::clearLogs,
+                            onDownloadArtifact = { artifact ->
+                                openFileDialog(FileDialog.SAVE)?.let { file ->
+                                    viewModel.onDownloadArtifact(artifact, file)
+                                }
+                            },
+                            modifier = Modifier.fillMaxSize(),
+                        )
+                        // The drag handle overlays the inspector's left edge, so it doesn't shift the layout.
+                        Box(
+                            Modifier
+                                .width(8.dp)
+                                .fillMaxHeight()
+                                .draggable(resizeState, Orientation.Horizontal, startDragImmediately = true)
+                                .cursorForHorizontalResize(),
+                        )
+                    }
                 }
             }
         }
