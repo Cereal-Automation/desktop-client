@@ -60,6 +60,29 @@ class TasksViewStateBuilderTest {
     }
 
     @Test
+    fun `a setup with one task carries it, while one with more stays a card even when a filter leaves one`() {
+        val single = aScriptPackageInstance("pkg1", "com.one")
+        val multi = aScriptPackageInstance("pkg2", "com.two")
+        val tasks =
+            listOf(
+                aTask("s1", aScriptInstance(single), running = true),
+                aTask("m1", aScriptInstance(multi), running = true),
+                aTask("m2", aScriptInstance(multi), running = false),
+            )
+
+        val setups =
+            assertIs<TaskViewState.ListState.Filled>(
+                TasksViewStateBuilder.buildListState(listOf(default to listOf(single, multi)), tasks, statusFilter = TaskFilter.RUNNING),
+            ).groups
+                .single()
+                .setups
+
+        assertEquals("s1", setups[0].singleTask?.id?.id)
+        assertEquals(null, setups[1].singleTask)
+        assertEquals(listOf("m1"), setups[1].scripts.flatMap { it.tasks }.map { it.id.id })
+    }
+
+    @Test
     fun `extractUserInteractions is empty when no task awaits interaction`() {
         val scriptInstance = aScriptInstance(aScriptPackageInstance("pkg1", "com.test"))
 

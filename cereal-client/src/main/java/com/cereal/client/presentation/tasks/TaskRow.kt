@@ -26,6 +26,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -59,7 +60,7 @@ import kotlin.time.Duration.Companion.seconds
 import kotlin.time.ExperimentalTime
 import kotlin.time.Instant
 
-private val RowSelectedBg = Color(0xFF1F1F1F)
+internal val RowSelectedBg = Color(0xFF1F1F1F)
 
 @Composable
 internal fun TaskRow(
@@ -117,17 +118,7 @@ internal fun TaskRow(
             )
 
             Column(modifier = Modifier.weight(1f)) {
-                CerealText(
-                    // An idle task's status message ("Press start") stays in its status history.
-                    text = if (taskItem.isIdle) stringResource(Res.string.task_ready) else taskItem.message,
-                    color = if (taskItem.isIdle) CerealTheme.colorScheme.contentTertiary else MaterialTheme.colorScheme.onSurface,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                    style =
-                        MaterialTheme.typography.bodyMedium.copy(
-                            fontWeight = FontWeight.SemiBold,
-                        ),
-                )
+                TaskMessage(taskItem, style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.SemiBold))
                 if (taskItem.configuration.isNotEmpty()) {
                     CerealText(
                         text = taskItem.configuration,
@@ -156,34 +147,7 @@ internal fun TaskRow(
                 isSuccess = taskItem.isSuccess,
             )
 
-            val continueInteraction =
-                taskItem.id.userInteraction as? UserInteraction.ContinueButton
-
-            if (continueInteraction != null) {
-                CerealToolbarButton(
-                    variant = CerealToolbarButtonVariant.Green,
-                    onClick = { onContinueClick?.invoke() },
-                ) {
-                    Icon(
-                        painterResource(Res.drawable.ic_play),
-                        contentDescription = stringResource(Res.string.continue_task),
-                        modifier = Modifier.size(ButtonDefaults.IconSize),
-                    )
-                    CerealText(text = stringResource(Res.string.continue_action))
-                }
-            } else if (taskItem.isRunning) {
-                TaskActionIcon(
-                    onClick = onStopTask,
-                    icon = Res.drawable.ic_stop,
-                    contentDescription = stringResource(Res.string.stop_task),
-                )
-            } else {
-                TaskActionIcon(
-                    onClick = onStartTask,
-                    icon = Res.drawable.ic_play,
-                    contentDescription = stringResource(Res.string.start_task),
-                )
-            }
+            TaskActionButton(taskItem, onStartTask, onStopTask, onContinueClick)
         }
 
         Box(
@@ -197,10 +161,63 @@ internal fun TaskRow(
     }
 }
 
+/** The task's status message, or "Ready" while it is idle. */
+@Composable
+internal fun TaskMessage(
+    task: TaskUiModel,
+    style: TextStyle,
+    modifier: Modifier = Modifier,
+) {
+    CerealText(
+        // An idle task's status message ("Press start") stays in its status history.
+        text = if (task.isIdle) stringResource(Res.string.task_ready) else task.message,
+        color = if (task.isIdle) CerealTheme.colorScheme.contentTertiary else MaterialTheme.colorScheme.onSurface,
+        maxLines = 1,
+        overflow = TextOverflow.Ellipsis,
+        style = style,
+        modifier = modifier,
+    )
+}
+
+/** Continue while the task awaits it, else Stop while it runs, else Start. */
+@Composable
+internal fun TaskActionButton(
+    task: TaskUiModel,
+    onStartTask: () -> Unit,
+    onStopTask: () -> Unit,
+    onContinueClick: (() -> Unit)?,
+) {
+    if (task.id.userInteraction is UserInteraction.ContinueButton) {
+        CerealToolbarButton(
+            variant = CerealToolbarButtonVariant.Green,
+            onClick = { onContinueClick?.invoke() },
+        ) {
+            Icon(
+                painterResource(Res.drawable.ic_play),
+                contentDescription = stringResource(Res.string.continue_task),
+                modifier = Modifier.size(ButtonDefaults.IconSize),
+            )
+            CerealText(text = stringResource(Res.string.continue_action))
+        }
+    } else if (task.isRunning) {
+        TaskActionIcon(
+            onClick = onStopTask,
+            icon = Res.drawable.ic_stop,
+            contentDescription = stringResource(Res.string.stop_task),
+        )
+    } else {
+        TaskActionIcon(
+            onClick = onStartTask,
+            icon = Res.drawable.ic_play,
+            contentDescription = stringResource(Res.string.start_task),
+        )
+    }
+}
+
 /** Time since [since]: seconds under a minute ("12s ago"), then [formatRelativeTime]; re-rendered every second. */
 @OptIn(ExperimentalTime::class)
 @Composable
-private fun TimeSince(since: Instant) {
+internal fun TimeSince(since: Instant) {
     var now by remember { mutableStateOf(Clock.System.now()) }
     LaunchedEffect(since) {
         while (true) {
