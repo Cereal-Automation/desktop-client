@@ -1,3 +1,5 @@
+@file:OptIn(ExperimentalTime::class)
+
 package com.cereal.client.presentation.tasks.dialog
 
 import androidx.compose.foundation.layout.Box
@@ -26,11 +28,17 @@ import com.cereal.client.presentation.view.Dialog
 import com.cereal.client.presentation.view.SettingsItem
 import com.cereal_automation.cereal_client.generated.resources.Res
 import com.cereal_automation.cereal_client.generated.resources.configuration_for
+import com.cereal_automation.cereal_client.generated.resources.created_on
 import com.cereal_automation.cereal_client.generated.resources.version_code
 import kotlinx.coroutines.CoroutineScope
 import org.jetbrains.compose.resources.stringResource
 import org.koin.core.parameter.parametersOf
 import org.koin.java.KoinJavaComponent
+import java.time.ZoneId
+import java.time.format.DateTimeFormatter
+import java.time.format.FormatStyle
+import kotlin.time.ExperimentalTime
+import kotlin.time.toJavaInstant
 
 @Composable
 fun ViewConfigurationDialog(
@@ -74,8 +82,16 @@ fun ViewConfigurationDialog(
                 }
             }
 
+            val createdOn =
+                remember(scriptPackageInstance.createdAt) {
+                    DateTimeFormatter
+                        .ofLocalizedDateTime(FormatStyle.MEDIUM)
+                        .withZone(ZoneId.systemDefault())
+                        .format(scriptPackageInstance.createdAt.toJavaInstant())
+                }
             CaptionText(
-                "${stringResource(Res.string.version_code)}: ${scriptPackageInstance.definition.manifest.versionCode}",
+                "${stringResource(Res.string.created_on, createdOn)} · " +
+                    "${stringResource(Res.string.version_code)}: ${scriptPackageInstance.definition.manifest.versionCode}",
                 color = CerealTheme.colorScheme.contentTertiary,
                 modifier = Modifier.align(Alignment.BottomEnd),
             )
