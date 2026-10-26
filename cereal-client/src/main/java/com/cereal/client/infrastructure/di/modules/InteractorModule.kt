@@ -8,6 +8,8 @@ import com.cereal.client.application.interactor.agent.StartGoalRunInteractor
 import com.cereal.client.application.interactor.app.CheckForUpdatesInteractor
 import com.cereal.client.application.interactor.app.DownloadLatestAppVersionInteractor
 import com.cereal.client.application.interactor.app.InstallUpdateInteractor
+import com.cereal.client.application.interactor.app.ObserveSidebarCollapsedInteractor
+import com.cereal.client.application.interactor.app.SetSidebarCollapsedInteractor
 import com.cereal.client.application.interactor.artifact.ObserveArtifactsInteractor
 import com.cereal.client.application.interactor.artifact.SaveArtifactToFileInteractor
 import com.cereal.client.application.interactor.auth.AuthenticateGuestInteractor
@@ -117,6 +119,8 @@ object InteractorModule {
             factory { InstallUpdateInteractor(get()) }
             factory { DownloadLatestAppVersionInteractor(get()) }
             factory { CheckForUpdatesInteractor(get()) }
+            factory { ObserveSidebarCollapsedInteractor(get()) }
+            factory { SetSidebarCollapsedInteractor(get()) }
             factory { GetBrandEntitlementInteractor(get(), get()) }
             factory { GetBrandGateStatusInteractor(get(), get(), get()) }
             factory { SyncBrandScriptsInteractor(get()) }

@@ -117,8 +117,9 @@ fun MainScreen(
                             Root.content(viewModel.landingRoute, menuComposable = { backStack ->
                                 MainMenu(
                                     menuItems = viewModel.menuItems.value,
-                                    appVersion = viewModel.appVersion,
                                     activeScriptCount = viewModel.activeScriptCount.value,
+                                    collapsed = viewModel.isSidebarCollapsed.value,
+                                    onToggleCollapsed = viewModel::onToggleSidebar,
                                     onClick = { menuItem ->
                                         if (menuItem.externalUrl != null) {
                                             Desktop.getDesktop().browse(URI(menuItem.externalUrl))

@@ -3,7 +3,10 @@ package com.cereal.client.presentation.main
 import com.cereal.client.application.ApplicationConfig
 import com.cereal.client.application.CoroutinesDispatcherProvider
 import com.cereal.client.application.app.UpdateCheckResult
+import com.cereal.client.application.exception.CerealException
 import com.cereal.client.application.interactor.app.CheckForUpdatesInteractor
+import com.cereal.client.application.interactor.app.ObserveSidebarCollapsedInteractor
+import com.cereal.client.application.interactor.app.SetSidebarCollapsedInteractor
 import com.cereal.client.application.interactor.auth.GetAuthenticatedUserInteractor
 import com.cereal.client.application.interactor.notification.ObserveUnseenNotificationCountInteractor
 import com.cereal.client.application.interactor.script.GetScriptsInteractor
@@ -14,6 +17,8 @@ import com.cereal.client.domain.model.task.JobTask
 import com.cereal.client.domain.model.task.TaskStatus
 import com.cereal.client.domain.model.task.UserInteraction
 import com.cereal.client.domain.model.user.User
+import com.cereal.client.domain.repository.ApplicationPreferenceRepository
+import com.cereal.client.infrastructure.data.repository.inmemory.InMemoryApplicationPreferenceRepository
 import com.cereal.client.infrastructure.data.repository.inmemory.InMemoryTasksRepository
 import com.cereal.client.presentation.navigation.MenuReselectionCoordinator
 import com.cereal.client.presentation.navigation.Root
@@ -26,6 +31,8 @@ import io.mockk.mockk
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
@@ -56,13 +63,13 @@ class MainViewModelTest {
     private val tasksRepository = InMemoryTasksRepository()
     private val observeTasksInteractor = ObserveTasksInteractor(tasksRepository)
     private val observeUnseenNotificationCountInteractor: ObserveUnseenNotificationCountInteractor = mockk(relaxed = true)
+    private val preferenceRepository = InMemoryApplicationPreferenceRepository()
 
     private fun user() = User(id = "1", name = "Jane", email = "e", encryptionKey = "k", accessToken = "t")
 
     @BeforeEach
     fun setUp() {
         Dispatchers.setMain(dispatcher)
-        every { applicationConfig.versionName } returns "1.2.3"
         coEvery { getAuthenticatedUserInteractor(any()) } returns flowOf(SuspendableResult.Success(user()))
         coEvery { getScriptsInteractor(any()) } returns flowOf(SuspendableResult.Success(emptyList()))
         coEvery { observeUnseenNotificationCountInteractor(any()) } returns flowOf(SuspendableResult.Success(0))
@@ -73,7 +80,7 @@ class MainViewModelTest {
         Dispatchers.resetMain()
     }
 
-    private fun createViewModel() =
+    private fun createViewModel(preferences: ApplicationPreferenceRepository = preferenceRepository) =
         MainViewModel(
             dispatcherProvider = dispatcherProvider,
             getAuthenticatedUserInteractor = getAuthenticatedUserInteractor,
@@ -83,14 +90,15 @@ class MainViewModelTest {
             getScriptsInteractor = getScriptsInteractor,
             observeTasksInteractor = observeTasksInteractor,
             observeUnseenNotificationCountInteractor = observeUnseenNotificationCountInteractor,
+            observeSidebarCollapsedInteractor = ObserveSidebarCollapsedInteractor(preferences),
+            setSidebarCollapsedInteractor = SetSidebarCollapsedInteractor(preferences),
         )
 
     @Test
-    fun `init exposes the app version and a full menu`() {
+    fun `init exposes a full menu`() {
         val viewModel = createViewModel()
         dispatcher.scheduler.advanceUntilIdle()
 
-        assertEquals("1.2.3", viewModel.appVersion)
         assertEquals(9, viewModel.menuItems.value.size)
         assertTrue(viewModel.menuItems.value.any { it.route is Root.Routing.Marketplace })
     }
@@ -139,6 +147,58 @@ class MainViewModelTest {
 
         assertEquals(6, viewModel.menuItems.value.size)
         assertTrue(viewModel.menuItems.value.none { it.section == MenuSection.READY_MADE_SCRIPTS })
+    }
+
+    @Test
+    fun `the sidebar starts expanded and toggling it saves the choice`() {
+        val viewModel = createViewModel()
+        dispatcher.scheduler.advanceUntilIdle()
+        assertFalse(viewModel.isSidebarCollapsed.value)
+
+        viewModel.onToggleSidebar()
+        dispatcher.scheduler.advanceUntilIdle()
+
+        assertTrue(viewModel.isSidebarCollapsed.value)
+        assertTrue(runBlocking { preferenceRepository.isSidebarCollapsed().first() })
+    }
+
+    @Test
+    fun `a sidebar toggle that fails to save is undone`() {
+        val failingPreferences =
+            object : ApplicationPreferenceRepository by preferenceRepository {
+                override suspend fun setSidebarCollapsed(collapsed: Boolean): Unit = throw CerealException("not saved")
+            }
+        val viewModel = createViewModel(failingPreferences)
+        dispatcher.scheduler.advanceUntilIdle()
+
+        viewModel.onToggleSidebar()
+        dispatcher.scheduler.advanceUntilIdle()
+
+        assertFalse(viewModel.isSidebarCollapsed.value)
+    }
+
+    @Test
+    fun `logging out resets the sidebar to expanded`() {
+        val authenticatedUser = MutableStateFlow<SuspendableResult<User?, Exception>>(SuspendableResult.Success(user()))
+        coEvery { getAuthenticatedUserInteractor(any()) } returns authenticatedUser
+        runBlocking { preferenceRepository.setSidebarCollapsed(true) }
+        val viewModel = createViewModel()
+        dispatcher.scheduler.advanceUntilIdle()
+        assertTrue(viewModel.isSidebarCollapsed.value)
+
+        authenticatedUser.value = SuspendableResult.Success(null)
+        dispatcher.scheduler.advanceUntilIdle()
+
+        assertFalse(viewModel.isSidebarCollapsed.value)
+    }
+
+    @Test
+    fun `a saved collapsed sidebar is restored`() {
+        runBlocking { preferenceRepository.setSidebarCollapsed(true) }
+        val viewModel = createViewModel()
+        dispatcher.scheduler.advanceUntilIdle()
+
+        assertTrue(viewModel.isSidebarCollapsed.value)
     }
 
     @Test

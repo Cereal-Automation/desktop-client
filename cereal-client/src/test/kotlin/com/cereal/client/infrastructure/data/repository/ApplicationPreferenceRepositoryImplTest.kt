@@ -87,6 +87,14 @@ class ApplicationPreferenceRepositoryImplTest {
         }
 
     @Test
+    fun `sidebar collapsed round trips and defaults to expanded`() =
+        runTest {
+            assertEquals(false, repository.isSidebarCollapsed().first())
+            repository.setSidebarCollapsed(true)
+            assertEquals(true, repository.isSidebarCollapsed().first())
+        }
+
+    @Test
     fun `proxy health check interval round trips`() =
         runTest {
             repository.setProxyHealthCheckInterval(ProxyHealthCheckInterval.EVERY_6_HOURS)
