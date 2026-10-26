@@ -38,6 +38,7 @@
     <string name="copy_from_existing_script_desc">Copy configuration values from an existing script.</string>
     <string name="create">Create</string>
     <string name="create_account">Create Account</string>
+    <string name="created_on">Created: %1$s</string>
     <string name="creating_group">Create group</string>
     <string name="datasets_empty_placeholder">Datasets are created when configuring a script that requires them and will appear here.</string>
     <string name="default_error_message">An unexpected error occurred, we are notified about this and will fix it asap.</string>
