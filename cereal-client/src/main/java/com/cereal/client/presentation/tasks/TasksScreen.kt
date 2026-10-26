@@ -312,14 +312,14 @@ private sealed interface TaskListItem {
 
 /**
  * Group labels, then each setup as a card: its header row, then (unless collapsed) its task rows (child scripts under
- * their title).
+ * their title). A setup with a single task is just its header, which shows that task.
  */
 private fun TaskViewState.ListState.Filled.items(): List<TaskListItem> =
     groups.flatMap { group ->
         listOf(TaskListItem.GroupLabel(group)) +
             group.setups.flatMap { setup ->
                 val rows =
-                    setup.scripts.takeIf { setup.expanded }.orEmpty().flatMap { script ->
+                    setup.scripts.takeIf { setup.expanded && setup.singleTask == null }.orEmpty().flatMap { script ->
                         listOfNotNull(script.title?.let { TaskListItem.ScriptTitle(script, it) }) + script.tasks.map { TaskListItem.Row(it, last = false) }
                     }
                 val lastRow = rows.lastOrNull() as? TaskListItem.Row
@@ -338,7 +338,14 @@ private fun TaskListContent(
     val scrollToTaskId by viewModel.scrollToTaskId
     LaunchedEffect(scrollToTaskId, items) {
         val taskId = scrollToTaskId ?: return@LaunchedEffect
-        val index = items.indexOfFirst { it is TaskListItem.Row && it.task.id.id == taskId }
+        val index =
+            items.indexOfFirst {
+                (it is TaskListItem.Row && it.task.id.id == taskId) || (
+                    it is TaskListItem.SetupHeader && it.section.singleTask
+                        ?.id
+                        ?.id == taskId
+                )
+            }
         if (index >= 0) {
             lazyListState.animateScrollToItem(index)
             viewModel.onScrolledToTask()
@@ -356,16 +363,32 @@ private fun TaskListContent(
 
                     is TaskListItem.SetupHeader -> {
                         val setup = item.section.setupId
+                        val singleTask = item.section.singleTask
                         Box(Modifier.setupCardSlice(first = true, last = item.last, fill = cardFill, border = cardBorder)) {
-                            TaskSetupRow(
-                                section = item.section,
-                                onToggleExpanded = { viewModel.onSetupExpandToggled(setup) },
-                                onStartAll = { viewModel.startAllTasks(setup) },
-                                onStopAll = { viewModel.stopAllTasks(setup) },
-                                onDecreaseTasks = { viewModel.decreaseConcurrentTasks(setup) },
-                                onIncreaseTasks = { viewModel.increaseConcurrentTasks(setup) },
-                                onMenuOptionSelected = { option -> viewModel.onSetupMenuOptionSelected(setup, option) },
-                            )
+                            if (singleTask != null) {
+                                SingleTaskSetupRow(
+                                    section = item.section,
+                                    task = singleTask,
+                                    isSelected = viewModel.selectedTask.value?.id == singleTask.id.id,
+                                    onClick = { viewModel.onTaskClicked(singleTask.id) },
+                                    onStartTask = { viewModel.startTask(singleTask) },
+                                    onStopTask = { viewModel.stopTask(singleTask) },
+                                    onContinueClick = { continueTask(singleTask, viewModel) },
+                                    onDecreaseTasks = { viewModel.decreaseConcurrentTasks(setup) },
+                                    onIncreaseTasks = { viewModel.increaseConcurrentTasks(setup) },
+                                    onMenuOptionSelected = { option -> viewModel.onSetupMenuOptionSelected(setup, option) },
+                                )
+                            } else {
+                                TaskSetupRow(
+                                    section = item.section,
+                                    onToggleExpanded = { viewModel.onSetupExpandToggled(setup) },
+                                    onStartAll = { viewModel.startAllTasks(setup) },
+                                    onStopAll = { viewModel.stopAllTasks(setup) },
+                                    onDecreaseTasks = { viewModel.decreaseConcurrentTasks(setup) },
+                                    onIncreaseTasks = { viewModel.increaseConcurrentTasks(setup) },
+                                    onMenuOptionSelected = { option -> viewModel.onSetupMenuOptionSelected(setup, option) },
+                                )
+                            }
                         }
                     }
 
@@ -402,15 +425,20 @@ private fun TaskListRow(
         onStartTask = { viewModel.startTask(task) },
         onStopTask = { viewModel.stopTask(task) },
         onRowClick = { viewModel.onTaskClicked(task.id) },
-        onContinueClick = {
-            // The button lingers until the cleared interaction propagates; a second
-            // click must not resume the continuation again.
-            (task.id.userInteraction as? UserInteraction.ContinueButton)
-                ?.takeIf { btn -> !btn.continuation.isCompleted }
-                ?.let { btn ->
-                    btn.continuation.resume(Unit)
-                    viewModel.finishUserInteraction(task)
-                }
-        },
+        onContinueClick = { continueTask(task, viewModel) },
     )
+}
+
+private fun continueTask(
+    task: TaskUiModel,
+    viewModel: TasksViewModel,
+) {
+    // The button lingers until the cleared interaction propagates; a second
+    // click must not resume the continuation again.
+    (task.id.userInteraction as? UserInteraction.ContinueButton)
+        ?.takeIf { btn -> !btn.continuation.isCompleted }
+        ?.let { btn ->
+            btn.continuation.resume(Unit)
+            viewModel.finishUserInteraction(task)
+        }
 }

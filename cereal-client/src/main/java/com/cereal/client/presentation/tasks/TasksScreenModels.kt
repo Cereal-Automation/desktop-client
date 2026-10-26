@@ -90,6 +90,8 @@ data class TaskSetupSection(
     val expanded: Boolean,
     /** Task rows per script: the main script first, then child scripts (which carry a title). */
     val scripts: List<ScriptInstanceUiModel>,
+    /** The setup's only task, whatever the filters leave; the setup then renders as one row with no task rows. */
+    val singleTask: TaskUiModel?,
 )
 
 /** A task setup row's "···" menu entries. */

@@ -60,7 +60,7 @@ class TasksScreenTest {
     @Test
     fun rendersASeededTaskSetupAsASectionWithItsRows() =
         runScreenTest {
-            seedOneSetupWithTwoTasks()
+            seedOneSetup()
 
             setScreenContent { TasksScreen() }
             waitUntil { onAllNodesWithText("Watching stock").fetchSemanticsNodes().isNotEmpty() }
@@ -80,7 +80,7 @@ class TasksScreenTest {
     @Test
     fun clickingARowOpensTheInspectorAndClickingItAgainClosesIt() =
         runScreenTest {
-            seedOneSetupWithTwoTasks()
+            seedOneSetup()
             setScreenContent { TasksScreen() }
             waitUntil { onAllNodesWithText("Sold out").fetchSemanticsNodes().isNotEmpty() }
 
@@ -100,7 +100,7 @@ class TasksScreenTest {
     @Test
     fun theInspectorShowsATasksOwnValues() =
         runScreenTest {
-            seedOneSetupWithTwoTasks()
+            seedOneSetup()
             setScreenContent { TasksScreen() }
             waitUntil { onAllNodesWithText("Watching stock").fetchSemanticsNodes().isNotEmpty() }
 
@@ -115,7 +115,7 @@ class TasksScreenTest {
     @Test
     fun closingTheInspectorHidesIt() =
         runScreenTest {
-            seedOneSetupWithTwoTasks()
+            seedOneSetup()
             setScreenContent { TasksScreen() }
             waitUntil { onAllNodesWithText("Watching stock").fetchSemanticsNodes().isNotEmpty() }
 
@@ -130,7 +130,7 @@ class TasksScreenTest {
     @Test
     fun clickingAnywhereOnASetupRowCollapsesAndExpandsIt() =
         runScreenTest {
-            seedOneSetupWithTwoTasks()
+            seedOneSetup()
             setScreenContent { TasksScreen() }
             waitUntil { onAllNodesWithText("Sold out").fetchSemanticsNodes().isNotEmpty() }
 
@@ -143,6 +143,22 @@ class TasksScreenTest {
         }
 
     @Test
+    fun aSetupWithOneTaskIsASingleRowThatOpensTheInspector() =
+        runScreenTest {
+            seedOneSetup(taskCount = 1)
+            setScreenContent { TasksScreen() }
+            waitUntil { onAllNodesWithText("Watching stock").fetchSemanticsNodes().isNotEmpty() }
+
+            // No task row: no task number, no setup counts, no chevron.
+            onNodeWithText("#1").assertDoesNotExist()
+            onNodeWithText("1 task").assertDoesNotExist()
+            onNodeWithContentDescription("Collapse").assertDoesNotExist()
+
+            onNodeWithText("Test").performClick()
+            waitUntil { onAllNodesWithText("Task #1").fetchSemanticsNodes().isNotEmpty() }
+        }
+
+    @Test
     fun theInspectorTakesAThirdOfTheWidthButNoLessThanItsMinimum() {
         assertEquals(500.dp, inspectorWidthWhenScreenIs(1500.dp))
         assertEquals(InspectorMinWidth, inspectorWidthWhenScreenIs(900.dp))
@@ -151,7 +167,7 @@ class TasksScreenTest {
     private fun inspectorWidthWhenScreenIs(screenWidth: Dp): Dp {
         var width = 0.dp
         runScreenTest {
-            seedOneSetupWithTwoTasks()
+            seedOneSetup()
             setScreenContent { Box(Modifier.requiredWidth(screenWidth)) { TasksScreen() } }
             waitUntil { onAllNodesWithText("Sold out").fetchSemanticsNodes().isNotEmpty() }
 
@@ -165,7 +181,7 @@ class TasksScreenTest {
     @Test
     fun aSetupsEditEntryIsDisabledWhileItsTasksRun() =
         runScreenTest {
-            seedOneSetupWithTwoTasks()
+            seedOneSetup()
             setScreenContent { TasksScreen() }
             waitUntil { onAllNodesWithText("Watching stock").fetchSemanticsNodes().isNotEmpty() }
 
@@ -180,7 +196,7 @@ class TasksScreenTest {
     @Test
     fun aGroupLabelsMenuOffersNewTaskSetupRenameAndDelete() =
         runScreenTest {
-            seedOneSetupWithTwoTasks()
+            seedOneSetup()
             setScreenContent { TasksScreen() }
             waitUntil { onAllNodesWithText("DEFAULT · 1").fetchSemanticsNodes().isNotEmpty() }
 
@@ -194,9 +210,9 @@ class TasksScreenTest {
 
     /**
      * One setup in the default group: task 1 running ("Watching stock") on its own proxy, task 2 failed ("Sold out")
-     * with no values of its own.
+     * with no values of its own. With [taskCount] 1, only task 1.
      */
-    private fun seedOneSetupWithTwoTasks() =
+    private fun seedOneSetup(taskCount: Int = 2) =
         runBlocking {
             val group = KoinJavaComponent.get<TasksRepository>(TasksRepository::class.java).createScriptInstanceGroup(ScriptPackageGroup.createDefault())
             val setup = aScriptPackageInstance("setup-1", "com.example.monitor")
@@ -204,7 +220,7 @@ class TasksScreenTest {
             KoinJavaComponent.get<ScriptInstanceRepository>(ScriptInstanceRepository::class.java).addScriptPackageInstance(group.id, setup, main)
             val now = Clock.System.now()
             KoinJavaComponent.get<TasksRepository>(TasksRepository::class.java).addAllTasks(
-                listOf("Watching stock", "Sold out").mapIndexed { index, message ->
+                listOf("Watching stock", "Sold out").take(taskCount).mapIndexed { index, message ->
                     JobTask(
                         id = "task-${index + 1}",
                         scriptInstance = main,

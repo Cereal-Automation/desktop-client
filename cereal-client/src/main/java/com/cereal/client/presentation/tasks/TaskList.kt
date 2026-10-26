@@ -14,6 +14,8 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
@@ -43,9 +45,11 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.TextUnitType
 import androidx.compose.ui.unit.dp
+import com.cereal.client.presentation.tasks.model.TaskUiModel
 import com.cereal.client.presentation.theme.CerealTheme
 import com.cereal.client.presentation.theme.CerealTypography
 import com.cereal.client.presentation.util.initialsOf
+import com.cereal.client.presentation.view.ActivityIndicator
 import com.cereal.client.presentation.view.CerealIconButton
 import com.cereal.client.presentation.view.CerealOutlinedIconButton
 import com.cereal.client.presentation.view.CerealText
@@ -181,17 +185,7 @@ internal fun TaskSetupRow(
             )
         }
         SetupAvatar(section.name)
-        Column(modifier = Modifier.weight(1f)) {
-            CerealText(text = section.name, style = CerealTypography.rowTitle, color = MaterialTheme.colorScheme.onSurface, maxLines = 1)
-            if (!section.subtitle.isNullOrEmpty()) {
-                CerealText(
-                    text = section.subtitle,
-                    style = MaterialTheme.typography.labelMedium,
-                    color = CerealTheme.colorScheme.contentSubtle,
-                    maxLines = 1,
-                )
-            }
-        }
+        SetupTitle(section, Modifier.weight(1f))
         Row(horizontalArrangement = Arrangement.spacedBy(14.dp), verticalAlignment = Alignment.CenterVertically) {
             if (section.runningCount > 0) {
                 CountWithDot(stringResource(Res.string.setup_running_count, section.runningCount), CerealTheme.colorScheme.warning)
@@ -216,21 +210,103 @@ internal fun TaskSetupRow(
                 modifier = Modifier.size(16.dp),
             )
         }
-        MoreOptionsMenu(tint = CerealTheme.colorScheme.contentTertiary) { close ->
-            section.menuOptions.forEach { option ->
-                val label =
-                    if (option == SetupMenuOption.RESTART_FAILED) {
-                        stringResource(option.label, section.failedCount)
-                    } else {
-                        stringResource(option.label)
-                    }
-                if (option == SetupMenuOption.EDIT && !section.editable) {
-                    DisabledMenuItem(label, reason = stringResource(Res.string.stop_tasks_to_edit))
+        SetupMenu(section, onMenuOptionSelected)
+    }
+}
+
+/**
+ * A task setup with exactly one task, as one row: the setup's avatar and name, then that task's message, time,
+ * status and action. Clicking it selects the task, like a task row.
+ */
+@Composable
+internal fun SingleTaskSetupRow(
+    section: TaskSetupSection,
+    task: TaskUiModel,
+    isSelected: Boolean,
+    onClick: () -> Unit,
+    onStartTask: () -> Unit,
+    onStopTask: () -> Unit,
+    onContinueClick: () -> Unit,
+    onDecreaseTasks: () -> Unit,
+    onIncreaseTasks: () -> Unit,
+    onMenuOptionSelected: (SetupMenuOption) -> Unit,
+) {
+    Box(
+        modifier =
+            Modifier
+                .fillMaxWidth()
+                .clip(RoundedCornerShape(CardRadius))
+                .background(if (isSelected) RowSelectedBg else Color.Transparent)
+                .clickable(onClick = onClick),
+    ) {
+        if (isSelected) {
+            Box(
+                Modifier
+                    .width(3.dp)
+                    .height(28.dp)
+                    .align(Alignment.CenterStart)
+                    .background(MaterialTheme.colorScheme.primary),
+            )
+        }
+        Row(
+            modifier = Modifier.fillMaxWidth().padding(start = 12.dp, top = 10.dp, end = 8.dp, bottom = 10.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(10.dp),
+        ) {
+            // The chevron's slot, so avatars line up with expandable setups.
+            Spacer(Modifier.size(28.dp))
+            SetupAvatar(section.name)
+            SetupTitle(section, Modifier.weight(1f))
+            TaskMessage(task, style = MaterialTheme.typography.bodySmall, modifier = Modifier.widthIn(max = 240.dp))
+            TimeSince(task.statusSince)
+            if (task.isRunning) ActivityIndicator(size = 18.dp)
+            StatusChip(status = task.status, isRunning = task.isRunning, isError = task.isError, isSuccess = task.isSuccess)
+            section.stepper?.let { ConcurrentTaskStepper(it, onDecreaseTasks, onIncreaseTasks) }
+            TaskActionButton(task, onStartTask, onStopTask, onContinueClick)
+            SetupMenu(section, onMenuOptionSelected)
+        }
+    }
+}
+
+/** The setup's name over its subtitle. */
+@Composable
+private fun SetupTitle(
+    section: TaskSetupSection,
+    modifier: Modifier,
+) {
+    Column(modifier = modifier) {
+        CerealText(text = section.name, style = CerealTypography.rowTitle, color = MaterialTheme.colorScheme.onSurface, maxLines = 1)
+        if (!section.subtitle.isNullOrEmpty()) {
+            CerealText(
+                text = section.subtitle,
+                style = MaterialTheme.typography.labelMedium,
+                color = CerealTheme.colorScheme.contentSubtle,
+                maxLines = 1,
+            )
+        }
+    }
+}
+
+/** A setup's "···" menu; Edit is disabled, with the reason on hover, while its tasks run. */
+@Composable
+private fun SetupMenu(
+    section: TaskSetupSection,
+    onMenuOptionSelected: (SetupMenuOption) -> Unit,
+) {
+    MoreOptionsMenu(tint = CerealTheme.colorScheme.contentTertiary) { close ->
+        section.menuOptions.forEach { option ->
+            val label =
+                if (option == SetupMenuOption.RESTART_FAILED) {
+                    stringResource(option.label, section.failedCount)
                 } else {
-                    MenuItem(label) {
-                        close()
-                        onMenuOptionSelected(option)
-                    }
+                    stringResource(option.label)
+                }
+            if (option == SetupMenuOption.EDIT && !section.editable) {
+                DisabledMenuItem(label, reason = stringResource(Res.string.stop_tasks_to_edit))
+            } else {
+                MenuItem(label) {
+                    close()
+                    onMenuOptionSelected(option)
                 }
             }
         }
