@@ -6,6 +6,7 @@ import com.cereal.client.domain.model.script.configuration.ConfigValue
 import com.cereal.client.domain.model.script.configuration.ScriptConfigurationItemDefinition
 import fixtures.aScriptInstance
 import fixtures.aScriptPackageInstance
+import io.mockk.mockk
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Test
 import kotlin.time.ExperimentalTime
@@ -52,11 +53,13 @@ class TaskSetupSortTest {
     private fun task(
         setup: ScriptPackageInstance,
         status: TaskStatus,
+        userInteraction: UserInteraction? = null,
     ) = JobTask(
         id = "${setup.id}-task",
         scriptInstance = aScriptInstance(setup),
         configuration = emptyMap(),
         statusHistory = listOf(status),
+        userInteraction = userInteraction,
         createdAt = Instant.fromEpochSeconds(0),
     )
 
@@ -87,7 +90,8 @@ class TaskSetupSortTest {
     }
 
     @Test
-    fun `needs attention puts failed setups first, then running ones, newest first within each`() {
+    fun `needs attention puts failed or waiting setups first, then running ones, newest first within each`() {
+        val waiting = setup("waiting", -1)
         val idleOld = setup("idle-old", 0)
         val failedOld = setup("failed-old", 1)
         val running = setup("running", 2)
@@ -95,6 +99,7 @@ class TaskSetupSortTest {
         val idleNew = setup("idle-new", 4)
         val tasks =
             listOf(
+                task(waiting, TaskStatus.Idle(timestamp = Instant.fromEpochSeconds(0)), UserInteraction.ContinueButton(mockk(relaxed = true))),
                 task(idleOld, TaskStatus.Idle(timestamp = Instant.fromEpochSeconds(0))),
                 task(failedOld, TaskStatus.Error("Failed", timestamp = Instant.fromEpochSeconds(0))),
                 task(running, TaskStatus.Running(timestamp = Instant.fromEpochSeconds(0))),
@@ -102,8 +107,8 @@ class TaskSetupSortTest {
             )
 
         assertEquals(
-            listOf("failed-new", "failed-old", "running", "idle-new", "idle-old"),
-            TaskSetupSort.NEEDS_ATTENTION.ids(listOf(idleOld, failedOld, running, failedNew, idleNew), tasks),
+            listOf("failed-new", "failed-old", "waiting", "running", "idle-new", "idle-old"),
+            TaskSetupSort.NEEDS_ATTENTION.ids(listOf(idleOld, failedOld, running, waiting, failedNew, idleNew), tasks),
         )
     }
 

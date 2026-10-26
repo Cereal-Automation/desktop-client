@@ -16,7 +16,7 @@ enum class TaskSetupSort(
     /** By script name, then by the setup's script identifier. */
     NAME("name"),
 
-    /** Setups with a failed task first, then those with a running task, then the rest. */
+    /** Setups with a task that [Task.needsAttention] (failed, or waiting for the user) first, then those with a running task, then the rest. */
     NEEDS_ATTENTION("needs_attention"),
     ;
 
@@ -56,7 +56,7 @@ enum class TaskSetupSort(
 
     private fun attentionRank(tasks: List<Task>): Int =
         when {
-            tasks.any { it.status is TaskStatus.Error } -> 0
+            tasks.any { it.needsAttention } -> 0
             tasks.any { it.status is TaskStatus.Running } -> 1
             else -> 2
         }

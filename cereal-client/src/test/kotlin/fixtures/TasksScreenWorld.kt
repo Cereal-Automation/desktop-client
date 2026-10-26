@@ -48,6 +48,7 @@ import com.cereal.client.domain.model.task.ScriptPackageGroup
 import com.cereal.client.domain.model.task.TaskStatus
 import com.cereal.client.domain.model.task.UserInteraction
 import com.cereal.client.domain.model.user.Subscription
+import com.cereal.client.domain.repository.ApplicationPreferenceRepository
 import com.cereal.client.infrastructure.data.repository.inmemory.InMemoryApplicationPreferenceRepository
 import com.cereal.client.infrastructure.data.repository.inmemory.InMemoryArtifactRepository
 import com.cereal.client.infrastructure.data.repository.inmemory.InMemoryCustomDatasetRepository
@@ -79,6 +80,7 @@ import kotlin.time.ExperimentalTime
 @OptIn(ExperimentalTime::class)
 class TasksScreenWorld(
     val dispatcher: TestDispatcher,
+    val preferences: ApplicationPreferenceRepository = InMemoryApplicationPreferenceRepository(),
 ) {
     val dispatcherProvider = CoroutinesDispatcherProvider(dispatcher, dispatcher, dispatcher)
     val tasksRepository = InMemoryTasksRepository()
@@ -87,7 +89,6 @@ class TasksScreenWorld(
     val artifactRepository = InMemoryArtifactRepository()
     val systemProvider = InMemorySystemProvider()
     val errorResolver = ErrorResolver()
-    val preferences = InMemoryApplicationPreferenceRepository()
 
     private val noOpScopeLinker =
         object : ScopeLinker {
