@@ -47,6 +47,8 @@ sealed class ApplicationPreferenceKey<T>(
 
     object ShowDebugLogs : ApplicationPreferenceKey<Boolean>(KEY_SHOW_DEBUG_LOGS, false)
 
+    object SidebarCollapsed : ApplicationPreferenceKey<Boolean>(KEY_SIDEBAR_COLLAPSED, false)
+
     object ProxyHealthCheckInterval :
         ApplicationPreferenceKey<String>(KEY_PROXY_HEALTH_CHECK_INTERVAL, "off")
 
@@ -78,6 +80,7 @@ sealed class ApplicationPreferenceKey<T>(
         const val KEY_EMAIL_TO = "key_email_to"
         const val KEY_EMAIL_USE_TLS = "key_email_use_tls"
         const val KEY_SHOW_DEBUG_LOGS = "key_show_debug_logs"
+        const val KEY_SIDEBAR_COLLAPSED = "key_sidebar_collapsed"
         const val KEY_PROXY_HEALTH_CHECK_INTERVAL = "key_proxy_health_check_interval"
         const val KEY_NOTIFICATION_CENTER_LAST_SEEN_AT = "key_notification_center_last_seen_at"
         const val KEY_MARS_PROXIES_API_TOKEN = "key_mars_proxies_api_token"

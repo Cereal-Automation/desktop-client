@@ -13,6 +13,7 @@ class InMemoryApplicationPreferenceRepository : ApplicationPreferenceRepository 
     private val developmentScriptsEnabled = MutableStateFlow(false)
     private val discordActivityStatusEnabled = MutableStateFlow(true)
     private val showDebugLogs = MutableStateFlow(false)
+    private val sidebarCollapsed = MutableStateFlow(false)
     private val proxyHealthCheckInterval = MutableStateFlow(ProxyHealthCheckInterval.Default)
 
     override suspend fun setDiscordActivityStatusEnabled(enabled: Boolean) {
@@ -32,6 +33,12 @@ class InMemoryApplicationPreferenceRepository : ApplicationPreferenceRepository 
     }
 
     override suspend fun isShowDebugLogs(): Flow<Boolean> = showDebugLogs
+
+    override suspend fun setSidebarCollapsed(collapsed: Boolean) {
+        sidebarCollapsed.value = collapsed
+    }
+
+    override suspend fun isSidebarCollapsed(): Flow<Boolean> = sidebarCollapsed
 
     override suspend fun setProxyHealthCheckInterval(interval: ProxyHealthCheckInterval) {
         proxyHealthCheckInterval.value = interval

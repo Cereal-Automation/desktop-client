@@ -42,7 +42,7 @@ object ViewModelModule {
     val modules =
         module {
             single { MenuReselectionCoordinator() }
-            factory { MainViewModel(get(), get(), get(), get(), get(), get(), get(), get()) }
+            factory { MainViewModel(get(), get(), get(), get(), get(), get(), get(), get(), get(), get()) }
             factory { (scope: CoroutineScope, onStartNewInstance: Function1<String, Unit>) ->
                 MarketplaceViewModel(scope, get(), get(), get(), onStartNewInstance)
             }

@@ -6,8 +6,12 @@ import androidx.compose.material.icons.filled.Bolt
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Storefront
 import androidx.compose.material.icons.filled.VerifiedUser
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.test.ExperimentalTestApi
 import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import com.cereal.client.presentation.navigation.Root
@@ -26,7 +30,7 @@ import kotlin.test.assertEquals
 /**
  * Renders [MainMenu] directly with deterministic [MenuItemUiModel] fixtures. Unlike [MainScreenTest]
  * this does not depend on the asynchronous authentication flow, so it can assert the static sidebar
- * structure (section headers, item labels, version chip, user card) and the click callback contract.
+ * structure (section headers, item labels, user card) and the click callback contract.
  */
 @OptIn(ExperimentalTestApi::class, ExperimentalFoundationApi::class)
 class MainMenuViewTest {
@@ -81,7 +85,6 @@ class MainMenuViewTest {
             setScreenContent {
                 MainMenu(
                     menuItems = menuFixture,
-                    appVersion = "1.2.3",
                     activeScriptCount = 2,
                     onClick = {},
                 )
@@ -101,9 +104,6 @@ class MainMenuViewTest {
             // System items: the profile item renders its titleOverride, not "Profile".
             onNodeWithText("Settings").assertIsDisplayed()
             onNodeWithText("Ada Lovelace").assertIsDisplayed()
-
-            // Brand version chip.
-            onNodeWithText("v1.2.3").assertIsDisplayed()
         }
 
     @Test
@@ -113,7 +113,6 @@ class MainMenuViewTest {
             setScreenContent {
                 MainMenu(
                     menuItems = menuFixture,
-                    appVersion = "1.2.3",
                     activeScriptCount = 0,
                     onClick = { clicked = it },
                 )
@@ -122,5 +121,50 @@ class MainMenuViewTest {
             onNodeWithText("Marketplace").performClick()
 
             assertEquals(Root.Routing.Marketplace, clicked?.route)
+        }
+
+    @Test
+    fun collapsedRailShowsIconsBadgesAndAvatarWithoutLabels() =
+        runScreenTest {
+            var clicked: MenuItemUiModel? = null
+            val withBadge = menuFixture.replacingAt(0, menuFixture[0].copy(badge = 3))
+            setScreenContent {
+                MainMenu(
+                    menuItems = withBadge,
+                    activeScriptCount = 2,
+                    collapsed = true,
+                    onClick = { clicked = it },
+                )
+            }
+
+            onNodeWithText("AGENT").assertDoesNotExist()
+            onNodeWithText("Marketplace").assertDoesNotExist()
+            onNodeWithText("3").assertIsDisplayed()
+
+            // Labels survive as content descriptions, so icon-only items are still reachable.
+            onNodeWithContentDescription("Marketplace").performClick()
+            assertEquals(Root.Routing.Marketplace, clicked?.route)
+
+            onNodeWithContentDescription("Ada Lovelace").performClick()
+            assertEquals(Root.Routing.Profile, clicked?.route)
+        }
+
+    @Test
+    fun toggleButtonInvokesCallbackInBothStates() =
+        runScreenTest {
+            var collapsed by mutableStateOf(false)
+            setScreenContent {
+                MainMenu(
+                    menuItems = menuFixture,
+                    activeScriptCount = 0,
+                    collapsed = collapsed,
+                    onToggleCollapsed = { collapsed = !collapsed },
+                    onClick = {},
+                )
+            }
+
+            onNodeWithContentDescription("Collapse sidebar").performClick()
+            onNodeWithContentDescription("Expand sidebar").performClick()
+            onNodeWithContentDescription("Collapse sidebar").assertIsDisplayed()
         }
 }
