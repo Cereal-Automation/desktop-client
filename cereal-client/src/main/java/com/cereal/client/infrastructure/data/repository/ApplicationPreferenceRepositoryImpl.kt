@@ -55,6 +55,20 @@ class ApplicationPreferenceRepositoryImpl(
         }
     }
 
+    override suspend fun setSidebarCollapsed(collapsed: Boolean) {
+        val key = ApplicationPreferenceKey.SidebarCollapsed.key
+        keyValueDataSource.setBooleanByKey(key, collapsed, userSession.requireUser())
+    }
+
+    override suspend fun isSidebarCollapsed(): Flow<Boolean> {
+        val key = ApplicationPreferenceKey.SidebarCollapsed.key
+        val defaultValue = ApplicationPreferenceKey.SidebarCollapsed.defaultValue
+
+        return keyValueDataSource.getBooleanByKey(key, userSession.requireUser()).map {
+            it ?: defaultValue
+        }
+    }
+
     override suspend fun setProxyHealthCheckInterval(interval: ProxyHealthCheckInterval) {
         val key = ApplicationPreferenceKey.ProxyHealthCheckInterval.key
         keyValueDataSource.setStringByKey(key, interval.storageValue, userSession.requireUser())

@@ -16,6 +16,8 @@ import com.cereal.client.application.CoroutinesDispatcherProvider
 import com.cereal.client.application.Interactor
 import com.cereal.client.application.app.UpdateCheckResult
 import com.cereal.client.application.interactor.app.CheckForUpdatesInteractor
+import com.cereal.client.application.interactor.app.ObserveSidebarCollapsedInteractor
+import com.cereal.client.application.interactor.app.SetSidebarCollapsedInteractor
 import com.cereal.client.application.interactor.auth.GetAuthenticatedUserInteractor
 import com.cereal.client.application.interactor.notification.ObserveUnseenNotificationCountInteractor
 import com.cereal.client.application.interactor.script.GetScriptsInteractor
@@ -40,6 +42,7 @@ import kotlinx.collections.immutable.toImmutableList
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.emptyFlow
 import kotlinx.coroutines.flow.flatMapLatest
@@ -48,9 +51,10 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import org.jetbrains.compose.resources.StringResource
 
+@Suppress("LongParameterList")
 @OptIn(ExperimentalCoroutinesApi::class)
 class MainViewModel(
-    dispatcherProvider: CoroutinesDispatcherProvider,
+    private val dispatcherProvider: CoroutinesDispatcherProvider,
     getAuthenticatedUserInteractor: GetAuthenticatedUserInteractor,
     private val applicationConfig: ApplicationConfig,
     private val checkForUpdatesInteractor: CheckForUpdatesInteractor,
@@ -58,6 +62,8 @@ class MainViewModel(
     getScriptsInteractor: GetScriptsInteractor,
     private val observeTasksInteractor: ObserveTasksInteractor,
     private val observeUnseenNotificationCountInteractor: ObserveUnseenNotificationCountInteractor,
+    observeSidebarCollapsedInteractor: ObserveSidebarCollapsedInteractor,
+    private val setSidebarCollapsedInteractor: SetSidebarCollapsedInteractor,
 ) {
     private val scope = CoroutineScope(SupervisorJob() + dispatcherProvider.main)
 
@@ -75,8 +81,11 @@ class MainViewModel(
     private var unseenNotificationCount: Int = 0
 
     val menuItems = mutableStateOf(buildMenuItems())
-    val appVersion: String = applicationConfig.versionName
     val activeScriptCount = mutableStateOf(0)
+    val isSidebarCollapsed = mutableStateOf(false)
+
+    /** Toggles waiting to be saved; conflated, so a burst of clicks only saves the latest choice. */
+    private val sidebarWrites = Channel<Boolean>(Channel.CONFLATED)
 
     init {
         scope.launch(dispatcherProvider.io) {
@@ -115,6 +124,42 @@ class MainViewModel(
                         }
                     }
                 }
+        }
+
+        // The preference is stored per user, so (like the script count) it is only readable once logged in.
+        scope.launch(dispatcherProvider.io) {
+            getAuthenticatedUserInteractor(Interactor.None())
+                .map { (it as? SuspendableResult.Success)?.value }
+                .flatMapLatest { user ->
+                    if (user == null) {
+                        // Don't carry one user's choice over to the next login.
+                        isSidebarCollapsed.value = false
+                        emptyFlow()
+                    } else {
+                        observeSidebarCollapsedInteractor(Interactor.None())
+                    }
+                }.collectLatest { result ->
+                    if (result is SuspendableResult.Success) {
+                        val collapsed = result.value
+                        withContext(dispatcherProvider.main) {
+                            isSidebarCollapsed.value = collapsed
+                        }
+                    }
+                }
+        }
+
+        // A single consumer saves toggles in click order, so a quick double-click can't land out of order.
+        scope.launch(dispatcherProvider.io) {
+            for (collapsed in sidebarWrites) {
+                setSidebarCollapsedInteractor(SetSidebarCollapsedInteractor.Params(collapsed)) { result ->
+                    if (result is SuspendableResult.Failure) {
+                        withContext(dispatcherProvider.main) {
+                            // Not saved: undo the optimistic flip, unless the user has toggled again since.
+                            if (isSidebarCollapsed.value == collapsed) isSidebarCollapsed.value = !collapsed
+                        }
+                    }
+                }
+            }
         }
 
         scope.launch(dispatcherProvider.io) {
@@ -170,6 +215,13 @@ class MainViewModel(
 
     fun onMenuItemReselected(route: Root.Routing) {
         menuReselectionCoordinator.notifyReselected(route)
+    }
+
+    fun onToggleSidebar() {
+        val collapsed = !isSidebarCollapsed.value
+        // Flip immediately for a responsive toggle; the observed preference then confirms it.
+        isSidebarCollapsed.value = collapsed
+        sidebarWrites.trySend(collapsed)
     }
 
     private fun buildMenuItems(): ImmutableList<MenuItemUiModel> =

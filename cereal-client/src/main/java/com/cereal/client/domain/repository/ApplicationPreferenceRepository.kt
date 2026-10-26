@@ -21,6 +21,10 @@ interface ApplicationPreferenceRepository {
 
     suspend fun isShowDebugLogs(): Flow<Boolean>
 
+    suspend fun setSidebarCollapsed(collapsed: Boolean)
+
+    suspend fun isSidebarCollapsed(): Flow<Boolean>
+
     suspend fun setProxyHealthCheckInterval(interval: ProxyHealthCheckInterval)
 
     suspend fun getProxyHealthCheckInterval(): Flow<ProxyHealthCheckInterval>

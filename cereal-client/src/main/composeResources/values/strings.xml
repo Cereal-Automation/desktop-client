@@ -228,6 +228,8 @@
     <string name="nav_section_resources">Resources</string>
     <string name="nav_section_system">System</string>
     <string name="nav_user_fallback">User</string>
+    <string name="collapse_sidebar">Collapse sidebar</string>
+    <string name="expand_sidebar">Expand sidebar</string>
     <string name="notification_center_summary">%1$d unseen · %2$d total</string>
     <string name="notification_center_total">%1$d total</string>
     <string name="notification_center_empty_title">No notifications yet</string>
