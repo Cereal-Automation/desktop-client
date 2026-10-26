@@ -4,6 +4,7 @@ import androidx.compose.runtime.State
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.referentialEqualityPolicy
+import androidx.compose.ui.unit.Dp
 import com.cereal.client.application.CoroutinesDispatcherProvider
 import com.cereal.client.application.Interactor
 import com.cereal.client.application.interactor.artifact.ObserveArtifactsInteractor
@@ -65,6 +66,7 @@ class TasksViewModel(
     private val setConcurrentTaskCountInteractor: SetConcurrentTaskCountInteractor,
     private val observeTaskSetupSortInteractor: ObserveTaskSetupSortInteractor,
     private val setTaskSetupSortInteractor: SetTaskSetupSortInteractor,
+    private val inspectorLayout: TaskInspectorLayoutState,
 ) {
     private val scope = CoroutineScope(SupervisorJob() + dispatcherProvider.main)
     private val interactorRunner = InteractorRunner(scope, dispatcherProvider, errorResolver)
@@ -136,6 +138,13 @@ class TasksViewModel(
     /** The inspector for the selected task, live; null while no task is selected. */
     val inspector: State<TaskInspectorState?> =
         derivedStateOf { _selectedTask.value?.let { TasksViewStateBuilder.buildInspectorState(it.id, allTasks.value) } }
+
+    /** The inspector width the user dragged to; null until they drag it. */
+    val inspectorWidth: State<Dp?> = inspectorLayout.width
+
+    fun onInspectorResized(width: Dp) {
+        inspectorLayout.setWidth(width)
+    }
 
     val userInteractions = mutableStateOf<List<TaskUiModel>>(emptyList())
 

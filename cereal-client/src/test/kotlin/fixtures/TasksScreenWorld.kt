@@ -59,6 +59,7 @@ import com.cereal.client.infrastructure.data.repository.inmemory.InMemoryTasksRe
 import com.cereal.client.infrastructure.provider.inmemory.InMemoryAuthProvider
 import com.cereal.client.infrastructure.provider.inmemory.InMemorySystemProvider
 import com.cereal.client.presentation.error.ErrorResolver
+import com.cereal.client.presentation.tasks.TaskInspectorLayoutState
 import com.cereal.client.presentation.tasks.TasksActionHandler
 import com.cereal.client.presentation.tasks.TasksListObserver
 import com.cereal.client.presentation.tasks.TasksViewModel
@@ -158,6 +159,7 @@ class TasksScreenWorld(
             setConcurrentTaskCountInteractor,
             ObserveTaskSetupSortInteractor(preferences),
             SetTaskSetupSortInteractor(preferences),
+            TaskInspectorLayoutState(),
         )
 
     /** The "Default" group, created the same way the screen does on entry. */

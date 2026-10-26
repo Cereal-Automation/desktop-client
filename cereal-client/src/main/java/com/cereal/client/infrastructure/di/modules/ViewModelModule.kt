@@ -28,6 +28,7 @@ import com.cereal.client.presentation.proxy.provider.ProxyProviderViewModel
 import com.cereal.client.presentation.proxy.provider.SyncProxiesViewModel
 import com.cereal.client.presentation.settings.ApplicationSettingsViewModel
 import com.cereal.client.presentation.settings.ai.AiSettingsViewModel
+import com.cereal.client.presentation.tasks.TaskInspectorLayoutState
 import com.cereal.client.presentation.tasks.TasksActionHandler
 import com.cereal.client.presentation.tasks.TasksListObserver
 import com.cereal.client.presentation.tasks.TasksViewModel
@@ -42,6 +43,7 @@ object ViewModelModule {
     val modules =
         module {
             single { MenuReselectionCoordinator() }
+            single { TaskInspectorLayoutState() }
             factory { MainViewModel(get(), get(), get(), get(), get(), get(), get(), get()) }
             factory { (scope: CoroutineScope, onStartNewInstance: Function1<String, Unit>) ->
                 MarketplaceViewModel(scope, get(), get(), get(), onStartNewInstance)
@@ -120,6 +122,7 @@ object ViewModelModule {
             }
             factory {
                 TasksViewModel(
+                    get(),
                     get(),
                     get(),
                     get(),

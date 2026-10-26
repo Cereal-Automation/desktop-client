@@ -159,6 +159,7 @@ class TasksViewModelTest {
             mockk(relaxed = true),
             ObserveTaskSetupSortInteractor(InMemoryApplicationPreferenceRepository()),
             SetTaskSetupSortInteractor(InMemoryApplicationPreferenceRepository()),
+            TaskInspectorLayoutState(),
         )
     }
 
@@ -320,6 +321,7 @@ class TasksViewModelTest {
                     mockk(relaxed = true),
                     ObserveTaskSetupSortInteractor(InMemoryApplicationPreferenceRepository()),
                     SetTaskSetupSortInteractor(InMemoryApplicationPreferenceRepository()),
+                    TaskInspectorLayoutState(),
                 )
 
             vm.onTaskClicked(task)
@@ -414,6 +416,7 @@ class TasksViewModelTest {
                     mockk(relaxed = true),
                     ObserveTaskSetupSortInteractor(InMemoryApplicationPreferenceRepository()),
                     SetTaskSetupSortInteractor(InMemoryApplicationPreferenceRepository()),
+                    TaskInspectorLayoutState(),
                 )
 
             vm.onTaskClicked(task)

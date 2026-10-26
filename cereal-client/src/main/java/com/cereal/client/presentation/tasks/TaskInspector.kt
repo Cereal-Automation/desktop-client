@@ -31,6 +31,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.cereal.client.domain.model.artifact.Artifact
@@ -61,6 +62,15 @@ import org.jetbrains.compose.resources.stringResource
 
 /** Narrowest the inspector gets: room for the log's level filter and auto-scroll toggle on one line. */
 internal val InspectorMinWidth = 400.dp
+
+/** Narrowest the inspector leaves the task list beside it. */
+private val ListMinWidth = 400.dp
+
+/** Keeps a requested inspector width within bounds; when [available] can't fit both minimums, the inspector's wins. */
+internal fun clampInspectorWidth(
+    requested: Dp,
+    available: Dp,
+): Dp = requested.coerceAtMost(available - ListMinWidth).coerceAtLeast(InspectorMinWidth)
 
 internal const val TASK_INSPECTOR_TEST_TAG = "task_inspector"
 
