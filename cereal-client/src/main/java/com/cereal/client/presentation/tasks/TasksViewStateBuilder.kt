@@ -69,6 +69,7 @@ object TasksViewStateBuilder {
     ): TaskSetupSection {
         val failed = tasks.count { it.status is TaskStatus.Error }
         val running = tasks.count { it.status is TaskStatus.Running }
+        val singleTask = tasks.singleOrNull()?.toUiModel(1)
         return TaskSetupSection(
             setupId = setup.id,
             name = setup.entryName,
@@ -87,13 +88,15 @@ object TasksViewStateBuilder {
                     add(SetupMenuOption.VIEW_CONFIGURATION)
                     add(SetupMenuOption.DUPLICATE)
                     add(SetupMenuOption.MOVE_TO_GROUP)
-                    if (failed > 0) add(SetupMenuOption.RESTART_FAILED)
+                    // A single task restarts from its own play button.
+                    if (failed > 0 && singleTask == null) add(SetupMenuOption.RESTART_FAILED)
                     if (setup.definition.manifest.supportUrl != null) add(SetupMenuOption.CONTACT_SUPPORT)
                     add(SetupMenuOption.DELETE)
                 },
             editable = running == 0,
             expanded = expanded,
             scripts = scriptRows(tasks, statusFilter),
+            singleTask = singleTask,
         )
     }
 
