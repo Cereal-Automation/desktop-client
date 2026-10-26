@@ -41,8 +41,10 @@ import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.drawscope.clipRect
+import androidx.compose.ui.layout.Layout
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.Constraints
 import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.TextUnitType
 import androidx.compose.ui.unit.dp
@@ -257,8 +259,7 @@ internal fun SingleTaskSetupRow(
             // The chevron's slot, so avatars line up with expandable setups.
             Spacer(Modifier.size(28.dp))
             SetupAvatar(section.name)
-            SetupTitle(section, Modifier.weight(1f))
-            TaskMessage(task, style = MaterialTheme.typography.bodySmall, modifier = Modifier.widthIn(max = 240.dp))
+            TitleAndMessage(section, task, Modifier.weight(1f))
             TimeSince(task.statusSince)
             if (task.isRunning) ActivityIndicator(size = 18.dp)
             StatusChip(status = task.status, isRunning = task.isRunning, isError = task.isError, isSuccess = task.isSuccess)
@@ -266,6 +267,39 @@ internal fun SingleTaskSetupRow(
             TaskActionButton(task, onStartTask, onStopTask, onContinueClick)
             SetupMenu(section, onMenuOptionSelected)
         }
+    }
+}
+
+/**
+ * The setup's name, with its task's message right-aligned after it. The message gives way first: it shrinks, then
+ * hides, so a narrow list keeps room for the name (the inspector still shows the message).
+ */
+@Composable
+private fun TitleAndMessage(
+    section: TaskSetupSection,
+    task: TaskUiModel,
+    modifier: Modifier,
+) = Layout(
+    contents =
+        listOf(
+            { SetupTitle(section, Modifier) },
+            { TaskMessage(task, style = MaterialTheme.typography.bodySmall) },
+        ),
+    modifier = modifier,
+) { (titles, messages), constraints ->
+    val title = titles.single()
+    val message = messages.single()
+    val width = constraints.maxWidth
+    val gap = 10.dp.roundToPx()
+    val titleKeeps = minOf(title.maxIntrinsicWidth(constraints.maxHeight), TitleKeepsWidth.roundToPx())
+    val messageRoom = minOf(width - titleKeeps - gap, MessageMaxWidth.roundToPx())
+    val messagePlaceable = if (messageRoom >= MessageMinWidth.roundToPx()) message.measure(Constraints(maxWidth = messageRoom)) else null
+    val messageSpace = messagePlaceable?.let { it.width + gap } ?: 0
+    val titlePlaceable = title.measure(Constraints(maxWidth = (width - messageSpace).coerceAtLeast(0)))
+    val height = maxOf(titlePlaceable.height, messagePlaceable?.height ?: 0)
+    layout(width, height) {
+        titlePlaceable.place(0, (height - titlePlaceable.height) / 2)
+        messagePlaceable?.place(width - messagePlaceable.width, (height - messagePlaceable.height) / 2)
     }
 }
 
@@ -422,6 +456,13 @@ internal fun Modifier.setupCardSlice(
     }
 
 private val CardRadius = 8.dp
+
+/** How much of the setup's name [TitleAndMessage] keeps before giving its task's message any room. */
+private val TitleKeepsWidth = 120.dp
+private val MessageMaxWidth = 240.dp
+
+/** Narrower than this, the message is hidden rather than ellipsized to a stub. */
+private val MessageMinWidth = 48.dp
 
 @Composable
 private fun SetupAvatar(name: String) {
