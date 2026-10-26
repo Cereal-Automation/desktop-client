@@ -13,7 +13,7 @@ class InMemoryApplicationRepository : ApplicationRepository {
 
     override suspend fun getInstalledVersion(): SemVer = installedVersion
 
-    override suspend fun getSdkVersion(): SemVer = SemVer(1, 0, 0)
+    override suspend fun getSdkVersion(): SemVer = SemVer.parse("1.99.0")
 
     override suspend fun setVersionCheckTime(timestamp: Long) {
         versionCheckTime = timestamp

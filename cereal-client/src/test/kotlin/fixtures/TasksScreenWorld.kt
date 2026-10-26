@@ -56,7 +56,6 @@ import com.cereal.client.infrastructure.data.repository.inmemory.InMemoryTasksRe
 import com.cereal.client.infrastructure.provider.inmemory.InMemoryAuthProvider
 import com.cereal.client.infrastructure.provider.inmemory.InMemorySystemProvider
 import com.cereal.client.presentation.error.ErrorResolver
-import com.cereal.client.presentation.tasks.LastSelectedTaskSetup
 import com.cereal.client.presentation.tasks.TasksActionHandler
 import com.cereal.client.presentation.tasks.TasksListObserver
 import com.cereal.client.presentation.tasks.TasksViewModel
@@ -85,9 +84,6 @@ class TasksScreenWorld(
     val artifactRepository = InMemoryArtifactRepository()
     val systemProvider = InMemorySystemProvider()
     val errorResolver = ErrorResolver()
-
-    /** Session-wide, like its Koin single: shared by every [viewModel] (screen visit) of this world. */
-    val lastSelectedTaskSetup = LastSelectedTaskSetup()
 
     private val noOpScopeLinker =
         object : ScopeLinker {
@@ -150,7 +146,6 @@ class TasksScreenWorld(
             OpenUrlInteractor(systemProvider),
             ObserveArtifactsInteractor(artifactRepository),
             SaveArtifactToFileInteractor(artifactRepository),
-            lastSelectedTaskSetup,
             setConcurrentTaskCountInteractor,
         )
 
@@ -163,7 +158,7 @@ class TasksScreenWorld(
      * Adds a task setup to [group] (the default group when null) with one task per entry of [taskStatuses],
      * numbered in that order (`<id>-task-1`, `<id>-task-2`, ...). Its main [configuration] is empty unless given (a
      * [proxyGroup] makes the task count adjustable); [configurationItems] are the script's configuration definition.
-     * Its script is licensed with [capacity]; null leaves it unlicensed.
+     * Its script is licensed with [capacity]; null leaves it unlicensed. Its script is called [name] and links to [supportUrl].
      */
     suspend fun setup(
         id: String,
@@ -172,11 +167,16 @@ class TasksScreenWorld(
         configuration: ScriptConfigurationValues = emptyMap(),
         configurationItems: List<ScriptConfigurationItemDefinition> = emptyList(),
         capacity: ScriptCapacity? = ScriptCapacity.None,
+        name: String = "Test",
+        supportUrl: String? = null,
     ): ScriptPackageInstance {
         if (capacity != null) subscriptions += subscription("com.example.$id", capacity)
         val definition =
             aScriptPackage("com.example.$id").let {
-                it.copy(mainScript = it.mainScript.copy(configuration = it.mainScript.configuration.copy(configurationItems = configurationItems)))
+                it.copy(
+                    manifest = it.manifest.copy(name = name, supportUrl = supportUrl),
+                    mainScript = it.mainScript.copy(configuration = it.mainScript.configuration.copy(configurationItems = configurationItems)),
+                )
             }
         val packageInstance =
             aScriptPackageInstance(id, "com.example.$id").copy(

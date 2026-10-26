@@ -1,78 +1,85 @@
 package com.cereal.client.presentation.tasks
 
+import com.cereal.client.domain.model.task.ScriptPackageGroup
 import com.cereal.client.domain.model.task.UserInteraction
 import fixtures.aScriptInstance
 import fixtures.aScriptPackageInstance
+import fixtures.aScriptPackageWithVariant
 import fixtures.aTask
 import io.mockk.mockk
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertFalse
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
+import kotlin.test.assertIs
+import kotlin.time.Clock
+import kotlin.time.Duration.Companion.seconds
+import kotlin.time.ExperimentalTime
 
+@OptIn(ExperimentalTime::class)
 class TasksViewStateBuilderTest {
-    @Test
-    fun `returns NoSelection when no script package instance is selected`() {
-        val state = TasksViewStateBuilder.buildDetailViewState(tasks = null, selectedScriptPackageInstance = null)
+    private val default = ScriptPackageGroup("default", "Default")
+    private val work = ScriptPackageGroup("work", "Work")
 
-        assertTrue(state is TaskViewState.DetailViewState.NoSelection)
+    @Test
+    fun `is Loading until the groups and their setups have loaded`() {
+        assertEquals(TaskViewState.ListState.Loading, TasksViewStateBuilder.buildListState(null, emptyList()))
     }
 
     @Test
-    fun `returns Empty when the selected package has no tasks`() {
-        val packageInstance = aScriptPackageInstance("pkg1", "com.test")
+    fun `is Empty with no groups, or only one group without setups`() {
+        assertEquals(TaskViewState.ListState.Empty, TasksViewStateBuilder.buildListState(emptyList(), emptyList()))
+        assertEquals(TaskViewState.ListState.Empty, TasksViewStateBuilder.buildListState(listOf(default to emptyList()), emptyList()))
+    }
 
-        val state =
-            TasksViewStateBuilder.buildDetailViewState(
-                tasks = emptyList(),
-                selectedScriptPackageInstance = packageInstance,
+    @Test
+    fun `lists groups the user made even while they hold no setups`() {
+        val state = TasksViewStateBuilder.buildListState(listOf(default to emptyList(), work to emptyList()), emptyList())
+
+        assertEquals(listOf("Default", "Work"), assertIs<TaskViewState.ListState.Filled>(state).groups.map { it.name })
+    }
+
+    @Test
+    fun `numbers a setup's tasks by creation and lists running ones first`() {
+        val setup = aScriptPackageInstance("pkg1", "com.test")
+        val script = aScriptInstance(setup)
+        val now = Clock.System.now()
+        val first = aTask("t1", script, running = false).copy(createdAt = now)
+        val second = aTask("t2", script, running = true).copy(createdAt = now + 1.seconds)
+
+        val state = TasksViewStateBuilder.buildListState(listOf(default to listOf(setup)), listOf(first, second))
+
+        val rows =
+            assertIs<TaskViewState.ListState.Filled>(state)
+                .groups
+                .single()
+                .setups
+                .single()
+                .scripts
+                .flatMap { it.tasks }
+        assertEquals(listOf("t2" to 2, "t1" to 1), rows.map { it.id.id to it.taskNumber })
+    }
+
+    @Test
+    fun `names a variant setup after its variant and a default-entry setup after its package`() {
+        val variant =
+            aScriptPackageInstance(
+                id = "v1",
+                packageName = "com.example",
+                definition = aScriptPackageWithVariant("com.example", variantId = "checkout", variantName = "Checkout"),
+                variantId = "checkout",
             )
+        val defaultEntry = aScriptPackageInstance("d1", "com.example")
 
-        assertTrue(state is TaskViewState.DetailViewState.Empty)
-        assertEquals("Test", state.headerTitle)
-    }
+        val state = TasksViewStateBuilder.buildListState(listOf(default to listOf(variant, defaultEntry)), emptyList())
 
-    @Test
-    fun `returns Filled with per-status counts for matching tasks`() {
-        val packageInstance = aScriptPackageInstance("pkg1", "com.test")
-        val scriptInstance = aScriptInstance(packageInstance)
-        val running = aTask("t1", scriptInstance, running = true)
-        val idle = aTask("t2", scriptInstance, running = false)
-
-        val state =
-            TasksViewStateBuilder.buildDetailViewState(
-                tasks = listOf(running, idle),
-                selectedScriptPackageInstance = packageInstance,
-            ) as TaskViewState.DetailViewState.Filled
-
-        assertEquals(1, state.scriptInstances.size)
-        assertEquals(
-            2,
-            state.scriptInstances
-                .first()
-                .tasks.size,
-        )
-        assertEquals(1, state.runningTasksCount)
-        assertEquals(1, state.idleTasksCount)
-        assertEquals(0, state.finishedTasksCount)
-        assertEquals(0, state.erroredTasksCount)
-        assertTrue(state.startAllTasksEnabled)
-        assertTrue(state.stopAllTasksEnabled)
-    }
-
-    @Test
-    fun `ignores tasks that belong to a different package`() {
-        val selected = aScriptPackageInstance("pkg1", "com.test")
-        val otherInstance = aScriptInstance(aScriptPackageInstance("pkg2", "com.other"))
-        val foreignTask = aTask("t1", otherInstance, running = true)
-
-        val state =
-            TasksViewStateBuilder.buildDetailViewState(
-                tasks = listOf(foreignTask),
-                selectedScriptPackageInstance = selected,
-            )
-
-        assertTrue(state is TaskViewState.DetailViewState.Empty)
+        val names =
+            assertIs<TaskViewState.ListState.Filled>(state)
+                .groups
+                .single()
+                .setups
+                .map { it.name }
+        assertEquals(listOf("Checkout", "Test"), names)
     }
 
     @Test

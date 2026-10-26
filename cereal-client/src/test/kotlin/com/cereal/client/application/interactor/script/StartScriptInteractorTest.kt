@@ -78,7 +78,7 @@ class StartScriptInteractorTest {
     @Test
     fun `run throws ClientUpdateRequiredException when the script requires a newer SDK`() =
         runTest {
-            // InMemoryApplicationRepository reports SDK 1.0.0; the script requires 2.0. Thrown before licensing.
+            // InMemoryApplicationRepository reports SDK 1.99.0; the script requires 2.0. Thrown before licensing.
             assertFailsWith<ClientUpdateRequiredException> {
                 interactorWith().run(params(sdkVersion = "2.0.0"))
             }

@@ -33,8 +33,6 @@ import com.cereal.client.domain.repository.LogEventRepository
 import com.cereal.client.presentation.error.ErrorResolver
 import com.cereal.client.presentation.tasks.model.TaskUiModel
 import com.cereal.client.presentation.tasks.script.overview.ScriptRequest
-import com.cereal.client.presentation.view.group.GroupListItemContent
-import com.cereal.client.presentation.view.group.HierarchicalListItem
 import com.github.kittinunf.result.coroutines.SuspendableResult
 import io.mockk.coEvery
 import io.mockk.coVerify
@@ -156,7 +154,6 @@ class TasksViewModelTest {
             openUrlInteractor,
             observeArtifactsInteractor,
             saveArtifactToFileInteractor,
-            LastSelectedTaskSetup(),
             mockk(relaxed = true),
         )
     }
@@ -175,7 +172,7 @@ class TasksViewModelTest {
 
             // Regression: this used to be Empty, which renders the full "create your first
             // group" CTA before the real groups arrive — the entry flicker the user reported.
-            assertIs<TaskViewState.GroupViewState.Loading>(viewModel.hierarchicalListState.value)
+            assertIs<TaskViewState.ListState.Loading>(viewModel.listState.value)
         }
 
     @Test
@@ -187,7 +184,7 @@ class TasksViewModelTest {
             createViewModel()
             dispatcher.scheduler.advanceUntilIdle()
 
-            assertIs<TaskViewState.GroupViewState.Empty>(viewModel.hierarchicalListState.value)
+            assertIs<TaskViewState.ListState.Empty>(viewModel.listState.value)
         }
 
     @Test
@@ -200,9 +197,6 @@ class TasksViewModelTest {
 
             createViewModel()
             dispatcher.scheduler.advanceUntilIdle()
-
-            // Select the group
-            viewModel.hierarchicalListViewModel.selectParent(group)
 
             // Act
             viewModel.deleteGroup(group)
@@ -227,9 +221,6 @@ class TasksViewModelTest {
 
             createViewModel()
             dispatcher.scheduler.advanceUntilIdle()
-
-            // Select the group
-            viewModel.hierarchicalListViewModel.selectParent(group)
 
             // Act
             viewModel.deleteGroup(group)
@@ -258,24 +249,6 @@ class TasksViewModelTest {
         }
 
     @Test
-    fun `onDeleteScriptInstance should show confirmation dialog`() =
-        runTest {
-            // Arrange
-            val scriptPackageInstance = mockk<ScriptPackageInstance>(relaxed = true)
-            createViewModel()
-
-            // Act
-            viewModel.onDeleteScriptInstance(scriptPackageInstance)
-            dispatcher.scheduler.advanceUntilIdle()
-
-            // Assert
-            coVerify(exactly = 0) { deleteScriptInstanceInteractor(any(), any()) }
-            val dialogState = viewModel.dialogState.value
-            assertIs<TaskViewState.DialogState.ConfirmScriptInstanceDeletion>(dialogState)
-            assertEquals(scriptPackageInstance, dialogState.scriptPackageInstance)
-        }
-
-    @Test
     fun `confirmScriptInstanceDeletion should invoke delete interactor`() =
         runTest {
             // Arrange
@@ -289,188 +262,6 @@ class TasksViewModelTest {
             // Assert
             coVerify(exactly = 1) { deleteScriptInstanceInteractor(any(), any()) }
             assertEquals(TaskViewState.DialogState.Hidden, viewModel.dialogState.value)
-        }
-
-    @Test
-    fun `confirmScriptInstanceDeletion should deselect child when deleted instance is selected`() =
-        runTest {
-            // Arrange
-            val scriptPackageInstance = mockk<ScriptPackageInstance>(relaxed = true)
-            every { scriptPackageInstance.id } returns "instance1"
-            coEvery { deleteScriptInstanceInteractor(any(), any()) } coAnswers {
-                @Suppress("UNCHECKED_CAST")
-                val onResult = secondArg<suspend (SuspendableResult<Unit, Exception>) -> Unit>()
-                onResult(SuspendableResult.Success(Unit))
-            }
-            createViewModel()
-            viewModel.hierarchicalListViewModel.selectChild(scriptPackageInstance)
-
-            // Act
-            viewModel.confirmScriptInstanceDeletion(scriptPackageInstance)
-            dispatcher.scheduler.advanceUntilIdle()
-
-            // Assert
-            assertEquals(null, viewModel.hierarchicalListViewModel.selectedChild)
-        }
-
-    @Test
-    fun `closeDialog should hide dialog without invoking delete interactor`() =
-        runTest {
-            // Arrange
-            val scriptPackageInstance = mockk<ScriptPackageInstance>(relaxed = true)
-            createViewModel()
-            viewModel.onDeleteScriptInstance(scriptPackageInstance)
-            dispatcher.scheduler.advanceUntilIdle()
-            assertIs<TaskViewState.DialogState.ConfirmScriptInstanceDeletion>(viewModel.dialogState.value)
-
-            // Act
-            viewModel.closeDialog()
-
-            // Assert
-            coVerify(exactly = 0) { deleteScriptInstanceInteractor(any(), any()) }
-            assertEquals(TaskViewState.DialogState.Hidden, viewModel.dialogState.value)
-        }
-
-    @Test
-    fun `reportIssue should invoke interactor with correct params`() =
-        runTest {
-            // Arrange
-            createViewModel()
-            val packageInstance = mockk<ScriptPackageInstance>(relaxed = true)
-            val scriptInstance = mockk<ScriptInstance>(relaxed = true)
-            every { scriptInstance.packageInstance } returns packageInstance
-
-            val task = mockk<Task>(relaxed = true)
-            every { task.scriptInstance } returns scriptInstance
-
-            val taskUiModel =
-                TaskUiModel(
-                    id = task,
-                    taskNumber = 1,
-                    isRunning = false,
-                    isError = true,
-                    isSuccess = false,
-                    hasSupportUrl = true,
-                    message = "Error occurred",
-                    status = "Error",
-                    configuration = "",
-                    stackTrace = "java.lang.Exception: Error occurred",
-                    isIdle = false,
-                    statusSince = Clock.System.now(),
-                )
-
-            val slot = slot<ReportScriptIssueInteractor.Params>()
-            coEvery { reportScriptIssueInteractor(capture(slot), any()) } returns Unit
-
-            // Act
-            viewModel.reportIssue(taskUiModel)
-            dispatcher.scheduler.advanceUntilIdle()
-
-            // Assert
-            coVerify(exactly = 1) { reportScriptIssueInteractor(any(), any()) }
-            assertEquals(packageInstance, slot.captured.scriptPackageInstance)
-            assertEquals("Error occurred", slot.captured.errorMessage)
-            assertEquals("java.lang.Exception: Error occurred", slot.captured.stackTrace)
-        }
-
-    @Test
-    fun `contactSupport should open the selected script's support url`() =
-        runTest {
-            // Arrange
-            createViewModel()
-            val instance = mockk<ScriptPackageInstance>(relaxed = true)
-            every { instance.definition.manifest.supportUrl } returns "https://github.com/owner/repo/issues"
-            viewModel.hierarchicalListViewModel.selectChild(instance)
-
-            val slot = slot<OpenUrlInteractor.Params>()
-            coEvery { openUrlInteractor(capture(slot), any()) } returns Unit
-
-            // Act
-            viewModel.contactSupport()
-            dispatcher.scheduler.advanceUntilIdle()
-
-            // Assert
-            coVerify(exactly = 1) { openUrlInteractor(any(), any()) }
-            assertEquals("https://github.com/owner/repo/issues", slot.captured.url)
-        }
-
-    @Test
-    fun `reportIssue should invoke interactor and let it guard when supportUrl is absent`() =
-        runTest {
-            // Arrange
-            createViewModel()
-            val packageInstance = mockk<ScriptPackageInstance>(relaxed = true)
-            val scriptInstance = mockk<ScriptInstance>(relaxed = true)
-            every { scriptInstance.packageInstance } returns packageInstance
-
-            val task = mockk<Task>(relaxed = true)
-            every { task.scriptInstance } returns scriptInstance
-
-            val taskUiModel =
-                TaskUiModel(
-                    id = task,
-                    taskNumber = 1,
-                    isRunning = false,
-                    isError = true,
-                    isSuccess = false,
-                    hasSupportUrl = true,
-                    message = "Error occurred",
-                    status = "Error",
-                    configuration = "",
-                    stackTrace = null,
-                    isIdle = false,
-                    statusSince = Clock.System.now(),
-                )
-
-            coEvery { reportScriptIssueInteractor(any(), any()) } returns Unit
-
-            // Act
-            viewModel.reportIssue(taskUiModel)
-            dispatcher.scheduler.advanceUntilIdle()
-
-            // Assert — interactor is always called; it decides internally whether to open browser
-            coVerify(exactly = 1) { reportScriptIssueInteractor(any(), any()) }
-        }
-
-    @Test
-    fun `adding script should update group count immediately`() =
-        runTest {
-            // Arrange
-            val group = ScriptPackageGroup("1", "Group 1", 0)
-            val groupWithScript = ScriptPackageGroup("1", "Group 1", 1) // Count updated
-            val otherGroup = ScriptPackageGroup("2", "Group 2", 0) // Group headers only show with 2+ groups
-
-            // Use a MutableSharedFlow to control emissions
-            val taskGroupsFlow =
-                kotlinx.coroutines.flow.MutableSharedFlow<SuspendableResult<List<ScriptPackageGroup>, Exception>>(replay = 1)
-            taskGroupsFlow.emit(SuspendableResult.Success(listOf(group, otherGroup)))
-            coEvery { getTaskGroupsInteractor(any()) } returns taskGroupsFlow
-
-            // Scripts flow that DOES NOT emit initially (simulating delay)
-            val scriptsFlow =
-                kotlinx.coroutines.flow.MutableSharedFlow<SuspendableResult<List<ScriptInstanceInGroup>, Exception>>()
-            coEvery { getScriptsInGroupInteractor(any()) } returns scriptsFlow
-
-            createViewModel()
-            dispatcher.scheduler.advanceUntilIdle()
-
-            // Initial check
-            assertEquals(2, viewModel.hierarchicalListViewModel.state.value.size)
-            assertEquals(
-                "0",
-                (viewModel.hierarchicalListViewModel.state.value[0] as HierarchicalListItem.Parent).content.badge,
-            )
-
-            // Act - Update groups (simulate script added)
-            taskGroupsFlow.emit(SuspendableResult.Success(listOf(groupWithScript, otherGroup)))
-            dispatcher.scheduler.advanceUntilIdle()
-
-            // Assert - Badge should be "1" IMMEDIATELY, even though scriptsFlow hasn't emitted yet
-            assertEquals(2, viewModel.hierarchicalListViewModel.state.value.size)
-            assertEquals(
-                "1",
-                (viewModel.hierarchicalListViewModel.state.value[0] as HierarchicalListItem.Parent).content.badge,
-            )
         }
 
     @Test
@@ -522,11 +313,10 @@ class TasksViewModelTest {
                     openUrlInteractor,
                     observeArtifactsInteractor,
                     saveArtifactToFileInteractor,
-                    LastSelectedTaskSetup(),
                     mockk(relaxed = true),
                 )
 
-            vm.onTaskSelected(task)
+            vm.onTaskClicked(task)
 
             val messages = vm.logViewerMessages.value
             assertTrue(messages.none { it.priority == LoggingPriority.DEBUG })
@@ -546,7 +336,7 @@ class TasksViewModelTest {
                 flowOf(SuspendableResult.Success(listOf(artifact)))
             val vm = buildViewModel(unconfinedProvider)
 
-            vm.onTaskSelected(task)
+            vm.onTaskClicked(task)
 
             assertEquals(listOf(artifact), vm.artifacts.value)
         }
@@ -615,11 +405,10 @@ class TasksViewModelTest {
                     openUrlInteractor,
                     observeArtifactsInteractor,
                     saveArtifactToFileInteractor,
-                    LastSelectedTaskSetup(),
                     mockk(relaxed = true),
                 )
 
-            vm.onTaskSelected(task)
+            vm.onTaskClicked(task)
 
             val messages = vm.logViewerMessages.value
             assertTrue(messages.any { it.priority == LoggingPriority.DEBUG })
@@ -654,43 +443,12 @@ class TasksViewModelTest {
     }
 
     @Test
-    fun `onEditTaskGroup shows the edit-group dialog`() {
-        createViewModel()
-        val group = ScriptPackageGroup("1", "Group 1")
-
-        viewModel.onEditTaskGroup(group)
-
-        assertIs<TaskViewState.DialogState.EditingTaskGroup>(viewModel.dialogState.value)
-    }
-
-    @Test
-    fun `showConfiguration shows the configuration dialog`() {
-        createViewModel()
-        val instance = mockk<ScriptPackageInstance>(relaxed = true)
-
-        viewModel.showConfiguration(instance)
-
-        assertIs<TaskViewState.DialogState.ViewScriptConfiguration>(viewModel.dialogState.value)
-    }
-
-    @Test
     fun `clearLogs empties the log viewer messages`() {
         createViewModel()
 
         viewModel.clearLogs()
 
         assertTrue(viewModel.logViewerMessages.value.isEmpty())
-    }
-
-    @Test
-    fun `onScriptInstanceCreated selects the created instance`() {
-        createViewModel()
-        val instance = mockk<ScriptPackageInstance>(relaxed = true)
-        every { instance.id } returns "inst-1"
-
-        viewModel.onScriptInstanceCreated(instance)
-
-        assertEquals(instance, viewModel.hierarchicalListViewModel.selectedChild)
     }
 
     @Test
@@ -742,38 +500,15 @@ class TasksViewModelTest {
         }
 
     @Test
-    fun `editGroup invokes the edit interactor when a group is selected`() =
+    fun `editGroup invokes the edit interactor`() =
         runTest {
             createViewModel()
-            viewModel.hierarchicalListViewModel.selectParent(ScriptPackageGroup("1", "Group 1"))
 
             viewModel.editGroup(ScriptPackageGroup("1", "Group 1"), "Renamed")
             dispatcher.scheduler.advanceUntilIdle()
 
             coVerify(exactly = 1) { editScriptInstanceGroupInteractor(any(), any()) }
         }
-
-    @Test
-    fun `duplicateScriptInstance shows the duplicate dialog when a group is selected`() {
-        createViewModel()
-        viewModel.hierarchicalListViewModel.selectParent(ScriptPackageGroup("1", "Group 1"))
-        val instance = mockk<ScriptPackageInstance>(relaxed = true)
-
-        viewModel.duplicateScriptInstance(instance)
-
-        assertIs<TaskViewState.DialogState.DuplicatingScript>(viewModel.dialogState.value)
-    }
-
-    @Test
-    fun `moveScriptToGroup shows the move dialog when a group is selected`() {
-        createViewModel()
-        viewModel.hierarchicalListViewModel.selectParent(ScriptPackageGroup("1", "Group 1"))
-        val instance = mockk<ScriptPackageInstance>(relaxed = true)
-
-        viewModel.moveScriptToGroup(instance)
-
-        assertIs<TaskViewState.DialogState.MovingScript>(viewModel.dialogState.value)
-    }
 
     @Test
     fun `changeGroup invokes the change-group interactor`() =
@@ -788,23 +523,6 @@ class TasksViewModelTest {
             coVerify(exactly = 1) { changeScriptPackageInstanceGroupInteractor(any(), any()) }
         }
 
-    @Test
-    fun `startAllTasks and stopAllTasks invoke their interactors when a child is selected`() =
-        runTest {
-            createViewModel()
-            val instance = mockk<ScriptPackageInstance>(relaxed = true)
-            every { instance.id } returns "inst-1"
-            viewModel.hierarchicalListViewModel.selectChild(instance)
-
-            viewModel.startAllTasks()
-            viewModel.stopAllTasks()
-            dispatcher.scheduler.advanceUntilIdle()
-
-            coVerify(exactly = 1) { startAllTasksInScriptPackageInstanceInteractor(any(), any()) }
-            coVerify(exactly = 1) { stopTasksInScriptPackageInstanceInteractor(any(), any()) }
-        }
-
-    @OptIn(ExperimentalTime::class)
     @Test
     fun `startTask starts immediately for a non-finished task`() =
         runTest {
@@ -873,156 +591,4 @@ class TasksViewModelTest {
 
             coVerify(exactly = 1) { userInteractionDismissedInteractor.run(any()) }
         }
-
-    private fun parentItem(group: ScriptPackageGroup) =
-        HierarchicalListItem.Parent<ScriptPackageGroup, ScriptPackageInstance>(
-            content = GroupListItemContent(id = group, title = group.name),
-            children = emptyList(),
-            expanded = true,
-            selected = false,
-        )
-
-    private fun childItem(
-        group: ScriptPackageGroup,
-        instance: ScriptPackageInstance,
-    ) = HierarchicalListItem.Child(
-        content = GroupListItemContent(id = instance, title = "instance"),
-        parentId = group,
-        selected = false,
-    )
-
-    @Test
-    fun `parent menu edit option opens the edit-group dialog`() {
-        createViewModel()
-        val group = ScriptPackageGroup("1", "Group 1")
-
-        viewModel.hierarchicalListViewModel.onParentMenuOptionClick(parentItem(group), MenuOption.EDIT)
-
-        assertIs<TaskViewState.DialogState.EditingTaskGroup>(viewModel.dialogState.value)
-    }
-
-    @Test
-    fun `parent menu delete option deletes a group without scripts`() =
-        runTest {
-            createViewModel()
-            val group = ScriptPackageGroup("1", "Group 1")
-
-            viewModel.hierarchicalListViewModel.onParentMenuOptionClick(parentItem(group), MenuOption.DELETE)
-            dispatcher.scheduler.advanceUntilIdle()
-
-            coVerify(exactly = 1) { deleteTaskGroupInteractor(any(), any()) }
-        }
-
-    @Test
-    fun `child menu view-configuration option opens the configuration dialog`() {
-        createViewModel()
-        val group = ScriptPackageGroup("1", "Group 1")
-        val instance = mockk<ScriptPackageInstance>(relaxed = true)
-
-        viewModel.hierarchicalListViewModel.onChildMenuOptionClick(childItem(group, instance), MenuOption.VIEW_CONFIGURATION)
-
-        assertIs<TaskViewState.DialogState.ViewScriptConfiguration>(viewModel.dialogState.value)
-    }
-
-    @Test
-    fun `child menu delete option asks for deletion confirmation`() {
-        createViewModel()
-        val group = ScriptPackageGroup("1", "Group 1")
-        val instance = mockk<ScriptPackageInstance>(relaxed = true)
-
-        viewModel.hierarchicalListViewModel.onChildMenuOptionClick(childItem(group, instance), MenuOption.DELETE)
-
-        assertIs<TaskViewState.DialogState.ConfirmScriptInstanceDeletion>(viewModel.dialogState.value)
-    }
-
-    @Test
-    fun `child menu duplicate and move options open their dialogs when a parent is selected`() {
-        createViewModel()
-        val group = ScriptPackageGroup("1", "Group 1")
-        viewModel.hierarchicalListViewModel.selectParent(group)
-        val instance = mockk<ScriptPackageInstance>(relaxed = true)
-
-        viewModel.hierarchicalListViewModel.onChildMenuOptionClick(childItem(group, instance), MenuOption.DUPLICATE)
-        assertIs<TaskViewState.DialogState.DuplicatingScript>(viewModel.dialogState.value)
-
-        viewModel.hierarchicalListViewModel.onChildMenuOptionClick(childItem(group, instance), MenuOption.MOVE_TO_GROUP)
-        assertIs<TaskViewState.DialogState.MovingScript>(viewModel.dialogState.value)
-    }
-
-    @Test
-    fun `selecting and deselecting a group runs the selection callbacks`() {
-        createViewModel()
-        val group = ScriptPackageGroup("1", "Group 1")
-
-        viewModel.hierarchicalListViewModel.selectParent(group)
-        assertEquals(group, viewModel.hierarchicalListViewModel.selectedParent)
-
-        viewModel.hierarchicalListViewModel.deselectAll()
-        assertIs<TaskViewState.DetailViewState.NoSelection>(viewModel.tasksViewState.value)
-    }
-
-    @Test
-    fun `selecting a child builds the detail view state`() {
-        createViewModel()
-        val group = ScriptPackageGroup("1", "Group 1")
-        viewModel.hierarchicalListViewModel.selectParent(group)
-        val instance = mockk<ScriptPackageInstance>(relaxed = true)
-        every { instance.id } returns "inst-1"
-
-        viewModel.hierarchicalListViewModel.selectChild(instance)
-
-        // updateTasks ran for the selected child (no tasks → not a NoSelection state).
-        assertTrue(viewModel.tasksViewState.value !is TaskViewState.DetailViewState.NoSelection)
-    }
-
-    @Test
-    fun `a variant instance shows the variant's name in the task list header`() {
-        createViewModel()
-        viewModel.hierarchicalListViewModel.selectParent(ScriptPackageGroup("1", "Group 1"))
-
-        viewModel.hierarchicalListViewModel.selectChild(aVariantInstance())
-        dispatcher.scheduler.advanceUntilIdle()
-
-        val state = viewModel.tasksViewState.value
-        assertIs<TaskViewState.DetailViewState.Empty>(state)
-        assertEquals("Checkout", state.headerTitle)
-    }
-
-    @Test
-    fun `a default-entry instance keeps the package name in the task list header`() {
-        createViewModel()
-        viewModel.hierarchicalListViewModel.selectParent(ScriptPackageGroup("1", "Group 1"))
-
-        viewModel.hierarchicalListViewModel.selectChild(fixtures.aScriptPackageInstance(id = "1", packageName = "com.example"))
-        dispatcher.scheduler.advanceUntilIdle()
-
-        val state = viewModel.tasksViewState.value
-        assertIs<TaskViewState.DetailViewState.Empty>(state)
-        assertEquals("Test", state.headerTitle)
-    }
-
-    @Test
-    fun `a variant instance shows the variant's name in its instance summary`() {
-        val group = ScriptPackageGroup("1", "Group 1", 1)
-        coEvery { getTaskGroupsInteractor(any()) } returns flowOf(SuspendableResult.Success(listOf(group)))
-        coEvery { getScriptsInGroupInteractor(any()) } returns
-            flowOf(SuspendableResult.Success(listOf(ScriptInstanceInGroup(aVariantInstance(), 0, 0))))
-
-        createViewModel()
-        dispatcher.scheduler.advanceUntilIdle()
-
-        // A single group is shown flat, so the instance summaries are the top-level rows.
-        val children =
-            viewModel.hierarchicalListViewModel.state.value
-                .filterIsInstance<HierarchicalListItem.Child<*, *>>()
-        assertEquals(listOf("Checkout"), children.map { it.content.title })
-    }
-
-    private fun aVariantInstance() =
-        fixtures.aScriptPackageInstance(
-            id = "1",
-            packageName = "com.example",
-            definition = fixtures.aScriptPackageWithVariant("com.example", variantId = "checkout", variantName = "Checkout"),
-            variantId = "checkout",
-        )
 }
