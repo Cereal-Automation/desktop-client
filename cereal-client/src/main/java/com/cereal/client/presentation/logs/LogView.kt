@@ -1,11 +1,9 @@
 package com.cereal.client.presentation.logs
 
 import androidx.compose.animation.core.animateDpAsState
-import androidx.compose.foundation.VerticalScrollbar
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.gestures.detectVerticalDragGestures
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -13,20 +11,16 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.defaultMinSize
-import androidx.compose.foundation.layout.fillMaxHeight
-import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.requiredHeight
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
-import androidx.compose.foundation.rememberScrollbarAdapter
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.selection.SelectionContainer
@@ -35,8 +29,6 @@ import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.CleaningServices
 import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material.icons.filled.Download
-import androidx.compose.material.icons.filled.KeyboardArrowDown
-import androidx.compose.material.icons.filled.KeyboardArrowUp
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ripple
@@ -52,16 +44,9 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.input.pointer.PointerIcon
-import androidx.compose.ui.input.pointer.pointerHoverIcon
-import androidx.compose.ui.input.pointer.pointerInput
-import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.testTag
-import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.unit.TextUnit
-import androidx.compose.ui.unit.TextUnitType
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.cereal.client.domain.model.artifact.Artifact
@@ -69,29 +54,26 @@ import com.cereal.client.domain.model.logging.LoggingEvent
 import com.cereal.client.domain.model.logging.LoggingPriority
 import com.cereal.client.presentation.theme.CerealTheme
 import com.cereal.client.presentation.theme.CerealTypography
-import com.cereal.client.presentation.theme.cerealColors
 import com.cereal.client.presentation.view.CerealIconButton
 import com.cereal.client.presentation.view.CerealText
+import com.cereal.client.presentation.view.SectionLabel
 import com.cereal_automation.cereal_client.generated.resources.Res
+import com.cereal_automation.cereal_client.generated.resources.artifacts
 import com.cereal_automation.cereal_client.generated.resources.auto_scroll
 import com.cereal_automation.cereal_client.generated.resources.clear
-import com.cereal_automation.cereal_client.generated.resources.collapse_output
 import com.cereal_automation.cereal_client.generated.resources.copy_all_logs
 import com.cereal_automation.cereal_client.generated.resources.download_artifact
-import com.cereal_automation.cereal_client.generated.resources.expand_output
+import com.cereal_automation.cereal_client.generated.resources.log
 import com.cereal_automation.cereal_client.generated.resources.log_filter_all
 import com.cereal_automation.cereal_client.generated.resources.log_filter_err
 import com.cereal_automation.cereal_client.generated.resources.log_filter_info
 import com.cereal_automation.cereal_client.generated.resources.log_filter_warn
-import com.cereal_automation.cereal_client.generated.resources.no_artifacts
-import com.cereal_automation.cereal_client.generated.resources.output
-import com.cereal_automation.cereal_client.generated.resources.output_tab_artifacts
-import com.cereal_automation.cereal_client.generated.resources.output_tab_logs
-import com.cereal_automation.cereal_client.generated.resources.output_task
+import com.cereal_automation.cereal_client.generated.resources.no_log_lines_match_filter
+import com.cereal_automation.cereal_client.generated.resources.no_output_yet
+import com.cereal_automation.cereal_client.generated.resources.none_yet
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import org.jetbrains.compose.resources.stringResource
-import java.awt.Cursor
 import java.awt.Toolkit
 import java.awt.datatransfer.StringSelection
 import java.time.ZoneId
@@ -100,16 +82,12 @@ import java.util.Date
 import java.util.Locale
 import kotlin.time.ExperimentalTime
 
-private val DrawerBg = cerealColors.backgroundDark
+internal const val CLEAR_BUTTON_TEST_TAG = "logOutputClearButton"
+
 private val ToggleThumb = Color.White
 
-internal const val CLEAR_BUTTON_TEST_TAG = "logOutputClearButton"
-internal const val ARTIFACT_BADGE_TEST_TAG = "artifactUnseenBadge"
-
-private val CollapsedHeight = 44.dp
-private val ExpandedHeight = 260.dp
-private val MinResizeHeight = CollapsedHeight + 48.dp
-private val MaxResizeHeight = 600.dp // Arbitrary upper bound; fits typical 1080p desktop layouts
+/** The log box lives in the inspector's scrolling column, so it needs a bounded height of its own. */
+private val LogBoxMaxHeight = 320.dp
 
 private enum class LogFilter { ALL, INFO, WARN, ERR }
 
@@ -121,42 +99,14 @@ private fun LogFilter.labelRes() =
         LogFilter.ERR -> Res.string.log_filter_err
     }
 
+/** A task's log: "LOG" with clear and copy, the ALL/INFO/WARN/ERR filter and auto-scroll, then the lines. */
 @Composable
-fun LogOutputView(
+fun TaskLogSection(
     events: List<LoggingEvent>,
     onClear: () -> Unit,
-    artifacts: List<Artifact> = emptyList(),
-    onDownloadArtifact: (Artifact) -> Unit = {},
-    taskNumber: Int? = null,
 ) {
-    var expanded by rememberSaveable { mutableStateOf(true) }
     var autoScrollEnabled by rememberSaveable { mutableStateOf(true) }
     var filter by rememberSaveable { mutableStateOf(LogFilter.ALL) }
-    var tab by rememberSaveable { mutableStateOf(OutputTab.LOGS) }
-
-    // Session-only "seen" tracking, keyed by artifact id so it stays correct across task switches
-    // (ids are unique). Unseen = artifacts the user hasn't viewed yet; surfaced as a badge on the
-    // Artifacts tab. Reset on app restart by design.
-    var seenArtifactIds by remember { mutableStateOf(emptySet<String>()) }
-    val unseenArtifactCount = artifacts.count { it.id !in seenArtifactIds }
-
-    // Mark everything currently shown as seen whenever the artifacts are genuinely visible — i.e. the
-    // Artifacts tab is selected and the drawer is expanded. Re-runs as new artifacts arrive while
-    // viewing, so the badge stays cleared.
-    LaunchedEffect(artifacts, tab, expanded) {
-        if (tab == OutputTab.ARTIFACTS && expanded) {
-            seenArtifactIds = artifacts.mapTo(mutableSetOf()) { it.id }
-        }
-    }
-
-    var customExpandedHeight by remember { mutableStateOf(ExpandedHeight) }
-
-    val density = LocalDensity.current
-
-    val height by animateDpAsState(
-        targetValue = if (expanded) customExpandedHeight else CollapsedHeight,
-        label = "outputDrawerHeight",
-    )
 
     // Pair each event with its index in the append-only source list. That index is a stable,
     // unique identity to key the LazyColumn on (LoggingEvent has no id and identical lines can
@@ -181,172 +131,32 @@ fun LogOutputView(
 
     var copied by remember { mutableStateOf(false) }
     val coroutineScope = rememberCoroutineScope()
-
-    val onCopyAll =
-        remember(filteredEvents) {
-            {
-                val text = filteredEvents.joinToString("\n") { formatLogLine(it.value) }
-                Toolkit.getDefaultToolkit().systemClipboard.setContents(StringSelection(text), null)
-                coroutineScope.launch {
-                    copied = true
-                    delay(1500)
-                    copied = false
-                }
-                Unit
-            }
+    val onCopyAll = {
+        val text = filteredEvents.joinToString("\n") { formatLogLine(it.value) }
+        Toolkit.getDefaultToolkit().systemClipboard.setContents(StringSelection(text), null)
+        coroutineScope.launch {
+            copied = true
+            delay(COPIED_FEEDBACK_MS)
+            copied = false
         }
-
-    Column(
-        modifier =
-            Modifier
-                .fillMaxWidth()
-                .height(height)
-                .background(DrawerBg),
-    ) {
-        ResizeDragHandle(
-            enabled = expanded,
-            borderColor = CerealTheme.colorScheme.border,
-            onDrag = { dragAmountPx ->
-                val dragDp = with(density) { dragAmountPx.toDp() }
-                customExpandedHeight =
-                    (customExpandedHeight - dragDp)
-                        .coerceIn(MinResizeHeight, MaxResizeHeight)
-            },
-        )
-        OutputHeader(
-            expanded = expanded,
-            onToggleExpanded = { expanded = !expanded },
-            tab = tab,
-            onTabChange = {
-                tab = it
-                // Selecting a tab while collapsed should reveal its content, not silently switch a
-                // hidden tab. Applies to both pills so the two behave consistently.
-                expanded = true
-            },
-            unseenArtifactCount = unseenArtifactCount,
-            filter = filter,
-            onFilterChange = { filter = it },
-            autoScrollEnabled = autoScrollEnabled,
-            onAutoScrollChange = { autoScrollEnabled = it },
-            onClear = onClear,
-            clearEnabled = events.isNotEmpty(),
-            onCopyAll = onCopyAll,
-            copyEnabled = filteredEvents.isNotEmpty(),
-            copied = copied,
-            taskNumber = taskNumber,
-        )
-
-        if (expanded) {
-            when (tab) {
-                OutputTab.LOGS -> {
-                    Box(modifier = Modifier.weight(1f).fillMaxWidth()) {
-                        LazyColumn(
-                            state = listState,
-                            modifier = Modifier.fillMaxSize(),
-                            contentPadding = PaddingValues(top = 6.dp, bottom = 14.dp),
-                        ) {
-                            items(filteredEvents, key = { it.index }) { indexedEvent ->
-                                SelectionContainer {
-                                    LogLine(indexedEvent.value)
-                                }
-                            }
-                        }
-
-                        VerticalScrollbar(
-                            modifier = Modifier.align(Alignment.CenterEnd).fillMaxHeight(),
-                            adapter = rememberScrollbarAdapter(scrollState = listState),
-                        )
-                    }
-                }
-
-                OutputTab.ARTIFACTS -> {
-                    Box(modifier = Modifier.weight(1f).fillMaxWidth()) {
-                        ArtifactList(artifacts = artifacts, onDownloadArtifact = onDownloadArtifact)
-                    }
-                }
-            }
-        }
+        Unit
     }
-}
 
-@Composable
-private fun OutputHeader(
-    expanded: Boolean,
-    onToggleExpanded: () -> Unit,
-    tab: OutputTab,
-    onTabChange: (OutputTab) -> Unit,
-    unseenArtifactCount: Int,
-    filter: LogFilter,
-    onFilterChange: (LogFilter) -> Unit,
-    autoScrollEnabled: Boolean,
-    onAutoScrollChange: (Boolean) -> Unit,
-    onClear: () -> Unit,
-    clearEnabled: Boolean,
-    onCopyAll: () -> Unit,
-    copyEnabled: Boolean,
-    copied: Boolean,
-    taskNumber: Int?,
-) {
-    Row(
-        modifier =
-            Modifier
-                .fillMaxWidth()
-                .height(CollapsedHeight)
-                .clickable(
-                    onClick = onToggleExpanded,
-                    indication = null,
-                    interactionSource = remember { MutableInteractionSource() },
-                ).padding(horizontal = 16.dp),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(10.dp),
-    ) {
-        Icon(
-            imageVector = if (expanded) Icons.Filled.KeyboardArrowDown else Icons.Filled.KeyboardArrowUp,
-            contentDescription = stringResource(if (expanded) Res.string.collapse_output else Res.string.expand_output),
-            modifier = Modifier.size(14.dp),
-            tint = CerealTheme.colorScheme.contentTertiary,
-        )
-
-        CerealText(
-            text = taskNumber?.let { stringResource(Res.string.output_task, it) } ?: stringResource(Res.string.output),
-            color = Color.White,
-            style =
-                MaterialTheme.typography.titleMedium.copy(
-                    letterSpacing = TextUnit(0.02f, TextUnitType.Em),
-                ),
-        )
-
-        TabSelector(tab = tab, onTabChange = onTabChange, unseenArtifactCount = unseenArtifactCount)
-
-        if (tab == OutputTab.LOGS) {
-            FilterPills(filter = filter, onFilterChange = onFilterChange)
-        }
-
-        Spacer(Modifier.weight(1f))
-
-        if (tab == OutputTab.LOGS) {
-            AutoScrollControl(
-                enabled = autoScrollEnabled,
-                onChange = onAutoScrollChange,
-            )
-
-            CerealIconButton(
-                onClick = onClear,
-                enabled = clearEnabled,
-                modifier = Modifier.testTag(CLEAR_BUTTON_TEST_TAG),
-            ) {
+    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            SectionLabel(text = stringResource(Res.string.log).uppercase(), contentPadding = PaddingValues())
+            Spacer(Modifier.weight(1f))
+            val clearEnabled = events.isNotEmpty()
+            CerealIconButton(onClick = onClear, enabled = clearEnabled, modifier = Modifier.size(32.dp).testTag(CLEAR_BUTTON_TEST_TAG)) {
                 Icon(
                     imageVector = Icons.Filled.CleaningServices,
                     contentDescription = stringResource(Res.string.clear),
                     modifier = Modifier.size(14.dp),
-                    tint = if (clearEnabled) CerealTheme.colorScheme.contentSecondary else CerealTheme.colorScheme.contentSubtle,
+                    tint = if (clearEnabled) CerealTheme.colorScheme.contentTertiary else CerealTheme.colorScheme.contentSubtle,
                 )
             }
-
-            CerealIconButton(
-                onClick = onCopyAll,
-                enabled = copyEnabled,
-            ) {
+            val copyEnabled = filteredEvents.isNotEmpty()
+            CerealIconButton(onClick = onCopyAll, enabled = copyEnabled, modifier = Modifier.size(32.dp)) {
                 Icon(
                     imageVector = if (copied) Icons.Filled.Check else Icons.Filled.ContentCopy,
                     contentDescription = stringResource(Res.string.copy_all_logs),
@@ -354,44 +164,77 @@ private fun OutputHeader(
                     tint =
                         when {
                             copied -> Color.White
-                            copyEnabled -> CerealTheme.colorScheme.contentSecondary
+                            copyEnabled -> CerealTheme.colorScheme.contentTertiary
                             else -> CerealTheme.colorScheme.contentSubtle
                         },
                 )
             }
         }
+
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            FilterPills(filter = filter, onFilterChange = { filter = it })
+            Spacer(Modifier.weight(1f))
+            AutoScrollControl(enabled = autoScrollEnabled, onChange = { autoScrollEnabled = it })
+        }
+
+        val boxShape = RoundedCornerShape(8.dp)
+        Box(
+            modifier =
+                Modifier
+                    .fillMaxWidth()
+                    .clip(boxShape)
+                    .background(CerealTheme.colorScheme.backgroundDark)
+                    .border(1.dp, CerealTheme.colorScheme.border, boxShape),
+        ) {
+            if (filteredEvents.isEmpty()) {
+                // "No output yet" only when the task has logged nothing; otherwise the level filter hides every line.
+                val hint = if (events.isEmpty()) Res.string.no_output_yet else Res.string.no_log_lines_match_filter
+                EmptyHint(stringResource(hint), Modifier.padding(horizontal = 12.dp, vertical = 14.dp))
+            } else {
+                LazyColumn(
+                    state = listState,
+                    modifier = Modifier.fillMaxWidth().heightIn(max = LogBoxMaxHeight),
+                    contentPadding = PaddingValues(vertical = 8.dp),
+                ) {
+                    items(filteredEvents, key = { it.index }) { indexedEvent ->
+                        SelectionContainer {
+                            LogLine(indexedEvent.value)
+                        }
+                    }
+                }
+            }
+        }
     }
 }
 
-private enum class OutputTab { LOGS, ARTIFACTS }
+/** A task's artifacts, each with a download button; "None yet" while there are none. */
+@Composable
+fun TaskArtifactsSection(
+    artifacts: List<Artifact>,
+    onDownloadArtifact: (Artifact) -> Unit,
+) {
+    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        SectionLabel(text = stringResource(Res.string.artifacts).uppercase(), contentPadding = PaddingValues())
+        if (artifacts.isEmpty()) {
+            EmptyHint(stringResource(Res.string.none_yet))
+        }
+        artifacts.forEach { artifact ->
+            ArtifactRow(artifact = artifact, onDownload = { onDownloadArtifact(artifact) })
+        }
+    }
+}
 
 @Composable
-private fun TabSelector(
-    tab: OutputTab,
-    onTabChange: (OutputTab) -> Unit,
-    unseenArtifactCount: Int,
+private fun EmptyHint(
+    text: String,
+    modifier: Modifier = Modifier,
 ) {
-    Row(
-        modifier =
-            Modifier
-                .clip(RoundedCornerShape(5.dp))
-                .background(MaterialTheme.colorScheme.surface)
-                .border(1.dp, CerealTheme.colorScheme.border, RoundedCornerShape(5.dp))
-                .padding(2.dp),
-        horizontalArrangement = Arrangement.spacedBy(4.dp),
-    ) {
-        FilterPill(
-            label = stringResource(Res.string.output_tab_logs),
-            selected = tab == OutputTab.LOGS,
-            onClick = { onTabChange(OutputTab.LOGS) },
-        )
-        FilterPill(
-            label = stringResource(Res.string.output_tab_artifacts),
-            selected = tab == OutputTab.ARTIFACTS,
-            onClick = { onTabChange(OutputTab.ARTIFACTS) },
-            badgeCount = unseenArtifactCount,
-        )
-    }
+    CerealText(
+        text = text,
+        modifier = modifier,
+        color = CerealTheme.colorScheme.contentSubtle,
+        style = MaterialTheme.typography.bodyMedium.copy(fontSize = 13.sp),
+    )
 }
 
 @Composable
@@ -423,7 +266,6 @@ private fun FilterPill(
     label: String,
     selected: Boolean,
     onClick: () -> Unit,
-    badgeCount: Int = 0,
 ) {
     val interactionSource = remember { MutableInteractionSource() }
     Box(
@@ -438,44 +280,10 @@ private fun FilterPill(
                 ).padding(horizontal = 10.dp, vertical = 4.dp),
         contentAlignment = Alignment.Center,
     ) {
-        Row(
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(6.dp),
-        ) {
-            CerealText(
-                text = label,
-                color = if (selected) Color.White else CerealTheme.colorScheme.contentTertiary,
-                style =
-                    CerealTypography.controlLabel.copy(
-                        fontWeight = FontWeight.Medium,
-                    ),
-            )
-            if (badgeCount > 0) {
-                UnseenBadge(count = badgeCount)
-            }
-        }
-    }
-}
-
-@Composable
-private fun UnseenBadge(count: Int) {
-    Box(
-        modifier =
-            Modifier
-                .testTag(ARTIFACT_BADGE_TEST_TAG)
-                .clip(RoundedCornerShape(percent = 50))
-                .background(MaterialTheme.colorScheme.primary)
-                .defaultMinSize(minWidth = 16.dp, minHeight = 16.dp)
-                .padding(horizontal = 5.dp),
-        contentAlignment = Alignment.Center,
-    ) {
         CerealText(
-            // Cap at "9+": past a handful the exact count stops mattering and a fixed width keeps the
-            // tab strip from reflowing. The precise number is visible in the list once opened.
-            text = if (count > 9) "9+" else count.toString(),
-            color = Color.White,
-            style =
-                MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold),
+            text = label,
+            color = if (selected) Color.White else CerealTheme.colorScheme.contentTertiary,
+            style = CerealTypography.controlLabel.copy(fontWeight = FontWeight.Medium),
         )
     }
 }
@@ -532,78 +340,31 @@ private fun PillToggle(enabled: Boolean) {
 }
 
 @Composable
-private fun ResizeDragHandle(
-    enabled: Boolean,
-    borderColor: Color,
-    onDrag: (dragAmountPx: Float) -> Unit,
-) {
-    Box(
-        modifier =
-            Modifier
-                .fillMaxWidth()
-                .height(1.dp)
-                .background(borderColor),
-    ) {
-        Box(
-            modifier =
-                Modifier
-                    .fillMaxWidth()
-                    // requiredHeight escapes the 1dp parent constraint (height() would be clamped to it) and
-                    // centres the 8dp hit area on the border line.
-                    .requiredHeight(8.dp)
-                    .then(
-                        if (enabled) {
-                            Modifier.pointerHoverIcon(PointerIcon(Cursor(Cursor.N_RESIZE_CURSOR)))
-                        } else {
-                            Modifier
-                        },
-                    ).pointerInput(enabled) {
-                        if (enabled) {
-                            detectVerticalDragGestures { _, dragAmount ->
-                                onDrag(dragAmount)
-                            }
-                        }
-                    },
-        )
-    }
-}
-
-@Composable
 private fun LogLine(event: LoggingEvent) {
-    val glyph = glyphFor(event.priority)
-    val glyphColor = glyphColorFor(event.priority)
-    val timestamp = remember(event.timestamp) { TimestampFormatter.format(event.timestamp) }
+    val timestamp = remember(event.timestamp) { TimeFormatter.format(event.timestamp.toInstant()) }
+    val style = CerealTypography.logLine.copy(fontSize = 12.sp, lineHeight = 18.sp)
 
     Row(
         modifier =
             Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 16.dp, vertical = 2.dp),
+                .padding(horizontal = 12.dp, vertical = 2.dp),
         verticalAlignment = Alignment.Top,
         horizontalArrangement = Arrangement.spacedBy(6.dp),
     ) {
-        CerealText(
-            text = timestamp,
-            color = CerealTheme.colorScheme.contentSubtle,
-            maxLines = 1,
-            style = CerealTypography.logLine,
-        )
-        CerealText(
-            text = glyph,
-            color = glyphColor,
-            style = CerealTypography.logLine.copy(fontWeight = FontWeight.Bold),
-        )
+        CerealText(text = timestamp, color = CerealTheme.colorScheme.contentSubtle, maxLines = 1, style = style)
+        CerealText(text = glyphFor(event.priority), color = glyphColorFor(event.priority), style = style.copy(fontWeight = FontWeight.Bold))
         CerealText(
             text = event.message,
             color = CerealTheme.colorScheme.contentSecondary,
-            modifier = Modifier.fillMaxWidth().padding(start = 8.dp),
-            style = CerealTypography.logLine,
+            modifier = Modifier.fillMaxWidth().padding(start = 6.dp),
+            style = style,
         )
     }
 }
 
 private fun formatLogLine(event: LoggingEvent): String {
-    val timestamp = TimestampFormatter.format(event.timestamp)
+    val timestamp = TimestampFormatter.format(event.timestamp.toInstant())
     return "$timestamp [${labelFor(event.priority)}] ${event.message}"
 }
 
@@ -632,51 +393,19 @@ private fun glyphColorFor(priority: LoggingPriority): Color =
         LoggingPriority.DEBUG -> CerealTheme.colorScheme.contentTertiary
     }
 
-@Composable
-private fun ArtifactList(
-    artifacts: List<Artifact>,
-    onDownloadArtifact: (Artifact) -> Unit,
-) {
-    if (artifacts.isEmpty()) {
-        Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-            CerealText(
-                text = stringResource(Res.string.no_artifacts),
-                color = CerealTheme.colorScheme.contentSubtle,
-                style = CerealTypography.controlLabel,
-            )
-        }
-        return
-    }
-
-    val listState = rememberLazyListState()
-    Box(modifier = Modifier.fillMaxSize()) {
-        LazyColumn(
-            state = listState,
-            modifier = Modifier.fillMaxSize(),
-            contentPadding = PaddingValues(top = 6.dp, bottom = 14.dp),
-        ) {
-            items(artifacts, key = { it.id }) { artifact ->
-                ArtifactRow(artifact = artifact, onDownload = { onDownloadArtifact(artifact) })
-            }
-        }
-        VerticalScrollbar(
-            modifier = Modifier.align(Alignment.CenterEnd).fillMaxHeight(),
-            adapter = rememberScrollbarAdapter(scrollState = listState),
-        )
-    }
-}
-
 @OptIn(ExperimentalTime::class)
 @Composable
 private fun ArtifactRow(
     artifact: Artifact,
     onDownload: () -> Unit,
 ) {
+    val shape = RoundedCornerShape(8.dp)
     Row(
         modifier =
             Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 16.dp, vertical = 4.dp),
+                .border(1.dp, CerealTheme.colorScheme.border, shape)
+                .padding(start = 12.dp, top = 8.dp, end = 4.dp, bottom = 8.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(10.dp),
     ) {
@@ -688,19 +417,17 @@ private fun ArtifactRow(
                 style = CerealTypography.logLine,
             )
             CerealText(
-                text = "${formatBytes(artifact.sizeBytes)} · ${TimestampFormatter.format(Date(artifact.createdAt.toEpochMilliseconds()))}",
+                text = "${formatBytes(artifact.sizeBytes)} · ${TimeFormatter.format(Date(artifact.createdAt.toEpochMilliseconds()).toInstant())}",
                 color = CerealTheme.colorScheme.contentSubtle,
                 maxLines = 1,
                 style = MaterialTheme.typography.bodySmall.copy(fontFamily = FontFamily.Monospace),
             )
         }
-        CerealIconButton(
-            onClick = onDownload,
-        ) {
+        CerealIconButton(onClick = onDownload, modifier = Modifier.size(36.dp)) {
             Icon(
                 imageVector = Icons.Filled.Download,
                 contentDescription = stringResource(Res.string.download_artifact),
-                modifier = Modifier.size(14.dp),
+                modifier = Modifier.size(16.dp),
                 tint = CerealTheme.colorScheme.contentSecondary,
             )
         }
@@ -716,13 +443,8 @@ private fun formatBytes(bytes: Long): String {
 }
 
 private const val BYTES_PER_UNIT = 1024
+private const val COPIED_FEEDBACK_MS = 1500L
 
-private object TimestampFormatter {
-    // DateTimeFormatter is thread-safe, unlike SimpleDateFormat.
-    private val formatter: DateTimeFormatter =
-        DateTimeFormatter
-            .ofPattern("yyyy-MM-dd HH:mm:ss", Locale.getDefault())
-            .withZone(ZoneId.systemDefault())
-
-    fun format(date: java.util.Date): String = formatter.format(date.toInstant())
-}
+// DateTimeFormatter is thread-safe, unlike SimpleDateFormat. Lines show the time; a copied log keeps the date.
+private val TimeFormatter: DateTimeFormatter = DateTimeFormatter.ofPattern("HH:mm:ss", Locale.getDefault()).withZone(ZoneId.systemDefault())
+private val TimestampFormatter: DateTimeFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss", Locale.getDefault()).withZone(ZoneId.systemDefault())

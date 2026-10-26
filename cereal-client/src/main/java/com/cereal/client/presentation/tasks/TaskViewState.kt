@@ -2,70 +2,28 @@ package com.cereal.client.presentation.tasks
 
 import com.cereal.client.domain.model.script.ScriptPackageInstance
 import com.cereal.client.domain.model.task.ScriptPackageGroup
-import com.cereal.client.presentation.tasks.model.ScriptInstanceUiModel
 import com.cereal.client.presentation.tasks.model.TaskUiModel
-import com.cereal.client.presentation.view.group.HierarchicalListViewModel
 
 sealed class TaskViewState {
-    sealed class GroupViewState {
-        data object Empty : GroupViewState()
+    /** The task list: every task setup, grouped by group. */
+    sealed class ListState {
+        /** Before the groups and their setups first load; renders nothing so the empty state never flashes. */
+        data object Loading : ListState()
 
-        data object Loading : GroupViewState()
+        /** No task setups (and no groups beyond the default one). */
+        data object Empty : ListState()
 
-        class Filled<P, C>(
-            val hierarchicalViewModel: HierarchicalListViewModel<P, C>,
-        ) : GroupViewState()
-    }
-
-    sealed class DetailViewState(
-        val headerTitle: String = "Tasks",
-        val headerSubtitle: String? = null,
-        val editGroupEnabled: Boolean = true,
-        val createTaskEnabled: Boolean = true,
-        val stopAllTasksEnabled: Boolean = true,
-        val startAllTasksEnabled: Boolean = true,
-    ) {
-        data object NoSelection : DetailViewState(
-            editGroupEnabled = false,
-            createTaskEnabled = false,
-            stopAllTasksEnabled = false,
-            startAllTasksEnabled = false,
-        )
-
-        class Loading(
-            headerTitle: String,
-        ) : DetailViewState(
-                headerTitle = headerTitle,
-                stopAllTasksEnabled = false,
-                startAllTasksEnabled = false,
-            )
-
-        class Filled(
-            val scriptInstances: List<ScriptInstanceUiModel>,
-            stopAllTasksEnabled: Boolean,
-            startAllTasksEnabled: Boolean,
-            headerTitle: String,
-            headerSubtitle: String? = null,
-            val finishedTasksCount: Int = 0,
-            val erroredTasksCount: Int = 0,
-            val idleTasksCount: Int = 0,
-            val runningTasksCount: Int = 0,
-        ) : DetailViewState(
-                headerTitle = headerTitle,
-                headerSubtitle = headerSubtitle,
-                stopAllTasksEnabled = stopAllTasksEnabled,
-                startAllTasksEnabled = startAllTasksEnabled,
-            )
-
-        class Empty(
-            headerTitle: String = "Tasks",
-            headerSubtitle: String? = null,
-        ) : DetailViewState(
-                headerTitle = headerTitle,
-                headerSubtitle = headerSubtitle,
-                stopAllTasksEnabled = false,
-                startAllTasksEnabled = false,
-            )
+        data class Filled(
+            /** The groups and setups the filters leave. */
+            val groups: List<TaskGroupSection>,
+            /** Every setup and task, whatever the filters leave. */
+            val setupCount: Int,
+            val taskCount: Int,
+            /** The status chips to show, in order. */
+            val chips: List<TaskFilterChip>,
+            /** Offered only with more than one group. */
+            val groupFilter: GroupFilterState?,
+        ) : ListState()
     }
 
     sealed class DialogState {

@@ -3,13 +3,11 @@ package com.cereal.client.presentation.tasks.mappers
 import com.cereal.client.domain.model.script.ChildScript
 import com.cereal.client.domain.model.script.ScriptInstance
 import com.cereal.client.domain.model.script.configuration.ConfigValue
-import com.cereal.client.domain.model.task.ScriptPackageGroup
 import com.cereal.client.domain.model.task.Task
 import com.cereal.client.domain.model.task.TaskStatus
 import com.cereal.client.presentation.tasks.formatter.joinToString
 import com.cereal.client.presentation.tasks.model.ScriptInstanceUiModel
 import com.cereal.client.presentation.tasks.model.TaskUiModel
-import com.cereal.client.presentation.view.group.GroupListItemContent
 import java.text.DateFormat
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
@@ -93,12 +91,3 @@ fun TaskStatus.toDisplayMessage(): String =
         is TaskStatus.Error -> this.message
         is TaskStatus.Idle -> this.message ?: "Press start"
     }
-
-fun List<ScriptPackageGroup>.toTaskGroupUiModels(): List<GroupListItemContent<ScriptPackageGroup>> = map { it.toUiModel() }
-
-fun ScriptPackageGroup.toUiModel(): GroupListItemContent<ScriptPackageGroup> =
-    GroupListItemContent(
-        id = this,
-        title = this.name,
-        badge = this.totalScriptPackages.toString(),
-    )

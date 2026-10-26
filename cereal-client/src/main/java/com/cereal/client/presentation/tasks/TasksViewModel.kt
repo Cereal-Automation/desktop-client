@@ -3,6 +3,7 @@ package com.cereal.client.presentation.tasks
 import androidx.compose.runtime.State
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.referentialEqualityPolicy
 import com.cereal.client.application.CoroutinesDispatcherProvider
 import com.cereal.client.application.Interactor
 import com.cereal.client.application.interactor.artifact.ObserveArtifactsInteractor
@@ -16,16 +17,13 @@ import com.cereal.client.domain.model.artifact.Artifact
 import com.cereal.client.domain.model.logging.LoggingEvent
 import com.cereal.client.domain.model.logging.LoggingPriority
 import com.cereal.client.domain.model.script.ScriptPackageInstance
-import com.cereal.client.domain.model.script.concurrentTaskCounts
 import com.cereal.client.domain.model.task.ScriptPackageGroup
 import com.cereal.client.domain.model.task.Task
 import com.cereal.client.domain.model.task.TaskStatus
 import com.cereal.client.domain.repository.LogEventRepository
 import com.cereal.client.presentation.error.ErrorResolver
-import com.cereal.client.presentation.tasks.model.ScriptInstanceUiModel
 import com.cereal.client.presentation.tasks.model.TaskUiModel
 import com.cereal.client.presentation.util.InteractorRunner
-import com.cereal.client.presentation.view.group.HierarchicalListViewModel
 import com.github.kittinunf.result.coroutines.SuspendableResult
 import com.github.kittinunf.result.coroutines.map
 import kotlinx.coroutines.CoroutineScope
@@ -59,54 +57,38 @@ class TasksViewModel(
     private val openUrlInteractor: OpenUrlInteractor,
     private val observeArtifactsInteractor: ObserveArtifactsInteractor,
     private val saveArtifactToFileInteractor: SaveArtifactToFileInteractor,
-    private val lastSelectedTaskSetup: LastSelectedTaskSetup,
     private val setConcurrentTaskCountInteractor: SetConcurrentTaskCountInteractor,
 ) {
     private val scope = CoroutineScope(SupervisorJob() + dispatcherProvider.main)
     private val interactorRunner = InteractorRunner(scope, dispatcherProvider, errorResolver)
-    val hierarchicalListViewModel =
-        HierarchicalListViewModel<ScriptPackageGroup, ScriptPackageInstance>(
-            parentMenuOptions = listOf(MenuOption.EDIT, MenuOption.DELETE),
-            childMenuOptions = listOf(MenuOption.VIEW_CONFIGURATION, MenuOption.DUPLICATE, MenuOption.MOVE_TO_GROUP, MenuOption.DELETE),
-            onParentSelectedChange = { group ->
-                // When a group is selected, show Empty state (no scripts selected yet)
-                // This enables the edit and create buttons but shows no tasks
-                if (group != null) {
-                    tasksViewState.value = TaskViewState.DetailViewState.Empty()
-                } else {
-                    tasksViewState.value = TaskViewState.DetailViewState.NoSelection
-                }
-            },
-            onChildSelectedChange = { scriptInstance ->
-                // A filter chosen for another setup could hide every task of this one.
-                if (scriptInstance?.id != lastSelectedTaskSetup.id) taskFilter.value = TaskFilter.ALL
-                scriptInstance?.let { lastSelectedTaskSetup.id = it.id }
-                updateTasks(scriptInstance)
-                // Restore this script's last selected task (fresh copy) so logs never show another script's task.
-                val remembered = scriptInstance?.let { selectedTaskInScriptInstance[it] }
-                onTaskSelected(remembered?.let { r -> tasks?.firstOrNull { it.id == r.id } })
-                if (scriptInstance == null) ensureSetupSelected()
-            },
-            onParentMenuOptionSelected = { group, menuItem ->
-                if (menuItem == MenuOption.DELETE) {
-                    onDeleteGroup(group)
-                } else if (menuItem == MenuOption.EDIT) {
-                    onEditTaskGroup(group)
-                }
-            },
-            onChildMenuOptionSelected = { scriptInstance, menuItem -> onSetupMenuOptionSelected(scriptInstance, menuItem) },
-        )
 
-    // Start in Loading, not Empty: the groups flow has not emitted yet on screen entry, and
-    // rendering the Empty "create your first group" CTA in that window flickers before the real
-    // list arrives. observeTaskGroups() resolves this to Filled/Empty once the data is in.
-    val hierarchicalListState =
-        mutableStateOf<TaskViewState.GroupViewState>(TaskViewState.GroupViewState.Loading)
-    val tasksViewState = mutableStateOf<TaskViewState.DetailViewState>(TaskViewState.DetailViewState.NoSelection)
-    private val taskFilter = mutableStateOf(TaskFilter.ALL)
+    // Every group's task setups in list order; null until they first load.
+    private val groupedSetups = mutableStateOf<List<Pair<ScriptPackageGroup, List<ScriptPackageInstance>>>?>(null, referentialEqualityPolicy())
+    private val allTasks = mutableStateOf<List<Task>>(emptyList())
+    private val statusFilter = mutableStateOf(TaskFilter.ALL)
+    private val groupFilter = mutableStateOf<String?>(null)
 
-    /** The detail header's concurrent-task stepper for the selected setup; declared before `init`, which updates it. */
-    val concurrentTaskStepper = mutableStateOf<ConcurrentTaskStepperState?>(null)
+    // In memory only: every setup starts expanded on each screen visit.
+    private val collapsedSetupIds = mutableStateOf(emptySet<String>())
+
+    /**
+     * Every task setup under its group, with its tasks. Starts in Loading, not Empty: rendering the empty state before
+     * the groups first load would flicker ahead of the real list.
+     */
+    val listState: State<TaskViewState.ListState> =
+        derivedStateOf {
+            TasksViewStateBuilder.buildListState(
+                groupedSetups.value,
+                allTasks.value,
+                statusFilter.value,
+                groupFilter.value,
+                collapsedSetupIds.value,
+            )
+        }
+
+    /** A task the list should scroll to (set by [focusTask]); the screen clears it with [onScrolledToTask]. */
+    val scrollToTaskId = mutableStateOf<String?>(null)
+
     private val dialogManager = TaskDialogManager()
     val dialogState get() = dialogManager.dialogState
     val logViewerMessages = mutableStateOf<List<LoggingEvent>>(emptyList())
@@ -137,24 +119,18 @@ class TasksViewModel(
             return _selectedTask
         }
 
-    /** Number of the selected task within its setup, for the Output header ("Output · Task #n"). */
-    val selectedTaskNumber: Int?
-        get() {
-            val selectedId = _selectedTask.value?.id ?: return null
-            val filled = tasksViewState.value as? TaskViewState.DetailViewState.Filled ?: return null
-            return filled.scriptInstances.firstNotNullOfOrNull { instance ->
-                instance.tasks.firstOrNull { it.id.id == selectedId }?.taskNumber
-            }
-        }
+    /** The inspector for the selected task, live; null while no task is selected. */
+    val inspector: State<TaskInspectorState?> =
+        derivedStateOf { _selectedTask.value?.let { TasksViewStateBuilder.buildInspectorState(it.id, allTasks.value) } }
+
     val userInteractions = mutableStateOf<List<TaskUiModel>>(emptyList())
 
-    private var selectedTaskInScriptInstance = mutableMapOf<ScriptPackageInstance, Task>()
     private var logObservationJob: Job? = null
     private var observedTaskId: String? = null
     private var artifactObservationJob: Job? = null
     private var observedArtifactTaskId: String? = null
     val errorAction = errorResolver.errorAction
-    private var tasks: List<Task>? = null
+    private val tasks: List<Task> get() = allTasks.value
     private val tasksFlow = MutableStateFlow<List<Task>>(emptyList())
 
     init {
@@ -170,16 +146,27 @@ class TasksViewModel(
         interactorRunner.launch(getOrCreateDefaultTaskGroupInteractor, Interactor.None()) {}
     }
 
-    fun onTaskSelected(task: Task?) {
+    private fun onTaskSelected(task: Task?) {
         _selectedTask.value = task
         observeLogEventsForTask(task)
         observeArtifactsForTask(task)
-        hierarchicalListViewModel.selectedChild?.let {
-            if (task == null) {
-                selectedTaskInScriptInstance.remove(it)
-            } else {
-                selectedTaskInScriptInstance.put(it, task)
-            }
+    }
+
+    /** A task row click opens the inspector for [task], or closes it when [task] is already selected. */
+    fun onTaskClicked(task: Task) {
+        onTaskSelected(task.takeUnless { it.id == _selectedTask.value?.id })
+    }
+
+    fun closeInspector() {
+        onTaskSelected(null)
+    }
+
+    fun onInspectorAction(action: TaskInspectorAction) {
+        val task = inspector.value?.task ?: return
+        when (action) {
+            TaskInspectorAction.STOP -> stopTask(task)
+            TaskInspectorAction.START, TaskInspectorAction.RESTART -> startTask(task)
+            TaskInspectorAction.REPORT_ISSUE -> reportIssue(task)
         }
     }
 
@@ -187,21 +174,17 @@ class TasksViewModel(
         dialogManager.showCreateGroup()
     }
 
-    /** "New task setup": opens script selection for the selected setup's group, else the default group. */
+    /** "New task setup": opens script selection for the default group. */
     fun onAddScriptClicked() {
-        hierarchicalListViewModel.selectedParent?.let {
-            dialogManager.showSelectingScript(it)
-            return
-        }
         interactorRunner.launch(getOrCreateDefaultTaskGroupInteractor, Interactor.None()) { group ->
             dialogManager.showSelectingScript(group)
         }
     }
 
     /**
-     * Selects the group, script instance and task that own [taskId] so the Tasks screen lands on the
-     * notification's source task. The task list and group children load asynchronously after screen
-     * entry, so this polls briefly until the data needed to resolve the task is available.
+     * Selects [taskId] and scrolls the list to it, so the Tasks screen lands on a notification's source task: its setup
+     * is expanded and a status chip or group filter that would hide it is cleared. The
+     * tasks and the list load asynchronously after screen entry, so this polls briefly until the task is listed.
      */
     fun focusTask(taskId: String) {
         scope.launch {
@@ -213,13 +196,35 @@ class TasksViewModel(
     }
 
     private fun tryFocusTask(taskId: String): Boolean {
-        val task = tasks?.firstOrNull { it.id == taskId } ?: return false
-        val (group, instance) = observedSetup(task.scriptInstance.packageInstance.id) ?: return false
-
-        hierarchicalListViewModel.selectParent(group)
-        hierarchicalListViewModel.selectChild(instance)
+        val task = tasks.firstOrNull { it.id == taskId } ?: return false
+        val (group, setup) = observedSetup(task.scriptInstance.packageInstance.id) ?: return false
+        // Land on the task: open its setup and drop any filter that would hide it.
+        collapsedSetupIds.value -= setup.id
+        if (!statusFilter.value.matches(task.status)) statusFilter.value = TaskFilter.ALL
+        if (groupFilter.value != null && groupFilter.value != group.id) groupFilter.value = null
         onTaskSelected(task)
+        scrollToTaskId.value = taskId
         return true
+    }
+
+    /** A status chip: shows only matching tasks, across every setup. */
+    fun onStatusFilterSelected(filter: TaskFilter) {
+        statusFilter.value = filter
+    }
+
+    /** The group filter: one group's id, or null for all groups. */
+    fun onGroupFilterSelected(groupId: String?) {
+        groupFilter.value = groupId
+    }
+
+    /** A setup row's chevron or name: collapses or expands its tasks. */
+    fun onSetupExpandToggled(setupId: String) {
+        val collapsed = collapsedSetupIds.value
+        collapsedSetupIds.value = if (setupId in collapsed) collapsed - setupId else collapsed + setupId
+    }
+
+    fun onScrolledToTask() {
+        scrollToTaskId.value = null
     }
 
     fun openScriptSelectionForPublicIdentifier(publicIdentifier: String) {
@@ -232,159 +237,116 @@ class TasksViewModel(
         }
     }
 
-    fun onEditTaskGroup(group: ScriptPackageGroup) {
-        dialogManager.showEditGroup(group)
+    /** A group label's "···" menu. */
+    fun onGroupMenuOptionSelected(
+        groupId: String,
+        option: GroupMenuOption,
+    ) {
+        val group = groupedSetups.value?.firstOrNull { it.first.id == groupId }?.first ?: return
+        when (option) {
+            GroupMenuOption.NEW_TASK_SETUP -> dialogManager.showSelectingScript(group)
+            GroupMenuOption.RENAME -> dialogManager.showEditGroup(group)
+            GroupMenuOption.DELETE -> deleteGroup(group)
+        }
     }
 
-    private fun onDeleteGroup(group: ScriptPackageGroup) {
-        val scripts = tasksListObserver.childrenByGroupState[group]?.map { it.id } ?: emptyList()
-        if (scripts.isNotEmpty()) {
+    /** Deletes [group] at once when it holds no setups, else asks first. */
+    fun deleteGroup(group: ScriptPackageGroup) {
+        val setups =
+            groupedSetups.value
+                ?.firstOrNull { it.first.id == group.id }
+                ?.second
+                .orEmpty()
+        if (setups.isNotEmpty()) {
             dialogManager.showConfirmDeletion(group)
         } else {
-            deleteGroupInternal(group)
+            confirmGroupDeletion(group)
         }
     }
 
     fun confirmGroupDeletion(group: ScriptPackageGroup) {
-        deleteGroupInternal(group)
-    }
-
-    private fun deleteGroupInternal(group: ScriptPackageGroup) {
-        tasksActionHandler.deleteGroupInternal(scope, group) {
-            // List updates in the UI are handled using flows.
-            // Deselect group when the deleted group was the selected one.
-            if (group.id == hierarchicalListViewModel.selectedParent?.id) {
-                hierarchicalListViewModel.deselectAll()
-            }
-            closeDialog()
-        }
+        // The list follows the change through its flows.
+        tasksActionHandler.deleteGroupInternal(scope, group) { closeDialog() }
     }
 
     fun changeGroup(
         scriptPackageInstance: ScriptPackageInstance,
         newGroup: ScriptPackageGroup,
     ) {
-        tasksActionHandler.changeGroup(scope, scriptPackageInstance, newGroup) {
-            closeDialog()
-            // Update UI by selecting the new group
-            hierarchicalListViewModel.selectParent(newGroup)
-            hierarchicalListViewModel.selectChild(scriptPackageInstance)
-        }
-    }
-
-    internal fun onDeleteScriptInstance(scriptPackageInstance: ScriptPackageInstance) {
-        dialogManager.showConfirmScriptInstanceDeletion(scriptPackageInstance)
+        tasksActionHandler.changeGroup(scope, scriptPackageInstance, newGroup) { closeDialog() }
     }
 
     fun confirmScriptInstanceDeletion(scriptPackageInstance: ScriptPackageInstance) {
-        tasksActionHandler.deleteScriptInstance(scope, scriptPackageInstance) {
-            // List updates in the UI are handled using flows.
-            if (scriptPackageInstance.id == hierarchicalListViewModel.selectedChild?.id) {
-                hierarchicalListViewModel.selectChild(null)
-            }
-            closeDialog()
-        }
+        tasksActionHandler.deleteScriptInstance(scope, scriptPackageInstance) { closeDialog() }
     }
 
-    /** The detail header's "···" menu: the list context menu's setup actions, applied to the selected setup. */
-    val headerMenuOptions = listOf(MenuOption.DUPLICATE, MenuOption.MOVE_TO_GROUP, MenuOption.DELETE)
-
-    fun onHeaderMenuOptionSelected(option: MenuOption) {
-        hierarchicalListViewModel.selectedChild?.let { onSetupMenuOptionSelected(it, option) }
-    }
-
-    private fun onSetupMenuOptionSelected(
-        scriptInstance: ScriptPackageInstance,
-        option: MenuOption,
+    /** A task setup row's "···" menu; acts on the setup as last observed, which carries its latest saved values. */
+    fun onSetupMenuOptionSelected(
+        setupId: String,
+        option: SetupMenuOption,
     ) {
+        val (group, setup) = observedSetup(setupId) ?: return
         when (option) {
-            MenuOption.DELETE -> onDeleteScriptInstance(scriptInstance)
-            MenuOption.VIEW_CONFIGURATION -> showConfiguration(scriptInstance)
-            MenuOption.DUPLICATE -> duplicateScriptInstance(scriptInstance)
-            MenuOption.MOVE_TO_GROUP -> moveScriptToGroup(scriptInstance)
-            MenuOption.EDIT -> Unit // Setups are edited from the detail header.
+            SetupMenuOption.EDIT -> {
+                dialogManager.showEditScript(group, setup)
+            }
+
+            SetupMenuOption.VIEW_CONFIGURATION -> {
+                dialogManager.showConfiguration(setup)
+            }
+
+            SetupMenuOption.DUPLICATE -> {
+                dialogManager.showDuplicateScript(group, setup)
+            }
+
+            SetupMenuOption.MOVE_TO_GROUP -> {
+                dialogManager.showMoveScriptToGroup(
+                    scriptInstance = setup,
+                    currentGroup = group,
+                    availableGroups = groupedSetups.value.orEmpty().map { it.first },
+                )
+            }
+
+            SetupMenuOption.RESTART_FAILED -> {
+                restartErroredTasks(setupId)
+            }
+
+            SetupMenuOption.CONTACT_SUPPORT -> {
+                contactSupport(setup)
+            }
+
+            SetupMenuOption.DELETE -> {
+                dialogManager.showConfirmScriptInstanceDeletion(setup)
+            }
         }
     }
 
-    /** Edit in the detail header: only while none of the selected setup's tasks runs. */
-    val editEnabled: Boolean
-        get() =
-            hierarchicalListViewModel.selectedChild != null &&
-                (tasksViewState.value as? TaskViewState.DetailViewState.Filled)?.runningTasksCount?.let { it == 0 } ?: true
+    fun increaseConcurrentTasks(setupId: String) = changeConcurrentTaskCount(setupId, +1)
 
-    fun onEditClicked() {
-        val selected = hierarchicalListViewModel.selectedChild ?: return
-        if (!editEnabled) return
-        // Prefer the setup from the observed list, which carries its latest saved configuration.
-        val (group, setup) = observedSetup(selected.id) ?: return
-        dialogManager.showEditScript(group, setup)
-    }
+    fun decreaseConcurrentTasks(setupId: String) = changeConcurrentTaskCount(setupId, -1)
 
-    fun increaseConcurrentTasks() = changeConcurrentTaskCount(+1)
-
-    fun decreaseConcurrentTasks() = changeConcurrentTaskCount(-1)
-
-    private fun changeConcurrentTaskCount(step: Int) {
-        val stepper = concurrentTaskStepper.value ?: return
+    private fun changeConcurrentTaskCount(
+        setupId: String,
+        step: Int,
+    ) {
+        val (_, setup) = observedSetup(setupId) ?: return
+        val stepper = TasksViewStateBuilder.stepperOf(setup, tasks) ?: return
         val allowed = if (step > 0) stepper.canIncrease else stepper.canDecrease
         if (!allowed) return
-        val setup = selectedSetup() ?: return
         interactorRunner.launch(
             setConcurrentTaskCountInteractor,
             SetConcurrentTaskCountInteractor.Params(setup, stepper.count + step),
         )
     }
 
-    /** The selected setup as last observed in the list, which carries its latest saved values. */
-    private fun selectedSetup(): ScriptPackageInstance? {
-        val selected = hierarchicalListViewModel.selectedChild ?: return null
-        return observedSetup(selected.id)?.second ?: selected
-    }
-
     /** The setup with [id] as last observed in the list, with the group that holds it. */
     private fun observedSetup(id: String): Pair<ScriptPackageGroup, ScriptPackageInstance>? =
-        tasksListObserver.childrenByGroupState.entries.firstNotNullOfOrNull { (group, items) ->
-            items.firstOrNull { it.id.id == id }?.let { group to it.id }
+        groupedSetups.value.orEmpty().firstNotNullOfOrNull { (group, setups) ->
+            setups.firstOrNull { it.id == id }?.let { group to it }
         }
-
-    private fun updateConcurrentTaskStepper() {
-        val setup = selectedSetup()
-        concurrentTaskStepper.value =
-            setup?.concurrentTaskCounts(tasks.orEmpty())?.let { counts ->
-                val count = setup.numberOfConcurrentTasks
-                ConcurrentTaskStepperState(count, canDecrease = count - 1 >= counts.first, canIncrease = count + 1 <= counts.last)
-            }
-    }
-
-    fun showConfiguration(scriptPackageInstance: ScriptPackageInstance) {
-        dialogManager.showConfiguration(scriptPackageInstance)
-    }
-
-    /** The group that actually holds [scriptInstance]; menu actions must not assume it's the selected one. */
-    private fun groupOf(scriptInstance: ScriptPackageInstance): ScriptPackageGroup? = observedSetup(scriptInstance.id)?.first ?: hierarchicalListViewModel.selectedParent
-
-    fun moveScriptToGroup(scriptInstance: ScriptPackageInstance) {
-        val currentGroup = groupOf(scriptInstance)
-        if (currentGroup != null) {
-            val availableGroups = tasksListObserver.childrenByGroupState.keys.toList()
-            dialogManager.showMoveScriptToGroup(
-                scriptInstance = scriptInstance,
-                currentGroup = currentGroup,
-                availableGroups = availableGroups,
-            )
-        }
-    }
-
-    fun duplicateScriptInstance(scriptPackageInstance: ScriptPackageInstance) {
-        val group = groupOf(scriptPackageInstance) ?: return
-        dialogManager.showDuplicateScript(group, scriptPackageInstance)
-    }
 
     fun createGroup(groupName: String) {
-        tasksActionHandler.createGroup(scope, groupName) { createdGroup ->
-            closeDialog()
-            hierarchicalListViewModel.selectParent(createdGroup)
-        }
+        tasksActionHandler.createGroup(scope, groupName) { closeDialog() }
     }
 
     fun editGroup(
@@ -396,98 +358,32 @@ class TasksViewModel(
         }
     }
 
-    fun deleteGroup(group: ScriptPackageGroup) {
-        onDeleteGroup(group)
+    fun startAllTasks(setupId: String) {
+        observedSetup(setupId)?.let { (_, setup) -> tasksActionHandler.startAllTasks(scope, setup) }
     }
 
-    // A setup the dialog just created; the list may not show it yet, so it is (re)selected once it does.
-    private var createdSetupId: String? = null
-
-    /** Selects the new setup without starting it. */
-    fun onScriptInstanceCreated(scriptPackageInstance: ScriptPackageInstance) {
-        createdSetupId = scriptPackageInstance.id
-        hierarchicalListViewModel.selectChild(scriptPackageInstance)
-    }
-
-    fun startAllTasks() {
-        hierarchicalListViewModel.selectedChild?.let {
-            tasksActionHandler.startAllTasks(scope, it)
-        }
-    }
-
-    fun stopAllTasks() {
-        hierarchicalListViewModel.selectedChild?.let {
-            tasksActionHandler.stopAllTasks(scope, it)
-        }
+    fun stopAllTasks(setupId: String) {
+        observedSetup(setupId)?.let { (_, setup) -> tasksActionHandler.stopAllTasks(scope, setup) }
     }
 
     private var restartErroredJob: Job? = null
-    val restartErroredInFlight = mutableStateOf(false)
 
-    /** Status chip click: filters the task list to that status; clicking the active chip clears the filter. */
-    internal fun onStatusChipClicked(filter: TaskFilter) {
-        taskFilter.value = if (taskFilter.value == filter) TaskFilter.ALL else filter
-    }
-
-    /** Status chips, Start/Stop all toggle and Restart errored for the selected setup; null while it has no tasks. */
-    internal val taskControls: State<TaskQuickActionsState?> =
-        derivedStateOf {
-            val filled = tasksViewState.value as? TaskViewState.DetailViewState.Filled ?: return@derivedStateOf null
-            TaskQuickActionsState(
-                counts =
-                    TaskCounts(
-                        idle = filled.idleTasksCount,
-                        running = filled.runningTasksCount,
-                        finished = filled.finishedTasksCount,
-                        errored = filled.erroredTasksCount,
-                    ),
-                filter = taskFilter.value,
-                showStopAll = filled.stopAllTasksEnabled,
-                showStartAll = !filled.stopAllTasksEnabled && filled.startAllTasksEnabled,
-                showRestartErrored = filled.erroredTasksCount > 0,
-                restartErroredEnabled = !restartErroredInFlight.value,
-            )
-        }
-
-    /** The selected setup's scripts with their tasks narrowed to the active status filter; scripts left empty are dropped. */
-    internal val visibleTasks: State<List<Pair<ScriptInstanceUiModel, List<TaskUiModel>>>> =
-        derivedStateOf {
-            val filled = tasksViewState.value as? TaskViewState.DetailViewState.Filled ?: return@derivedStateOf emptyList()
-            val filter = taskFilter.value
-            filled.scriptInstances.mapNotNull { scriptInstance ->
-                val tasks = scriptInstance.tasks.filter { filter.matches(it) }
-                if (tasks.isEmpty()) null else scriptInstance to tasks
-            }
-        }
-
-    fun restartErroredTasks() {
+    private fun restartErroredTasks(setupId: String) {
         // Guard against duplicate submissions: the button stays enabled while errored > 0,
         // which only flips once the backend reports the new state, so rapid clicks would
         // otherwise re-fire the same task starts.
         if (restartErroredJob?.isActive == true) return
-        val filled = tasksViewState.value as? TaskViewState.DetailViewState.Filled ?: return
         val erroredIds =
-            filled.scriptInstances
-                .flatMap { it.tasks }
-                .filter { it.isError }
-                .map { it.id.id }
+            tasks
+                .filter { it.scriptInstance.packageInstance.id == setupId && it.status is TaskStatus.Error }
+                .map { it.id }
         if (erroredIds.isEmpty()) return
 
-        restartErroredInFlight.value = true
-        restartErroredJob =
-            scope.launch {
-                try {
-                    erroredIds.map { id -> tasksActionHandler.startTaskInternal(scope, id) }.joinAll()
-                } finally {
-                    restartErroredInFlight.value = false
-                }
-            }
+        restartErroredJob = scope.launch { erroredIds.map { id -> tasksActionHandler.startTaskInternal(scope, id) }.joinAll() }
     }
 
+    /** A row's play button or the inspector's Start/Restart; leaves the selection alone (only a row click selects). */
     fun startTask(taskUiModel: TaskUiModel) {
-        // Select the task when play button is pressed
-        onTaskSelected(taskUiModel.id)
-
         // Check if task is in finished state and show confirmation dialog
         if (taskUiModel.id.status is TaskStatus.Success) {
             dialogManager.showConfirmTaskRestart(taskUiModel)
@@ -500,8 +396,6 @@ class TasksViewModel(
 
     fun confirmTaskRestart(taskUiModel: TaskUiModel) {
         closeDialog()
-        // Ensure task remains selected when restarting
-        onTaskSelected(taskUiModel.id)
         startTaskInternal(taskUiModel)
     }
 
@@ -521,7 +415,7 @@ class TasksViewModel(
         tasksActionHandler.finishUserInteraction(scope, taskUiModel.id.id)
     }
 
-    fun reportIssue(taskUiModel: TaskUiModel) {
+    private fun reportIssue(taskUiModel: TaskUiModel) {
         val packageInstance = taskUiModel.id.scriptInstance.packageInstance
         interactorRunner.launch(
             reportScriptIssueInteractor,
@@ -533,38 +427,13 @@ class TasksViewModel(
         ) {}
     }
 
-    fun contactSupport() {
-        val url =
-            hierarchicalListViewModel.selectedChild
-                ?.definition
-                ?.manifest
-                ?.supportUrl ?: return
+    private fun contactSupport(setup: ScriptPackageInstance) {
+        val url = setup.definition.manifest.supportUrl ?: return
         interactorRunner.launch(openUrlInteractor, OpenUrlInteractor.Params(url)) {}
     }
 
     private fun observeTaskGroups() {
-        tasksListObserver.observeTaskGroups(scope, hierarchicalListViewModel) { newState ->
-            hierarchicalListState.value = newState
-            ensureSetupSelected()
-            updateConcurrentTaskStepper()
-        }
-    }
-
-    /**
-     * A task setup is always selected while any exist: the current one if it still exists, else the one
-     * last selected this session, else the first.
-     */
-    private fun ensureSetupSelected() {
-        val setups = hierarchicalListViewModel.allChildren.map { it.id }
-        val current = hierarchicalListViewModel.selectedChild
-        val created = setups.firstOrNull { it.id == createdSetupId }?.also { createdSetupId = null }
-        val target =
-            created
-                ?: current?.let { setups.firstOrNull { it.id == current.id } }
-                ?: setups.firstOrNull { it.id == lastSelectedTaskSetup.id }
-                ?: setups.firstOrNull()
-                ?: return
-        hierarchicalListViewModel.selectChild(target)
+        tasksListObserver.observeTaskGroups(scope) { groupedSetups.value = it }
     }
 
     private fun updateUserInteractions() {
@@ -573,24 +442,12 @@ class TasksViewModel(
 
     private fun observeTasks() {
         tasksListObserver.observeTasks(scope) { updatedTasks ->
-            tasks = updatedTasks
-            tasksFlow.value = updatedTasks ?: emptyList()
-            updateTasks(hierarchicalListViewModel.selectedChild)
-        }
-    }
-
-    @OptIn(ExperimentalTime::class)
-    private fun updateTasks(scriptPackageInstance: ScriptPackageInstance?) {
-        tasksViewState.value =
-            TasksViewStateBuilder.buildDetailViewState(
-                tasks,
-                scriptPackageInstance,
-            )
-        updateUserInteractions()
-        updateConcurrentTaskStepper()
-        if (scriptPackageInstance == null) {
-            observeLogEventsForTask(null)
-            observeArtifactsForTask(null)
+            allTasks.value = updatedTasks.orEmpty()
+            tasksFlow.value = updatedTasks.orEmpty()
+            updateUserInteractions()
+            // The selected task is gone (its setup was deleted, or its count shrank): close the inspector.
+            val selectedId = _selectedTask.value?.id
+            if (selectedId != null && tasks.none { it.id == selectedId }) onTaskSelected(null)
         }
     }
 
