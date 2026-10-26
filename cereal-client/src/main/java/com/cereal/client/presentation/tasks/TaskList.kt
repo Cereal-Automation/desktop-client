@@ -42,6 +42,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.drawscope.clipRect
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.TextUnitType
 import androidx.compose.ui.unit.dp
@@ -275,13 +276,21 @@ private fun SetupTitle(
     modifier: Modifier,
 ) {
     Column(modifier = modifier) {
-        CerealText(text = section.name, style = CerealTypography.rowTitle, color = MaterialTheme.colorScheme.onSurface, maxLines = 1)
+        // Ellipsized: on a narrow list the row's fixed-width items leave the title only what's left.
+        CerealText(
+            text = section.name,
+            style = CerealTypography.rowTitle,
+            color = MaterialTheme.colorScheme.onSurface,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+        )
         if (!section.subtitle.isNullOrEmpty()) {
             CerealText(
                 text = section.subtitle,
                 style = MaterialTheme.typography.labelMedium,
                 color = CerealTheme.colorScheme.contentSubtle,
                 maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
             )
         }
     }
