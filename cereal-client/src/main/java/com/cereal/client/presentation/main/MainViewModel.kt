@@ -50,6 +50,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import org.jetbrains.compose.resources.StringResource
 
+@Suppress("LongParameterList")
 @OptIn(ExperimentalCoroutinesApi::class)
 class MainViewModel(
     private val dispatcherProvider: CoroutinesDispatcherProvider,
