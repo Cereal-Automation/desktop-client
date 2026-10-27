@@ -34,6 +34,7 @@ import com.cereal.client.presentation.tasks.TasksListObserver
 import com.cereal.client.presentation.tasks.TasksViewModel
 import com.cereal.client.presentation.tasks.dialog.ImportFromFileViewModel
 import com.cereal.client.presentation.tasks.dialog.ViewConfigurationViewModel
+import com.cereal.client.presentation.tasks.script.overview.ScriptRequest
 import com.cereal.client.presentation.tasks.script.overview.ScriptSelectionViewModel
 import com.cereal.client.presentation.tasks.script.overview.configuration.ScriptConfigurationViewModel
 import kotlinx.coroutines.CoroutineScope
@@ -215,12 +216,12 @@ object ViewModelModule {
             }
             // Koin parameter holder unpacks five injected values for this factory.
             @Suppress("DestructuringDeclarationWithTooManyEntries")
-            factory { (scope: CoroutineScope, scriptPackageGroup: ScriptPackageGroup, initialScriptPackageInstance: ScriptPackageInstance?, initialPublicIdentifier: String?, editing: Boolean) ->
+            factory { (scope: CoroutineScope, scriptPackageGroup: ScriptPackageGroup, initialScriptPackageInstance: ScriptPackageInstance?, initialRequest: ScriptRequest?, editing: Boolean) ->
                 ScriptSelectionViewModel(
                     scope,
                     scriptPackageGroup,
                     initialScriptPackageInstance,
-                    initialPublicIdentifier,
+                    initialRequest,
                     editing,
                     get(),
                     get(),
@@ -259,11 +260,12 @@ object ViewModelModule {
             factory { (scope: CoroutineScope) -> BrandPaywallViewModel(scope, get(), get(), get(), get(), get(), get()) }
             factory { ErrorResolver() }
             factory { (scope: CoroutineScope) -> AiSettingsViewModel(scope, get(), get(), get(), get(), get(), get()) }
-            factory { (scope: CoroutineScope, scriptPackage: ScriptPackage, initialScriptPackageInstance: ScriptPackageInstance?) ->
+            factory { params ->
                 ScriptConfigurationViewModel(
-                    scriptPackage,
-                    initialScriptPackageInstance,
-                    scope,
+                    params.get<ScriptPackage>(1),
+                    params.get<ScriptPackageInstance?>(2),
+                    params.get<String?>(3),
+                    params.get<CoroutineScope>(0),
                     get(),
                     get(),
                     get(),

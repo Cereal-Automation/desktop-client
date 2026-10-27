@@ -4,6 +4,7 @@ import com.cereal.client.domain.model.script.ScriptConfigurationValues
 import com.cereal.client.domain.model.script.ScriptPackage
 import com.cereal.client.domain.model.script.configuration.asGroup
 import com.cereal.client.domain.model.script.configuration.groupedConfigurationDefinition
+import com.cereal.client.domain.model.script.entry
 
 /**
  * Computes the number of dataset records a single run of [scriptPackage] will process, for start-time
@@ -22,9 +23,13 @@ import com.cereal.client.domain.model.script.configuration.groupedConfigurationD
 class CapacityValidator(
     private val scriptPackage: ScriptPackage,
     private val mainScriptConfiguration: ScriptConfigurationValues,
+    /** The entry whose configuration is checked; null is the default entry. */
+    private val variantId: String? = null,
 ) {
     fun runRecordCount(): Int =
-        scriptPackage.mainScript.configuration
+        scriptPackage
+            .entry(variantId)
+            .configuration
             .groupedConfigurationDefinition()
             ?.let { definition -> mainScriptConfiguration[definition.key]?.asGroup }
             ?.numberOfItems

@@ -39,16 +39,18 @@ class StartScriptInteractor(
                 params.scriptPackage,
                 params.mainScriptConfiguration,
                 params.childConfigurations,
+                params.variantId,
             )
         configValuesValidator.validate()
 
-        taskSetupLimits.checkEntitlement(params.scriptPackage, params.mainScriptConfiguration)
+        taskSetupLimits.checkEntitlement(params.scriptPackage, params.mainScriptConfiguration, params.variantId)
         if (!params.ignoreConcurrencyConflicts) {
             taskSetupLimits.checkConcurrency(
                 params.scriptPackage,
                 params.mainScriptConfiguration,
                 params.childConfigurations,
                 params.numberOfConcurrentTasks,
+                params.variantId,
             )
         }
 
@@ -61,12 +63,13 @@ class StartScriptInteractor(
                 Clock.System.now(),
                 params.numberOfConcurrentTasks,
                 params.notificationOverrides,
+                params.variantId,
             )
 
         val scriptInstance =
             scriptInstanceFactory.createMainScriptInstance(
                 UUID.randomUUID().toString(),
-                params.scriptPackage.mainScript,
+                scriptPackageInstance.entryScript,
                 params.mainScriptConfiguration,
                 Clock.System.now(),
                 scriptPackageInstance,
@@ -90,6 +93,8 @@ class StartScriptInteractor(
         val numberOfConcurrentTasks: Int,
         val ignoreConcurrencyConflicts: Boolean,
         val notificationOverrides: ScriptNotificationOverrides? = null,
+        /** The [ScriptPackage.variants] id to start; null starts the default entry. */
+        val variantId: String? = null,
     )
 }
 

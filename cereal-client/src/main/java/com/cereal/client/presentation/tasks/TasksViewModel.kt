@@ -28,6 +28,7 @@ import com.cereal.client.domain.repository.LogEventRepository
 import com.cereal.client.presentation.error.ErrorResolver
 import com.cereal.client.presentation.error.handleFailureOrElse
 import com.cereal.client.presentation.tasks.model.TaskUiModel
+import com.cereal.client.presentation.tasks.script.overview.ScriptRequest
 import com.cereal.client.presentation.util.InteractorRunner
 import com.github.kittinunf.result.coroutines.SuspendableResult
 import com.github.kittinunf.result.coroutines.map
@@ -267,12 +268,12 @@ class TasksViewModel(
         scrollToTaskId.value = null
     }
 
-    fun openScriptSelectionForPublicIdentifier(publicIdentifier: String) {
+    fun openScriptSelection(request: ScriptRequest) {
         interactorRunner.launch(getOrCreateDefaultTaskGroupInteractor, Interactor.None()) { group ->
             dialogState.value =
                 TaskViewState.DialogState.SelectingScript(
                     scriptPackageGroup = group,
-                    initialPublicIdentifier = publicIdentifier,
+                    initialRequest = request,
                 )
         }
     }

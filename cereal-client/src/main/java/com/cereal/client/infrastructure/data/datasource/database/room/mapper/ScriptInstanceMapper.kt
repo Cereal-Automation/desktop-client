@@ -98,6 +98,7 @@ class ScriptInstanceMapper(
             numberOfConcurrentTasks = scriptPackageInstance.numberOfConcurrentTasks,
             createdAt = scriptPackageInstance.createdAt,
             updatedAt = now,
+            variantId = scriptPackageInstance.variantId,
         )
     }
 
@@ -209,12 +210,12 @@ class ScriptInstanceMapper(
             keyValueMapper.mapConfigurationItemsFromEntities(
                 mainScriptConfigurationItems,
                 user,
-                scriptPackageInstance.definition.mainScript.configuration,
+                scriptPackageInstance.entryScript.configuration,
             )
 
         return scriptInstanceFactory.createMainScriptInstance(
             scriptEntity.id.toString(),
-            scriptPackageInstance.definition.mainScript,
+            scriptPackageInstance.entryScript,
             scriptConfigurationValues,
             scriptEntity.createdAt,
             scriptPackageInstance,

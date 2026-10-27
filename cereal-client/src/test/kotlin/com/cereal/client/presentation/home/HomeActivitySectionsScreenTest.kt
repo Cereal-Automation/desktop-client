@@ -7,12 +7,15 @@ import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.waitUntilAtLeastOneExists
+import com.cereal.client.application.agent.AI_BROWSER_AGENT_PACKAGE
 import com.cereal.client.domain.repository.ScriptRepository
 import com.cereal.client.domain.repository.TasksRepository
 import com.cereal.client.infrastructure.data.repository.inmemory.InMemoryScriptRepository
 import com.cereal.client.infrastructure.data.repository.inmemory.InMemoryTasksRepository
+import com.cereal.client.presentation.tasks.script.overview.ScriptRequest
 import fixtures.aGoalRun
 import fixtures.aScriptPackage
+import fixtures.aScriptPackageWithVariant
 import fixtures.anAgentPackage
 import kotlinx.coroutines.runBlocking
 import org.koin.dsl.module
@@ -65,7 +68,7 @@ class HomeActivitySectionsScreenTest {
 
     @Test
     fun `the strip runs an installed ready-made script and browses the marketplace`() {
-        val run = mutableListOf<String>()
+        val run = mutableListOf<ScriptRequest>()
         var marketplace = 0
         runScreenTest(overrides = listOf(withRunAndScript)) {
             setScreenContent { HomeScreen(onNavigateToMarketplace = { marketplace++ }, onRunScript = { run += it }) }
@@ -76,8 +79,25 @@ class HomeActivitySectionsScreenTest {
             onNodeWithText("Run").performScrollTo().performClick()
             onNodeWithText("Browse marketplace →").performScrollTo().performClick()
         }
-        assertEquals(listOf("com.example.restock"), run)
+        assertEquals(listOf(ScriptRequest("com.example.restock")), run)
         assertEquals(1, marketplace)
+    }
+
+    @Test
+    fun `running an agent variant from the strip requests that variant`() {
+        val run = mutableListOf<ScriptRequest>()
+        val agent =
+            anAgentPackage().copy(
+                variants = aScriptPackageWithVariant(AI_BROWSER_AGENT_PACKAGE, "product-checkout", "Product Monitor & Checkout").variants,
+            )
+        val withVariant = module { single<ScriptRepository> { InMemoryScriptRepository().apply { seed(listOf(agent)) } } }
+        runScreenTest(overrides = listOf(withVariant)) {
+            setScreenContent { HomeScreen(onRunScript = { run += it }) }
+
+            waitUntilAtLeastOneExists(hasText("Product Monitor & Checkout"), LOAD_TIMEOUT_MS)
+            onNodeWithText("Run").performScrollTo().performClick()
+        }
+        assertEquals(listOf(ScriptRequest(AI_BROWSER_AGENT_PACKAGE, "product-checkout")), run)
     }
 
     @Test

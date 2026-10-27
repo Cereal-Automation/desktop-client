@@ -5,6 +5,7 @@ import com.cereal.client.domain.model.script.MainScript
 import com.cereal.client.domain.model.script.Manifest
 import com.cereal.client.domain.model.script.ScriptFeature
 import com.cereal.client.domain.model.script.ScriptPackage
+import com.cereal.client.domain.model.script.ScriptVariant
 import org.slf4j.LoggerFactory
 import java.io.File
 
@@ -24,6 +25,7 @@ data class ScriptPackageDefinition(
     val manifest: ManifestDefinition,
     val mainScript: MainScript,
     val childScripts: Map<String, ChildScript>,
+    val variants: Map<String, ScriptVariant> = emptyMap(),
 )
 
 fun ScriptPackageDefinition.toScriptPackage(supportUrl: String?) =
@@ -41,6 +43,7 @@ fun ScriptPackageDefinition.toScriptPackage(supportUrl: String?) =
             ),
         mainScript = mainScript,
         childScripts = childScripts,
+        variants = variants,
     )
 
 // Unknown values come from scripts built for a newer client. Don't block them: sdk_version is what asks for an update.

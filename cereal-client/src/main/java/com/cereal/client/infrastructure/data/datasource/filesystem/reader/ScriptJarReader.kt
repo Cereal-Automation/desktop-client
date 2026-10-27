@@ -1,5 +1,6 @@
 package com.cereal.client.infrastructure.data.datasource.filesystem.reader
 
+import com.cereal.client.domain.model.exception.InvalidManifestException
 import com.cereal.client.infrastructure.data.datasource.filesystem.ManifestDefinition
 import com.cereal.client.infrastructure.data.datasource.filesystem.reader.models.ManifestJson
 import com.cereal.client.infrastructure.data.datasource.filesystem.security.Encryption
@@ -33,6 +34,9 @@ class ScriptJarReader(
         mutableMapOf()
     var manifest: ManifestDefinition? = null
 
+    /** Variants by manifest id. */
+    val variants: MutableMap<String, LoadedVariant> = mutableMapOf()
+
     init {
         // First, read the manifest from the root of the jar
         val manifestJson = readManifest()
@@ -54,6 +58,19 @@ class ScriptJarReader(
                     mainScriptCls = scriptClass
                     mainScriptConfigurationCls = configurationClass
                 }
+            }
+
+            // A malformed variant rejects the whole package: the caller treats the exception like an unreadable jar.
+            json.variants.forEach { variant ->
+                fun reject(reason: String): Nothing = throw InvalidManifestException("Invalid variant in manifest: $reason")
+                val id = variant.id?.takeIf { it.isNotBlank() } ?: reject("a variant has no id.")
+                val name = variant.name?.takeIf { it.isNotBlank() } ?: reject("Variant '$id' has no name.")
+                val script = variant.scriptClass?.takeIf { it.isNotBlank() } ?: reject("Variant '$id' has no script.")
+                if (id in variants) reject("Duplicate variant id '$id'.")
+                val (scriptClass, configurationClass) =
+                    loadScript(script)?.let { (cls, config) -> config?.let { cls to it } }
+                        ?: reject("Variant '$id' script $script could not be loaded as a Script.")
+                variants[id] = LoadedVariant(name, variant.instructions, scriptClass, configurationClass)
             }
 
             json.childScriptPackageClasses?.forEach { childScriptClassName ->
@@ -120,6 +137,13 @@ class ScriptJarReader(
         }
         return null
     }
+
+    data class LoadedVariant(
+        val name: String,
+        val instructions: String?,
+        val scriptCls: KClass<Script<*>>,
+        val configurationCls: KClass<ScriptConfiguration>,
+    )
 
     companion object {
         private const val MANIFEST_FILE_NAME = "manifest.json"

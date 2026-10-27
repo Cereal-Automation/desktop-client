@@ -27,7 +27,15 @@ data class ScriptPackageInstance
         val createdAt: Instant,
         val numberOfConcurrentTasks: Int,
         val notificationOverrides: ScriptNotificationOverrides? = null,
+        /** The [ScriptPackage.variants] id this instance runs; null runs the default entry. Fixed once created. */
+        val variantId: String? = null,
     ) {
+        /** The script this instance starts, configures and displays. Package-level concerns read [definition]. */
+        val entryScript: MainScript get() = definition.entry(variantId)
+
+        /** The name shown wherever this instance appears: the variant's name, or the package name for the default entry. */
+        val entryName: String get() = definition.entryName(variantId)
+
         override fun equals(other: Any?): Boolean {
             if (this === other) return true
             if (other !is ScriptPackageInstance) return false

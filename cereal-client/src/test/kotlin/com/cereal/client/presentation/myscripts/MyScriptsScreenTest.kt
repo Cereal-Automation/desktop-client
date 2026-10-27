@@ -9,6 +9,7 @@ import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
+import com.cereal.client.application.agent.AI_BROWSER_AGENT_PACKAGE
 import com.cereal.client.domain.model.marketplace.MarketplaceScript
 import com.cereal.client.domain.model.marketplace.ScriptOwner
 import com.cereal.client.domain.model.script.ScriptPackage
@@ -18,6 +19,7 @@ import com.cereal.client.domain.repository.TasksRepository
 import com.cereal.client.infrastructure.data.repository.inmemory.InMemoryScriptRepository
 import com.cereal.client.infrastructure.provider.inmemory.InMemoryMarketplaceProvider
 import fixtures.aScriptPackage
+import fixtures.aScriptPackageWithVariant
 import fixtures.aTask
 import fixtures.anAgentPackage
 import kotlinx.coroutines.runBlocking
@@ -65,6 +67,23 @@ class MyScriptsScreenTest {
             waitForText("Uninstall")
             onNodeWithText("Test").assertIsDisplayed()
             onAllNodesWithText("AI Browser Agent").assertCountEquals(0)
+        }
+
+    @Test
+    fun listsVariantsOfTheAiBrowserAgentWithoutUninstall() =
+        runScreenTest(overrides = listOf(marketplaceWith())) {
+            val agent =
+                anAgentPackage().copy(
+                    variants = aScriptPackageWithVariant(AI_BROWSER_AGENT_PACKAGE, "product-checkout", "Product Monitor & Checkout").variants,
+                )
+            seedInstalled(agent, aScriptPackage("com.example.other"))
+            setScreenContent { MyScriptsScreen(onOpenMarketplace = {}) }
+
+            waitForText("Uninstall")
+            onNodeWithText("Product Monitor & Checkout").assertIsDisplayed()
+            onAllNodesWithText("AI Browser Agent").assertCountEquals(0)
+            // Only the other script offers Uninstall: removing the agent's jar would remove its default entry too.
+            onAllNodesWithText("Uninstall").assertCountEquals(1)
         }
 
     @Test

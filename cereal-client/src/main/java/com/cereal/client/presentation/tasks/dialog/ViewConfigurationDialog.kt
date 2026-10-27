@@ -54,7 +54,7 @@ fun ViewConfigurationDialog(
     onDismissRequest: (() -> Unit),
 ) {
     Dialog(
-        title = stringResource(Res.string.configuration_for, scriptPackageInstance.definition.manifest.name),
+        title = stringResource(Res.string.configuration_for, scriptPackageInstance.entryName),
         modifier =
             Modifier
                 .width(1200.dp)

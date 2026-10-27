@@ -85,7 +85,7 @@ import org.koin.java.KoinJavaComponent
 fun ScriptSelectionDialog(
     scriptPackageGroup: ScriptPackageGroup,
     initialScriptPackageInstance: ScriptPackageInstance? = null,
-    initialPublicIdentifier: String? = null,
+    initialRequest: ScriptRequest? = null,
     // Saves [initialScriptPackageInstance] in place instead of creating a setup from it.
     editing: Boolean = false,
     coroutineScope: CoroutineScope = rememberCoroutineScope(),
@@ -93,7 +93,7 @@ fun ScriptSelectionDialog(
         remember {
             KoinJavaComponent.get(
                 ScriptSelectionViewModel::class.java,
-                parameters = { parametersOf(coroutineScope, scriptPackageGroup, initialScriptPackageInstance, initialPublicIdentifier, editing) },
+                parameters = { parametersOf(coroutineScope, scriptPackageGroup, initialScriptPackageInstance, initialRequest, editing) },
             )
         },
     // The created setup or, when editing, the saved one.

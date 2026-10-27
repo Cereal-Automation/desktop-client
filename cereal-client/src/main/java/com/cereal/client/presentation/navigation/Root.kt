@@ -15,6 +15,7 @@ import com.cereal.client.presentation.profile.ProfileScreen
 import com.cereal.client.presentation.proxy.ProxiesScreen
 import com.cereal.client.presentation.settings.ApplicationSettingsScreen
 import com.cereal.client.presentation.tasks.TasksScreen
+import com.cereal.client.presentation.tasks.script.overview.ScriptRequest
 import com.cereal.client.presentation.view.VerticalDivider
 
 interface Root {
@@ -22,7 +23,7 @@ interface Root {
         data object Home : Routing()
 
         data class Tasks(
-            val openScriptSelectionForPackage: String? = null,
+            val openScriptSelectionFor: ScriptRequest? = null,
             val focusTaskId: String? = null,
         ) : Routing()
 
@@ -56,7 +57,7 @@ interface Root {
             Router(Root::class.java.name, defaultRouting) { backStack ->
                 // "Start new instance" from Marketplace or My Scripts: new root on Tasks with that script's selection open.
                 val startNewInstance: (String) -> Unit = { publicIdentifier ->
-                    val route = Routing.Tasks(openScriptSelectionForPackage = publicIdentifier)
+                    val route = Routing.Tasks(openScriptSelectionFor = ScriptRequest(publicIdentifier))
                     backStack.newRoot(route)
                     onNavigateTo?.invoke(route)
                 }
@@ -82,8 +83,8 @@ interface Root {
                                         backStack.newRoot(route)
                                         onNavigateTo?.invoke(route)
                                     },
-                                    onRunScript = { packageName ->
-                                        val route = Routing.Tasks(openScriptSelectionForPackage = packageName)
+                                    onRunScript = { request ->
+                                        val route = Routing.Tasks(openScriptSelectionFor = request)
                                         backStack.newRoot(route)
                                         onNavigateTo?.invoke(route)
                                     },
@@ -105,7 +106,7 @@ interface Root {
                                         backStack.newRoot(Routing.Home)
                                         onNavigateTo?.invoke(Routing.Home)
                                     },
-                                    openScriptSelectionForPackage = (backStack.last() as? Routing.Tasks)?.openScriptSelectionForPackage,
+                                    openScriptSelectionFor = (backStack.last() as? Routing.Tasks)?.openScriptSelectionFor,
                                     focusTaskId = (backStack.last() as? Routing.Tasks)?.focusTaskId,
                                 )
                             }

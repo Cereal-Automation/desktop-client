@@ -126,7 +126,7 @@ fun ScriptConfigurationView(viewModel: ScriptConfigurationViewModel) {
                     existingInstances.map { instance ->
                         val formattedDate = dateFormatter.format(instance.createdAt.toJavaInstant())
                         val identifierValue =
-                            instance.definition.mainScript.configuration
+                            instance.entryScript.configuration
                                 .getScriptIdentifierValue(instance.mainConfiguration)
                         val displayLabel =
                             identifierValue?.let { "$it ($formattedDate)" } ?: formattedDate

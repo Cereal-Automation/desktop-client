@@ -26,6 +26,7 @@ class ViewConfigurationViewModel(
             GetScriptConfigDefinitionInteractor.Params(
                 scriptPackageInstance.definition,
                 scriptPackageInstance,
+                scriptPackageInstance.variantId,
             ),
         ) {
             scriptConfigurationItems.value = it.mainConfiguration + it.childConfigurations.values.flatten()

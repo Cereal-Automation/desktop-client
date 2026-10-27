@@ -1,12 +1,16 @@
 package com.cereal.client.presentation.home
 
 import com.cereal.client.application.CoroutinesDispatcherProvider
+import com.cereal.client.application.agent.AI_BROWSER_AGENT_PACKAGE
 import com.cereal.client.application.interactor.script.GetScriptsInteractor
 import com.cereal.client.application.interactor.task.ObserveTasksInteractor
 import com.cereal.client.infrastructure.data.repository.inmemory.InMemoryScriptRepository
 import com.cereal.client.infrastructure.data.repository.inmemory.InMemoryTasksRepository
 import fixtures.aGoalRun
+import fixtures.aScriptInstance
 import fixtures.aScriptPackage
+import fixtures.aScriptPackageInstance
+import fixtures.aScriptPackageWithVariant
 import fixtures.aTask
 import fixtures.anAgentPackage
 import kotlinx.coroutines.CoroutineScope
@@ -103,4 +107,39 @@ class HomeActivityViewModelTest {
 
             assertEquals(listOf(ReadyMadeScriptUiModel("com.example.restock", "Restock Monitor")), vm.readyMadeScripts.value)
         }
+
+    @Test
+    fun `the ready-made strip lists each variant of the agent but not its default entry`() =
+        runTest {
+            scripts.seed(listOf(anAgentWithCheckoutVariant()))
+            val vm = homeActivity()
+            advanceUntilIdle()
+
+            assertEquals(
+                listOf(ReadyMadeScriptUiModel(AI_BROWSER_AGENT_PACKAGE, "Product Monitor & Checkout", variantId = "product-checkout")),
+                vm.readyMadeScripts.value,
+            )
+        }
+
+    @Test
+    fun `tasks of an agent variant stay out of the recent runs`() =
+        runTest {
+            val variantInstance =
+                aScriptPackageInstance("pkg-v", AI_BROWSER_AGENT_PACKAGE, anAgentWithCheckoutVariant(), variantId = "product-checkout")
+            tasks.addAllTasks(
+                listOf(
+                    aGoalRun("goal", goal = "Find pliers", createdAtSeconds = 1),
+                    aTask("variant", aScriptInstance(variantInstance), running = true),
+                ),
+            )
+            val vm = homeActivity()
+            advanceUntilIdle()
+
+            assertEquals(listOf("goal"), vm.recentRuns.value.map { it.taskId })
+        }
+
+    private fun anAgentWithCheckoutVariant() =
+        anAgentPackage().copy(
+            variants = aScriptPackageWithVariant(AI_BROWSER_AGENT_PACKAGE, "product-checkout", "Product Monitor & Checkout").variants,
+        )
 }

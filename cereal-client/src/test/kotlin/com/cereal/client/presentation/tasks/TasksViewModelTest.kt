@@ -35,6 +35,7 @@ import com.cereal.client.domain.repository.LogEventRepository
 import com.cereal.client.infrastructure.data.repository.inmemory.InMemoryApplicationPreferenceRepository
 import com.cereal.client.presentation.error.ErrorResolver
 import com.cereal.client.presentation.tasks.model.TaskUiModel
+import com.cereal.client.presentation.tasks.script.overview.ScriptRequest
 import com.github.kittinunf.result.coroutines.SuspendableResult
 import io.mockk.coEvery
 import io.mockk.coVerify
@@ -478,7 +479,7 @@ class TasksViewModelTest {
         }
 
     @Test
-    fun `openScriptSelectionForPublicIdentifier sets the initial identifier`() =
+    fun `openScriptSelection sets the initial request`() =
         runTest {
             val group = ScriptPackageGroup("1", "Group 1")
             coEvery { getOrCreateDefaultTaskGroupInteractor(any(), any()) } coAnswers {
@@ -486,12 +487,12 @@ class TasksViewModelTest {
             }
             createViewModel()
 
-            viewModel.openScriptSelectionForPublicIdentifier("pkg.id")
+            viewModel.openScriptSelection(ScriptRequest("pkg.id", "variant"))
             dispatcher.scheduler.advanceUntilIdle()
 
             val state = viewModel.dialogState.value
             assertIs<TaskViewState.DialogState.SelectingScript>(state)
-            assertEquals("pkg.id", state.initialPublicIdentifier)
+            assertEquals(ScriptRequest("pkg.id", "variant"), state.initialRequest)
         }
 
     @Test

@@ -18,6 +18,7 @@ import com.cereal.client.domain.model.script.ScriptConfigurationValues
 import com.cereal.client.domain.model.script.ScriptFeature
 import com.cereal.client.domain.model.script.ScriptPackage
 import com.cereal.client.domain.model.script.ScriptPackageInstance
+import com.cereal.client.domain.model.script.entryName
 import com.cereal.client.domain.model.script.isClientUpdateRequired
 import com.cereal.client.domain.model.task.ScriptPackageGroup
 import com.cereal.client.presentation.error.ErrorResolver
@@ -43,7 +44,7 @@ class ScriptSelectionViewModel(
     private val scope: CoroutineScope,
     val scriptPackageGroup: ScriptPackageGroup,
     private val initialScriptPackageInstance: ScriptPackageInstance?,
-    private val initialPublicIdentifier: String? = null,
+    private val initialRequest: ScriptRequest? = null,
     /** Saves [initialScriptPackageInstance] in place instead of creating a setup; its script can't be changed. */
     val editing: Boolean = false,
     private val dispatcherProvider: CoroutinesDispatcherProvider,
@@ -60,7 +61,7 @@ class ScriptSelectionViewModel(
     private val interactorRunner = InteractorRunner(scope, dispatcherProvider, errorResolver)
 
     private val scriptsListViewModel =
-        GroupedListViewModel<ScriptPackage>(onSelectedItemChange = {
+        GroupedListViewModel<ScriptEntryRow>(onSelectedItemChange = {
             updateConfig()
         })
 
@@ -108,25 +109,31 @@ class ScriptSelectionViewModel(
                 withContext(dispatcherProvider.main) {
                     result.handleFailureOrElse(errorResolver) {
                         val items =
-                            it.map { script ->
+                            it.flatMap { script ->
                                 val needsUpdate = sdkVersion?.let { version -> script.isClientUpdateRequired(version) } ?: false
-                                GroupListItemContent(
-                                    id = script,
-                                    title = script.manifest.name,
-                                    warningMessage = if (needsUpdate) UPDATE_REQUIRED_MESSAGE else null,
-                                    badge = if (needsUpdate) UPDATE_REQUIRED_BADGE else null,
-                                )
+                                script.entryRows().map { row ->
+                                    GroupListItemContent(
+                                        id = row,
+                                        title = row.title,
+                                        warningMessage = if (needsUpdate) UPDATE_REQUIRED_MESSAGE else null,
+                                        badge = if (needsUpdate) UPDATE_REQUIRED_BADGE else null,
+                                    )
+                                }
                             }
 
                         if (items.isEmpty()) {
                             overviewViewState.value = ScriptSelectionState.Overview.Empty
                         } else {
                             // Pick the duplicated instance's or requested script once; otherwise default to the first.
-                            val initialPackageName =
-                                initialScriptPackageInstance?.definition?.manifest?.packageName ?: initialPublicIdentifier
+                            val initialEntry =
+                                initialScriptPackageInstance?.let { ScriptRequest(it.definition.manifest.packageName, it.variantId) }
+                                    ?: initialRequest
                             val initialScript =
-                                initialPackageName?.takeUnless { initialSelectionApplied }?.let { packageName ->
-                                    items.find { item -> item.id.manifest.packageName == packageName }
+                                initialEntry?.takeUnless { initialSelectionApplied }?.let { entry ->
+                                    items.find { item ->
+                                        item.id.scriptPackage.manifest.packageName == entry.packageName &&
+                                            item.id.variantId == entry.variantId
+                                    }
                                 }
                             scriptsListViewModel.updateItems(items, selectFirstWhenNoSelection = initialScript == null)
                             initialScript?.let { scriptItem ->
@@ -151,22 +158,21 @@ class ScriptSelectionViewModel(
     private fun updateConfig() {
         selectedScriptUpdateRequired.value =
             scriptsListViewModel.selectedItem?.let { selected ->
-                sdkVersion?.let { version -> selected.isClientUpdateRequired(version) }
+                sdkVersion?.let { version -> selected.scriptPackage.isClientUpdateRequired(version) }
             } ?: false
         // Reset first so a previous script's cap never lingers while the new one's capacity loads.
         selectedScriptCapacity.value = ScriptCapacity.None
-        scriptsListViewModel.selectedItem?.let { selectedScript ->
-            // Only pass initial instance if the selected script matches the initial instance's script.
+        scriptsListViewModel.selectedItem?.let { selectedRow ->
+            val selectedScript = selectedRow.scriptPackage
+            // Only pass initial instance if the selected entry matches the initial instance's entry.
             val initialInstance =
-                if (initialScriptPackageInstance?.definition?.manifest?.packageName == selectedScript.manifest.packageName) {
-                    initialScriptPackageInstance
-                } else {
-                    null
+                initialScriptPackageInstance?.takeIf {
+                    it.definition.manifest.packageName == selectedScript.manifest.packageName && it.variantId == selectedRow.variantId
                 }
             val configViewModel =
                 KoinJavaComponent.get<ScriptConfigurationViewModel>(
                     ScriptConfigurationViewModel::class.java,
-                    parameters = { parametersOf(scope, selectedScript, initialInstance) },
+                    parameters = { parametersOf(scope, selectedScript, initialInstance, selectedRow.variantId) },
                 )
             scriptConfigurationViewModel = configViewModel
             configurationViewState.value = ScriptSelectionState.Config.Selected(configViewModel)
@@ -210,7 +216,11 @@ class ScriptSelectionViewModel(
      * missing provider breaks the script; the notification check follows.
      */
     fun launchScript() {
-        if (scriptsListViewModel.selectedItem?.manifest?.declares(ScriptFeature.LLM) != true) {
+        if (scriptsListViewModel.selectedItem
+                ?.scriptPackage
+                ?.manifest
+                ?.declares(ScriptFeature.LLM) != true
+        ) {
             checkNotificationChannelsThenLaunch()
             return
         }
@@ -303,7 +313,8 @@ class ScriptSelectionViewModel(
                 startScriptInteractor(
                     StartScriptInteractor.Params(
                         groupId = scriptPackageGroup.id,
-                        scriptPackage = scriptsListViewModel.selectedItem!!,
+                        scriptPackage = scriptsListViewModel.selectedItem!!.scriptPackage,
+                        variantId = scriptsListViewModel.selectedItem!!.variantId,
                         mainScriptConfiguration = mainConfiguration,
                         childConfigurations = childConfigurations,
                         // The header's stepper sets the count after creation; a duplicate keeps its source's.
@@ -378,3 +389,14 @@ class ScriptSelectionViewModel(
             "This script requires a newer version of Cereal. Update your client to use it."
     }
 }
+
+/** One selectable row in script selection: a package's default entry ([variantId] null) or one of its variants. */
+data class ScriptEntryRow(
+    val scriptPackage: ScriptPackage,
+    val variantId: String? = null,
+) {
+    val title: String get() = scriptPackage.entryName(variantId)
+}
+
+/** The default entry first, then each variant in manifest order. */
+private fun ScriptPackage.entryRows(): List<ScriptEntryRow> = listOf(ScriptEntryRow(this)) + variants.keys.map { ScriptEntryRow(this, it) }

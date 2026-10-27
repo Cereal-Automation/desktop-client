@@ -24,9 +24,9 @@ class UpdateScriptPackageInstanceInteractor(
         if (tasksRepository.getTasks(setup).any { it.status.isRunning() }) {
             throw TaskSetupHasRunningTasksException()
         }
-        taskSetupLimits.checkEntitlement(setup.definition, setup.mainConfiguration)
+        taskSetupLimits.checkEntitlement(setup.definition, setup.mainConfiguration, setup.variantId)
         if (!params.ignoreConcurrencyConflicts) {
-            taskSetupLimits.checkConcurrency(setup.definition, setup.mainConfiguration, setup.childConfigurations, setup.numberOfConcurrentTasks)
+            taskSetupLimits.checkConcurrency(setup.definition, setup.mainConfiguration, setup.childConfigurations, setup.numberOfConcurrentTasks, setup.variantId)
         }
         scriptInstanceRepository.updateScriptPackageInstance(setup)
         val stored = scriptInstanceRepository.getScriptPackageInstance(setup.id)

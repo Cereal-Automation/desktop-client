@@ -19,6 +19,8 @@ import com.cereal.client.domain.model.script.configuration.ConfigSection
 import com.cereal.client.domain.model.script.configuration.ConfigurationItem
 import com.cereal.client.domain.model.script.configuration.ListRows
 import com.cereal.client.domain.model.script.configuration.ScriptConfigurationItemDefinition
+import com.cereal.client.domain.model.script.entryInstructions
+import com.cereal.client.domain.model.script.entryName
 import com.cereal.client.presentation.error.ErrorResolver
 import com.cereal.client.presentation.error.handleFailureOrElse
 import com.cereal.client.presentation.tasks.script.overview.configuration.model.ConfigurationItemsForm
@@ -39,6 +41,8 @@ import java.io.File
 class ScriptConfigurationViewModel(
     private val scriptPackage: ScriptPackage,
     val initialScriptPackageInstance: ScriptPackageInstance?,
+    /** The entry being configured; null is the package's default entry. */
+    private val variantId: String? = null,
     private val scope: CoroutineScope,
     private val errorResolver: ErrorResolver,
     private val dispatcherProvider: CoroutinesDispatcherProvider,
@@ -54,8 +58,8 @@ class ScriptConfigurationViewModel(
     val errorAction = errorResolver.errorAction
     val fileImportConfig = mutableStateOf<FileImportConfig?>(null)
     val listReplaceConfirmation = mutableStateOf<ListReplaceConfirmation?>(null)
-    val scriptName: String = scriptPackage.manifest.name
-    val scriptInstructions: String? = scriptPackage.manifest.instructions
+    val scriptName: String = scriptPackage.entryName(variantId)
+    val scriptInstructions: String? = scriptPackage.entryInstructions(variantId)
     val existingInstances: MutableState<List<ScriptPackageInstance>> = mutableStateOf(emptyList())
 
     // Not persisted: the view model is recreated per form open, so collapsed sections start closed every time.
@@ -77,7 +81,8 @@ class ScriptConfigurationViewModel(
                 packageName = scriptPackage.manifest.packageName,
             )
         interactorRunner.launch(getScriptPackageInstancesByPackageNameInteractor, params) { instances ->
-            existingInstances.value = instances
+            // Copying settings only makes sense between instances of the same entry.
+            existingInstances.value = instances.filter { it.variantId == variantId }
         }
     }
 
@@ -91,6 +96,7 @@ class ScriptConfigurationViewModel(
             GetScriptConfigDefinitionInteractor.Params(
                 scriptPackage = scriptPackage,
                 scriptPackageInstance = null,
+                variantId = variantId,
             ),
         ) { result ->
             scriptConfigurationForm.value =

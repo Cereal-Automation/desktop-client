@@ -5,6 +5,7 @@ import com.cereal.client.domain.model.script.ScriptPackage
 import com.cereal.client.domain.model.script.ScriptPackageInstance
 import com.cereal.client.domain.model.script.configuration.ApplicationScriptConfigurationKeys
 import com.cereal.client.domain.model.script.configuration.ConfigValue
+import com.cereal.client.domain.model.script.entry
 import com.cereal.client.domain.model.user.User
 import com.cereal.client.infrastructure.data.datasource.database.room.entity.ScriptConfigurationEntity
 import com.cereal.client.infrastructure.data.datasource.database.room.entity.ScriptConfigurationItemEntity
@@ -33,6 +34,12 @@ class ScriptPackageInstanceMapper(
             return null
         }
 
+        // A variant removed from the installed jar fails to load, like a missing package; never the default entry.
+        val variantId = scriptPackageEntity.variantId
+        if (variantId != null && variantId !in scriptPackageDefinition.variants) {
+            return null
+        }
+
         // Map child script configurations
         val childScriptConfigurationValues =
             childScriptConfigurations
@@ -56,7 +63,7 @@ class ScriptPackageInstanceMapper(
             keyValueMapper.mapConfigurationItemsFromEntities(
                 mainScriptConfigurationItems,
                 user,
-                scriptPackageDefinition.mainScript.configuration,
+                scriptPackageDefinition.entry(variantId).configuration,
             )
 
         // BC note: for script started after this version is released numberOfConcurrentTasks should always be
@@ -76,6 +83,7 @@ class ScriptPackageInstanceMapper(
             createdAt = scriptPackageEntity.createdAt,
             numberOfConcurrentTasks = numberOfConcurrentTasks,
             notificationOverrides = notificationOverrides,
+            variantId = variantId,
         )
     }
 }

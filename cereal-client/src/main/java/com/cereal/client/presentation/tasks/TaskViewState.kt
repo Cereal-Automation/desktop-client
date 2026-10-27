@@ -4,6 +4,7 @@ import com.cereal.client.domain.model.script.ScriptPackageInstance
 import com.cereal.client.domain.model.task.ScriptPackageGroup
 import com.cereal.client.domain.model.task.TaskSetupSort
 import com.cereal.client.presentation.tasks.model.TaskUiModel
+import com.cereal.client.presentation.tasks.script.overview.ScriptRequest
 
 sealed class TaskViewState {
     /** The task list: every task setup, grouped by group. */
@@ -42,7 +43,7 @@ sealed class TaskViewState {
 
         class SelectingScript(
             val scriptPackageGroup: ScriptPackageGroup,
-            val initialPublicIdentifier: String? = null,
+            val initialRequest: ScriptRequest? = null,
         ) : DialogState()
 
         class ViewScriptConfiguration(

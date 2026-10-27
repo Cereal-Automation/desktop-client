@@ -75,9 +75,9 @@ object TasksViewStateBuilder {
         val singleTask = tasks.singleOrNull()?.toUiModel(1)
         return TaskSetupSection(
             setupId = setup.id,
-            name = setup.definition.manifest.name,
+            name = setup.entryName,
             subtitle =
-                setup.definition.mainScript.configuration
+                setup.entryScript.configuration
                     .getScriptIdentifierValue(setup.mainConfiguration),
             runningCount = running,
             failedCount = failed,

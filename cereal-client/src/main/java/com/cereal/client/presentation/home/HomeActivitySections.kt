@@ -16,6 +16,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import com.cereal.client.presentation.tasks.script.overview.ScriptRequest
 import com.cereal.client.presentation.theme.CerealTheme
 import com.cereal.client.presentation.view.CerealCard
 import com.cereal.client.presentation.view.CerealText
@@ -37,7 +38,7 @@ import org.koin.java.KoinJavaComponent
 @Composable
 fun HomeActivitySections(
     onOpenTasks: (focusTaskId: String?) -> Unit,
-    onRunScript: (packageName: String) -> Unit,
+    onRunScript: (ScriptRequest) -> Unit,
     onNavigateToMarketplace: () -> Unit,
 ) {
     val scope = rememberCoroutineScope()
@@ -99,7 +100,7 @@ fun HomeActivitySections(
                 )
                 SettingsSmallButton(
                     text = stringResource(Res.string.home_run_script),
-                    onClick = { onRunScript(script.packageName) },
+                    onClick = { onRunScript(ScriptRequest(script.packageName, script.variantId)) },
                 )
             }
         }

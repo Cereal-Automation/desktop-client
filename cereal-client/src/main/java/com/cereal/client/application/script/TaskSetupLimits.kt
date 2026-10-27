@@ -22,10 +22,11 @@ class TaskSetupLimits(
     suspend fun checkEntitlement(
         scriptPackage: ScriptPackage,
         mainConfiguration: ScriptConfigurationValues,
+        variantId: String? = null,
     ) {
         val entitlement = scriptLicenseChecker.getEntitlement(scriptPackage) ?: throw UnlicensedException()
         val limited = entitlement.capacity as? ScriptCapacity.Limited ?: return
-        val recordCount = CapacityValidator(scriptPackage, mainConfiguration).runRecordCount()
+        val recordCount = CapacityValidator(scriptPackage, mainConfiguration, variantId).runRecordCount()
         if (!entitlement.allows(recordCount)) {
             throw CapacityExceededException(recordCount, limited.records, limited.unit)
         }
@@ -40,8 +41,9 @@ class TaskSetupLimits(
         mainConfiguration: ScriptConfigurationValues,
         childConfigurations: Map<String, ScriptConfigurationValues>,
         numberOfConcurrentTasks: Int,
+        variantId: String? = null,
     ) {
-        val validator = ScriptConcurrencyValidator(scriptPackage, mainConfiguration, childConfigurations, numberOfConcurrentTasks)
+        val validator = ScriptConcurrencyValidator(scriptPackage, mainConfiguration, childConfigurations, numberOfConcurrentTasks, variantId)
         val numberOfConcurrentTasksLimited = validator.validateTaskLimits()
         val recordsUsedByMultipleTasks = validator.validateRecordsReused()
         if (numberOfConcurrentTasksLimited != null || recordsUsedByMultipleTasks.isNotEmpty()) {

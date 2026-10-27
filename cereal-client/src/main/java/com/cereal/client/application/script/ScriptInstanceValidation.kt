@@ -7,7 +7,7 @@ import com.cereal.client.presentation.tasks.script.overview.configuration.isVali
 fun ScriptInstance.hasValidConfiguration(): Boolean = definition.configuration.isValid(configuration)
 
 fun ScriptPackageInstance.hasValidConfiguration(): Boolean =
-    definition.mainScript.configuration.isValid(mainConfiguration) &&
+    entryScript.configuration.isValid(mainConfiguration) &&
         definition.childScripts.all {
             childConfigurations.containsKey(it.key) &&
                 it.value.configuration.isValid(

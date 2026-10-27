@@ -35,7 +35,7 @@ class SetConcurrentTaskCountInteractor(
         val counts = setup.concurrentTaskCounts(tasks) ?: 1..1
         if (params.count < counts.first) throw CannotRemoveRunningTaskException()
         if (params.count > counts.last) throw MaxConcurrentTasksReachedException(counts.last)
-        taskSetupLimits.checkEntitlement(setup.definition, setup.mainConfiguration)
+        taskSetupLimits.checkEntitlement(setup.definition, setup.mainConfiguration, setup.variantId)
         scriptInstanceRepository.updateScriptPackageInstance(setup.copy(numberOfConcurrentTasks = params.count))
         if (setup.runsOnDataset()) return
         tasks

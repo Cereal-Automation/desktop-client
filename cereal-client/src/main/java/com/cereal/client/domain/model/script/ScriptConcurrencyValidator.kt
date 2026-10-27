@@ -4,6 +4,7 @@ import com.cereal.client.domain.model.script.configuration.ScriptConfigurationIt
 import com.cereal.client.domain.model.script.configuration.asGroup
 import com.cereal.client.domain.model.script.configuration.groupedConfigurationDefinition
 import com.cereal.client.domain.model.script.configuration.proxyConfigurationDefinition
+import com.cereal.client.domain.model.script.entry
 
 data class ScriptConfigurationItemDefinitionConflict(
     val definition: ScriptConfigurationItemDefinition,
@@ -15,11 +16,13 @@ class ScriptConcurrencyValidator(
     private val mainScriptConfiguration: ScriptConfigurationValues,
     private val childScriptConfiguration: Map<String, ScriptConfigurationValues>,
     private val numberOfConcurrentTasks: Int,
+    /** The entry whose configuration is checked; null is the default entry. */
+    private val variantId: String? = null,
 ) {
     fun validateTaskLimits(): ScriptConfigurationItemDefinitionConflict? {
         val scriptConfigurationItemDefinitionConflicts = mutableListOf<ScriptConfigurationItemDefinitionConflict>()
 
-        val mainScriptConfigurationDefinition = scriptPackage.mainScript.configuration
+        val mainScriptConfigurationDefinition = scriptPackage.entry(variantId).configuration
         listOfNotNull(
             mainScriptConfigurationDefinition.groupedConfigurationDefinition(),
         ).forEach { definition ->
@@ -51,7 +54,7 @@ class ScriptConcurrencyValidator(
     fun validateRecordsReused(): List<ScriptConfigurationItemDefinitionConflict> {
         val scriptConfigurationItemDefinitionConflicts = mutableListOf<ScriptConfigurationItemDefinitionConflict>()
 
-        val mainScriptConfigurationDefinition = scriptPackage.mainScript.configuration
+        val mainScriptConfigurationDefinition = scriptPackage.entry(variantId).configuration
         mainScriptConfigurationDefinition.proxyConfigurationDefinition()?.let { definition ->
             checkConflict(definition, mainScriptConfiguration)?.let {
                 scriptConfigurationItemDefinitionConflicts.add(it)

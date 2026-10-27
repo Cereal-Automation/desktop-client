@@ -25,7 +25,7 @@ fun ScriptPackageInstance.concurrentTaskCounts(tasks: List<Task>): IntRange? {
     // The limits creation applies: the form's maximum, and no more than a dataset's records (creation warns that it
     // limits the count to them). A count already above them stays valid, it just can't be raised.
     val cap =
-        ScriptConcurrencyValidator(definition, mainConfiguration, childConfigurations, MAX_CONCURRENT_TASKS)
+        ScriptConcurrencyValidator(definition, mainConfiguration, childConfigurations, MAX_CONCURRENT_TASKS, variantId)
             .validateTaskLimits()
             ?.numberOfRecords
             ?.coerceAtLeast(1) ?: MAX_CONCURRENT_TASKS

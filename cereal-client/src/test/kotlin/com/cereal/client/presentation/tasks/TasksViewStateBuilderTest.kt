@@ -4,6 +4,7 @@ import com.cereal.client.domain.model.task.ScriptPackageGroup
 import com.cereal.client.domain.model.task.UserInteraction
 import fixtures.aScriptInstance
 import fixtures.aScriptPackageInstance
+import fixtures.aScriptPackageWithVariant
 import fixtures.aTask
 import io.mockk.mockk
 import org.junit.jupiter.api.Assertions.assertEquals
@@ -57,6 +58,28 @@ class TasksViewStateBuilderTest {
                 .scripts
                 .flatMap { it.tasks }
         assertEquals(listOf("t2" to 2, "t1" to 1), rows.map { it.id.id to it.taskNumber })
+    }
+
+    @Test
+    fun `names a variant setup after its variant and a default-entry setup after its package`() {
+        val variant =
+            aScriptPackageInstance(
+                id = "v1",
+                packageName = "com.example",
+                definition = aScriptPackageWithVariant("com.example", variantId = "checkout", variantName = "Checkout"),
+                variantId = "checkout",
+            )
+        val defaultEntry = aScriptPackageInstance("d1", "com.example")
+
+        val state = TasksViewStateBuilder.buildListState(listOf(default to listOf(variant, defaultEntry)), emptyList())
+
+        val names =
+            assertIs<TaskViewState.ListState.Filled>(state)
+                .groups
+                .single()
+                .setups
+                .map { it.name }
+        assertEquals(listOf("Checkout", "Test"), names)
     }
 
     @Test

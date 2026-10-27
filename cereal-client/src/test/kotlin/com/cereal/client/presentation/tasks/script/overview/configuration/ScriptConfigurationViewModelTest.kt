@@ -79,19 +79,23 @@ class ScriptConfigurationViewModelTest {
         Dispatchers.resetMain()
     }
 
-    private fun createViewModel(initialInstance: ScriptPackageInstance? = null) =
-        ScriptConfigurationViewModel(
-            scriptPackage = scriptPackage,
-            initialScriptPackageInstance = initialInstance,
-            scope = CoroutineScope(dispatcher),
-            errorResolver = errorResolver,
-            dispatcherProvider = dispatcherProvider,
-            getScriptConfigDefinitionInteractor = getScriptConfigDefinitionInteractor,
-            getScriptPackageInstancesByPackageNameInteractor = getScriptPackageInstancesByPackageNameInteractor,
-            readCustomDatasetFileInteractor = readCustomDatasetFileInteractor,
-            readProxyFileInteractor = readProxyFileInteractor,
-            readListFileInteractor = readListFileInteractor,
-        )
+    private fun createViewModel(
+        initialInstance: ScriptPackageInstance? = null,
+        scriptPackage: ScriptPackage = this.scriptPackage,
+        variantId: String? = null,
+    ) = ScriptConfigurationViewModel(
+        scriptPackage = scriptPackage,
+        initialScriptPackageInstance = initialInstance,
+        variantId = variantId,
+        scope = CoroutineScope(dispatcher),
+        errorResolver = errorResolver,
+        dispatcherProvider = dispatcherProvider,
+        getScriptConfigDefinitionInteractor = getScriptConfigDefinitionInteractor,
+        getScriptPackageInstancesByPackageNameInteractor = getScriptPackageInstancesByPackageNameInteractor,
+        readCustomDatasetFileInteractor = readCustomDatasetFileInteractor,
+        readProxyFileInteractor = readProxyFileInteractor,
+        readListFileInteractor = readListFileInteractor,
+    )
 
     @Test
     fun `init builds the configuration form`() {
@@ -103,7 +107,7 @@ class ScriptConfigurationViewModelTest {
 
     @Test
     fun `init loads existing instances`() {
-        val instance = mockk<ScriptPackageInstance>(relaxed = true)
+        val instance = fixtures.aScriptPackageInstance(id = "1", packageName = "com.example")
         coEvery { getScriptPackageInstancesByPackageNameInteractor(any(), any()) } coAnswers {
             secondArg<suspend (SuspendableResult<List<ScriptPackageInstance>, Exception>) -> Unit>()(
                 SuspendableResult.Success(listOf(instance)),
@@ -279,4 +283,37 @@ class ScriptConfigurationViewModelTest {
         assertEquals("hunter2", secret.reveal())
     }
     // endregion
+
+    @Test
+    fun `a variant's form shows the variant's name and instructions`() {
+        val withVariant =
+            packageWithInstructions().let { pkg ->
+                pkg.copy(variants = pkg.variants.mapValues { it.value.copy(instructions = "Variant instructions") })
+            }
+
+        val viewModel = createViewModel(scriptPackage = withVariant, variantId = "checkout")
+
+        assertEquals("Checkout", viewModel.scriptName)
+        assertEquals("Variant instructions", viewModel.scriptInstructions)
+    }
+
+    @Test
+    fun `a variant without instructions shows none, not the package's`() {
+        val viewModel = createViewModel(scriptPackage = packageWithInstructions(), variantId = "checkout")
+
+        assertNull(viewModel.scriptInstructions)
+    }
+
+    @Test
+    fun `the default entry's form keeps the package name and instructions`() {
+        val viewModel = createViewModel(scriptPackage = packageWithInstructions())
+
+        assertEquals("Test", viewModel.scriptName)
+        assertEquals("Package instructions", viewModel.scriptInstructions)
+    }
+
+    private fun packageWithInstructions(): ScriptPackage =
+        fixtures.aScriptPackageWithVariant("com.example", variantId = "checkout", variantName = "Checkout").let { pkg ->
+            pkg.copy(manifest = pkg.manifest.copy(instructions = "Package instructions"))
+        }
 }

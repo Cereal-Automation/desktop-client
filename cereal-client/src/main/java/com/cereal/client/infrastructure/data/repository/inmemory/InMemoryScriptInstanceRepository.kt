@@ -41,7 +41,7 @@ class InMemoryScriptInstanceRepository : ScriptInstanceRepository {
                 val main =
                     MainScriptInstance(
                         id = "script-${it.id}",
-                        definition = it.definition.mainScript,
+                        definition = it.entryScript,
                         configuration = it.mainConfiguration,
                         createdAt = it.createdAt,
                         packageInstance = it,

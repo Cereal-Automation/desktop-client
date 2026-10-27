@@ -5,7 +5,8 @@ import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.mutableStateOf
 import com.cereal.client.application.CoroutinesDispatcherProvider
 import com.cereal.client.application.Interactor
-import com.cereal.client.application.agent.isAiBrowserAgent
+import com.cereal.client.application.agent.canUninstall
+import com.cereal.client.application.agent.readyMadeEntryIds
 import com.cereal.client.application.interactor.marketplace.GetMarketplaceListingsInteractor
 import com.cereal.client.application.interactor.marketplace.GetPackagesWithRunningTasksInteractor
 import com.cereal.client.application.interactor.marketplace.RemoveMarketplaceScriptInteractor
@@ -13,6 +14,7 @@ import com.cereal.client.application.interactor.script.GetScriptsInteractor
 import com.cereal.client.application.interactor.script.GetSdkVersionInteractor
 import com.cereal.client.domain.model.marketplace.MarketplaceScript
 import com.cereal.client.domain.model.script.ScriptPackage
+import com.cereal.client.domain.model.script.entryName
 import com.cereal.client.domain.model.script.isClientUpdateRequired
 import com.cereal.client.presentation.error.ErrorResolver
 import com.cereal.client.presentation.error.handleFailureOrElse
@@ -51,9 +53,17 @@ class MyScriptsViewModel(
         val isRemoving: Boolean,
         /** The marketplace lookup for this script hasn't finished yet, so it may still gain a listing. */
         val isListingLoading: Boolean,
+        /** The variant this row stands for; null for the package's default entry. */
+        val variantId: String? = null,
     ) {
         /** Only rows with a marketplace listing can open the script detail dialog. */
         val isClickable: Boolean get() = listing != null
+
+        val name: String
+            get() = variantId?.let(scriptPackage::entryName) ?: listing?.title ?: scriptPackage.manifest.name
+
+        /** Uninstall removes the whole jar, so it stays hidden for every row of a package that can't be uninstalled. */
+        val canUninstall: Boolean get() = scriptPackage.canUninstall
     }
 
     private val installedScripts = mutableStateOf<List<ScriptPackage>>(emptyList())
@@ -69,7 +79,8 @@ class MyScriptsViewModel(
     val rows: State<List<InstalledScriptRow>> =
         derivedStateOf {
             installedScripts.value
-                .map { pkg ->
+                .flatMap { pkg -> pkg.readyMadeEntryIds.map { pkg to it } }
+                .map { (pkg, variantId) ->
                     val packageName = pkg.manifest.packageName
                     val listing = listings.value[packageName]
                     val running = packageName in packagesWithRunningTasks.value
@@ -80,8 +91,9 @@ class MyScriptsViewModel(
                         hasRunningTasks = running,
                         isRemoving = packageName in removingPackages.value,
                         isListingLoading = packageName in pendingListingLookups.value,
+                        variantId = variantId,
                     )
-                }.sortedBy { (it.listing?.title ?: it.scriptPackage.manifest.name).lowercase() }
+                }.sortedBy { it.name.lowercase() }
         }
 
     val selectedScript = mutableStateOf<MarketplaceScript?>(null)
@@ -102,7 +114,7 @@ class MyScriptsViewModel(
             getScriptsInteractor(Interactor.None()).collectLatest { result ->
                 withContext(dispatcherProvider.main) {
                     result.handleFailureOrElse(errorResolver) { list ->
-                        installedScripts.value = list.filterNot { it.isAiBrowserAgent }
+                        installedScripts.value = list
                         loadMissingListings()
                     }
                 }

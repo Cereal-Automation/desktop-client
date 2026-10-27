@@ -6,7 +6,10 @@ import com.cereal.client.domain.model.script.Manifest
 import com.cereal.client.domain.model.script.ScriptInstance
 import com.cereal.client.domain.model.script.ScriptPackage
 import com.cereal.client.domain.model.script.ScriptPackageInstance
+import com.cereal.client.domain.model.script.ScriptVariant
+import com.cereal.client.domain.model.script.configuration.ConfigItemType
 import com.cereal.client.domain.model.script.configuration.ScriptConfigurationDefinition
+import com.cereal.client.domain.model.script.configuration.ScriptConfigurationItemDefinition
 import com.cereal.client.domain.model.task.JobTask
 import com.cereal.client.domain.model.task.TaskStatus
 import com.cereal.sdk.Script
@@ -42,18 +45,63 @@ fun aScriptPackage(packageName: String): ScriptPackage {
     )
 }
 
+/**
+ * A package with one variant, [variantId], whose configuration has a single text field keyed `variantField`
+ * (the default entry has no fields), so a test can tell the two configuration forms apart.
+ */
+fun aScriptPackageWithVariant(
+    packageName: String,
+    variantId: String = "variant",
+    variantName: String = "Variant",
+): ScriptPackage {
+    val variantConfiguration =
+        ScriptConfigurationDefinition(
+            scriptConfigurationClass = ScriptConfiguration::class,
+            configurationItems =
+                listOf(
+                    ScriptConfigurationItemDefinition(
+                        name = "Variant field",
+                        description = "",
+                        key = VARIANT_FIELD,
+                        position = 0,
+                        type = ConfigItemType.StringConfigItem,
+                        isNullable = true,
+                        stateModifier = null,
+                        isScriptIdentifier = false,
+                        defaultValue = null,
+                    ),
+                ),
+        )
+    return aScriptPackage(packageName).copy(
+        variants =
+            mapOf(
+                variantId to
+                    ScriptVariant(
+                        name = variantName,
+                        instructions = null,
+                        script = MainScript(clazz = Script::class, configuration = variantConfiguration),
+                    ),
+            ),
+    )
+}
+
+const val VARIANT_FIELD = "variantField"
+
 @OptIn(ExperimentalTime::class)
 fun aScriptPackageInstance(
     id: String,
     packageName: String,
+    definition: ScriptPackage = aScriptPackage(packageName),
+    variantId: String? = null,
 ): ScriptPackageInstance =
     ScriptPackageInstance(
         id = id,
         mainConfiguration = emptyMap(),
         childConfigurations = emptyMap(),
-        definition = aScriptPackage(packageName),
+        definition = definition,
         createdAt = Clock.System.now(),
         numberOfConcurrentTasks = 1,
+        variantId = variantId,
     )
 
 @OptIn(ExperimentalTime::class)

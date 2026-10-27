@@ -121,6 +121,9 @@ data class ScriptPackageEntity
         val createdAt: Instant,
         @ColumnInfo(name = "updated_at")
         val updatedAt: Instant,
+        /** The package's variant this instance runs; null is the default entry. */
+        @ColumnInfo(name = "variant_id")
+        val variantId: String? = null,
     )
 
 /**

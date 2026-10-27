@@ -1,6 +1,7 @@
 package com.cereal.client.presentation.home
 
 import com.cereal.client.application.CoroutinesDispatcherProvider
+import com.cereal.client.application.agent.AI_BROWSER_AGENT_PACKAGE
 import com.cereal.client.application.exception.CerealException
 import com.cereal.client.application.interactor.agent.GetAiBrowserAgentListingInteractor
 import com.cereal.client.application.interactor.agent.InstallAiBrowserAgentInteractor
@@ -33,6 +34,7 @@ import com.cereal_automation.cereal_client.generated.resources.ai_connection_bad
 import fixtures.FakeRunMode
 import fixtures.FakeScriptInstallProvider
 import fixtures.GoalRunWorld
+import fixtures.aScriptPackageWithVariant
 import fixtures.agentConfigurationItems
 import fixtures.anAgentItem
 import fixtures.anAgentListing
@@ -248,6 +250,23 @@ class HomeViewModelTest {
             assertEquals(ConfigValue.IntValue(600), instance.mainConfiguration["repeatInterval"])
             assertEquals("Tell me when the pliers are back in stock", vm.goal.value)
             assertNull(vm.dialog.value)
+        }
+
+    @Test
+    fun `with an agent that has variants, start still creates a default-entry goal run`() =
+        runTest {
+            world.notificationSettings.setDiscordWebhookEnabled(true)
+            val agent =
+                anAgentPackage().copy(variants = aScriptPackageWithVariant(AI_BROWSER_AGENT_PACKAGE, "product-checkout").variants)
+            val vm = homeWith(agent)
+            vm.fillIn()
+
+            vm.onStart()
+            advanceUntilIdle()
+
+            val instance = world.scriptInstances.getScriptPackageInstances().single()
+            assertNull(instance.variantId)
+            assertEquals(ConfigValue.StringValue("Tell me when the pliers are back in stock"), instance.mainConfiguration["goal"])
         }
 
     @Test

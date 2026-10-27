@@ -71,7 +71,7 @@ class ScriptStartCapacityEnforcementScreenTest {
                             scriptPackageGroup =
                                 com.cereal.client.domain.model.task
                                     .ScriptPackageGroup("group-1", "Group 1"),
-                            initialPublicIdentifier = PACKAGE,
+                            initialRequest = ScriptRequest(PACKAGE),
                             onScriptInstanceCreated = {},
                             onDismissRequest = {},
                             onNavigateToMarketplace = {},

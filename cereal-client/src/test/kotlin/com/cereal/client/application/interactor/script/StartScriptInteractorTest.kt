@@ -7,6 +7,7 @@ import com.cereal.client.application.script.TaskSetupLimits
 import com.cereal.client.application.task.TaskManager
 import com.cereal.client.domain.model.ScopeLinker
 import com.cereal.client.domain.model.datasets.CustomDatasetGroup
+import com.cereal.client.domain.model.exception.UnknownScriptVariantException
 import com.cereal.client.domain.model.script.ScriptCapacity
 import com.cereal.client.domain.model.script.ScriptEntitlement
 import com.cereal.client.domain.model.script.ScriptInstance
@@ -22,10 +23,13 @@ import com.cereal.client.infrastructure.data.repository.inmemory.InMemoryApplica
 import com.cereal.client.infrastructure.data.repository.inmemory.InMemoryScriptInstanceRepository
 import com.cereal.client.infrastructure.provider.inmemory.InMemoryAuthProvider
 import com.cereal.sdk.ScriptConfiguration
+import io.mockk.coEvery
 import io.mockk.coVerify
 import io.mockk.mockk
+import io.mockk.slot
 import kotlinx.coroutines.test.runTest
 import org.junit.jupiter.api.Assertions.assertEquals
+import org.junit.jupiter.api.Assertions.assertSame
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
@@ -156,6 +160,36 @@ class StartScriptInteractorTest {
             val result = interactor.run(paramsWithDataset(records = 10_000))
 
             assertEquals(listOf(result), scriptInstanceRepository.getScriptPackageInstances())
+        }
+
+    @Test
+    fun `run should start the variant's script and remember the variant on the instance when a variant is chosen`() =
+        runTest {
+            val scriptPackage = fixtures.aScriptPackageWithVariant(PACKAGE, variantId = "checkout")
+            val started = slot<ScriptInstance>()
+            coEvery { taskManager.createTasks(capture(started)) } returns emptyList()
+
+            val result =
+                interactorWith(subscriptions = listOf(subscription(PACKAGE, ScriptCapacity.None)))
+                    .run(params().copy(scriptPackage = scriptPackage, variantId = "checkout"))
+
+            assertEquals("checkout", scriptInstanceRepository.getScriptPackageInstances().single().variantId)
+            assertSame(scriptPackage.variants.getValue("checkout").script, started.captured.definition)
+            assertEquals(result, started.captured.packageInstance)
+        }
+
+    @Test
+    fun `run should fail without starting the default entry when the package doesn't contain the variant`() =
+        runTest {
+            val scriptPackage = fixtures.aScriptPackageWithVariant(PACKAGE, variantId = "checkout")
+
+            assertFailsWith<UnknownScriptVariantException> {
+                interactorWith(subscriptions = listOf(subscription(PACKAGE, ScriptCapacity.None)))
+                    .run(params().copy(scriptPackage = scriptPackage, variantId = "removed"))
+            }
+
+            assertTrue(scriptInstanceRepository.getScriptPackageInstances().isEmpty())
+            coVerify(exactly = 0) { taskManager.createTasks(any()) }
         }
 
     private fun params(
