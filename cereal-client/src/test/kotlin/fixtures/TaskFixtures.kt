@@ -8,6 +8,7 @@ import com.cereal.client.domain.model.script.ScriptPackage
 import com.cereal.client.domain.model.script.ScriptPackageInstance
 import com.cereal.client.domain.model.script.ScriptVariant
 import com.cereal.client.domain.model.script.configuration.ConfigItemType
+import com.cereal.client.domain.model.script.configuration.ConfigValue
 import com.cereal.client.domain.model.script.configuration.ScriptConfigurationDefinition
 import com.cereal.client.domain.model.script.configuration.ScriptConfigurationItemDefinition
 import com.cereal.client.domain.model.task.JobTask
@@ -141,3 +142,34 @@ fun aTask(
     packageName: String,
     running: Boolean,
 ): JobTask = aTask(id, aScriptInstance(aScriptPackageInstance("pkg-$id", packageName)), running)
+
+/** This instance with a script identifier item on its entry script (main or variant) set to [identifier]. */
+fun ScriptPackageInstance.withIdentifier(identifier: String?): ScriptPackageInstance {
+    val item =
+        ScriptConfigurationItemDefinition(
+            name = "Id",
+            description = "",
+            key = IDENTIFIER_FIELD,
+            position = 0,
+            type = ConfigItemType.StringConfigItem,
+            isNullable = true,
+            stateModifier = null,
+            isScriptIdentifier = true,
+        )
+
+    fun MainScript.identified() = copy(configuration = configuration.copy(configurationItems = listOf(item)))
+    val definition =
+        if (variantId == null) {
+            definition.copy(mainScript = definition.mainScript.identified())
+        } else {
+            definition.copy(
+                variants = definition.variants.mapValues { (id, v) -> if (id == variantId) v.copy(script = v.script.identified()) else v },
+            )
+        }
+    return copy(
+        definition = definition,
+        mainConfiguration = identifier?.let { mapOf(IDENTIFIER_FIELD to ConfigValue.StringValue(it)) }.orEmpty(),
+    )
+}
+
+private const val IDENTIFIER_FIELD = "id"

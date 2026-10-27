@@ -1,11 +1,13 @@
 package com.cereal.client.presentation.tasks
 
 import com.cereal.client.domain.model.task.ScriptPackageGroup
+import com.cereal.client.domain.model.task.TaskSetupSort
 import com.cereal.client.domain.model.task.UserInteraction
 import fixtures.aScriptInstance
 import fixtures.aScriptPackageInstance
 import fixtures.aScriptPackageWithVariant
 import fixtures.aTask
+import fixtures.withIdentifier
 import io.mockk.mockk
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertFalse
@@ -71,7 +73,7 @@ class TasksViewStateBuilderTest {
             )
         val defaultEntry = aScriptPackageInstance("d1", "com.example")
 
-        val state = TasksViewStateBuilder.buildListState(listOf(default to listOf(variant, defaultEntry)), emptyList())
+        val state = TasksViewStateBuilder.buildListState(listOf(default to listOf(variant, defaultEntry)), emptyList(), sort = TaskSetupSort.OLDEST_FIRST)
 
         val names =
             assertIs<TaskViewState.ListState.Filled>(state)
@@ -80,6 +82,25 @@ class TasksViewStateBuilderTest {
                 .setups
                 .map { it.name }
         assertEquals(listOf("Checkout", "Test"), names)
+    }
+
+    @Test
+    fun `titles a setup with its identifier over its script name, and with its script name when it has none`() {
+        val identified = aScriptPackageInstance("i1", "com.example").withIdentifier("Find cheap flights")
+        val blank = aScriptPackageInstance("b1", "com.example").withIdentifier(" ")
+        val plain = aScriptPackageInstance("p1", "com.example")
+
+        val state = TasksViewStateBuilder.buildListState(listOf(default to listOf(identified, blank, plain)), emptyList(), sort = TaskSetupSort.OLDEST_FIRST)
+
+        val setups = assertIs<TaskViewState.ListState.Filled>(state).groups.single().setups
+        assertEquals(
+            listOf(
+                Triple("Find cheap flights", "Test", "Test"),
+                Triple("Test", null, "Test"),
+                Triple("Test", null, "Test"),
+            ),
+            setups.map { Triple(it.name, it.subtitle, it.scriptName) },
+        )
     }
 
     @Test

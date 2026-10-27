@@ -3,7 +3,6 @@ package com.cereal.client.presentation.tasks
 import com.cereal.client.domain.model.script.MainScript
 import com.cereal.client.domain.model.script.ScriptPackageInstance
 import com.cereal.client.domain.model.script.concurrentTaskCounts
-import com.cereal.client.domain.model.script.configuration.getScriptIdentifierValue
 import com.cereal.client.domain.model.script.getScriptPackageInstance
 import com.cereal.client.domain.model.task.ScriptPackageGroup
 import com.cereal.client.domain.model.task.Task
@@ -75,10 +74,10 @@ object TasksViewStateBuilder {
         val singleTask = tasks.singleOrNull()?.toUiModel(1)
         return TaskSetupSection(
             setupId = setup.id,
-            name = setup.entryName,
-            subtitle =
-                setup.entryScript.configuration
-                    .getScriptIdentifierValue(setup.mainConfiguration),
+            name = setup.displayName,
+            // The script name moves down when the identifier takes the title.
+            subtitle = setup.identifierValue?.let { setup.entryName },
+            scriptName = setup.entryName,
             runningCount = running,
             failedCount = failed,
             taskCount = tasks.size,

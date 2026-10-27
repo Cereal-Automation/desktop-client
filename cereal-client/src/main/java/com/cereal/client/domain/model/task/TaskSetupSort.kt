@@ -3,7 +3,6 @@
 package com.cereal.client.domain.model.task
 
 import com.cereal.client.domain.model.script.ScriptPackageInstance
-import com.cereal.client.domain.model.script.configuration.getScriptIdentifierValue
 import kotlin.time.ExperimentalTime
 
 /** How the Tasks screen orders the task setups within each group; ties fall back to newest first. */
@@ -38,7 +37,7 @@ enum class TaskSetupSort(
 
                 NAME -> {
                     compareBy<ScriptPackageInstance, String>(String.CASE_INSENSITIVE_ORDER) { it.definition.manifest.name }
-                        .thenBy(String.CASE_INSENSITIVE_ORDER) { it.identifier() }
+                        .thenBy(String.CASE_INSENSITIVE_ORDER) { it.identifierValue.orEmpty() }
                         .then(newestFirst)
                 }
 
@@ -48,11 +47,6 @@ enum class TaskSetupSort(
             }
         return setups.sortedWith(comparator)
     }
-
-    private fun ScriptPackageInstance.identifier(): String =
-        definition.mainScript.configuration
-            .getScriptIdentifierValue(mainConfiguration)
-            .orEmpty()
 
     private fun attentionRank(tasks: List<Task>): Int =
         when {

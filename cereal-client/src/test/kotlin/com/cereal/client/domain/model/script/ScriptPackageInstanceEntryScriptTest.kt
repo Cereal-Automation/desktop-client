@@ -3,6 +3,9 @@ package com.cereal.client.domain.model.script
 import com.cereal.client.domain.model.exception.UnknownScriptVariantException
 import fixtures.aScriptPackageInstance
 import fixtures.aScriptPackageWithVariant
+import fixtures.withIdentifier
+import org.junit.jupiter.api.Assertions.assertEquals
+import org.junit.jupiter.api.Assertions.assertNull
 import org.junit.jupiter.api.Assertions.assertSame
 import org.junit.jupiter.api.Test
 import kotlin.test.assertFailsWith
@@ -29,5 +32,22 @@ class ScriptPackageInstanceEntryScriptTest {
         val instance = aScriptPackageInstance(id = "1", packageName = "com.example", definition = definition, variantId = "removed")
 
         assertFailsWith<UnknownScriptVariantException> { instance.entryScript }
+    }
+
+    @Test
+    fun `a variant instance is named by its variant script's identifier`() {
+        val definition = aScriptPackageWithVariant("com.example", variantId = "checkout", variantName = "Checkout")
+        val instance = aScriptPackageInstance(id = "1", packageName = "com.example", definition = definition, variantId = "checkout")
+
+        assertEquals("Size 42", instance.withIdentifier("Size 42").displayName)
+    }
+
+    @Test
+    fun `an instance with a blank or unset identifier is named by its entry`() {
+        val instance = aScriptPackageInstance(id = "1", packageName = "com.example")
+
+        assertNull(instance.withIdentifier(" ").identifierValue)
+        assertEquals(instance.entryName, instance.withIdentifier(" ").displayName)
+        assertEquals(instance.entryName, instance.withIdentifier(null).displayName)
     }
 }
