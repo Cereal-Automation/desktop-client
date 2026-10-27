@@ -20,6 +20,8 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.joinAll
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
@@ -71,7 +73,14 @@ class TaskManager(
         }
     }
 
+    /**
+     * Stops every running task, waits for it to record its final status, then forgets all tasks. Removing a task from
+     * the repository doesn't cancel its job, so without the stop a logged-out user's scripts would keep running.
+     */
     suspend fun removeAllTasks() {
+        val tasks = tasksRepository.getAllTasks().first()
+        tasks.forEach { stopTask(it.id) }
+        tasks.mapNotNull { it.job }.joinAll()
         tasksRepository.removeAllTasks()
     }
 

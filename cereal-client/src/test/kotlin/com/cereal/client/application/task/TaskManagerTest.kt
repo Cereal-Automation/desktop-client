@@ -15,6 +15,10 @@ import com.cereal.sdk.ScriptConfiguration
 import fixtures.proxyGroup
 import io.mockk.coEvery
 import io.mockk.mockk
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.awaitCancellation
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.runTest
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertTrue
@@ -200,5 +204,30 @@ class TaskManagerTest {
             taskManager.startTask("idle")
 
             assertTrue(tasksRepository.getTask("idle")!!.statusHistory.any { it is TaskStatus.Running })
+        }
+
+    @Test
+    fun `removeAllTasks cancels running jobs before forgetting the tasks`() =
+        runTest {
+            val tasksRepository = InMemoryTasksRepository()
+            val taskManager =
+                TaskManager(
+                    dispatcherProvider = CoroutinesDispatcherProvider(),
+                    tasksRepository = tasksRepository,
+                    taskConfigurationBuilder = taskConfigurationBuilder,
+                    scriptInstanceRepository = scriptInstanceRepository,
+                    jobTaskFactory = mockk(relaxed = true),
+                    artifactRepository = mockk(relaxed = true),
+                )
+            tasksRepository.addTask(
+                buildTask("running", statusHistory = listOf(TaskStatus.Running("Working", Clock.System.now()))),
+            )
+            val job = launch(Dispatchers.Default) { awaitCancellation() }
+            tasksRepository.setTaskJob("running", job)
+
+            taskManager.removeAllTasks()
+
+            assertTrue(job.isCancelled)
+            assertTrue(tasksRepository.getAllTasks().first().isEmpty())
         }
 }
