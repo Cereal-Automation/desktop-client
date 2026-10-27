@@ -15,9 +15,16 @@ import io.mockk.mockk
 import io.mockk.mockkObject
 import io.mockk.unmockkObject
 import io.mockk.verify
+import kotlinx.coroutines.CompletableDeferred
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.awaitCancellation
+import kotlinx.coroutines.cancelAndJoin
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.runTest
 import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.Assertions.assertEquals
+import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.koin.core.context.startKoin
@@ -53,6 +60,21 @@ class TaskExecutorTest {
             verify { logger.error("Error executing task: No AI provider is set up. Choose one in Settings → AI.") }
             verify(exactly = 0) { CrashReporter.report(any(), any()) }
         }
+
+    @Test
+    fun `a stopped task ends Idle and still finishes the script when onFinish suspends`() =
+        runTest {
+            val task = mainTaskFixture(scriptClass = SuspendingFinishScript::class)
+            SuspendingFinishScript.reset()
+            var status: TaskStatus? = null
+
+            val job = launch(Dispatchers.Default) { status = TaskExecutor(task) {}.run() }
+            SuspendingFinishScript.started.await()
+            job.cancelAndJoin()
+
+            assertIs<TaskStatus.Idle>(status)
+            assertTrue(SuspendingFinishScript.finished)
+        }
 }
 
 /** A script that calls an LLM with no provider set up and doesn't catch the failure. */
@@ -72,4 +94,41 @@ class LlmNotConfiguredScript : Script<ScriptConfiguration> {
         configuration: ScriptConfiguration,
         provider: ComponentProvider,
     ) = Unit
+}
+
+/** A script that runs until stopped and suspends while cleaning up, like one that closes a browser. */
+class SuspendingFinishScript : Script<ScriptConfiguration> {
+    override suspend fun onStart(
+        configuration: ScriptConfiguration,
+        provider: ComponentProvider,
+    ) = true
+
+    override suspend fun execute(
+        configuration: ScriptConfiguration,
+        provider: ComponentProvider,
+        statusUpdate: suspend (message: String) -> Unit,
+    ): ExecutionResult {
+        started.complete(Unit)
+        awaitCancellation()
+    }
+
+    override suspend fun onFinish(
+        configuration: ScriptConfiguration,
+        provider: ComponentProvider,
+    ) {
+        delay(1)
+        finished = true
+    }
+
+    companion object {
+        lateinit var started: CompletableDeferred<Unit>
+
+        @Volatile
+        var finished = false
+
+        fun reset() {
+            started = CompletableDeferred()
+            finished = false
+        }
+    }
 }
