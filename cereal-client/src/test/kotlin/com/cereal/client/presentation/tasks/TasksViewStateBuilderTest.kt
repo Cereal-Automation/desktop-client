@@ -78,8 +78,9 @@ class TasksViewStateBuilderTest {
                 .groups
                 .single()
                 .setups
-                .map { it.name }
-        assertEquals(listOf("Checkout", "Test"), names)
+                .associate { it.setupId to it.name }
+        assertEquals("Checkout", names.getValue("v1"))
+        assertEquals("Test", names.getValue("d1"))
     }
 
     @Test
