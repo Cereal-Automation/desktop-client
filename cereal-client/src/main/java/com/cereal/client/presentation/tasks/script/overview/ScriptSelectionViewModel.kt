@@ -65,7 +65,7 @@ class ScriptSelectionViewModel(
             updateConfig()
         })
 
-    val overviewViewState = mutableStateOf<ScriptSelectionState.Overview>(ScriptSelectionState.Overview.Empty)
+    val overviewViewState = mutableStateOf<ScriptSelectionState.Overview>(ScriptSelectionState.Overview.Loading)
     val configurationViewState = mutableStateOf<ScriptSelectionState.Config>(ScriptSelectionState.Config.None)
     val scriptRefreshState = mutableStateOf<LoadState>(LoadState.NotLoading())
     val scriptLaunchLoadState = mutableStateOf<LoadState>(LoadState.NotLoading())
