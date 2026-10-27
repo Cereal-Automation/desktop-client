@@ -149,7 +149,7 @@ fun ScriptSelectionDialog(
                         }
 
                         // Nothing to choose from, so the configuration takes the full width.
-                        is ScriptSelectionState.Overview.Single -> {}
+                        is ScriptSelectionState.Overview.Single, ScriptSelectionState.Overview.Loading -> {}
                     }
                 }
 
@@ -158,13 +158,19 @@ fun ScriptSelectionDialog(
                     ConfigHeader(
                         title =
                             (configState as? ScriptSelectionState.Config.Selected)?.scriptConfigurationViewModel?.scriptName
-                                ?: stringResource(Res.string.installed_scripts),
+                                ?: if (viewModel.overviewViewState.value is ScriptSelectionState.Overview.Loading) {
+                                    ""
+                                } else {
+                                    stringResource(Res.string.installed_scripts)
+                                },
                         onClose = onDismissRequest,
                     )
                     Column(Modifier.fillMaxWidth().weight(1f)) {
                         when (configState) {
                             is ScriptSelectionState.Config.None -> {
-                                NoItemSelectedView()
+                                if (viewModel.overviewViewState.value !is ScriptSelectionState.Overview.Loading) {
+                                    NoItemSelectedView()
+                                }
                             }
 
                             is ScriptSelectionState.Config.Selected -> {

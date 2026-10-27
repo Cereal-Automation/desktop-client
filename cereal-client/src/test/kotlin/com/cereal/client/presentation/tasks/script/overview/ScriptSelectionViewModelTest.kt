@@ -167,6 +167,13 @@ class ScriptSelectionViewModelTest {
     }
 
     @Test
+    fun `shows the loading state, not the empty one, before the installed scripts have loaded`() {
+        val viewModel = createViewModel()
+
+        assertTrue(viewModel.overviewViewState.value is ScriptSelectionState.Overview.Loading)
+    }
+
+    @Test
     fun `loadInstalledScripts shows the empty state when there are no scripts`() {
         val viewModel = createViewModel()
         dispatcher.scheduler.advanceUntilIdle()

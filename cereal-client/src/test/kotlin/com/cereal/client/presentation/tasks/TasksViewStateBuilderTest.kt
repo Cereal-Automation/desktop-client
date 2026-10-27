@@ -78,6 +78,7 @@ class TasksViewStateBuilderTest {
                 .groups
                 .single()
                 .setups
+                // Setups are sorted newest first, so key the names by setup instead of comparing a list.
                 .associate { it.setupId to it.name }
         assertEquals("Checkout", names.getValue("v1"))
         assertEquals("Test", names.getValue("d1"))
