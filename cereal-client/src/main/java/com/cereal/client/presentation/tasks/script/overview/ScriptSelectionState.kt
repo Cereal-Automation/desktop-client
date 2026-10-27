@@ -5,6 +5,9 @@ import com.cereal.client.presentation.view.group.GroupedListViewModel
 
 sealed class ScriptSelectionState {
     sealed class Overview {
+        /** Installed scripts not loaded yet: render no placeholder, so opening the dialog doesn't flash one. */
+        data object Loading : Overview()
+
         data object Empty : Overview()
 
         /** Exactly one script installed: it is auto-selected and the list is hidden. */
