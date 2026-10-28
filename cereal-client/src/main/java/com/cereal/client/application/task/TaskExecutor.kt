@@ -14,10 +14,12 @@ import com.cereal.sdk.component.llm.LlmException
 import com.cereal.sdk.component.script.ScriptParameters
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineDispatcher
+import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.asCoroutineDispatcher
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.runInterruptible
+import kotlinx.coroutines.withContext
 import org.koin.core.component.KoinComponent
 import org.koin.core.qualifier.named
 import java.lang.reflect.Modifier
@@ -130,7 +132,11 @@ class TaskExecutor(
             scriptDispatcher.close()
             scriptExecutor.shutdownNow()
             if (script != null && config != null && componentProvider != null) {
-                safeFinishScript(script, config, componentProvider)
+                // A stopped task's job is already cancelled: without NonCancellable the script's first suspend call in
+                // onFinish would throw, skip its cleanup and replace the Idle result, leaving the task stuck Running.
+                withContext(NonCancellable) {
+                    safeFinishScript(script, config, componentProvider)
+                }
             }
         }
 
