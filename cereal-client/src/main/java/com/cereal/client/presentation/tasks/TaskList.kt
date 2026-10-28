@@ -187,7 +187,7 @@ internal fun TaskSetupRow(
                 modifier = Modifier.size(16.dp),
             )
         }
-        SetupAvatar(section.name)
+        SetupAvatar(section.scriptName)
         SetupTitle(section, Modifier.weight(1f))
         Row(horizontalArrangement = Arrangement.spacedBy(14.dp), verticalAlignment = Alignment.CenterVertically) {
             if (section.runningCount > 0) {
@@ -258,7 +258,7 @@ internal fun SingleTaskSetupRow(
         ) {
             // The chevron's slot, so avatars line up with expandable setups.
             Spacer(Modifier.size(28.dp))
-            SetupAvatar(section.name)
+            SetupAvatar(section.scriptName)
             TitleAndMessage(section, task, Modifier.weight(1f))
             TimeSince(task.statusSince)
             if (task.isRunning) ActivityIndicator(size = 18.dp)
@@ -304,20 +304,23 @@ private fun TitleAndMessage(
 }
 
 /** The setup's name over its subtitle. */
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 private fun SetupTitle(
     section: TaskSetupSection,
     modifier: Modifier,
 ) {
     Column(modifier = modifier) {
-        // Ellipsized: on a narrow list the row's fixed-width items leave the title only what's left.
-        CerealText(
-            text = section.name,
-            style = CerealTypography.rowTitle,
-            color = MaterialTheme.colorScheme.onSurface,
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis,
-        )
+        // Ellipsized: on a narrow list the row's fixed-width items leave the title only what's left; hovering shows it whole.
+        TooltipArea(tooltip = { TextTooltip(section.name) }) {
+            CerealText(
+                text = section.name,
+                style = CerealTypography.rowTitle,
+                color = MaterialTheme.colorScheme.onSurface,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
+        }
         if (!section.subtitle.isNullOrEmpty()) {
             CerealText(
                 text = section.subtitle,
@@ -371,19 +374,19 @@ private fun DisabledMenuItem(
     label: String,
     reason: String,
 ) {
-    TooltipArea(
-        tooltip = {
-            Surface(modifier = Modifier.shadow(4.dp), shape = MaterialTheme.shapes.extraSmall) {
-                CerealText(
-                    text = reason,
-                    modifier = Modifier.padding(CerealTheme.spacing.sm),
-                    style = MaterialTheme.typography.bodySmall,
-                )
-            }
-        },
-        delayMillis = 0,
-    ) {
+    TooltipArea(tooltip = { TextTooltip(reason) }, delayMillis = 0) {
         DropdownMenuItem(text = { CerealText(label) }, onClick = {}, enabled = false)
+    }
+}
+
+@Composable
+private fun TextTooltip(text: String) {
+    Surface(modifier = Modifier.shadow(4.dp), shape = MaterialTheme.shapes.extraSmall) {
+        CerealText(
+            text = text,
+            modifier = Modifier.padding(CerealTheme.spacing.sm),
+            style = MaterialTheme.typography.bodySmall,
+        )
     }
 }
 

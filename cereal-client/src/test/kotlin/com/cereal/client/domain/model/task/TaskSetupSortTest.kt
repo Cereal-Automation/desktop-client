@@ -1,11 +1,9 @@
 package com.cereal.client.domain.model.task
 
 import com.cereal.client.domain.model.script.ScriptPackageInstance
-import com.cereal.client.domain.model.script.configuration.ConfigItemType
-import com.cereal.client.domain.model.script.configuration.ConfigValue
-import com.cereal.client.domain.model.script.configuration.ScriptConfigurationItemDefinition
 import fixtures.aScriptInstance
 import fixtures.aScriptPackageInstance
+import fixtures.withIdentifier
 import io.mockk.mockk
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Test
@@ -21,31 +19,9 @@ class TaskSetupSortTest {
         name: String = "Test",
         identifier: String? = null,
     ): ScriptPackageInstance {
-        val base = aScriptPackageInstance(id, "com.example.$id")
-        val identifierItem =
-            ScriptConfigurationItemDefinition(
-                name = "Id",
-                description = "",
-                key = "id",
-                position = 0,
-                type = ConfigItemType.StringConfigItem,
-                isNullable = true,
-                stateModifier = null,
-                isScriptIdentifier = true,
-            )
-        val definition =
-            base.definition.copy(
-                manifest = base.definition.manifest.copy(name = name),
-                mainScript =
-                    base.definition.mainScript.copy(
-                        configuration =
-                            base.definition.mainScript.configuration
-                                .copy(configurationItems = listOf(identifierItem)),
-                    ),
-            )
+        val base = aScriptPackageInstance(id, "com.example.$id").withIdentifier(identifier)
         return base.copy(
-            definition = definition,
-            mainConfiguration = identifier?.let { mapOf("id" to ConfigValue.StringValue(it)) }.orEmpty(),
+            definition = base.definition.copy(manifest = base.definition.manifest.copy(name = name)),
             createdAt = Instant.fromEpochSeconds(createdAt),
         )
     }

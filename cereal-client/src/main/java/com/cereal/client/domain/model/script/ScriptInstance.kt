@@ -2,6 +2,7 @@ package com.cereal.client.domain.model.script
 
 import com.cereal.client.domain.model.notification.ScriptNotificationOverrides
 import com.cereal.client.domain.model.script.configuration.ConfigValue
+import com.cereal.client.domain.model.script.configuration.getScriptIdentifierValue
 import com.cereal.client.domain.model.script.configuration.isGroup
 import com.cereal.sdk.component.script.ScriptParameters
 import kotlin.time.ExperimentalTime
@@ -35,6 +36,13 @@ data class ScriptPackageInstance
 
         /** The name shown wherever this instance appears: the variant's name, or the package name for the default entry. */
         val entryName: String get() = definition.entryName(variantId)
+
+        /** This instance's script identifier value, such as the agent's goal; null when unset or blank. */
+        val identifierValue: String?
+            get() = entryScript.configuration.getScriptIdentifierValue(mainConfiguration)?.takeIf { it.isNotBlank() }
+
+        /** What tells this instance apart from others running the same entry: [identifierValue], else [entryName]. */
+        val displayName: String get() = identifierValue ?: entryName
 
         override fun equals(other: Any?): Boolean {
             if (this === other) return true

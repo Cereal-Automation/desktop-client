@@ -85,8 +85,12 @@ data class TaskGroupSection(
 /** One task setup in the task list: its header row and its task rows. */
 data class TaskSetupSection(
     val setupId: String,
+    /** The setup's identifier value, or its script name when it has none. */
     val name: String,
+    /** The script name when [name] is the identifier. */
     val subtitle: String?,
+    /** Drives the avatar, so setups of one script share it. */
+    val scriptName: String,
     val runningCount: Int,
     val failedCount: Int,
     val taskCount: Int,
