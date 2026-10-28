@@ -16,19 +16,19 @@ koin = "4.2.2"
 koin-compose = "4.2.2"
 
 # Networking
-okhttp = "5.5.0"
+okhttp = "5.5.1"
 
 # UI and Desktop
 compose-material-icons = "1.7.3"
 
 # Logging
-logback = "1.6.5"
+logback = "1.6.6"
 
 # Third-party Libraries
 cache4k = "0.14.0"
-sentry-kotlin = "0.28.0"
+sentry-kotlin = "0.29.0"
 semver = "2.1.0"
-kotlinx-serialization = "1.11.0"
+kotlinx-serialization = "1.12.0"
 kotlinx-collections-immutable = "0.5.2"
 json-schema-validator = "0.5.5"
 kotlin-csv = "1.10.0"
