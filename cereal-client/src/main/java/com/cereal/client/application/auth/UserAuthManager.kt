@@ -12,6 +12,7 @@ import com.cereal.client.domain.repository.ScriptInstanceRepository
 import com.cereal.client.domain.repository.SessionRepository
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.FlowCollector
+import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.flow.flow
 import kotlin.time.Clock
 import kotlin.time.ExperimentalTime
@@ -63,6 +64,9 @@ class UserAuthManager(
         password: String,
     ): User {
         val authenticatedUser = authProvider.register(name, email, password)
+
+        // The new account is signed in straight away, going through the same setup as a login.
+        onAuthenticated(authenticatedUser).collect()
 
         return authenticatedUser
     }
