@@ -58,6 +58,7 @@ object ViewModelModule {
                     dispatcherProvider = get(),
                     getScriptsInteractor = get(),
                     getSdkVersionInteractor = get(),
+                    getScriptConfigDefinitionInteractor = get(),
                     prefillGoalRunFormInteractor = get(),
                     startGoalRunInteractor = get(),
                     startAllTasksInScriptPackageInstanceInteractor = get(),

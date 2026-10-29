@@ -1,8 +1,8 @@
 package com.cereal.client.application.interactor.agent
 
 import com.cereal.client.application.Interactor
-import com.cereal.client.application.agent.GoalRunInput
 import com.cereal.client.application.interactor.task.GetOrCreateDefaultTaskGroupInteractor
+import com.cereal.client.domain.model.script.ScriptConfigurationValues
 import com.cereal.client.domain.model.script.ScriptPackage
 import com.cereal.client.domain.model.script.ScriptPackageInstance
 import com.cereal.client.domain.model.task.ScriptPackageGroup
@@ -18,7 +18,7 @@ data class GoalRunFormPrefill(
 
 /**
  * Prepares Home's "More options": the agent's generic config form in the Default group, prefilled with
- * whatever composer keys the installed agent still declares. Nothing is saved until the form launches.
+ * the composer's configuration. Nothing is saved until the form launches.
  */
 class PrefillGoalRunFormInteractor(
     private val getOrCreateDefaultTaskGroupInteractor: GetOrCreateDefaultTaskGroupInteractor,
@@ -29,7 +29,7 @@ class PrefillGoalRunFormInteractor(
         val instance =
             ScriptPackageInstance(
                 id = UUID.randomUUID().toString(),
-                mainConfiguration = params.input.toConfiguration(params.agent.mainScript.configuration),
+                mainConfiguration = params.mainConfiguration,
                 childConfigurations = emptyMap(),
                 definition = params.agent,
                 createdAt = Clock.System.now(),
@@ -40,6 +40,6 @@ class PrefillGoalRunFormInteractor(
 
     data class Params(
         val agent: ScriptPackage,
-        val input: GoalRunInput,
+        val mainConfiguration: ScriptConfigurationValues,
     )
 }
