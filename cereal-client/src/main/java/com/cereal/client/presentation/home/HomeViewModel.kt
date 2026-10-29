@@ -105,6 +105,7 @@ sealed interface HomeDialog {
 }
 
 /** Home's composer slot and the goal composer. The AI setup card and the install card have their own ViewModels. */
+@Suppress("LongParameterList")
 class HomeViewModel(
     private val scope: CoroutineScope,
     private val dispatcherProvider: CoroutinesDispatcherProvider,
@@ -197,9 +198,9 @@ class HomeViewModel(
     private fun canStart(): Boolean = _slot.value == HomeComposerSlot.Composer && hasAiProvider == true
 
     fun onStart() {
-        val agent = agent ?: return
-        val form = _composerForm.value ?: return
-        if (!canStart()) return
+        val agent = agent
+        val form = _composerForm.value
+        if (agent == null || form == null || !canStart()) return
         val required = requiredFields()
         val rendered = required.filter { (item, _) -> item.definition.isRenderableOnHome }
         // Validate every shown field (no short-circuit), so each one shows its own error.
@@ -215,9 +216,9 @@ class HomeViewModel(
                 .any { it.key !in shown }
         if (unrendered || invalidHidden) {
             openMoreOptions(agent, startOnCreate = true)
-            return
+        } else {
+            startGoalRun(agent, ignoreMissingNotificationChannels = false)
         }
-        startGoalRun(agent, ignoreMissingNotificationChannels = false)
     }
 
     fun onNoNotificationChannelsWarningAccepted() {
