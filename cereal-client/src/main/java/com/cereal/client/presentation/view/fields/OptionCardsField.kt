@@ -5,6 +5,7 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.selection.selectable
@@ -34,18 +35,21 @@ const val MAX_OPTION_CARDS = 3
 @Composable
 fun <T : Any> OptionCardsField(state: DropDownFieldState<T>) {
     FormField(state.error) {
-        Row(
-            modifier =
-                Modifier
-                    .selectableGroup()
-                    .background(InputBg, RoundedCornerShape(8.dp))
-                    .border(1.dp, InputBorder, RoundedCornerShape(8.dp))
-                    .padding(3.dp),
-            horizontalArrangement = Arrangement.spacedBy(2.dp),
-        ) {
-            state.values.value.forEach { option ->
-                val selected = option == state.selectedValue
-                OptionCard(option.toString(), selected) { if (selected) state.onClear() else state.onValueChange(option) }
+        // FormField end-aligns its content; full width keeps the cards at the start, under the label.
+        Box(modifier = Modifier.fillMaxWidth()) {
+            Row(
+                modifier =
+                    Modifier
+                        .selectableGroup()
+                        .background(InputBg, RoundedCornerShape(8.dp))
+                        .border(1.dp, InputBorder, RoundedCornerShape(8.dp))
+                        .padding(3.dp),
+                horizontalArrangement = Arrangement.spacedBy(2.dp),
+            ) {
+                state.values.value.forEach { option ->
+                    val selected = option == state.selectedValue
+                    OptionCard(option.toString(), selected) { if (selected) state.onClear() else state.onValueChange(option) }
+                }
             }
         }
     }

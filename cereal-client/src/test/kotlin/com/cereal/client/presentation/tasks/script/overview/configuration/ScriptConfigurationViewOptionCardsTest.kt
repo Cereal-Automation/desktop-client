@@ -3,8 +3,10 @@ package com.cereal.client.presentation.tasks.script.overview.configuration
 import androidx.compose.ui.test.ExperimentalTestApi
 import androidx.compose.ui.test.assertIsNotSelected
 import androidx.compose.ui.test.assertIsSelected
+import androidx.compose.ui.test.getUnclippedBoundsInRoot
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.unit.dp
 import com.cereal.client.application.CoroutinesDispatcherProvider
 import com.cereal.client.application.interactor.script.GetScriptConfigDefinitionInteractor
 import com.cereal.client.application.interactor.script.GetScriptPackageInstancesByPackageNameInteractor
@@ -23,6 +25,7 @@ import testutil.runScreenTest
 import testutil.setScreenContent
 import kotlin.reflect.KClass
 import kotlin.test.Test
+import kotlin.test.assertTrue
 
 private enum class ThreeModes { Once, Repeat, Never }
 
@@ -83,6 +86,18 @@ class ScriptConfigurationViewOptionCardsTest {
             onNodeWithText("Never").performClick()
             onNodeWithText("Never").assertIsSelected()
             onNodeWithText("Once").assertIsNotSelected()
+        }
+
+    @Test
+    fun `option cards start at the left edge, under the field label`() =
+        runScreenTest {
+            val vm = viewModel(enumItem(ThreeModes::class, ThreeModes.Once))
+            setScreenContent { ScriptConfigurationView(vm) }
+
+            val labelLeft = onNodeWithText("Mode").getUnclippedBoundsInRoot().left
+            val cardLeft = onNodeWithText("Once").getUnclippedBoundsInRoot().left
+            // Only the group's 3dp inset sits between them; end-aligned cards would be hundreds of dp away.
+            assertTrue(cardLeft - labelLeft < 10.dp, "cards start ${cardLeft - labelLeft} right of the label")
         }
 
     @Test
