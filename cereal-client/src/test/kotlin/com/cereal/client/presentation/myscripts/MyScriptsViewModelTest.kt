@@ -1,6 +1,7 @@
 package com.cereal.client.presentation.myscripts
 
 import com.cereal.client.application.CoroutinesDispatcherProvider
+import com.cereal.client.application.agent.AI_BROWSER_AGENT_PACKAGE
 import com.cereal.client.domain.model.marketplace.MarketplaceDirection
 import com.cereal.client.domain.model.marketplace.MarketplaceScript
 import com.cereal.client.domain.model.marketplace.MarketplaceSort
@@ -21,7 +22,9 @@ import com.cereal.client.infrastructure.di.modules.InMemoryRepositoryModule
 import com.cereal.client.infrastructure.provider.inmemory.InMemoryMarketplaceProvider
 import com.cereal.client.presentation.error.ErrorAction
 import com.cereal.client.presentation.myscripts.MyScriptsViewModel.InstalledScriptStatus
+import com.cereal.client.presentation.tasks.script.overview.ScriptRequest
 import fixtures.aScriptPackage
+import fixtures.aScriptPackageWithVariant
 import fixtures.aTask
 import fixtures.anAgentPackage
 import kotlinx.coroutines.CoroutineScope
@@ -53,7 +56,7 @@ import org.koin.java.KoinJavaComponent
 @OptIn(ExperimentalCoroutinesApi::class)
 class MyScriptsViewModelTest {
     private val dispatcher = StandardTestDispatcher()
-    private val startedInstances = mutableListOf<String>()
+    private val startedInstances = mutableListOf<ScriptRequest>()
 
     @BeforeEach
     fun setUp() {
@@ -226,7 +229,23 @@ class MyScriptsViewModelTest {
             vm.onStartNewInstance("com.a")
 
             assertNull(vm.selectedScript.value)
-            assertEquals(listOf("com.a"), startedInstances)
+            assertEquals(listOf(ScriptRequest("com.a")), startedInstances)
+        }
+
+    @Test
+    fun `starting a new instance from a variant row requests that variant`() =
+        runTest(dispatcher) {
+            val agent = aScriptPackageWithVariant(AI_BROWSER_AGENT_PACKAGE, variantId = "checkout", variantName = "Checkout")
+            val vm =
+                createViewModel(
+                    installed = listOf(agent),
+                    marketplace = InMemoryMarketplaceProvider(listOf(listing(AI_BROWSER_AGENT_PACKAGE))),
+                )
+
+            vm.onRowClicked(vm.rows.value.single { it.variantId == "checkout" })
+            vm.onStartNewInstance(AI_BROWSER_AGENT_PACKAGE)
+
+            assertEquals(listOf(ScriptRequest(AI_BROWSER_AGENT_PACKAGE, "checkout")), startedInstances)
         }
 
     private suspend fun TestScope.createViewModel(
@@ -255,7 +274,7 @@ class MyScriptsViewModelTest {
         val vm =
             KoinJavaComponent.get<MyScriptsViewModel>(
                 MyScriptsViewModel::class.java,
-                parameters = { parametersOf(CoroutineScope(dispatcher), { id: String -> startedInstances += id }) },
+                parameters = { parametersOf(CoroutineScope(dispatcher), { request: ScriptRequest -> startedInstances += request }) },
             )
         advanceUntilIdle()
         return vm

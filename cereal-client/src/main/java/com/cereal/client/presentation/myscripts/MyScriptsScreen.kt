@@ -45,6 +45,7 @@ import com.cereal.client.presentation.marketplace.ScriptBadge
 import com.cereal.client.presentation.marketplace.ScriptDetailDialog
 import com.cereal.client.presentation.marketplace.UpdateRequiredBadge
 import com.cereal.client.presentation.marketplace.handle
+import com.cereal.client.presentation.tasks.script.overview.ScriptRequest
 import com.cereal.client.presentation.theme.CerealTheme
 import com.cereal.client.presentation.view.CerealButton
 import com.cereal.client.presentation.view.CerealButtonType
@@ -70,7 +71,7 @@ import org.koin.java.KoinJavaComponent
 @Composable
 fun MyScriptsScreen(
     onOpenMarketplace: () -> Unit,
-    onStartNewInstance: (publicIdentifier: String) -> Unit = {},
+    onStartNewInstance: (ScriptRequest) -> Unit = {},
 ) {
     val scope = rememberCoroutineScope()
     val viewModel =

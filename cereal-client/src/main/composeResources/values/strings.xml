@@ -467,6 +467,10 @@
     <string name="rename">Rename</string>
     <string name="search_marketplace_for_scripts">Search for scripts in the marketplace</string>
     <string name="select_script">Select script</string>
+    <string name="script_entry_label">Script</string>
+    <string name="script_entry_count">%1$d available</string>
+    <string name="script_entry_search">Search scripts</string>
+    <string name="script_entry_no_match">No script matches “%1$s”.</string>
     <string name="select_script_to_configure">Please, select a script to configure.</string>
     <string name="settings">Settings</string>
     <string name="show_section_settings">Show %1$s settings</string>

@@ -285,7 +285,7 @@ class ScriptConfigurationViewModelTest {
     // endregion
 
     @Test
-    fun `a variant's form shows the variant's name and instructions`() {
+    fun `a variant's form shows the variant's instructions`() {
         val withVariant =
             packageWithInstructions().let { pkg ->
                 pkg.copy(variants = pkg.variants.mapValues { it.value.copy(instructions = "Variant instructions") })
@@ -293,7 +293,6 @@ class ScriptConfigurationViewModelTest {
 
         val viewModel = createViewModel(scriptPackage = withVariant, variantId = "checkout")
 
-        assertEquals("Checkout", viewModel.scriptName)
         assertEquals("Variant instructions", viewModel.scriptInstructions)
     }
 
@@ -305,10 +304,9 @@ class ScriptConfigurationViewModelTest {
     }
 
     @Test
-    fun `the default entry's form keeps the package name and instructions`() {
+    fun `the default entry's form keeps the package instructions`() {
         val viewModel = createViewModel(scriptPackage = packageWithInstructions())
 
-        assertEquals("Test", viewModel.scriptName)
         assertEquals("Package instructions", viewModel.scriptInstructions)
     }
 

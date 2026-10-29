@@ -67,7 +67,7 @@ object ViewModelModule {
             factory { (scope: CoroutineScope) -> HomeAiProviderViewModel(scope, get(), get(), get(), get()) }
             factory { (scope: CoroutineScope) -> AgentInstallViewModel(scope, get(), get(), get()) }
             factory { (scope: CoroutineScope) -> HomeActivityViewModel(scope, get(), get(), get()) }
-            factory { (scope: CoroutineScope, onStartNewInstance: Function1<String, Unit>) ->
+            factory { (scope: CoroutineScope, onStartNewInstance: Function1<ScriptRequest, Unit>) ->
                 MyScriptsViewModel(
                     scope = scope,
                     dispatcherProvider = get(),

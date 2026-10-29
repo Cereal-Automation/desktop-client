@@ -190,7 +190,7 @@ class ScriptSelectionViewModelTest {
         dispatcher.scheduler.advanceUntilIdle()
 
         val overview = viewModel.overviewViewState.value as ScriptSelectionState.Overview.Filled
-        assertEquals(ScriptEntryRow(first), overview.viewModel.selectedItem)
+        assertEquals(first, overview.viewModel.selectedItem)
         assertTrue(viewModel.configurationViewState.value is ScriptSelectionState.Config.Selected)
     }
 
@@ -203,7 +203,7 @@ class ScriptSelectionViewModelTest {
         dispatcher.scheduler.advanceUntilIdle()
 
         val overview = viewModel.overviewViewState.value as ScriptSelectionState.Overview.Filled
-        assertEquals(ScriptEntryRow(second), overview.viewModel.selectedItem)
+        assertEquals(second, overview.viewModel.selectedItem)
     }
 
     @Test
