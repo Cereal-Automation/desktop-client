@@ -33,6 +33,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.cereal.client.domain.model.script.ScriptPackageInstance
+import com.cereal.client.domain.model.script.configuration.ConfigItemType
 import com.cereal.client.domain.model.script.configuration.ConfigSection
 import com.cereal.client.domain.model.script.configuration.ConfigurationItem
 import com.cereal.client.domain.model.script.configuration.ScriptConfigurationItemDefinition
@@ -51,6 +52,8 @@ import com.cereal.client.presentation.view.InfoBox
 import com.cereal.client.presentation.view.SectionLabel
 import com.cereal.client.presentation.view.fields.DropdownTextField
 import com.cereal.client.presentation.view.fields.FileField
+import com.cereal.client.presentation.view.fields.MAX_OPTION_CARDS
+import com.cereal.client.presentation.view.fields.OptionCardsField
 import com.cereal.client.presentation.view.fields.SecretTextField
 import com.cereal.client.presentation.view.fields.SwitchField
 import com.cereal.client.presentation.view.fields.TextField
@@ -230,7 +233,7 @@ private val SectionRuleColor = Color(0xFF232323)
 
 /** A configuration field stacked as label, control, then hint — the label names the control, so it carries none itself. */
 @Composable
-private fun ConfigField(
+internal fun ConfigField(
     title: String,
     description: String?,
     isRequired: Boolean = false,
@@ -305,7 +308,7 @@ private fun ConfigSectionHeader(
 }
 
 @Composable
-private fun FormFieldContent(
+internal fun FormFieldContent(
     configurationItem: ConfigurationItem,
     formFieldState: FormFieldState<*, *>,
 ) = when (formFieldState) {
@@ -324,7 +327,11 @@ private fun FormFieldContent(
     }
 
     is DropDownFieldState<*> -> {
-        Dropdown(configurationItem, formFieldState)
+        if (configurationItem.definition.type is ConfigItemType.EnumConfigItem && formFieldState.values.value.size <= MAX_OPTION_CARDS) {
+            OptionCardsField(formFieldState)
+        } else {
+            Dropdown(configurationItem, formFieldState)
+        }
     }
 
     is FileFieldState -> {

@@ -34,6 +34,25 @@ private object GoalRequired : StateModifier {
     }
 }
 
+/** Mirrors a script field marked required: always shown, no error of its own. */
+private object AlwaysRequired : StateModifier {
+    override fun getVisibility(scriptConfig: ScriptConfig): Visibility = Visibility.VisibleRequired
+
+    override fun getError(scriptConfig: ScriptConfig): String? = null
+}
+
+/** Mirrors the agent's `RepeatOnlyState`: shown and required in Repeat, hidden in Once. */
+private object RepeatOnly : StateModifier {
+    override fun getVisibility(scriptConfig: ScriptConfig): Visibility =
+        if ((scriptConfig.valueForKey("runMode") as? ScriptConfigValue.EnumScriptConfigValue)?.value == FakeRunMode.Repeat) {
+            Visibility.VisibleRequired
+        } else {
+            Visibility.Hidden
+        }
+
+    override fun getError(scriptConfig: ScriptConfig): String? = null
+}
+
 fun anAgentItem(
     key: String,
     type: ConfigItemType,
@@ -55,17 +74,21 @@ fun anAgentItem(
 @Suppress("UNCHECKED_CAST")
 val fakeRunModeType = ConfigItemType.EnumConfigItem(FakeRunMode::class as KClass<Enum<*>>)
 
-/** The agent's definition as the client sees it: the composer's four keys plus one hidden item with a default. */
+/**
+ * The agent's definition as the client sees it: what Home shows (goal, start URL, run mode, and in Repeat check every
+ * and vary by) plus one defaulted item that stays behind More options.
+ */
 fun agentConfigurationItems(): List<ScriptConfigurationItemDefinition> =
     listOf(
         anAgentItem("goal", ConfigItemType.StringConfigItem, 0, stateModifier = GoalRequired),
         anAgentItem("startUrl", ConfigItemType.StringConfigItem, 1),
-        anAgentItem("runMode", fakeRunModeType, 2, defaultValue = ConfigValue.EnumValue(FakeRunMode.Once)),
-        anAgentItem("repeatInterval", ConfigItemType.IntConfigItem, 3, defaultValue = ConfigValue.IntValue(300)),
+        anAgentItem("runMode", fakeRunModeType, 2, defaultValue = ConfigValue.EnumValue(FakeRunMode.Once), stateModifier = AlwaysRequired),
+        anAgentItem("repeatInterval", ConfigItemType.IntConfigItem, 3, defaultValue = ConfigValue.IntValue(300), stateModifier = RepeatOnly),
+        anAgentItem("repeatJitter", ConfigItemType.IntConfigItem, 4, defaultValue = ConfigValue.IntValue(20), stateModifier = RepeatOnly),
         anAgentItem("maxSteps", ConfigItemType.IntConfigItem, 31, defaultValue = ConfigValue.IntValue(40)),
     )
 
-/** An installed AI browser agent whose definition has the given [items] (the real four keys by default). */
+/** An installed AI browser agent whose definition has the given [items] ([agentConfigurationItems] by default). */
 fun anAgentPackage(items: List<ScriptConfigurationItemDefinition> = agentConfigurationItems()): ScriptPackage {
     val base = aScriptPackage(AI_BROWSER_AGENT_PACKAGE)
     return base.copy(

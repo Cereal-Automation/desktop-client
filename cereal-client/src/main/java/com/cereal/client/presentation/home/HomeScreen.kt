@@ -15,13 +15,9 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.selection.selectable
-import androidx.compose.foundation.selection.selectableGroup
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
@@ -54,6 +50,8 @@ import com.cereal.client.presentation.error.errorView
 import com.cereal.client.presentation.settings.ai.label
 import com.cereal.client.presentation.tasks.script.overview.ScriptRequest
 import com.cereal.client.presentation.tasks.script.overview.ScriptSelectionDialog
+import com.cereal.client.presentation.tasks.script.overview.configuration.ConfigField
+import com.cereal.client.presentation.tasks.script.overview.configuration.FormFieldContent
 import com.cereal.client.presentation.theme.CerealTheme
 import com.cereal.client.presentation.view.CerealButton
 import com.cereal.client.presentation.view.CerealButtonType
@@ -61,8 +59,6 @@ import com.cereal.client.presentation.view.CerealCard
 import com.cereal.client.presentation.view.CerealText
 import com.cereal.client.presentation.view.CerealTextField
 import com.cereal.client.presentation.view.ConfirmationDialog
-import com.cereal.client.presentation.view.InputBg
-import com.cereal.client.presentation.view.InputBorder
 import com.cereal.client.presentation.view.InputPlaceholder
 import com.cereal.client.presentation.view.WarningBox
 import com.cereal.client.presentation.view.table.PaneToolbar
@@ -75,30 +71,17 @@ import com.cereal_automation.cereal_client.generated.resources.home_ai_connected
 import com.cereal_automation.cereal_client.generated.resources.home_ai_setup_subtitle
 import com.cereal_automation.cereal_client.generated.resources.home_ai_setup_title
 import com.cereal_automation.cereal_client.generated.resources.home_ai_show
-import com.cereal_automation.cereal_client.generated.resources.home_check_every
-import com.cereal_automation.cereal_client.generated.resources.home_check_every_minutes
 import com.cereal_automation.cereal_client.generated.resources.home_composer_locked
 import com.cereal_automation.cereal_client.generated.resources.home_composer_subtitle
 import com.cereal_automation.cereal_client.generated.resources.home_composer_title
-import com.cereal_automation.cereal_client.generated.resources.home_goal_label
-import com.cereal_automation.cereal_client.generated.resources.home_goal_placeholder
 import com.cereal_automation.cereal_client.generated.resources.home_install
 import com.cereal_automation.cereal_client.generated.resources.home_installing
 import com.cereal_automation.cereal_client.generated.resources.home_maintenance_banner
 import com.cereal_automation.cereal_client.generated.resources.home_more_options
 import com.cereal_automation.cereal_client.generated.resources.home_not_installed_title
-import com.cereal_automation.cereal_client.generated.resources.home_optional
 import com.cereal_automation.cereal_client.generated.resources.home_pitch
 import com.cereal_automation.cereal_client.generated.resources.home_retry
-import com.cereal_automation.cereal_client.generated.resources.home_run_label
-import com.cereal_automation.cereal_client.generated.resources.home_run_once
-import com.cereal_automation.cereal_client.generated.resources.home_run_once_meta
-import com.cereal_automation.cereal_client.generated.resources.home_run_repeat
-import com.cereal_automation.cereal_client.generated.resources.home_run_repeat_meta
 import com.cereal_automation.cereal_client.generated.resources.home_start
-import com.cereal_automation.cereal_client.generated.resources.home_start_schedule
-import com.cereal_automation.cereal_client.generated.resources.home_start_url_label
-import com.cereal_automation.cereal_client.generated.resources.home_start_url_placeholder
 import com.cereal_automation.cereal_client.generated.resources.home_title_ready
 import com.cereal_automation.cereal_client.generated.resources.home_title_setup
 import com.cereal_automation.cereal_client.generated.resources.home_update_cereal
@@ -112,7 +95,7 @@ import org.koin.core.parameter.parametersOf
 import org.koin.java.KoinJavaComponent
 
 object HomeTestTags {
-    const val GOAL = "home_goal"
+    const val FIELDS = "home_fields"
 }
 
 /**
@@ -394,8 +377,6 @@ private fun LockedGoalStep() {
 
 @Composable
 private fun GoalStep(viewModel: HomeViewModel) {
-    val errors = viewModel.fieldErrors.value
-    val repeat = viewModel.repeat.value
     HomeStep(
         number = 2,
         title = stringResource(Res.string.home_composer_title),
@@ -405,55 +386,12 @@ private fun GoalStep(viewModel: HomeViewModel) {
             modifier = Modifier.padding(start = 62.dp, end = 22.dp, bottom = 22.dp),
             verticalArrangement = Arrangement.spacedBy(18.dp),
         ) {
-            StepField(stringResource(Res.string.home_goal_label)) {
-                ComposerField(
-                    value = viewModel.goal.value,
-                    onValueChange = viewModel::onGoalChange,
-                    placeholder = stringResource(Res.string.home_goal_placeholder),
-                    error = errors[ComposerField.GOAL]?.text(),
-                    singleLine = false,
-                    modifier = Modifier.fillMaxWidth().testTag(HomeTestTags.GOAL),
-                )
-            }
-            StepField(stringResource(Res.string.home_start_url_label), optional = !viewModel.startUrlRequired.value) {
-                ComposerField(
-                    value = viewModel.startUrl.value,
-                    onValueChange = viewModel::onStartUrlChange,
-                    placeholder = stringResource(Res.string.home_start_url_placeholder),
-                    error = errors[ComposerField.START_URL]?.text(),
-                    modifier = Modifier.fillMaxWidth(),
-                )
-            }
-            StepField(stringResource(Res.string.home_run_label)) {
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(CerealTheme.spacing.sm),
-                ) {
-                    Row(
-                        modifier =
-                            Modifier
-                                .selectableGroup()
-                                .background(InputBg, RoundedCornerShape(8.dp))
-                                .border(1.dp, InputBorder, RoundedCornerShape(8.dp))
-                                .padding(3.dp),
-                        horizontalArrangement = Arrangement.spacedBy(2.dp),
-                    ) {
-                        RunModeOption(stringResource(Res.string.home_run_once), selected = !repeat) { viewModel.onRepeatChange(false) }
-                        RunModeOption(stringResource(Res.string.home_run_repeat), selected = repeat) { viewModel.onRepeatChange(true) }
-                    }
-                    if (repeat) {
-                        CerealText(
-                            text = stringResource(Res.string.home_check_every),
-                            modifier = Modifier.padding(start = CerealTheme.spacing.md),
-                        )
-                        ComposerField(
-                            value = viewModel.checkEveryMinutes.value,
-                            onValueChange = viewModel::onCheckEveryMinutesChange,
-                            error = errors[ComposerField.CHECK_EVERY]?.text(),
-                            modifier = Modifier.width(120.dp),
-                        )
-                        CerealText(text = stringResource(Res.string.home_check_every_minutes))
-                    }
+            Column(
+                modifier = Modifier.testTag(HomeTestTags.FIELDS),
+                verticalArrangement = Arrangement.spacedBy(18.dp),
+            ) {
+                viewModel.composerFields().forEach { (item, state) ->
+                    ConfigField(item.definition.name, item.definition.description) { FormFieldContent(item, state) }
                 }
             }
             Row(
@@ -462,19 +400,13 @@ private fun GoalStep(viewModel: HomeViewModel) {
             ) {
                 CerealButton(
                     onClick = viewModel::onStart,
-                    text = stringResource(if (repeat) Res.string.home_start_schedule else Res.string.home_start),
+                    text = stringResource(Res.string.home_start),
                     enabled = !viewModel.isStarting.value,
                 )
                 CerealButton(
                     onClick = viewModel::onMoreOptions,
                     text = stringResource(Res.string.home_more_options),
                     type = CerealButtonType.Surface,
-                )
-                Spacer(Modifier.weight(1f))
-                CerealText(
-                    text = stringResource(if (repeat) Res.string.home_run_repeat_meta else Res.string.home_run_once_meta),
-                    style = MaterialTheme.typography.bodySmall,
-                    color = CerealTheme.colorScheme.contentSubtle,
                 )
             }
         }
@@ -484,7 +416,6 @@ private fun GoalStep(viewModel: HomeViewModel) {
 @Composable
 internal fun StepField(
     label: String,
-    optional: Boolean = false,
     trailing: (@Composable () -> Unit)? = null,
     content: @Composable () -> Unit,
 ) {
@@ -492,9 +423,6 @@ internal fun StepField(
         Row(horizontalArrangement = Arrangement.spacedBy(10.dp), verticalAlignment = Alignment.CenterVertically) {
             val style = MaterialTheme.typography.labelLarge.copy(fontWeight = FontWeight.SemiBold)
             CerealText(label, style = style, color = CerealTheme.colorScheme.contentSecondary)
-            if (optional) {
-                CerealText(stringResource(Res.string.home_optional), style = style.copy(fontWeight = FontWeight.Medium), color = CerealTheme.colorScheme.contentSubtle)
-            }
             trailing?.let {
                 Spacer(Modifier.weight(1f))
                 it()
@@ -506,39 +434,6 @@ internal fun StepField(
 
 private const val BADGE_TINT = 0.12f
 private const val BADGE_BORDER = 0.3f
-
-/** One segment of the Once/Repeat control: raised when selected; red stays reserved for Start. */
-@Composable
-private fun RunModeOption(
-    text: String,
-    selected: Boolean,
-    onClick: () -> Unit,
-) {
-    val shape = RoundedCornerShape(6.dp)
-    Box(
-        modifier =
-            Modifier
-                .height(30.dp)
-                .clip(shape)
-                .then(
-                    if (selected) {
-                        Modifier
-                            .background(MaterialTheme.colorScheme.surfaceVariant)
-                            .border(1.dp, CerealTheme.colorScheme.borderDark, shape)
-                    } else {
-                        Modifier
-                    },
-                ).selectable(selected = selected, role = Role.RadioButton, onClick = onClick)
-                .padding(horizontal = 14.dp),
-        contentAlignment = Alignment.Center,
-    ) {
-        CerealText(
-            text,
-            style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.SemiBold),
-            color = if (selected) MaterialTheme.colorScheme.onSurface else CerealTheme.colorScheme.contentTertiary,
-        )
-    }
-}
 
 @Composable
 internal fun ComposerField(

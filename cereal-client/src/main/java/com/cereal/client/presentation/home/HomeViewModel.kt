@@ -4,29 +4,30 @@ import androidx.compose.runtime.State
 import androidx.compose.runtime.mutableStateOf
 import com.cereal.client.application.CoroutinesDispatcherProvider
 import com.cereal.client.application.Interactor
-import com.cereal.client.application.agent.GoalRunInput
 import com.cereal.client.application.agent.isAiBrowserAgent
-import com.cereal.client.application.agent.supportsGoalComposer
 import com.cereal.client.application.interactor.agent.GoalRunFormPrefill
 import com.cereal.client.application.interactor.agent.NoNotificationChannelsException
 import com.cereal.client.application.interactor.agent.PrefillGoalRunFormInteractor
 import com.cereal.client.application.interactor.agent.StartGoalRunInteractor
+import com.cereal.client.application.interactor.script.GetScriptConfigDefinitionInteractor
 import com.cereal.client.application.interactor.script.GetScriptsInteractor
 import com.cereal.client.application.interactor.script.GetSdkVersionInteractor
 import com.cereal.client.application.interactor.task.StartAllTasksInScriptPackageInstanceInteractor
+import com.cereal.client.domain.model.script.ScriptConfigurationValues
 import com.cereal.client.domain.model.script.ScriptPackage
 import com.cereal.client.domain.model.script.ScriptPackageInstance
-import com.cereal.client.domain.model.script.configuration.ConfigValue
-import com.cereal.client.domain.model.script.configuration.itemForKey
+import com.cereal.client.domain.model.script.configuration.ConfigItemType
+import com.cereal.client.domain.model.script.configuration.ConfigurationItem
+import com.cereal.client.domain.model.script.configuration.ScriptConfigurationItemDefinition
 import com.cereal.client.domain.model.script.isClientUpdateRequired
 import com.cereal.client.presentation.error.ErrorResolver
 import com.cereal.client.presentation.error.handleFailureOrElse
 import com.cereal.client.presentation.tasks.script.overview.configuration.RawScriptConfigValues
+import com.cereal.client.presentation.tasks.script.overview.configuration.model.ConfigurationItemsFormSection
 import com.cereal.client.presentation.tasks.script.overview.configuration.validate
-import com.cereal.client.presentation.view.UiText
-import com.cereal.client.presentation.view.fields.validator.isRequired
-import com.cereal_automation.cereal_client.generated.resources.Res
-import com.cereal_automation.cereal_client.generated.resources.home_field_required
+import com.cereal.client.presentation.view.fields.state.FormFieldState
+import com.cereal.sdk.statemodifier.ScriptConfig
+import com.cereal.sdk.statemodifier.Visibility
 import com.github.kittinunf.result.coroutines.SuspendableResult
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.collectLatest
@@ -62,14 +63,33 @@ fun homeComposerSlot(
         else -> HomeComposerSlot.Composer
     }
 
-/** The composer's fields, for routing validation messages. */
-enum class ComposerField(
-    val key: String,
-) {
-    GOAL(GoalRunInput.KEY_GOAL),
-    START_URL(GoalRunInput.KEY_START_URL),
-    CHECK_EVERY(GoalRunInput.KEY_REPEAT_INTERVAL),
-}
+/**
+ * Whether Home shows this field: one the user has to fill in. That is a field the script marks
+ * [Visibility.VisibleRequired] right now, or a non-null one without a default; a field with a default
+ * stays behind More options.
+ */
+fun ScriptConfigurationItemDefinition.isShownOnHome(config: ScriptConfig): Boolean =
+    when (stateModifier?.getVisibility(config)) {
+        Visibility.Hidden -> false
+        Visibility.VisibleRequired -> true
+        else -> !isNullable && defaultValue == null
+    }
+
+/** Field types Home renders inline; lists, files, proxies and datasets need the generic form's dialogs. */
+private val ScriptConfigurationItemDefinition.isRenderableOnHome: Boolean
+    get() =
+        when (type) {
+            ConfigItemType.StringConfigItem,
+            ConfigItemType.SecretConfigItem,
+            ConfigItemType.IntConfigItem,
+            ConfigItemType.FloatConfigItem,
+            ConfigItemType.DoubleConfigItem,
+            ConfigItemType.BooleanConfigItem,
+            is ConfigItemType.EnumConfigItem,
+            -> true
+
+            else -> false
+        }
 
 sealed interface HomeDialog {
     data object NoNotificationChannelsWarning : HomeDialog
@@ -85,11 +105,13 @@ sealed interface HomeDialog {
 }
 
 /** Home's composer slot and the goal composer. The AI setup card and the install card have their own ViewModels. */
+@Suppress("LongParameterList")
 class HomeViewModel(
     private val scope: CoroutineScope,
     private val dispatcherProvider: CoroutinesDispatcherProvider,
     getScriptsInteractor: GetScriptsInteractor,
     getSdkVersionInteractor: GetSdkVersionInteractor,
+    private val getScriptConfigDefinitionInteractor: GetScriptConfigDefinitionInteractor,
     private val prefillGoalRunFormInteractor: PrefillGoalRunFormInteractor,
     private val startGoalRunInteractor: StartGoalRunInteractor,
     private val startAllTasksInScriptPackageInstanceInteractor: StartAllTasksInScriptPackageInstanceInteractor,
@@ -98,16 +120,10 @@ class HomeViewModel(
     private val _slot = mutableStateOf<HomeComposerSlot>(HomeComposerSlot.Loading)
     val slot: State<HomeComposerSlot> = _slot
 
-    val goal = mutableStateOf("")
-    val startUrl = mutableStateOf("")
+    /** The agent's main-script form: Home renders [composerFields] of it. Null until the definition loads. */
+    private val _composerForm = mutableStateOf<ConfigurationItemsFormSection?>(null)
+    val composerForm: State<ConfigurationItemsFormSection?> = _composerForm
 
-    /** Whether the installed agent requires a start page; Home labels the field "Optional" otherwise. */
-    val startUrlRequired = mutableStateOf(false)
-    val repeat = mutableStateOf(false)
-    val checkEveryMinutes = mutableStateOf(DEFAULT_CHECK_EVERY_MINUTES.toString())
-
-    /** Validation messages from the script's own validators, by field. */
-    val fieldErrors = mutableStateOf<Map<ComposerField, UiText>>(emptyMap())
     val dialog = mutableStateOf<HomeDialog?>(null)
     val isStarting = mutableStateOf(false)
     val errorAction = errorResolver.errorAction
@@ -129,9 +145,8 @@ class HomeViewModel(
                 withContext(dispatcherProvider.main) {
                     if (result is SuspendableResult.Success) {
                         val installed = result.value.firstOrNull { it.isAiBrowserAgent }
-                        if (agent == null && installed != null) applyDefaults(installed)
+                        if (installed != null && installed.manifest.versionCode != agent?.manifest?.versionCode) loadComposerForm(installed)
                         agent = installed
-                        startUrlRequired.value = installed?.let(::isStartUrlRequired) == true
                         this@HomeViewModel.clientSdk = clientSdk
                         updateSlot()
                     }
@@ -152,48 +167,58 @@ class HomeViewModel(
         _slot.value = homeComposerSlot(agent, sdk, hasAiProvider)
     }
 
-    private fun isStartUrlRequired(agent: ScriptPackage): Boolean {
-        val definition = agent.mainScript.configuration
-        val values = RawScriptConfigValues(input().toConfiguration(definition))
-        return definition.itemForKey(GoalRunInput.KEY_START_URL)?.isRequired(values) == true
+    private fun loadComposerForm(agent: ScriptPackage) {
+        scope.launch(dispatcherProvider.io) {
+            getScriptConfigDefinitionInteractor(GetScriptConfigDefinitionInteractor.Params(agent, scriptPackageInstance = null)) { result ->
+                withContext(dispatcherProvider.main) {
+                    result.handleFailureOrElse(errorResolver) { definition ->
+                        // Home renders no field that imports a file, so there's nothing to open an import for.
+                        _composerForm.value =
+                            ConfigurationItemsFormSection(definition.mainConfiguration) { _, _, _ -> }.apply { applyStateModifiers() }
+                    }
+                }
+            }
+        }
     }
 
-    private fun applyDefaults(agent: ScriptPackage) {
-        val default =
-            agent.mainScript.configuration
-                .itemForKey(GoalRunInput.KEY_REPEAT_INTERVAL)
-                ?.defaultValue as? ConfigValue.IntValue
-        default?.let { checkEveryMinutes.value = (it.raw / SECONDS_PER_MINUTE).toString() }
+    /** The fields Home has to show, in the script's order, rendered or not. Reads the form's state, so it follows edits. */
+    private fun requiredFields(): List<Pair<ConfigurationItem, FormFieldState<*, *>>> {
+        val form = _composerForm.value ?: return emptyList()
+        val config = RawScriptConfigValues(form.getScriptConfigurationValues())
+        return form.configurationItemToFieldState.entries
+            .filter { it.key.definition.isShownOnHome(config) }
+            .sortedBy { it.key.definition.position }
+            .map { it.toPair() }
     }
 
-    fun onGoalChange(value: String) {
-        goal.value = value
-    }
-
-    fun onStartUrlChange(value: String) {
-        startUrl.value = value
-    }
-
-    fun onRepeatChange(value: Boolean) {
-        repeat.value = value
-    }
-
-    fun onCheckEveryMinutesChange(value: String) {
-        checkEveryMinutes.value = value
-    }
+    /** What the composer renders: the required fields of a type Home can show. */
+    fun composerFields(): List<Pair<ConfigurationItem, FormFieldState<*, *>>> = requiredFields().filter { (item, _) -> item.definition.isRenderableOnHome }
 
     /** Only the live composer starts runs: never the greyed one under the AI setup card. */
     private fun canStart(): Boolean = _slot.value == HomeComposerSlot.Composer && hasAiProvider == true
 
     fun onStart() {
-        val agent = agent ?: return
-        if (!canStart()) return
-        if (!agent.mainScript.configuration.supportsGoalComposer()) {
+        val agent = agent
+        val form = _composerForm.value
+        if (agent == null || form == null || !canStart()) return
+        val required = requiredFields()
+        val rendered = required.filter { (item, _) -> item.definition.isRenderableOnHome }
+        // Validate every shown field (no short-circuit), so each one shows its own error.
+        if (!rendered.map { (_, state) -> state.validate() }.all { it }) return
+        // A required field Home can't render, or an invalid one it doesn't show: the generic form shows every
+        // field, so let the user fix it there.
+        val values = form.getScriptConfigurationValues()
+        val shown = rendered.map { (item, _) -> item.definition.key }.toSet()
+        val unrendered = required.size != rendered.size
+        val invalidHidden =
+            agent.mainScript.configuration
+                .validate(values)
+                .any { it.key !in shown }
+        if (unrendered || invalidHidden) {
             openMoreOptions(agent, startOnCreate = true)
-            return
+        } else {
+            startGoalRun(agent, ignoreMissingNotificationChannels = false)
         }
-        if (!validate(agent)) return
-        startGoalRun(agent, ignoreMissingNotificationChannels = false)
     }
 
     fun onNoNotificationChannelsWarningAccepted() {
@@ -226,8 +251,9 @@ class HomeViewModel(
         agent: ScriptPackage,
         startOnCreate: Boolean,
     ) {
+        val configuration = configuration() ?: return
         scope.launch(dispatcherProvider.io) {
-            prefillGoalRunFormInteractor(PrefillGoalRunFormInteractor.Params(agent, input())) { result ->
+            prefillGoalRunFormInteractor(PrefillGoalRunFormInteractor.Params(agent, configuration)) { result ->
                 withContext(dispatcherProvider.main) {
                     result.handleFailureOrElse(errorResolver) { prefill ->
                         dialog.value = HomeDialog.MoreOptions(prefill, startOnCreate)
@@ -241,9 +267,10 @@ class HomeViewModel(
         agent: ScriptPackage,
         ignoreMissingNotificationChannels: Boolean,
     ) {
+        val configuration = configuration() ?: return
         isStarting.value = true
         scope.launch(dispatcherProvider.io) {
-            startGoalRunInteractor(StartGoalRunInteractor.Params(agent, input(), ignoreMissingNotificationChannels)) { result ->
+            startGoalRunInteractor(StartGoalRunInteractor.Params(agent, configuration, ignoreMissingNotificationChannels)) { result ->
                 withContext(dispatcherProvider.main) {
                     isStarting.value = false
                     // The composer keeps its text so the user can tweak it and run again.
@@ -257,40 +284,6 @@ class HomeViewModel(
         }
     }
 
-    /** Runs the script's own validators over the composer's keys; shows their messages under the visible fields. */
-    private fun validate(agent: ScriptPackage): Boolean {
-        val definition = agent.mainScript.configuration
-        val values = input().toConfiguration(definition)
-        val visible = if (repeat.value) ComposerField.entries else ComposerField.entries - ComposerField.CHECK_EVERY
-        val invalid = definition.validate(values).associateBy { it.key }
-        fieldErrors.value =
-            visible
-                .mapNotNull { field ->
-                    invalid[field.key]?.let { item ->
-                        val message = item.stateModifier?.getError(RawScriptConfigValues(values))
-                        field to (message?.let { UiText.Raw(it) } ?: UiText.Resource(Res.string.home_field_required))
-                    }
-                }.toMap()
-        if (fieldErrors.value.isNotEmpty()) return false
-        // An item the composer doesn't show is invalid (e.g. an agent build that still wants its own API key):
-        // the generic form shows every field, so let the user fix it there.
-        if (invalid.isNotEmpty()) {
-            openMoreOptions(agent, startOnCreate = true)
-            return false
-        }
-        return true
-    }
-
-    private fun input() =
-        GoalRunInput(
-            goal = goal.value.trim(),
-            startUrl = startUrl.value.trim(),
-            repeat = repeat.value,
-            repeatIntervalSeconds = (checkEveryMinutes.value.trim().toIntOrNull() ?: 0) * SECONDS_PER_MINUTE,
-        )
-
-    private companion object {
-        const val SECONDS_PER_MINUTE = 60
-        const val DEFAULT_CHECK_EVERY_MINUTES = 5
-    }
+    /** Every value of the form: what the composer shows plus the defaults it keeps. */
+    private fun configuration(): ScriptConfigurationValues? = _composerForm.value?.getScriptConfigurationValues()
 }
