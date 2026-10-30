@@ -235,6 +235,44 @@ class ScriptSelectionViewModelVariantTest {
     }
 
     @Test
+    fun `switching to another package and back keeps what was typed in its forms`() {
+        val viewModel = createViewModel()
+        viewModel.pickEntry("Checkout")
+        viewModel.variantField().onValueChange("typed")
+
+        viewModel.selectRow("Plain")
+        viewModel.selectRow("Agent")
+        viewModel.pickEntry("Checkout")
+
+        assertEquals("typed", viewModel.variantField().text)
+    }
+
+    @Test
+    fun `while duplicating, edits survive switching to another package and back`() {
+        val original = aScriptPackageInstance("original", AGENT, definition = agent, variantId = "checkout")
+        val viewModel = createViewModel(duplicate = original)
+        viewModel.variantField().onValueChange("edited")
+
+        viewModel.selectRow("Plain")
+        viewModel.selectRow("Agent")
+
+        assertEquals("edited", viewModel.variantField().text)
+    }
+
+    @Test
+    fun `an update to the selected package reopens it with the updated entries`() {
+        val viewModel = createViewModel()
+        val restock = aScriptPackageWithVariant(AGENT, variantId = "restock", variantName = "Restock").variants
+        val updated = agent.copy(manifest = agent.manifest.copy(versionCode = 2), variants = agent.variants + restock)
+
+        scriptRepository.seed(listOf(updated, plain))
+        dispatcher.scheduler.advanceUntilIdle()
+
+        assertEquals("Agent", viewModel.selectedPackageTitle())
+        assertEquals(listOf("Agent", "Checkout", "Restock"), viewModel.entryOptions.value.map { it.name })
+    }
+
+    @Test
     fun `starting a picked variant creates an instance that runs the variant`() =
         runTest {
             val viewModel = createViewModel()

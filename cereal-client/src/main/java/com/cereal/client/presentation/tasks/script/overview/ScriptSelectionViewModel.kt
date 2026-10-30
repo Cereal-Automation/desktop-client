@@ -75,8 +75,9 @@ class ScriptSelectionViewModel(
     /** A setup's entry is fixed once created, so while its package is selected, editing or duplicating it can't switch it. */
     val entryLocked = mutableStateOf(false)
 
-    // One form per entry of the selected package, so switching back to an entry keeps what was typed there.
-    private val configViewModels = mutableMapOf<String?, ScriptConfigurationViewModel>()
+    // One form per package and entry, so switching back to either keeps what was typed there. An updated package is
+    // a different key, so its forms are rebuilt from the new version.
+    private val configViewModels = mutableMapOf<Pair<ScriptPackage, String?>, ScriptConfigurationViewModel>()
 
     // The requested entry to open once its package is first selected.
     private var requestedVariantId: String? = null
@@ -147,6 +148,11 @@ class ScriptSelectionViewModel(
                                     items.find { item -> item.id.manifest.packageName == entry.packageName }
                                 }
                             scriptsListViewModel.updateItems(items, selectFirstWhenNoSelection = initialScript == null)
+                            // An unchanged package comes back equal; an updated one doesn't, so reselect it to load the new version.
+                            scriptsListViewModel.selectedItem
+                                ?.let { selected ->
+                                    items.find { it.id.manifest.packageName == selected.manifest.packageName && it.id != selected }
+                                }?.let { updated -> scriptsListViewModel.selectItem(updated.id) }
                             initialScript?.let { scriptItem ->
                                 initialSelectionApplied = true
                                 requestedVariantId = initialEntry.variantId?.takeIf { it in scriptItem.id.variants }
@@ -174,7 +180,6 @@ class ScriptSelectionViewModel(
             } ?: false
         // Reset first so a previous script's cap never lingers while the new one's capacity loads.
         selectedScriptCapacity.value = ScriptCapacity.None
-        configViewModels.clear()
         scriptsListViewModel.selectedItem?.let { selectedScript ->
             val options = (listOf(null) + selectedScript.variants.keys).map { ScriptEntryOption(it, selectedScript.entryName(it)) }
             selectedPackageName.value = selectedScript.manifest.name
@@ -202,7 +207,7 @@ class ScriptSelectionViewModel(
         val selectedScript = scriptsListViewModel.selectedItem ?: return
         selectedEntry.value = option
         val configViewModel =
-            configViewModels.getOrPut(option.variantId) {
+            configViewModels.getOrPut(selectedScript to option.variantId) {
                 // Only pass initial instance if the selected entry matches the initial instance's entry.
                 val initialInstance =
                     initialScriptPackageInstance?.takeIf {
