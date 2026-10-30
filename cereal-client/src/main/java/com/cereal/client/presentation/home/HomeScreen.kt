@@ -397,6 +397,8 @@ private fun GoalStep(viewModel: HomeViewModel) {
                     onSelect = viewModel::selectEntry,
                     modifier = Modifier.fillMaxWidth(),
                 )
+                // The picked script's own fields sit below a rule, as one form.
+                HorizontalDivider(thickness = 1.dp, color = FormDivider)
             }
             Column(
                 modifier = Modifier.testTag(HomeTestTags.FIELDS),
@@ -446,6 +448,9 @@ internal fun StepField(
 
 private const val BADGE_TINT = 0.12f
 private const val BADGE_BORDER = 0.3f
+
+// The design's divider token, between the script picker and the picked script's fields.
+private val FormDivider = Color(0xFF232323)
 
 @Composable
 internal fun ComposerField(
