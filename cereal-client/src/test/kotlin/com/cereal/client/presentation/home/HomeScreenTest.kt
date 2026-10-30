@@ -100,7 +100,7 @@ class HomeScreenTest {
         }
 
     @Test
-    fun `picking a variant in the script picker swaps in that variant's fields`() =
+    fun `picking a variant in the workflow picker swaps in that variant's fields`() =
         runScreenTest(
             overrides =
                 listOf(
@@ -112,7 +112,7 @@ class HomeScreenTest {
             awaitText("goal")
             onNodeWithText("2 available").assertIsDisplayed()
 
-            onNodeWithContentDescription("Script").performClick()
+            onNodeWithContentDescription("Workflow").performClick()
             onNode(hasText("Product Checkout") and hasClickAction()).performClick()
 
             awaitText("productUrl")
@@ -120,12 +120,12 @@ class HomeScreenTest {
         }
 
     @Test
-    fun `an agent without variants shows no script picker`() =
+    fun `an agent without variants shows no workflow picker`() =
         runScreenTest(overrides = ready) {
             setScreenContent { HomeScreen() }
             awaitText("goal")
 
-            onNodeWithContentDescription("Script").assertDoesNotExist()
+            onNodeWithContentDescription("Workflow").assertDoesNotExist()
         }
 
     @Test

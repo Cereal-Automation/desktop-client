@@ -35,7 +35,7 @@ class ScriptEntryPickerScreenTest {
             waitForText("2 available")
 
             onNodeWithText("Variant field").assertDoesNotExist()
-            onNodeWithContentDescription("Script").performClick()
+            onNodeWithContentDescription("Workflow").performClick()
             onNodeWithText("Checkout").performClick()
 
             waitForText("Variant field")
