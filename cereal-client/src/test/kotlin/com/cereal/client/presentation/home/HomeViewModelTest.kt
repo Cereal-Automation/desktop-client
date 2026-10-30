@@ -48,6 +48,7 @@ import fixtures.anAgentItem
 import fixtures.anAgentListing
 import fixtures.anAgentPackage
 import fixtures.anAgentRequiringNewerClient
+import fixtures.anAgentWithCheckoutVariant
 import io.mockk.coVerify
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -305,6 +306,73 @@ class HomeViewModelTest {
             val instance = world.scriptInstances.getScriptPackageInstances().single()
             assertNull(instance.variantId)
             assertEquals(ConfigValue.StringValue("Tell me when the pliers are back in stock"), instance.mainConfiguration["goal"])
+        }
+
+    private fun HomeViewModel.pick(name: String) = selectEntry(entryOptions.value.first { it.name == name })
+
+    @Test
+    fun `an agent with variants offers its main entry first, then each variant`() =
+        runTest {
+            val vm = homeWith(anAgentWithCheckoutVariant())
+
+            assertEquals(listOf("AI Browser Agent", "Product Checkout"), vm.entryOptions.value.map { it.name })
+            assertEquals("AI Browser Agent", vm.selectedEntry.value?.name)
+        }
+
+    @Test
+    fun `picking a variant shows that variant's fields`() =
+        runTest {
+            val vm = homeWith(anAgentWithCheckoutVariant())
+
+            vm.pick("Product Checkout")
+            advanceUntilIdle()
+
+            assertEquals(listOf("productUrl"), vm.shownKeys())
+        }
+
+    @Test
+    fun `switching back to the main entry keeps what was typed there`() =
+        runTest {
+            val vm = homeWith(anAgentWithCheckoutVariant())
+            vm.type("goal", "Watch the pliers")
+
+            vm.pick("Product Checkout")
+            advanceUntilIdle()
+            vm.pick("AI Browser Agent")
+            advanceUntilIdle()
+
+            assertEquals("Watch the pliers", (vm.field("goal") as TextFieldState<*>).text)
+        }
+
+    @Test
+    fun `start on a picked variant creates a goal run of that variant`() =
+        runTest {
+            world.notificationSettings.setDiscordWebhookEnabled(true)
+            val vm = homeWith(anAgentWithCheckoutVariant())
+            vm.pick("Product Checkout")
+            advanceUntilIdle()
+            vm.type("productUrl", "https://shop.example/pliers")
+
+            vm.onStart()
+            advanceUntilIdle()
+
+            val instance = world.scriptInstances.getScriptPackageInstances().single()
+            assertEquals("product-checkout", instance.variantId)
+            assertEquals(ConfigValue.StringValue("https://shop.example/pliers"), instance.mainConfiguration["productUrl"])
+        }
+
+    @Test
+    fun `more options on a picked variant opens the form on that variant`() =
+        runTest {
+            val vm = homeWith(anAgentWithCheckoutVariant())
+            vm.pick("Product Checkout")
+            advanceUntilIdle()
+
+            vm.onMoreOptions()
+            advanceUntilIdle()
+
+            val dialog = assertInstanceOf(HomeDialog.MoreOptions::class.java, vm.dialog.value)
+            assertEquals("product-checkout", dialog.prefill.instance.variantId)
         }
 
     @Test

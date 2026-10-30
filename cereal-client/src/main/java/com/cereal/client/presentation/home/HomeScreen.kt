@@ -48,6 +48,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.cereal.client.presentation.error.errorView
 import com.cereal.client.presentation.settings.ai.label
+import com.cereal.client.presentation.tasks.script.overview.ScriptEntryPicker
 import com.cereal.client.presentation.tasks.script.overview.ScriptRequest
 import com.cereal.client.presentation.tasks.script.overview.ScriptSelectionDialog
 import com.cereal.client.presentation.tasks.script.overview.configuration.ConfigField
@@ -386,6 +387,17 @@ private fun GoalStep(viewModel: HomeViewModel) {
             modifier = Modifier.padding(start = 62.dp, end = 22.dp, bottom = 22.dp),
             verticalArrangement = Arrangement.spacedBy(18.dp),
         ) {
+            val entryOptions = viewModel.entryOptions.value
+            val selectedEntry = viewModel.selectedEntry.value
+            if (entryOptions.size > 1 && selectedEntry != null) {
+                ScriptEntryPicker(
+                    options = entryOptions,
+                    selected = selectedEntry,
+                    enabled = true,
+                    onSelect = viewModel::selectEntry,
+                    modifier = Modifier.fillMaxWidth(),
+                )
+            }
             Column(
                 modifier = Modifier.testTag(HomeTestTags.FIELDS),
                 verticalArrangement = Arrangement.spacedBy(18.dp),

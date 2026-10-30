@@ -36,6 +36,7 @@ class StartGoalRunInteractor(
                 StartScriptInteractor.Params(
                     groupId = group.id,
                     scriptPackage = params.agent,
+                    variantId = params.variantId,
                     mainScriptConfiguration = params.mainConfiguration,
                     childConfigurations = emptyMap(),
                     numberOfConcurrentTasks = 1,
@@ -48,10 +49,12 @@ class StartGoalRunInteractor(
 
     data class Params(
         val agent: ScriptPackage,
-        /** Every value of the agent's main script: what the composer shows plus the defaults it keeps. */
+        /** Every value of the entry's script: what the composer shows plus the defaults it keeps. */
         val mainConfiguration: ScriptConfigurationValues,
         /** The user has seen the no-notification-channels warning and chose to start anyway. */
         val ignoreMissingNotificationChannels: Boolean = false,
+        /** The agent's variant to run; null for its default entry. */
+        val variantId: String? = null,
     )
 }
 

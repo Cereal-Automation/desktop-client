@@ -5,11 +5,13 @@ import com.cereal.client.domain.model.task.ScriptPackageGroup
 import fixtures.FakeRunMode
 import fixtures.GoalRunWorld
 import fixtures.anAgentPackage
+import fixtures.anAgentWithCheckoutVariant
 import io.mockk.coVerify
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.test.runTest
 import org.junit.jupiter.api.Assertions.assertEquals
+import org.junit.jupiter.api.Assertions.assertSame
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
 import kotlin.test.assertFailsWith
@@ -32,6 +34,19 @@ class StartGoalRunInteractorTest {
             val instance = world.startGoalRunInteractor.run(StartGoalRunInteractor.Params(anAgentPackage(), repeatRun))
 
             assertEquals(repeatRun, instance.mainConfiguration)
+        }
+
+    @Test
+    fun `a start for a variant creates an instance that runs that variant`() =
+        runTest {
+            val agent = anAgentWithCheckoutVariant()
+            val checkout = mapOf("productUrl" to ConfigValue.StringValue("https://shop.example/pliers"))
+
+            val instance = world.startGoalRunInteractor.run(StartGoalRunInteractor.Params(agent, checkout, variantId = "product-checkout"))
+
+            assertEquals("product-checkout", instance.variantId)
+            assertSame(agent.variants.getValue("product-checkout").script, instance.entryScript)
+            assertEquals(checkout, instance.mainConfiguration)
         }
 
     @Test

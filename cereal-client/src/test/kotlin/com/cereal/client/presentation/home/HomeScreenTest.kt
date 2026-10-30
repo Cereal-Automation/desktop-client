@@ -6,10 +6,12 @@ import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsEnabled
 import androidx.compose.ui.test.assertIsSelected
 import androidx.compose.ui.test.hasAnyAncestor
+import androidx.compose.ui.test.hasClickAction
 import androidx.compose.ui.test.hasSetTextAction
 import androidx.compose.ui.test.hasTestTag
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.onAllNodesWithText
+import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
@@ -34,6 +36,7 @@ import fixtures.FakeScriptInstallProvider
 import fixtures.anAgentListing
 import fixtures.anAgentPackage
 import fixtures.anAgentRequiringNewerClient
+import fixtures.anAgentWithCheckoutVariant
 import kotlinx.coroutines.runBlocking
 import org.koin.dsl.module
 import org.koin.java.KoinJavaComponent
@@ -94,6 +97,35 @@ class HomeScreenTest {
             onNodeWithText("repeatJitter").assertIsDisplayed()
             onNodeWithText("Once").performClick()
             onNodeWithText("repeatInterval").assertDoesNotExist()
+        }
+
+    @Test
+    fun `picking a variant in the script picker swaps in that variant's fields`() =
+        runScreenTest(
+            overrides =
+                listOf(
+                    module { single<ScriptRepository> { InMemoryScriptRepository().apply { seed(listOf(anAgentWithCheckoutVariant())) } } },
+                    providerConfigured,
+                ),
+        ) {
+            setScreenContent { HomeScreen() }
+            awaitText("goal")
+            onNodeWithText("2 available").assertIsDisplayed()
+
+            onNodeWithContentDescription("Script").performClick()
+            onNode(hasText("Product Checkout") and hasClickAction()).performClick()
+
+            awaitText("productUrl")
+            onNodeWithText("goal").assertDoesNotExist()
+        }
+
+    @Test
+    fun `an agent without variants shows no script picker`() =
+        runScreenTest(overrides = ready) {
+            setScreenContent { HomeScreen() }
+            awaitText("goal")
+
+            onNodeWithContentDescription("Script").assertDoesNotExist()
         }
 
     @Test

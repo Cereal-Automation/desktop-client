@@ -34,6 +34,7 @@ class PrefillGoalRunFormInteractor(
                 definition = params.agent,
                 createdAt = Clock.System.now(),
                 numberOfConcurrentTasks = 1,
+                variantId = params.variantId,
             )
         return GoalRunFormPrefill(group, instance)
     }
@@ -41,5 +42,7 @@ class PrefillGoalRunFormInteractor(
     data class Params(
         val agent: ScriptPackage,
         val mainConfiguration: ScriptConfigurationValues,
+        /** The agent's variant the composer is on; null for its default entry. */
+        val variantId: String? = null,
     )
 }
