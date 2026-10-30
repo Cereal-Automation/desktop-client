@@ -611,12 +611,6 @@
     <string name="home_run_script">Run</string>
     <string name="home_pitch">A free AI browser agent that runs on your machine, with your model and your key.</string>
     <string name="home_composer_title">Tell the agent what to do</string>
-    <string name="home_goal_placeholder">e.g. Tell me when these pliers are back in stock</string>
-    <string name="home_start_url_placeholder">https://example.com</string>
-    <string name="home_run_once">Once</string>
-    <string name="home_run_repeat">Repeat</string>
-    <string name="home_check_every">Check every</string>
-    <string name="home_check_every_minutes">minutes</string>
     <string name="home_start">Start</string>
     <string name="home_more_options">More options</string>
     <string name="home_not_installed_title">The AI browser agent isn't installed</string>
@@ -644,14 +638,6 @@
     <string name="home_composer_subtitle">Describe the outcome you want. The agent opens a browser and works it out.</string>
     <string name="home_composer_locked">Available once a model is connected.</string>
     <string name="home_ai_connected">Model connected</string>
-    <string name="home_goal_label">Goal</string>
-    <string name="home_start_url_label">Start page</string>
-    <string name="home_optional">Optional</string>
-    <string name="home_run_label">Run</string>
-    <string name="home_start_schedule">Start schedule</string>
-    <string name="home_run_once_meta">Runs now. Results appear in Tasks.</string>
-    <string name="home_run_repeat_meta">Notifies you when something changes.</string>
-    <string name="home_field_required">This field is required.</string>
     <string name="home_install_failed">The install failed.</string>
     <string name="ai_connection_testing">Testing…</string>
     <plurals name="ai_connection_connected">

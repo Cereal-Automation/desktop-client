@@ -6,6 +6,7 @@ import com.cereal.client.application.exception.CerealException
 import com.cereal.client.application.interactor.agent.GetAiBrowserAgentListingInteractor
 import com.cereal.client.application.interactor.agent.InstallAiBrowserAgentInteractor
 import com.cereal.client.application.interactor.marketplace.InstallMarketplaceScriptInteractor
+import com.cereal.client.application.interactor.script.GetScriptConfigDefinitionInteractor
 import com.cereal.client.application.interactor.script.GetScriptsInteractor
 import com.cereal.client.application.interactor.script.GetSdkVersionInteractor
 import com.cereal.client.application.interactor.script.StartScriptInteractor
@@ -21,7 +22,9 @@ import com.cereal.client.domain.model.script.configuration.ConfigItemType
 import com.cereal.client.domain.model.script.configuration.ConfigValue
 import com.cereal.client.domain.model.task.ScriptPackageGroup
 import com.cereal.client.infrastructure.data.repository.inmemory.InMemoryApplicationRepository
+import com.cereal.client.infrastructure.data.repository.inmemory.InMemoryCustomDatasetRepository
 import com.cereal.client.infrastructure.data.repository.inmemory.InMemoryLlmProviderConfigRepository
+import com.cereal.client.infrastructure.data.repository.inmemory.InMemoryProxyRepository
 import com.cereal.client.infrastructure.data.repository.inmemory.InMemoryScriptRepository
 import com.cereal.client.infrastructure.provider.inmemory.InMemoryCheckoutProvider
 import com.cereal.client.infrastructure.provider.inmemory.InMemoryLlmProvider
@@ -29,6 +32,11 @@ import com.cereal.client.infrastructure.provider.inmemory.InMemoryMarketplacePro
 import com.cereal.client.presentation.error.ErrorResolver
 import com.cereal.client.presentation.settings.ai.LlmPreset
 import com.cereal.client.presentation.view.UiText
+import com.cereal.client.presentation.view.fields.state.DropDownFieldState
+import com.cereal.client.presentation.view.fields.state.TextFieldState
+import com.cereal.sdk.statemodifier.ScriptConfig
+import com.cereal.sdk.statemodifier.StateModifier
+import com.cereal.sdk.statemodifier.Visibility
 import com.cereal_automation.cereal_client.generated.resources.Res
 import com.cereal_automation.cereal_client.generated.resources.ai_connection_bad_key
 import fixtures.FakeRunMode
@@ -83,6 +91,7 @@ class HomeViewModelTest {
                 dispatcherProvider = dispatchers,
                 getScriptsInteractor = GetScriptsInteractor(scripts),
                 getSdkVersionInteractor = GetSdkVersionInteractor(InMemoryApplicationRepository()),
+                getScriptConfigDefinitionInteractor = GetScriptConfigDefinitionInteractor(InMemoryProxyRepository(), InMemoryCustomDatasetRepository()),
                 prefillGoalRunFormInteractor = world.prefillGoalRunFormInteractor,
                 startGoalRunInteractor = world.startGoalRunInteractor,
                 startAllTasksInScriptPackageInstanceInteractor = world.startAllTasksInScriptPackageInstanceInteractor,
@@ -209,29 +218,58 @@ class HomeViewModelTest {
             assertTrue(install.isUnderMaintenance.value)
         }
 
+    private fun HomeViewModel.shownKeys() = composerFields().map { (item, _) -> item.definition.key }
+
+    private fun HomeViewModel.field(key: String) =
+        composerForm.value!!
+            .configurationItemToFieldState.entries
+            .first { it.key.definition.key == key }
+            .value
+
+    private fun HomeViewModel.type(
+        key: String,
+        text: String,
+    ) = (field(key) as TextFieldState<*>).onValueChange(text)
+
+    @Suppress("UNCHECKED_CAST")
+    private fun HomeViewModel.choose(
+        key: String,
+        value: Any,
+    ) = (field(key) as DropDownFieldState<Any>).onValueChange(value)
+
     private fun HomeViewModel.fillIn() {
-        onGoalChange("Tell me when the pliers are back in stock")
-        onStartUrlChange("https://shop.example/pliers")
-        onRepeatChange(true)
-        onCheckEveryMinutesChange("10")
+        type("goal", "Tell me when the pliers are back in stock")
+        type("startUrl", "https://shop.example/pliers")
+        choose("runMode", FakeRunMode.Repeat)
+        type("repeatInterval", "600")
     }
 
     @Test
-    fun `the composer shows on Home with the script's 5 minute default for Check every`() =
+    fun `in Once Home shows only the fields the script requires, not the ones with defaults`() =
         runTest {
             val vm = homeWith()
 
             assertEquals(HomeComposerSlot.Composer, vm.slot.value)
-            assertEquals("5", vm.checkEveryMinutes.value)
+            assertEquals(listOf("goal", "startUrl", "runMode"), vm.shownKeys())
         }
 
     @Test
-    fun `the start page is marked optional only when the script lets it be empty`() =
+    fun `switching to Repeat also shows Check every and Vary by with the script's defaults`() =
         runTest {
-            assertTrue(homeWith().startUrlRequired.value)
+            val vm = homeWith()
 
-            val optional = agentConfigurationItems().map { if (it.key == "startUrl") it.copy(isNullable = true) else it }
-            assertFalse(homeWith(anAgentPackage(optional)).startUrlRequired.value)
+            vm.choose("runMode", FakeRunMode.Repeat)
+
+            assertEquals(listOf("goal", "startUrl", "runMode", "repeatInterval", "repeatJitter"), vm.shownKeys())
+            assertEquals("300", (vm.field("repeatInterval") as TextFieldState<*>).text)
+        }
+
+    @Test
+    fun `a non-null field without a default shows even without a state modifier`() =
+        runTest {
+            val agent = anAgentPackage(agentConfigurationItems() + anAgentItem("apiKey", ConfigItemType.SecretConfigItem, 10))
+
+            assertEquals(listOf("goal", "startUrl", "runMode", "apiKey"), homeWith(agent).shownKeys())
         }
 
     @Test
@@ -248,7 +286,7 @@ class HomeViewModelTest {
             assertEquals(ConfigValue.StringValue("Tell me when the pliers are back in stock"), instance.mainConfiguration["goal"])
             assertEquals(ConfigValue.EnumValue(FakeRunMode.Repeat), instance.mainConfiguration["runMode"])
             assertEquals(ConfigValue.IntValue(600), instance.mainConfiguration["repeatInterval"])
-            assertEquals("Tell me when the pliers are back in stock", vm.goal.value)
+            assertEquals("Tell me when the pliers are back in stock", (vm.field("goal") as TextFieldState<*>).text)
             assertNull(vm.dialog.value)
         }
 
@@ -270,17 +308,39 @@ class HomeViewModelTest {
         }
 
     @Test
-    fun `the script's own validator message shows under the goal and nothing starts`() =
+    fun `an empty required field shows its error and nothing starts`() =
         runTest {
             world.notificationSettings.setDiscordWebhookEnabled(true)
             val vm = homeWith()
             vm.fillIn()
-            vm.onGoalChange("")
+            vm.type("goal", "")
 
             vm.onStart()
             advanceUntilIdle()
 
-            assertEquals(UiText.Raw("Goal is required"), vm.fieldErrors.value[ComposerField.GOAL])
+            assertEquals("A value is required", vm.field("goal").error)
+            assertTrue(world.scriptInstances.getScriptPackageInstances().isEmpty())
+        }
+
+    @Test
+    fun `the script's own error for a filled-in field shows inline and nothing starts`() =
+        runTest {
+            world.notificationSettings.setDiscordWebhookEnabled(true)
+            val httpOnly =
+                object : StateModifier {
+                    override fun getVisibility(scriptConfig: ScriptConfig) = Visibility.VisibleRequired
+
+                    override fun getError(scriptConfig: ScriptConfig) = "Start URL must be a web address"
+                }
+            val agent = anAgentPackage(agentConfigurationItems().map { if (it.key == "startUrl") it.copy(stateModifier = httpOnly) else it })
+            val vm = homeWith(agent)
+            vm.fillIn()
+
+            vm.onStart()
+            advanceUntilIdle()
+
+            assertEquals("Start URL must be a web address", vm.field("startUrl").error)
+            assertNull(vm.dialog.value)
             assertTrue(world.scriptInstances.getScriptPackageInstances().isEmpty())
         }
 
@@ -333,10 +393,39 @@ class HomeViewModelTest {
         }
 
     @Test
-    fun `a missing composer key makes Start open the generic form, and launching it runs the goal`() =
+    fun `a required field Home can't render makes Start open the generic form`() =
         runTest {
             world.notificationSettings.setDiscordWebhookEnabled(true)
-            val agent = anAgentPackage(agentConfigurationItems().filterNot { it.key == "runMode" })
+            val agent = anAgentPackage(agentConfigurationItems() + anAgentItem("proxies", ConfigItemType.ProxyGroupConfigItem, 10))
+            val vm = homeWith(agent)
+            vm.fillIn()
+
+            assertEquals(listOf("goal", "startUrl", "runMode", "repeatInterval", "repeatJitter"), vm.shownKeys())
+            vm.onStart()
+            advanceUntilIdle()
+
+            val dialog = assertInstanceOf(HomeDialog.MoreOptions::class.java, vm.dialog.value)
+            assertTrue(dialog.startOnCreate)
+            assertEquals(ConfigValue.StringValue("Tell me when the pliers are back in stock"), dialog.prefill.instance.mainConfiguration["goal"])
+            assertTrue(world.scriptInstances.getScriptPackageInstances().isEmpty())
+        }
+
+    @Test
+    fun `an invalid field Home doesn't show makes Start open the generic form, and launching it runs the goal`() =
+        runTest {
+            world.notificationSettings.setDiscordWebhookEnabled(true)
+            val mustBePositive =
+                object : StateModifier {
+                    override fun getVisibility(scriptConfig: ScriptConfig) = Visibility.VisibleOptional
+
+                    override fun getError(scriptConfig: ScriptConfig) = "Max steps must be positive"
+                }
+            val agent =
+                anAgentPackage(
+                    agentConfigurationItems().map {
+                        if (it.key == "maxSteps") it.copy(defaultValue = ConfigValue.IntValue(0), stateModifier = mustBePositive) else it
+                    },
+                )
             val vm = homeWith(agent)
             vm.fillIn()
 
@@ -344,16 +433,17 @@ class HomeViewModelTest {
             advanceUntilIdle()
 
             val dialog = assertInstanceOf(HomeDialog.MoreOptions::class.java, vm.dialog.value)
-            assertEquals(ConfigValue.StringValue("Tell me when the pliers are back in stock"), dialog.prefill.instance.mainConfiguration["goal"])
+            assertTrue(dialog.startOnCreate)
+            assertTrue(vm.composerFields().all { (_, state) -> state.error == null })
             assertTrue(world.scriptInstances.getScriptPackageInstances().isEmpty())
 
-            // The generic form launches: it creates the instance (idle tasks) and reports it back.
+            // The user fixes Max steps in the generic form, which creates the instance (idle tasks) and reports it back.
             val created =
                 world.startScriptInteractor.run(
                     StartScriptInteractor.Params(
                         groupId = dialog.prefill.group.id,
-                        scriptPackage = agent,
-                        mainScriptConfiguration = dialog.prefill.instance.mainConfiguration,
+                        scriptPackage = anAgentPackage(),
+                        mainScriptConfiguration = dialog.prefill.instance.mainConfiguration + ("maxSteps" to ConfigValue.IntValue(40)),
                         childConfigurations = emptyMap(),
                         numberOfConcurrentTasks = 1,
                         ignoreConcurrencyConflicts = true,
@@ -363,23 +453,6 @@ class HomeViewModelTest {
             advanceUntilIdle()
 
             coVerify(exactly = 1) { world.taskManager.startTasksToConcurrencyLimit(any()) }
-        }
-
-    @Test
-    fun `an invalid item the composer doesn't show makes Start open the generic form instead of failing`() =
-        runTest {
-            world.notificationSettings.setDiscordWebhookEnabled(true)
-            val agent = anAgentPackage(agentConfigurationItems() + anAgentItem("apiKey", ConfigItemType.StringConfigItem, 10))
-            val vm = homeWith(agent)
-            vm.fillIn()
-
-            vm.onStart()
-            advanceUntilIdle()
-
-            val dialog = assertInstanceOf(HomeDialog.MoreOptions::class.java, vm.dialog.value)
-            assertTrue(dialog.startOnCreate)
-            assertTrue(vm.fieldErrors.value.isEmpty())
-            assertTrue(world.scriptInstances.getScriptPackageInstances().isEmpty())
         }
 
     @Test

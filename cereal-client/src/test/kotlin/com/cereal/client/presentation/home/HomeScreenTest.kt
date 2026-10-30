@@ -79,17 +79,21 @@ class HomeScreenTest {
         }
 
     @Test
-    fun `check every appears only in Repeat`() =
+    fun `renders the script's required fields, with Check every and Vary by only in Repeat`() =
         runScreenTest(overrides = ready) {
             setScreenContent { HomeScreen() }
+            awaitText("goal")
 
-            onNodeWithText("Check every").assertDoesNotExist()
+            onNodeWithText("startUrl").assertIsDisplayed()
+            onNodeWithText("maxSteps").assertDoesNotExist()
+            onNodeWithText("repeatInterval").assertDoesNotExist()
             onNodeWithText("Once").assertIsSelected()
             onNodeWithText("Repeat").performClick()
             onNodeWithText("Repeat").assertIsSelected()
-            onNodeWithText("Check every").assertIsDisplayed()
+            onNodeWithText("repeatInterval").assertIsDisplayed()
+            onNodeWithText("repeatJitter").assertIsDisplayed()
             onNodeWithText("Once").performClick()
-            onNodeWithText("Check every").assertDoesNotExist()
+            onNodeWithText("repeatInterval").assertDoesNotExist()
         }
 
     @Test
@@ -108,7 +112,7 @@ class HomeScreenTest {
             awaitText("Connect an AI model")
 
             onNodeWithText("Available once a model is connected.").assertIsDisplayed()
-            onNodeWithTag(HomeTestTags.GOAL).assertDoesNotExist()
+            onNodeWithTag(HomeTestTags.FIELDS).assertDoesNotExist()
             onNodeWithText("Start").assertDoesNotExist()
         }
 
@@ -137,7 +141,7 @@ class HomeScreenTest {
             onNodeWithText("Connect").performClick()
 
             waitUntil(timeoutMillis = 5_000) { onAllNodesWithText("Connect an AI model").fetchSemanticsNodes().isEmpty() }
-            onNodeWithTag(HomeTestTags.GOAL).assertIsEnabled()
+            onNodeWithTag(HomeTestTags.FIELDS).assertExists()
             onNodeWithText("gemini-3.8-flash").assertIsDisplayed()
             onNodeWithText("Change").assertIsDisplayed()
             assertEquals("gemini-3.8-flash", savedConfig()?.model)
