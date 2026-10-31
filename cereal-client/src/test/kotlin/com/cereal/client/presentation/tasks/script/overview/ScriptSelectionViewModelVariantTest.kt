@@ -33,6 +33,7 @@ import com.cereal.client.infrastructure.provider.inmemory.InMemoryAuthProvider
 import com.cereal.client.presentation.error.ErrorAction
 import com.cereal.client.presentation.error.ErrorResolver
 import com.cereal.client.presentation.tasks.script.overview.configuration.ScriptConfigurationViewModel
+import com.cereal.client.presentation.view.fields.state.StringTextFieldState
 import com.cereal.client.presentation.view.group.GroupedListViewModel
 import fixtures.VARIANT_FIELD
 import fixtures.aScriptPackage
@@ -48,8 +49,10 @@ import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.test.setMain
 import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.Assertions.assertEquals
+import org.junit.jupiter.api.Assertions.assertFalse
 import org.junit.jupiter.api.Assertions.assertNotEquals
 import org.junit.jupiter.api.Assertions.assertSame
+import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.koin.core.context.startKoin
@@ -70,8 +73,8 @@ class ScriptSelectionViewModelVariantTest {
     private val preferences = InMemoryApplicationPreferenceRepository()
     private val authProvider = InMemoryAuthProvider(subscriptions = listOf(subscription(AGENT), subscription(PLAIN)))
 
-    private val agent = aScriptPackageWithVariant(AGENT, variantId = "checkout", variantName = "Checkout")
-    private val plain = aScriptPackage(PLAIN)
+    private val agent = aScriptPackageWithVariant(AGENT, variantId = "checkout", variantName = "Checkout").named("Agent")
+    private val plain = aScriptPackage(PLAIN).named("Plain")
 
     private val noOpScopeLinker =
         object : ScopeLinker {
@@ -148,23 +151,30 @@ class ScriptSelectionViewModelVariantTest {
             list to list.state.value
         }
 
-    private fun ScriptSelectionViewModel.selectedTitle() =
+    private fun ScriptSelectionViewModel.selectedEntryName() = selectedEntry.value?.name
+
+    private fun ScriptSelectionViewModel.selectedPackageTitle() =
         rows()
             .second
             .single { it.selected }
             .content.title
-
-    private fun ScriptSelectionViewModel.selectedRow() =
-        rows()
-            .second
-            .single { it.selected }
-            .content.id as ScriptEntryRow
 
     private fun ScriptSelectionViewModel.selectRow(title: String) {
         val (list, rows) = rows()
         list.onItemClick(rows.first { it.content.title == title })
         dispatcher.scheduler.advanceUntilIdle()
     }
+
+    private fun ScriptSelectionViewModel.pickEntry(name: String) {
+        selectEntry(entryOptions.value.first { it.name == name })
+        dispatcher.scheduler.advanceUntilIdle()
+    }
+
+    private fun ScriptSelectionViewModel.variantField() =
+        (configurationViewState.value as ScriptSelectionState.Config.Selected)
+            .scriptConfigurationViewModel.scriptConfigurationForm.value!!
+            .mainConfigurationFormSection.configurationItemToFieldState.values
+            .single() as StringTextFieldState
 
     /** Starts the selected row the way a user does, past the no-notification-channels warning. */
     private fun ScriptSelectionViewModel.start() {
@@ -181,26 +191,92 @@ class ScriptSelectionViewModelVariantTest {
             .map { it.definition.key }
 
     @Test
-    fun `lists one row per entry, the default under the package name and each variant under its own name`() {
+    fun `lists one rail row per package under the package name`() {
         val viewModel = createViewModel()
 
-        assertEquals(listOf("Test", "Checkout", "Test"), viewModel.rows().second.map { it.content.title })
+        assertEquals(listOf("Agent", "Plain"), viewModel.rows().second.map { it.content.title })
     }
 
     @Test
-    fun `choosing a variant row opens the variant's configuration form`() {
+    fun `a package with variants offers its default entry first, then each variant`() {
         val viewModel = createViewModel()
 
-        viewModel.selectRow("Checkout")
+        assertEquals(listOf("Agent", "Checkout"), viewModel.entryOptions.value.map { it.name })
+    }
+
+    @Test
+    fun `a package without variants offers only its default entry`() {
+        val viewModel = createViewModel()
+
+        viewModel.selectRow("Plain")
+
+        assertEquals(listOf("Plain"), viewModel.entryOptions.value.map { it.name })
+    }
+
+    @Test
+    fun `picking a variant opens the variant's configuration form`() {
+        val viewModel = createViewModel()
+
+        viewModel.pickEntry("Checkout")
 
         assertEquals(listOf(VARIANT_FIELD), viewModel.formFieldKeys())
     }
 
     @Test
-    fun `starting a variant row creates an instance that runs the variant`() =
+    fun `switching back to a variant keeps what was typed in its form`() {
+        val viewModel = createViewModel()
+        viewModel.pickEntry("Checkout")
+        viewModel.variantField().onValueChange("typed")
+
+        viewModel.pickEntry("Agent")
+        viewModel.pickEntry("Checkout")
+
+        assertEquals("typed", viewModel.variantField().text)
+    }
+
+    @Test
+    fun `switching to another package and back keeps what was typed in its forms`() {
+        val viewModel = createViewModel()
+        viewModel.pickEntry("Checkout")
+        viewModel.variantField().onValueChange("typed")
+
+        viewModel.selectRow("Plain")
+        viewModel.selectRow("Agent")
+        viewModel.pickEntry("Checkout")
+
+        assertEquals("typed", viewModel.variantField().text)
+    }
+
+    @Test
+    fun `while duplicating, edits survive switching to another package and back`() {
+        val original = aScriptPackageInstance("original", AGENT, definition = agent, variantId = "checkout")
+        val viewModel = createViewModel(duplicate = original)
+        viewModel.variantField().onValueChange("edited")
+
+        viewModel.selectRow("Plain")
+        viewModel.selectRow("Agent")
+
+        assertEquals("edited", viewModel.variantField().text)
+    }
+
+    @Test
+    fun `an update to the selected package reopens it with the updated entries`() {
+        val viewModel = createViewModel()
+        val restock = aScriptPackageWithVariant(AGENT, variantId = "restock", variantName = "Restock").variants
+        val updated = agent.copy(manifest = agent.manifest.copy(versionCode = 2), variants = agent.variants + restock)
+
+        scriptRepository.seed(listOf(updated, plain))
+        dispatcher.scheduler.advanceUntilIdle()
+
+        assertEquals("Agent", viewModel.selectedPackageTitle())
+        assertEquals(listOf("Agent", "Checkout", "Restock"), viewModel.entryOptions.value.map { it.name })
+    }
+
+    @Test
+    fun `starting a picked variant creates an instance that runs the variant`() =
         runTest {
             val viewModel = createViewModel()
-            viewModel.selectRow("Checkout")
+            viewModel.pickEntry("Checkout")
 
             viewModel.start()
 
@@ -224,12 +300,13 @@ class ScriptSelectionViewModelVariantTest {
         }
 
     @Test
-    fun `duplicating a variant instance preselects its row and creates a new instance with the same variant`() =
+    fun `duplicating a variant instance preselects and locks its variant and creates a new instance with the same variant`() =
         runTest {
             val original = aScriptPackageInstance("original", AGENT, definition = agent, variantId = "checkout")
             val viewModel = createViewModel(duplicate = original)
 
-            assertEquals("Checkout", viewModel.selectedTitle())
+            assertEquals("Checkout", viewModel.selectedEntryName())
+            assertTrue(viewModel.entryLocked.value)
             viewModel.start()
 
             assertEquals(ErrorAction.None, viewModel.errorAction.value)
@@ -239,25 +316,51 @@ class ScriptSelectionViewModelVariantTest {
         }
 
     @Test
-    fun `a request for a variant preselects that variant's row`() {
+    fun `while duplicating, other packages are unlocked and returning to the original reopens its locked variant`() {
+        val original = aScriptPackageInstance("original", AGENT, definition = agent, variantId = "checkout")
+        val viewModel = createViewModel(duplicate = original)
+
+        viewModel.selectRow("Plain")
+        assertFalse(viewModel.entryLocked.value)
+
+        viewModel.selectRow("Agent")
+        assertEquals("Checkout", viewModel.selectedEntryName())
+        assertTrue(viewModel.entryLocked.value)
+    }
+
+    @Test
+    fun `a request for a variant preselects its package and that variant, unlocked`() {
         val viewModel = createViewModel(request = ScriptRequest(AGENT, variantId = "checkout"))
 
-        assertEquals("Checkout", viewModel.selectedTitle())
+        assertEquals("Agent", viewModel.selectedPackageTitle())
+        assertEquals("Checkout", viewModel.selectedEntryName())
+        assertFalse(viewModel.entryLocked.value)
     }
 
     @Test
-    fun `a request without a variant preselects the package's default row`() {
+    fun `a request for an unknown variant falls back to the package's default entry`() {
+        val viewModel = createViewModel(request = ScriptRequest(AGENT, variantId = "gone"))
+
+        assertEquals("Agent", viewModel.selectedEntryName())
+    }
+
+    @Test
+    fun `a request without a variant preselects the package's default entry`() {
         val viewModel = createViewModel(request = ScriptRequest(PLAIN))
 
-        assertEquals(ScriptEntryRow(plain), viewModel.selectedRow())
+        assertEquals("Plain", viewModel.selectedPackageTitle())
+        assertEquals("Plain", viewModel.selectedEntryName())
     }
 
     @Test
-    fun `without a request or duplicate the first row is selected`() {
+    fun `without a request or duplicate the first package's default entry is selected`() {
         val viewModel = createViewModel()
 
-        assertEquals(ScriptEntryRow(agent), viewModel.selectedRow())
+        assertEquals("Agent", viewModel.selectedPackageTitle())
+        assertEquals("Agent", viewModel.selectedEntryName())
     }
+
+    private fun ScriptPackage.named(name: String) = copy(manifest = manifest.copy(name = name))
 
     private companion object {
         const val AGENT = "com.example.agent"

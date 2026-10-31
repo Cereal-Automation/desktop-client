@@ -19,9 +19,12 @@ import com.cereal.client.domain.model.script.ScriptPackageInstance
 import com.cereal.client.domain.model.script.configuration.ConfigItemType
 import com.cereal.client.domain.model.script.configuration.ConfigurationItem
 import com.cereal.client.domain.model.script.configuration.ScriptConfigurationItemDefinition
+import com.cereal.client.domain.model.script.entry
+import com.cereal.client.domain.model.script.entryName
 import com.cereal.client.domain.model.script.isClientUpdateRequired
 import com.cereal.client.presentation.error.ErrorResolver
 import com.cereal.client.presentation.error.handleFailureOrElse
+import com.cereal.client.presentation.tasks.script.overview.ScriptEntryOption
 import com.cereal.client.presentation.tasks.script.overview.configuration.RawScriptConfigValues
 import com.cereal.client.presentation.tasks.script.overview.configuration.model.ConfigurationItemsFormSection
 import com.cereal.client.presentation.tasks.script.overview.configuration.validate
@@ -120,9 +123,16 @@ class HomeViewModel(
     private val _slot = mutableStateOf<HomeComposerSlot>(HomeComposerSlot.Loading)
     val slot: State<HomeComposerSlot> = _slot
 
-    /** The agent's main-script form: Home renders [composerFields] of it. Null until the definition loads. */
+    /** The selected entry's form: Home renders [composerFields] of it. Null until the definition loads. */
     private val _composerForm = mutableStateOf<ConfigurationItemsFormSection?>(null)
     val composerForm: State<ConfigurationItemsFormSection?> = _composerForm
+
+    /** The agent's entries for the composer's picker: its main entry first, then each variant. */
+    val entryOptions = mutableStateOf<List<ScriptEntryOption>>(emptyList())
+    val selectedEntry = mutableStateOf<ScriptEntryOption?>(null)
+
+    // One form per entry, so switching back keeps what was typed there; rebuilt when the agent updates.
+    private val forms = mutableMapOf<String?, ConfigurationItemsFormSection>()
 
     val dialog = mutableStateOf<HomeDialog?>(null)
     val isStarting = mutableStateOf(false)
@@ -145,8 +155,9 @@ class HomeViewModel(
                 withContext(dispatcherProvider.main) {
                     if (result is SuspendableResult.Success) {
                         val installed = result.value.firstOrNull { it.isAiBrowserAgent }
-                        if (installed != null && installed.manifest.versionCode != agent?.manifest?.versionCode) loadComposerForm(installed)
+                        val updated = installed != null && installed.manifest.versionCode != agent?.manifest?.versionCode
                         agent = installed
+                        if (updated) onAgentUpdated(installed)
                         this@HomeViewModel.clientSdk = clientSdk
                         updateSlot()
                     }
@@ -167,14 +178,37 @@ class HomeViewModel(
         _slot.value = homeComposerSlot(agent, sdk, hasAiProvider)
     }
 
-    private fun loadComposerForm(agent: ScriptPackage) {
+    /** A newly installed or updated agent: rebuild its entries and forms, staying on the picked entry while it exists. */
+    private fun onAgentUpdated(agent: ScriptPackage) {
+        val options = (listOf(null) + agent.variants.keys).map { ScriptEntryOption(it, agent.entryName(it)) }
+        forms.clear()
+        entryOptions.value = options
+        selectEntry(options.firstOrNull { it.variantId == selectedEntry.value?.variantId } ?: options.first())
+    }
+
+    /** Shows [option]'s form, loading it the first time that entry is picked. */
+    fun selectEntry(option: ScriptEntryOption) {
+        val agent = agent ?: return
+        selectedEntry.value = option
+        _composerForm.value = forms[option.variantId]
+        if (_composerForm.value == null) loadComposerForm(agent, option.variantId)
+    }
+
+    private fun loadComposerForm(
+        agent: ScriptPackage,
+        variantId: String?,
+    ) {
         scope.launch(dispatcherProvider.io) {
-            getScriptConfigDefinitionInteractor(GetScriptConfigDefinitionInteractor.Params(agent, scriptPackageInstance = null)) { result ->
+            getScriptConfigDefinitionInteractor(
+                GetScriptConfigDefinitionInteractor.Params(agent, scriptPackageInstance = null, variantId = variantId),
+            ) { result ->
                 withContext(dispatcherProvider.main) {
                     result.handleFailureOrElse(errorResolver) { definition ->
                         // Home renders no field that imports a file, so there's nothing to open an import for.
-                        _composerForm.value =
-                            ConfigurationItemsFormSection(definition.mainConfiguration) { _, _, _ -> }.apply { applyStateModifiers() }
+                        val form = ConfigurationItemsFormSection(definition.mainConfiguration) { _, _, _ -> }.apply { applyStateModifiers() }
+                        forms[variantId] = form
+                        // The user may have picked another entry while this one loaded.
+                        if (selectedEntry.value?.variantId == variantId) _composerForm.value = form
                     }
                 }
             }
@@ -211,7 +245,9 @@ class HomeViewModel(
         val shown = rendered.map { (item, _) -> item.definition.key }.toSet()
         val unrendered = required.size != rendered.size
         val invalidHidden =
-            agent.mainScript.configuration
+            agent
+                .entry(selectedEntry.value?.variantId)
+                .configuration
                 .validate(values)
                 .any { it.key !in shown }
         if (unrendered || invalidHidden) {
@@ -253,7 +289,7 @@ class HomeViewModel(
     ) {
         val configuration = configuration() ?: return
         scope.launch(dispatcherProvider.io) {
-            prefillGoalRunFormInteractor(PrefillGoalRunFormInteractor.Params(agent, configuration)) { result ->
+            prefillGoalRunFormInteractor(PrefillGoalRunFormInteractor.Params(agent, configuration, selectedEntry.value?.variantId)) { result ->
                 withContext(dispatcherProvider.main) {
                     result.handleFailureOrElse(errorResolver) { prefill ->
                         dialog.value = HomeDialog.MoreOptions(prefill, startOnCreate)
@@ -270,7 +306,9 @@ class HomeViewModel(
         val configuration = configuration() ?: return
         isStarting.value = true
         scope.launch(dispatcherProvider.io) {
-            startGoalRunInteractor(StartGoalRunInteractor.Params(agent, configuration, ignoreMissingNotificationChannels)) { result ->
+            startGoalRunInteractor(
+                StartGoalRunInteractor.Params(agent, configuration, ignoreMissingNotificationChannels, selectedEntry.value?.variantId),
+            ) { result ->
                 withContext(dispatcherProvider.main) {
                     isStarting.value = false
                     // The composer keeps its text so the user can tweak it and run again.

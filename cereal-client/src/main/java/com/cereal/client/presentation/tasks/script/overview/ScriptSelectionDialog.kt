@@ -157,7 +157,7 @@ fun ScriptSelectionDialog(
                 Column(Modifier.fillMaxHeight().weight(1f)) {
                     ConfigHeader(
                         title =
-                            (configState as? ScriptSelectionState.Config.Selected)?.scriptConfigurationViewModel?.scriptName
+                            viewModel.selectedPackageName.value
                                 ?: if (viewModel.overviewViewState.value is ScriptSelectionState.Overview.Loading) {
                                     ""
                                 } else {
@@ -165,6 +165,17 @@ fun ScriptSelectionDialog(
                                 },
                         onClose = onDismissRequest,
                     )
+                    val entryOptions = viewModel.entryOptions.value
+                    val selectedEntry = viewModel.selectedEntry.value
+                    if (entryOptions.size > 1 && selectedEntry != null) {
+                        ScriptEntryPicker(
+                            options = entryOptions,
+                            selected = selectedEntry,
+                            enabled = !viewModel.entryLocked.value,
+                            onSelect = viewModel::selectEntry,
+                            modifier = Modifier.fillMaxWidth().padding(start = 25.dp, end = 25.dp, top = 17.dp),
+                        )
+                    }
                     Column(Modifier.fillMaxWidth().weight(1f)) {
                         when (configState) {
                             is ScriptSelectionState.Config.None -> {

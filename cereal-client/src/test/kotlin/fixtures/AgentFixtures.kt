@@ -4,6 +4,7 @@ import com.cereal.client.application.agent.AI_BROWSER_AGENT_PACKAGE
 import com.cereal.client.domain.model.marketplace.MarketplaceScript
 import com.cereal.client.domain.model.script.Release
 import com.cereal.client.domain.model.script.ScriptPackage
+import com.cereal.client.domain.model.script.ScriptVariant
 import com.cereal.client.domain.model.script.configuration.ConfigItemType
 import com.cereal.client.domain.model.script.configuration.ConfigValue
 import com.cereal.client.domain.model.script.configuration.ScriptConfigurationDefinition
@@ -98,6 +99,17 @@ fun anAgentPackage(items: List<ScriptConfigurationItemDefinition> = agentConfigu
                 configuration = ScriptConfigurationDefinition(ScriptConfiguration::class, items),
             ),
     )
+}
+
+/** The agent with a "product-checkout" variant whose only field is a required product URL, so Home shows it. */
+fun anAgentWithCheckoutVariant(): ScriptPackage {
+    val agent = anAgentPackage()
+    val checkout =
+        agent.mainScript.copy(
+            configuration =
+                ScriptConfigurationDefinition(ScriptConfiguration::class, listOf(anAgentItem("productUrl", ConfigItemType.StringConfigItem, 0))),
+        )
+    return agent.copy(variants = mapOf("product-checkout" to ScriptVariant("Product Checkout", instructions = null, script = checkout)))
 }
 
 /** An installed agent that declares an SDK newer than the client's (the in-memory client SDK is 1.0.0). */

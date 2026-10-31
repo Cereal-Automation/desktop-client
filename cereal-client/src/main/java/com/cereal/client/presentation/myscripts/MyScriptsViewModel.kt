@@ -18,6 +18,7 @@ import com.cereal.client.domain.model.script.entryName
 import com.cereal.client.domain.model.script.isClientUpdateRequired
 import com.cereal.client.presentation.error.ErrorResolver
 import com.cereal.client.presentation.error.handleFailureOrElse
+import com.cereal.client.presentation.tasks.script.overview.ScriptRequest
 import com.github.kittinunf.result.coroutines.SuspendableResult
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.collectLatest
@@ -36,7 +37,7 @@ class MyScriptsViewModel(
     private val getMarketplaceListingsInteractor: GetMarketplaceListingsInteractor,
     private val removeMarketplaceScriptInteractor: RemoveMarketplaceScriptInteractor,
     private val errorResolver: ErrorResolver,
-    private val onStartNewInstance: (publicIdentifier: String) -> Unit = {},
+    private val onStartNewInstance: (ScriptRequest) -> Unit = {},
 ) {
     /** The most urgent thing about an installed script, in priority order. */
     enum class InstalledScriptStatus {
@@ -97,6 +98,9 @@ class MyScriptsViewModel(
         }
 
     val selectedScript = mutableStateOf<MarketplaceScript?>(null)
+
+    // The variant of the row whose detail is open, so starting from it opens that variant.
+    private var selectedVariantId: String? = null
     val confirmRemoveTarget = mutableStateOf<ScriptPackage?>(null)
     val errorAction = errorResolver.errorAction
 
@@ -166,15 +170,17 @@ class MyScriptsViewModel(
 
     fun onRowClicked(row: InstalledScriptRow) {
         selectedScript.value = row.listing ?: return
+        selectedVariantId = row.variantId
     }
 
     fun onDismissDetail() {
         selectedScript.value = null
+        selectedVariantId = null
     }
 
     fun onStartNewInstance(publicIdentifier: String) {
         selectedScript.value = null
-        this.onStartNewInstance.invoke(publicIdentifier)
+        this.onStartNewInstance.invoke(ScriptRequest(publicIdentifier, selectedVariantId))
     }
 
     fun onRemoveClicked(scriptPackage: ScriptPackage) {
