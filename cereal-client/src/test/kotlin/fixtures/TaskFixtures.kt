@@ -109,7 +109,7 @@ fun aScriptPackageInstance(
 fun aScriptInstance(packageInstance: ScriptPackageInstance): MainScriptInstance =
     MainScriptInstance(
         id = "script-${packageInstance.id}",
-        definition = packageInstance.definition.mainScript,
+        definition = packageInstance.definition.mainScript!!,
         configuration = emptyMap(),
         createdAt = Clock.System.now(),
         packageInstance = packageInstance,
@@ -160,7 +160,7 @@ fun ScriptPackageInstance.withIdentifier(identifier: String?): ScriptPackageInst
     fun MainScript.identified() = copy(configuration = configuration.copy(configurationItems = listOf(item)))
     val definition =
         if (variantId == null) {
-            definition.copy(mainScript = definition.mainScript.identified())
+            definition.copy(mainScript = definition.mainScript!!.identified())
         } else {
             definition.copy(
                 variants = definition.variants.mapValues { (id, v) -> if (id == variantId) v.copy(script = v.script.identified()) else v },

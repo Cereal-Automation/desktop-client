@@ -51,7 +51,7 @@ class InMemoryTasksRepositoryTest {
         scriptInstance =
             MainScriptInstance(
                 id = scriptInstanceId,
-                definition = scriptPackage.mainScript,
+                definition = scriptPackage.mainScript!!,
                 configuration = emptyMap(),
                 createdAt = Clock.System.now(),
                 packageInstance = packageInstance,

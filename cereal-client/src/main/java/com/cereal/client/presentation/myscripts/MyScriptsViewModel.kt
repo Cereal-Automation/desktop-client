@@ -6,7 +6,6 @@ import androidx.compose.runtime.mutableStateOf
 import com.cereal.client.application.CoroutinesDispatcherProvider
 import com.cereal.client.application.Interactor
 import com.cereal.client.application.agent.canUninstall
-import com.cereal.client.application.agent.readyMadeEntryIds
 import com.cereal.client.application.interactor.marketplace.GetMarketplaceListingsInteractor
 import com.cereal.client.application.interactor.marketplace.GetPackagesWithRunningTasksInteractor
 import com.cereal.client.application.interactor.marketplace.RemoveMarketplaceScriptInteractor
@@ -14,6 +13,7 @@ import com.cereal.client.application.interactor.script.GetScriptsInteractor
 import com.cereal.client.application.interactor.script.GetSdkVersionInteractor
 import com.cereal.client.domain.model.marketplace.MarketplaceScript
 import com.cereal.client.domain.model.script.ScriptPackage
+import com.cereal.client.domain.model.script.entryIds
 import com.cereal.client.domain.model.script.entryName
 import com.cereal.client.domain.model.script.isClientUpdateRequired
 import com.cereal.client.presentation.error.ErrorResolver
@@ -80,7 +80,7 @@ class MyScriptsViewModel(
     val rows: State<List<InstalledScriptRow>> =
         derivedStateOf {
             installedScripts.value
-                .flatMap { pkg -> pkg.readyMadeEntryIds.map { pkg to it } }
+                .flatMap { pkg -> pkg.entryIds.map { pkg to it } }
                 .map { (pkg, variantId) ->
                     val packageName = pkg.manifest.packageName
                     val listing = listings.value[packageName]

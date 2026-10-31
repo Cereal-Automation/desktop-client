@@ -1,7 +1,6 @@
 package com.cereal.client.presentation.home
 
 import com.cereal.client.application.CoroutinesDispatcherProvider
-import com.cereal.client.application.agent.AI_BROWSER_AGENT_PACKAGE
 import com.cereal.client.application.exception.CerealException
 import com.cereal.client.application.interactor.agent.GetAiBrowserAgentListingInteractor
 import com.cereal.client.application.interactor.agent.InstallAiBrowserAgentInteractor
@@ -42,7 +41,6 @@ import com.cereal_automation.cereal_client.generated.resources.ai_connection_bad
 import fixtures.FakeRunMode
 import fixtures.FakeScriptInstallProvider
 import fixtures.GoalRunWorld
-import fixtures.aScriptPackageWithVariant
 import fixtures.agentConfigurationItems
 import fixtures.anAgentItem
 import fixtures.anAgentListing
@@ -292,31 +290,29 @@ class HomeViewModelTest {
         }
 
     @Test
-    fun `with an agent that has variants, start still creates a default-entry goal run`() =
+    fun `with an agent that has variants, start creates a goal run of its first variant`() =
         runTest {
             world.notificationSettings.setDiscordWebhookEnabled(true)
-            val agent =
-                anAgentPackage().copy(variants = aScriptPackageWithVariant(AI_BROWSER_AGENT_PACKAGE, "product-checkout").variants)
-            val vm = homeWith(agent)
+            val vm = homeWith(anAgentWithCheckoutVariant())
             vm.fillIn()
 
             vm.onStart()
             advanceUntilIdle()
 
             val instance = world.scriptInstances.getScriptPackageInstances().single()
-            assertNull(instance.variantId)
+            assertEquals("browser-agent", instance.variantId)
             assertEquals(ConfigValue.StringValue("Tell me when the pliers are back in stock"), instance.mainConfiguration["goal"])
         }
 
     private fun HomeViewModel.pick(name: String) = selectEntry(entryOptions.value.first { it.name == name })
 
     @Test
-    fun `an agent with variants offers its main entry first, then each variant`() =
+    fun `an agent with variants offers only its variants and picks the first`() =
         runTest {
             val vm = homeWith(anAgentWithCheckoutVariant())
 
-            assertEquals(listOf("AI Browser Agent", "Product Checkout"), vm.entryOptions.value.map { it.name })
-            assertEquals("AI Browser Agent", vm.selectedEntry.value?.name)
+            assertEquals(listOf("Custom goal", "Product Checkout"), vm.entryOptions.value.map { it.name })
+            assertEquals("Custom goal", vm.selectedEntry.value?.name)
         }
 
     @Test
@@ -331,14 +327,14 @@ class HomeViewModelTest {
         }
 
     @Test
-    fun `switching back to the main entry keeps what was typed there`() =
+    fun `switching back to the first variant keeps what was typed there`() =
         runTest {
             val vm = homeWith(anAgentWithCheckoutVariant())
             vm.type("goal", "Watch the pliers")
 
             vm.pick("Product Checkout")
             advanceUntilIdle()
-            vm.pick("AI Browser Agent")
+            vm.pick("Custom goal")
             advanceUntilIdle()
 
             assertEquals("Watch the pliers", (vm.field("goal") as TextFieldState<*>).text)

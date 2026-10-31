@@ -73,7 +73,10 @@ class ScriptSelectionViewModelVariantTest {
     private val preferences = InMemoryApplicationPreferenceRepository()
     private val authProvider = InMemoryAuthProvider(subscriptions = listOf(subscription(AGENT), subscription(PLAIN)))
 
-    private val agent = aScriptPackageWithVariant(AGENT, variantId = "checkout", variantName = "Checkout").named("Agent")
+    private val agent =
+        aScriptPackageWithVariant(AGENT, variantId = "checkout", variantName = "Checkout")
+            .let { it.copy(variants = it.variants + aScriptPackageWithVariant(AGENT, variantId = "monitor", variantName = "Monitor").variants) }
+            .named("Agent")
     private val plain = aScriptPackage(PLAIN).named("Plain")
 
     private val noOpScopeLinker =
@@ -198,10 +201,10 @@ class ScriptSelectionViewModelVariantTest {
     }
 
     @Test
-    fun `a package with variants offers its default entry first, then each variant`() {
+    fun `a package with variants offers only its variants, in manifest order`() {
         val viewModel = createViewModel()
 
-        assertEquals(listOf("Agent", "Checkout"), viewModel.entryOptions.value.map { it.name })
+        assertEquals(listOf("Checkout", "Monitor"), viewModel.entryOptions.value.map { it.name })
     }
 
     @Test
@@ -228,7 +231,7 @@ class ScriptSelectionViewModelVariantTest {
         viewModel.pickEntry("Checkout")
         viewModel.variantField().onValueChange("typed")
 
-        viewModel.pickEntry("Agent")
+        viewModel.pickEntry("Monitor")
         viewModel.pickEntry("Checkout")
 
         assertEquals("typed", viewModel.variantField().text)
@@ -269,25 +272,25 @@ class ScriptSelectionViewModelVariantTest {
         dispatcher.scheduler.advanceUntilIdle()
 
         assertEquals("Agent", viewModel.selectedPackageTitle())
-        assertEquals(listOf("Agent", "Checkout", "Restock"), viewModel.entryOptions.value.map { it.name })
+        assertEquals(listOf("Checkout", "Monitor", "Restock"), viewModel.entryOptions.value.map { it.name })
     }
 
     @Test
     fun `starting a picked variant creates an instance that runs the variant`() =
         runTest {
             val viewModel = createViewModel()
-            viewModel.pickEntry("Checkout")
+            viewModel.pickEntry("Monitor")
 
             viewModel.start()
 
             assertEquals(ErrorAction.None, viewModel.errorAction.value)
             val instance = scriptInstanceRepository.getScriptPackageInstances().single()
-            assertEquals("checkout", instance.variantId)
-            assertSame(agent.variants.getValue("checkout").script, instance.entryScript)
+            assertEquals("monitor", instance.variantId)
+            assertSame(agent.variants.getValue("monitor").script, instance.entryScript)
         }
 
     @Test
-    fun `starting the default row creates an instance without a variant`() =
+    fun `starting a package with variants without picking one runs its first variant`() =
         runTest {
             val viewModel = createViewModel()
 
@@ -296,7 +299,7 @@ class ScriptSelectionViewModelVariantTest {
             assertEquals(ErrorAction.None, viewModel.errorAction.value)
             val instance = scriptInstanceRepository.getScriptPackageInstances().single()
             assertEquals(AGENT, instance.definition.manifest.packageName)
-            assertEquals(null, instance.variantId)
+            assertEquals("checkout", instance.variantId)
         }
 
     @Test
@@ -338,10 +341,10 @@ class ScriptSelectionViewModelVariantTest {
     }
 
     @Test
-    fun `a request for an unknown variant falls back to the package's default entry`() {
+    fun `a request for an unknown variant falls back to the package's first variant`() {
         val viewModel = createViewModel(request = ScriptRequest(AGENT, variantId = "gone"))
 
-        assertEquals("Agent", viewModel.selectedEntryName())
+        assertEquals("Checkout", viewModel.selectedEntryName())
     }
 
     @Test
@@ -353,11 +356,11 @@ class ScriptSelectionViewModelVariantTest {
     }
 
     @Test
-    fun `without a request or duplicate the first package's default entry is selected`() {
+    fun `without a request or duplicate the first package's first entry is selected`() {
         val viewModel = createViewModel()
 
         assertEquals("Agent", viewModel.selectedPackageTitle())
-        assertEquals("Agent", viewModel.selectedEntryName())
+        assertEquals("Checkout", viewModel.selectedEntryName())
     }
 
     private fun ScriptPackage.named(name: String) = copy(manifest = manifest.copy(name = name))

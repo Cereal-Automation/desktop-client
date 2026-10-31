@@ -53,7 +53,7 @@ class StartGoalRunInteractor(
         val mainConfiguration: ScriptConfigurationValues,
         /** The user has seen the no-notification-channels warning and chose to start anyway. */
         val ignoreMissingNotificationChannels: Boolean = false,
-        /** The agent's variant to run; null for its default entry. */
+        /** The agent's variant to run; null only for an agent without variants. */
         val variantId: String? = null,
     )
 }

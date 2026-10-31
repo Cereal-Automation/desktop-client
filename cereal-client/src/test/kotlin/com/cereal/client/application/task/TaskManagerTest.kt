@@ -59,7 +59,7 @@ class TaskManagerTest {
     private val scriptInstance =
         MainScriptInstance(
             id = "script-1",
-            definition = scriptPackage.mainScript,
+            definition = scriptPackage.mainScript!!,
             configuration = emptyMap(),
             createdAt = Clock.System.now(),
             packageInstance = packageInstance,

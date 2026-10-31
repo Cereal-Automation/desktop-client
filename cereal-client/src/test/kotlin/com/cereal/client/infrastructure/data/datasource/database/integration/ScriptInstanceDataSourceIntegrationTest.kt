@@ -1176,7 +1176,7 @@ class ScriptInstanceDataSourceIntegrationTest {
                 val mainScriptInstance =
                     MainScriptInstance(
                         id = UUID.randomUUID().toString(),
-                        definition = definition.mainScript,
+                        definition = definition.mainScript!!,
                         configuration = original.mainConfiguration,
                         createdAt = Clock.System.now(),
                         packageInstance = original,
@@ -1301,7 +1301,7 @@ class ScriptInstanceDataSourceIntegrationTest {
         val mainScriptInstance =
             MainScriptInstance(
                 id = UUID.randomUUID().toString(),
-                definition = scriptPackageInstance.definition.mainScript,
+                definition = scriptPackageInstance.definition.mainScript!!,
                 configuration = configurationValues,
                 createdAt = Clock.System.now(),
                 packageInstance = scriptPackageInstance,

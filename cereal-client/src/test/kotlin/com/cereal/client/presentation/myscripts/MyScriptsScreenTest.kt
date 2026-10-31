@@ -59,14 +59,14 @@ class MyScriptsScreenTest {
         }
 
     @Test
-    fun leavesOutTheAiBrowserAgent() =
+    fun listsTheAiBrowserAgentWithoutVariantsAsItsOwnEntry() =
         runScreenTest {
             seedInstalled(anAgentPackage(), aScriptPackage("com.example.other"))
             setScreenContent { MyScriptsScreen(onOpenMarketplace = {}) }
 
             waitForText("Uninstall")
             onNodeWithText("Test").assertIsDisplayed()
-            onAllNodesWithText("AI Browser Agent").assertCountEquals(0)
+            onAllNodesWithText("AI Browser Agent").assertCountEquals(1)
         }
 
     @Test
@@ -82,7 +82,7 @@ class MyScriptsScreenTest {
             waitForText("Uninstall")
             onNodeWithText("Product Monitor & Checkout").assertIsDisplayed()
             onAllNodesWithText("AI Browser Agent").assertCountEquals(0)
-            // Only the other script offers Uninstall: removing the agent's jar would remove its default entry too.
+            // Only the other script offers Uninstall: removing the agent's jar would remove Home's goal composer too.
             onAllNodesWithText("Uninstall").assertCountEquals(1)
         }
 

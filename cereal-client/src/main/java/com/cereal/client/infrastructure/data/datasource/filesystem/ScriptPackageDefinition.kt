@@ -23,7 +23,7 @@ data class ManifestDefinition(
 data class ScriptPackageDefinition(
     val source: File,
     val manifest: ManifestDefinition,
-    val mainScript: MainScript,
+    val mainScript: MainScript?,
     val childScripts: Map<String, ChildScript>,
     val variants: Map<String, ScriptVariant> = emptyMap(),
 )

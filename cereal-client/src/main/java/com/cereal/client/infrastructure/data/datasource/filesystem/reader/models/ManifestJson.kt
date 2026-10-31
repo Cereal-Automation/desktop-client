@@ -14,8 +14,8 @@ data class ManifestJson(
     @SerialName("name") val name: String,
     /** The version code of the package as a numeric value */
     @SerialName("version_code") val versionCode: Long,
-    /** The fully qualified class name of the main script package. */
-    @SerialName("script") val scriptPackageClass: String,
+    /** The fully qualified class name of the package's only entry script. Required without [variants], ignored with them. */
+    @SerialName("script") val scriptPackageClass: String? = null,
     /** List of fully qualified class names for child script packages, if any */
     @SerialName("child_scripts") val childScriptPackageClasses: List<String>? = null,
     /** Optional instructions to display at the top of the script configuration screen */
@@ -24,12 +24,12 @@ data class ManifestJson(
     @SerialName("sdk_version") val sdkVersion: String? = null,
     /** Script features the script uses, as raw manifest values. Missing means none. */
     @SerialName("features") val features: List<String> = emptyList(),
-    /** Additional entry scripts. Missing means the package only has its default entry, [scriptPackageClass]. */
-    @SerialName("variants") val variants: List<VariantJson> = emptyList(),
+    /** The manifest's `scripts`: the entry scripts users pick from, replacing [scriptPackageClass]. Missing means that is the only entry. */
+    @SerialName("scripts") val variants: List<VariantJson> = emptyList(),
 )
 
 /**
- * An additional entry script of a package, listed in the manifest's `variants`. Required fields are nullable so a
+ * An entry script of a package, listed in the manifest's `scripts`. Required fields are nullable so a
  * missing key is rejected by the reader with a reason naming it, like a blank value.
  */
 @Serializable

@@ -188,7 +188,7 @@ class TasksScreenWorld(
             aScriptPackage("com.example.$id").let {
                 it.copy(
                     manifest = it.manifest.copy(name = name, supportUrl = supportUrl),
-                    mainScript = it.mainScript.copy(configuration = it.mainScript.configuration.copy(configurationItems = configurationItems)),
+                    mainScript = it.mainScript!!.copy(configuration = it.mainScript.configuration.copy(configurationItems = configurationItems)),
                 )
             }
         val packageInstance =
@@ -198,7 +198,7 @@ class TasksScreenWorld(
                 numberOfConcurrentTasks = taskStatuses.size.coerceAtLeast(1),
                 createdAt = firstSetupCreatedAt + (setupsCreated++).seconds,
             )
-        val main = aScriptInstance(packageInstance).copy(definition = definition.mainScript, configuration = configuration)
+        val main = aScriptInstance(packageInstance).copy(definition = definition.mainScript!!, configuration = configuration)
         scriptInstances.addScriptPackageInstance((group ?: defaultGroup()).id, packageInstance, main)
         val createdAt = Clock.System.now()
         tasksRepository.addAllTasks(

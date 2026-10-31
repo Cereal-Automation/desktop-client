@@ -98,31 +98,24 @@ class HomeActivityViewModelTest {
         }
 
     @Test
-    fun `the ready-made strip lists installed scripts except the agent`() =
+    fun `the ready-made strip lists every installed script's entries`() =
         runTest {
             val restock = aScriptPackage("com.example.restock").let { it.copy(manifest = it.manifest.copy(name = "Restock Monitor")) }
-            scripts.seed(listOf(anAgentPackage(), restock))
-            val vm = homeActivity()
-            advanceUntilIdle()
-
-            assertEquals(listOf(ReadyMadeScriptUiModel("com.example.restock", "Restock Monitor")), vm.readyMadeScripts.value)
-        }
-
-    @Test
-    fun `the ready-made strip lists each variant of the agent but not its default entry`() =
-        runTest {
-            scripts.seed(listOf(anAgentWithCheckoutVariant()))
+            scripts.seed(listOf(restock, anAgentWithCheckoutVariant()))
             val vm = homeActivity()
             advanceUntilIdle()
 
             assertEquals(
-                listOf(ReadyMadeScriptUiModel(AI_BROWSER_AGENT_PACKAGE, "Product Monitor & Checkout", variantId = "product-checkout")),
+                listOf(
+                    ReadyMadeScriptUiModel("com.example.restock", "Restock Monitor"),
+                    ReadyMadeScriptUiModel(AI_BROWSER_AGENT_PACKAGE, "Product Monitor & Checkout", variantId = "product-checkout"),
+                ),
                 vm.readyMadeScripts.value,
             )
         }
 
     @Test
-    fun `tasks of an agent variant stay out of the recent runs`() =
+    fun `a run of an agent variant without a goal is titled by its variant`() =
         runTest {
             val variantInstance =
                 aScriptPackageInstance("pkg-v", AI_BROWSER_AGENT_PACKAGE, anAgentWithCheckoutVariant(), variantId = "product-checkout")
@@ -135,7 +128,10 @@ class HomeActivityViewModelTest {
             val vm = homeActivity()
             advanceUntilIdle()
 
-            assertEquals(listOf("goal"), vm.recentRuns.value.map { it.taskId })
+            assertEquals(
+                listOf("variant" to "Product Monitor & Checkout", "goal" to "Find pliers"),
+                vm.recentRuns.value.map { it.taskId to it.goal },
+            )
         }
 
     private fun anAgentWithCheckoutVariant() =
