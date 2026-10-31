@@ -223,10 +223,9 @@
     <string name="script_capacity_unlimited">Unlimited %1$s</string>
     <string name="marketplace_view_details">VIEW DETAILS</string>
     <string name="more_options">More options</string>
-    <string name="nav_section_agent">Agent</string>
+    <string name="nav_section_workspace">Workspace</string>
     <string name="nav_section_ready_made_scripts">Ready-made scripts</string>
     <string name="nav_section_resources">Resources</string>
-    <string name="nav_section_system">System</string>
     <string name="nav_user_fallback">User</string>
     <string name="collapse_sidebar">Collapse sidebar</string>
     <string name="expand_sidebar">Expand sidebar</string>
@@ -449,10 +448,6 @@
     <string name="settings_proxy_health_check_off">Off</string>
     <string name="settings_proxy_health_check_6h">Every 6h</string>
     <string name="settings_proxy_health_check_24h">Every 24h</string>
-    <plurals name="scripts_count">
-        <item quantity="one">%1$d script</item>
-        <item quantity="other">%1$d scripts</item>
-    </plurals>
     <plurals name="task_setups_count">
         <item quantity="one">%1$d setup</item>
         <item quantity="other">%1$d setups</item>
