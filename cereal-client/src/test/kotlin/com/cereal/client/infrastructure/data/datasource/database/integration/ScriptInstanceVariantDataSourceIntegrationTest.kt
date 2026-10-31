@@ -16,6 +16,7 @@ import com.cereal.client.infrastructure.data.datasource.database.room.mapper.Scr
 import com.cereal.client.infrastructure.data.datasource.database.room.mapper.ScriptNotificationOverrideMapper
 import com.cereal.client.infrastructure.data.datasource.database.room.mapper.ScriptPackageInstanceMapper
 import com.cereal.client.infrastructure.di.KoinScopeLinker
+import fixtures.aScriptPackage
 import fixtures.aScriptPackageInstance
 import fixtures.aScriptPackageWithVariant
 import io.mockk.mockk
@@ -75,20 +76,34 @@ class ScriptInstanceVariantDataSourceIntegrationTest : RoomUserDatabaseTestBase(
             )
         }
 
-    private suspend fun addVariantInstance(variantId: String): Pair<ScriptPackageGroup, ScriptPackageInstance> {
+    @Test
+    fun `test default-entry instance of a package that now has variants fails to load`() =
+        runTest {
+            val (_, instance) = addVariantInstance(variantId = null)
+            val newerJar = aScriptPackageWithVariant(PACKAGE, variantId = "checkout")
+
+            assertNull(scriptInstanceDataSource.getScriptPackageInstance(testUser, instance.id, newerJar))
+            assertEquals(
+                emptyList<ScriptPackageInstance>(),
+                scriptInstanceDataSource.getScriptPackageInstances(testUser, mapOf(PACKAGE to newerJar)),
+            )
+        }
+
+    /** Stores an instance of [variantId], or of the default entry of a package without variants when null. */
+    private suspend fun addVariantInstance(variantId: String?): Pair<ScriptPackageGroup, ScriptPackageInstance> {
         val group = ScriptPackageGroup(id = UUID.randomUUID().toString(), name = "Test Script Group", totalScriptPackages = 0)
         scriptInstanceDataSource.createScriptInstanceGroup(testUser, group)
         val instance =
             aScriptPackageInstance(
                 id = UUID.randomUUID().toString(),
                 packageName = PACKAGE,
-                definition = aScriptPackageWithVariant(PACKAGE, variantId = variantId),
+                definition = variantId?.let { aScriptPackageWithVariant(PACKAGE, variantId = it) } ?: aScriptPackage(PACKAGE),
                 variantId = variantId,
             )
         val mainScriptInstance =
             MainScriptInstance(
                 id = UUID.randomUUID().toString(),
-                definition = instance.definition.mainScript,
+                definition = instance.definition.mainScript!!,
                 configuration = emptyMap(),
                 createdAt = Clock.System.now(),
                 packageInstance = instance,

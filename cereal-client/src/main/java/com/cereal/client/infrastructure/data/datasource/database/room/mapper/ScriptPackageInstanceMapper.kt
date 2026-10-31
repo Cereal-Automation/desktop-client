@@ -6,6 +6,7 @@ import com.cereal.client.domain.model.script.ScriptPackageInstance
 import com.cereal.client.domain.model.script.configuration.ApplicationScriptConfigurationKeys
 import com.cereal.client.domain.model.script.configuration.ConfigValue
 import com.cereal.client.domain.model.script.entry
+import com.cereal.client.domain.model.script.entryIds
 import com.cereal.client.domain.model.user.User
 import com.cereal.client.infrastructure.data.datasource.database.room.entity.ScriptConfigurationEntity
 import com.cereal.client.infrastructure.data.datasource.database.room.entity.ScriptConfigurationItemEntity
@@ -34,9 +35,10 @@ class ScriptPackageInstanceMapper(
             return null
         }
 
-        // A variant removed from the installed jar fails to load, like a missing package; never the default entry.
+        // A variant removed from the installed jar fails to load, like a missing package, and so does a default-entry
+        // instance of a package that now has variants (it has no default entry); neither falls back to another entry.
         val variantId = scriptPackageEntity.variantId
-        if (variantId != null && variantId !in scriptPackageDefinition.variants) {
+        if (scriptPackageDefinition.entryIds.none { it == variantId }) {
             return null
         }
 

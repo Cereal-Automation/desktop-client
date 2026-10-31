@@ -20,6 +20,7 @@ import com.cereal.client.domain.model.script.configuration.ConfigItemType
 import com.cereal.client.domain.model.script.configuration.ConfigurationItem
 import com.cereal.client.domain.model.script.configuration.ScriptConfigurationItemDefinition
 import com.cereal.client.domain.model.script.entry
+import com.cereal.client.domain.model.script.entryIds
 import com.cereal.client.domain.model.script.entryName
 import com.cereal.client.domain.model.script.isClientUpdateRequired
 import com.cereal.client.presentation.error.ErrorResolver
@@ -127,7 +128,7 @@ class HomeViewModel(
     private val _composerForm = mutableStateOf<ConfigurationItemsFormSection?>(null)
     val composerForm: State<ConfigurationItemsFormSection?> = _composerForm
 
-    /** The agent's entries for the composer's picker: its main entry first, then each variant. */
+    /** The agent's entries for the composer's picker: its variants in manifest order, or its default entry without them. */
     val entryOptions = mutableStateOf<List<ScriptEntryOption>>(emptyList())
     val selectedEntry = mutableStateOf<ScriptEntryOption?>(null)
 
@@ -180,7 +181,7 @@ class HomeViewModel(
 
     /** A newly installed or updated agent: rebuild its entries and forms, staying on the picked entry while it exists. */
     private fun onAgentUpdated(agent: ScriptPackage) {
-        val options = (listOf(null) + agent.variants.keys).map { ScriptEntryOption(it, agent.entryName(it)) }
+        val options = agent.entryIds.map { ScriptEntryOption(it, agent.entryName(it)) }
         forms.clear()
         entryOptions.value = options
         selectEntry(options.firstOrNull { it.variantId == selectedEntry.value?.variantId } ?: options.first())

@@ -1,12 +1,16 @@
 package com.cereal.client.application.interactor.script
 
+import com.cereal.client.domain.model.exception.UnknownScriptVariantException
 import com.cereal.client.infrastructure.data.repository.inmemory.InMemoryCustomDatasetRepository
 import com.cereal.client.infrastructure.data.repository.inmemory.InMemoryProxyRepository
 import fixtures.VARIANT_FIELD
 import fixtures.aScriptPackageWithVariant
+import fixtures.agentConfigurationItems
+import fixtures.anAgentWithCheckoutVariant
 import kotlinx.coroutines.test.runTest
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Test
+import kotlin.test.assertFailsWith
 
 class GetScriptConfigDefinitionInteractorVariantTest {
     private val interactor = GetScriptConfigDefinitionInteractor(InMemoryProxyRepository(), InMemoryCustomDatasetRepository())
@@ -21,10 +25,22 @@ class GetScriptConfigDefinitionInteractorVariantTest {
         }
 
     @Test
-    fun `run should return the main script's fields when no variant is requested`() =
+    fun `run should fail when no variant is requested from a package with variants`() =
         runTest {
-            val result = interactor.run(GetScriptConfigDefinitionInteractor.Params(scriptPackage, null))
+            assertFailsWith<UnknownScriptVariantException> {
+                interactor.run(GetScriptConfigDefinitionInteractor.Params(scriptPackage, null))
+            }
+        }
 
-            assertEquals(emptyList<String>(), result.mainConfiguration.map { it.definition.key })
+    @Test
+    fun `run should show a variant that reuses the main script's class with each field once`() =
+        runTest {
+            // Like the agent's manifest: the top-level script is also its first variant, "browser-agent".
+            val agent = anAgentWithCheckoutVariant()
+
+            val result = interactor.run(GetScriptConfigDefinitionInteractor.Params(agent, null, variantId = "browser-agent"))
+
+            assertEquals(agentConfigurationItems().map { it.key }, result.mainConfiguration.map { it.definition.key })
+            assertEquals(emptyMap<String, Any>(), result.childConfigurations)
         }
 }

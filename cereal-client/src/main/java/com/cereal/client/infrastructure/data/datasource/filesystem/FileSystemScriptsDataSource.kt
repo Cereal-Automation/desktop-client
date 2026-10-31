@@ -144,10 +144,9 @@ class FileSystemScriptsDataSource(
         try {
             val scriptJarReader = ScriptJarReader(file, getFileEncryptionKey(user), encryption)
 
-            if (scriptJarReader.mainScriptCls == null ||
-                scriptJarReader.manifest == null ||
-                scriptJarReader.mainScriptConfigurationCls == null
-            ) {
+            // A package needs an entry: its scripts, or else a loadable top-level script.
+            val hasMainScript = scriptJarReader.mainScriptCls != null && scriptJarReader.mainScriptConfigurationCls != null
+            if (scriptJarReader.manifest == null || (scriptJarReader.variants.isEmpty() && !hasMainScript)) {
                 logger.error("${scriptJarReader.file.absoluteFile} does not contain a manifest or Script subclass.")
                 return null
             }
@@ -180,10 +179,9 @@ class FileSystemScriptsDataSource(
                 source = scriptJarReader.file,
                 manifest = manifest,
                 mainScript =
-                    MainScript(
-                        scriptJarReader.mainScriptCls!!,
-                        scriptConfigurationDefinitionBuilder.createFrom(scriptJarReader.mainScriptConfigurationCls!!),
-                    ),
+                    scriptJarReader.mainScriptCls?.let { cls ->
+                        MainScript(cls, scriptConfigurationDefinitionBuilder.createFrom(scriptJarReader.mainScriptConfigurationCls!!))
+                    },
                 childScripts = childScripts,
                 variants =
                     scriptJarReader.variants.mapValues { (_, variant) ->

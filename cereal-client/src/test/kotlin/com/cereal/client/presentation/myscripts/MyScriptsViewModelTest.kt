@@ -139,11 +139,11 @@ class MyScriptsViewModelTest {
         }
 
     @Test
-    fun `excludes the AI browser agent`() =
+    fun `lists the AI browser agent's entries like any other script's`() =
         runTest(dispatcher) {
             val vm = createViewModel(installed = listOf(anAgentPackage(), installed("com.a", "Alpha")))
 
-            assertEquals(listOf("com.a"), vm.rows.value.map { it.scriptPackage.manifest.packageName })
+            assertEquals(listOf(AI_BROWSER_AGENT_PACKAGE, "com.a"), vm.rows.value.map { it.scriptPackage.manifest.packageName })
         }
 
     @Test

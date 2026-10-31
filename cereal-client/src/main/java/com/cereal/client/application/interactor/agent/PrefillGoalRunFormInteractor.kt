@@ -42,7 +42,7 @@ class PrefillGoalRunFormInteractor(
     data class Params(
         val agent: ScriptPackage,
         val mainConfiguration: ScriptConfigurationValues,
-        /** The agent's variant the composer is on; null for its default entry. */
+        /** The agent's variant the composer is on; null only for an agent without variants. */
         val variantId: String? = null,
     )
 }

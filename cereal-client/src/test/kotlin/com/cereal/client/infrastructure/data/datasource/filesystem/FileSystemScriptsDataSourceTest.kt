@@ -6,7 +6,6 @@ import com.cereal.client.domain.model.script.Release
 import com.cereal.client.domain.model.user.User
 import com.cereal.client.infrastructure.data.datasource.filesystem.security.Encryption
 import fixtures.scripts.CheckoutVariantScript
-import fixtures.scripts.DefaultEntryScript
 import io.mockk.every
 import io.mockk.mockk
 import kotlinx.coroutines.flow.first
@@ -66,14 +65,13 @@ class FileSystemScriptsDataSourceTest {
     }
 
     @Test
-    fun `a jar whose manifest declares variants loads them alongside the default entry`() =
+    fun `a jar whose manifest declares scripts loads them without a top-level script`() =
         runTest {
             writeJar(
                 """
                 {
                     "package_name": "com.example.agent", "name": "Agent", "version_code": 1,
-                    "script": "fixtures.scripts.DefaultEntryScript",
-                    "variants": [
+                    "scripts": [
                         { "id": "checkout", "name": "Checkout", "script": "fixtures.scripts.CheckoutVariantScript",
                           "instructions": "Paste a product URL." }
                     ]
@@ -83,7 +81,7 @@ class FileSystemScriptsDataSourceTest {
 
             val scriptPackage = realBuilderDataSource().getScriptPackageDefinition("com.example.agent", testUser)!!.toScriptPackage(null)
 
-            assertEquals(DefaultEntryScript::class, scriptPackage.mainScript.clazz)
+            assertNull(scriptPackage.mainScript)
             val variant = scriptPackage.variants.getValue("checkout")
             assertEquals("Checkout", variant.name)
             assertEquals("Paste a product URL.", variant.instructions)
@@ -96,7 +94,32 @@ class FileSystemScriptsDataSourceTest {
         }
 
     @Test
-    fun `a jar whose manifest declares no variants loads with none`() =
+    fun `a top-level script next to scripts is not loaded`() =
+        runTest {
+            writeJar(
+                """
+                { "package_name": "com.example.agent", "name": "Agent", "version_code": 1,
+                  "script": "fixtures.scripts.DoesNotExist",
+                  "scripts": [ { "id": "checkout", "name": "Checkout", "script": "fixtures.scripts.CheckoutVariantScript" } ] }
+                """,
+            )
+
+            val scriptPackage = realBuilderDataSource().getScriptPackageDefinition("com.example.agent", testUser)!!.toScriptPackage(null)
+
+            assertNull(scriptPackage.mainScript)
+            assertEquals(listOf("checkout"), scriptPackage.variants.keys.toList())
+        }
+
+    @Test
+    fun `a jar whose manifest declares neither script nor scripts is rejected`() =
+        runTest {
+            writeJar("""{ "package_name": "com.example.agent", "name": "Agent", "version_code": 1 }""")
+
+            assertNull(realBuilderDataSource().getScriptPackageDefinition("com.example.agent", testUser))
+        }
+
+    @Test
+    fun `a jar whose manifest declares no scripts loads with none`() =
         runTest {
             writeJar(
                 """
@@ -109,7 +132,8 @@ class FileSystemScriptsDataSourceTest {
 
             assertEquals(
                 listOf("goal"),
-                scriptPackage.mainScript.configuration.configurationItems
+                scriptPackage.mainScript!!
+                    .configuration.configurationItems
                     .map { it.key },
             )
             assertTrue(scriptPackage.variants.isEmpty())
@@ -129,12 +153,12 @@ class FileSystemScriptsDataSourceTest {
             """{ "id": "checkout", "name": "Checkout", "script": "fixtures.scripts.TwoProxiesVariantScript" }""",
         ],
     )
-    fun `a jar with a malformed variant is rejected`(variants: String) =
+    fun `a jar with a malformed script entry is rejected`(scripts: String) =
         runTest {
             writeJar(
                 """
                 { "package_name": "com.example.agent", "name": "Agent", "version_code": 1,
-                  "script": "fixtures.scripts.DefaultEntryScript", "variants": [ $variants ] }
+                  "script": "fixtures.scripts.DefaultEntryScript", "scripts": [ $scripts ] }
                 """,
             )
 

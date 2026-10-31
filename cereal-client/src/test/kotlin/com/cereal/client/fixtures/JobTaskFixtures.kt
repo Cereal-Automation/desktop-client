@@ -41,7 +41,7 @@ fun mainTaskFixture(
     val scriptInstance =
         MainScriptInstance(
             id = "$instanceId-main",
-            definition = scriptPackage.mainScript,
+            definition = scriptPackage.mainScript!!,
             configuration = emptyMap(),
             createdAt = Clock.System.now(),
             packageInstance = packageInstance,

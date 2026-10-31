@@ -185,30 +185,29 @@ class ScriptJarReaderTest {
     }
 
     @Test
-    fun `a malformed variant rejects the package with a reason naming the problem`() {
+    fun `a malformed scripts entry rejects the package with a reason naming the problem`() {
         val checkout = """{ "id": "checkout", "name": "Checkout", "script": "fixtures.scripts.CheckoutVariantScript" }"""
         val cases =
             mapOf(
-                """{ "id": "", "name": "Checkout", "script": "fixtures.scripts.CheckoutVariantScript" }""" to "has no id",
+                """{ "id": "", "name": "Checkout", "script": "fixtures.scripts.CheckoutVariantScript" }""" to "a script has no id",
                 """{ "id": "checkout", "name": " ", "script": "fixtures.scripts.CheckoutVariantScript" }""" to
-                    "Variant 'checkout' has no name",
-                """{ "id": "checkout", "name": "Checkout", "script": "" }""" to "Variant 'checkout' has no script",
-                """{ "name": "Checkout", "script": "fixtures.scripts.CheckoutVariantScript" }""" to "has no id",
+                    "Script 'checkout' has no name",
+                """{ "id": "checkout", "name": "Checkout", "script": "" }""" to "Script 'checkout' has no script class",
+                """{ "name": "Checkout", "script": "fixtures.scripts.CheckoutVariantScript" }""" to "a script has no id",
                 """{ "id": "checkout", "script": "fixtures.scripts.CheckoutVariantScript" }""" to
-                    "Variant 'checkout' has no name",
-                """{ "id": "checkout", "name": "Checkout" }""" to "Variant 'checkout' has no script",
-                "$checkout, $checkout" to "Duplicate variant id 'checkout'",
+                    "Script 'checkout' has no name",
+                """{ "id": "checkout", "name": "Checkout" }""" to "Script 'checkout' has no script class",
+                "$checkout, $checkout" to "Duplicate script id 'checkout'",
                 """{ "id": "checkout", "name": "Checkout", "script": "fixtures.scripts.DoesNotExist" }""" to
-                    "Variant 'checkout' script fixtures.scripts.DoesNotExist could not be loaded as a Script",
+                    "Script 'checkout' class fixtures.scripts.DoesNotExist could not be loaded as a Script",
                 """{ "id": "checkout", "name": "Checkout", "script": "fixtures.scripts.NotAScript" }""" to
-                    "Variant 'checkout' script fixtures.scripts.NotAScript could not be loaded as a Script",
+                    "Script 'checkout' class fixtures.scripts.NotAScript could not be loaded as a Script",
             )
 
-        cases.forEach { (variants, reason) ->
+        cases.forEach { (scripts, reason) ->
             val manifestJson =
                 """
-                { "package_name": "com.example.test", "name": "Test Script", "version_code": 1,
-                  "script": "fixtures.scripts.DefaultEntryScript", "variants": [ $variants ] }
+                { "package_name": "com.example.test", "name": "Test Script", "version_code": 1, "scripts": [ $scripts ] }
                 """.trimIndent()
 
             val exception =
