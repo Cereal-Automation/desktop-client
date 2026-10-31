@@ -103,7 +103,7 @@ class ScriptInstanceVariantDataSourceIntegrationTest : RoomUserDatabaseTestBase(
         val mainScriptInstance =
             MainScriptInstance(
                 id = UUID.randomUUID().toString(),
-                definition = instance.definition.mainScript,
+                definition = instance.definition.mainScript!!,
                 configuration = emptyMap(),
                 createdAt = Clock.System.now(),
                 packageInstance = instance,

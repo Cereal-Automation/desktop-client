@@ -95,7 +95,7 @@ fun anAgentPackage(items: List<ScriptConfigurationItemDefinition> = agentConfigu
     return base.copy(
         manifest = base.manifest.copy(name = "AI Browser Agent"),
         mainScript =
-            base.mainScript.copy(
+            base.mainScript!!.copy(
                 configuration = ScriptConfigurationDefinition(ScriptConfiguration::class, items),
             ),
     )
@@ -108,7 +108,7 @@ fun anAgentPackage(items: List<ScriptConfigurationItemDefinition> = agentConfigu
 fun anAgentWithCheckoutVariant(): ScriptPackage {
     val agent = anAgentPackage()
     val checkout =
-        agent.mainScript.copy(
+        agent.mainScript!!.copy(
             configuration =
                 ScriptConfigurationDefinition(ScriptConfiguration::class, listOf(anAgentItem("productUrl", ConfigItemType.StringConfigItem, 0))),
         )

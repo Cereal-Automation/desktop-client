@@ -36,4 +36,16 @@ class ScriptVariantTest {
         assertFailsWith<UnknownScriptVariantException> { definition.entryName(null) }
         assertFailsWith<UnknownScriptVariantException> { definition.entryInstructions(null) }
     }
+
+    @Test
+    fun `a package needs a main script or variants`() {
+        assertFailsWith<IllegalArgumentException> { aScriptPackage("com.example").copy(mainScript = null) }
+    }
+
+    @Test
+    fun `a package with variants needs no main script`() {
+        val definition = aScriptPackageWithVariant("com.example", variantId = "checkout").copy(mainScript = null)
+
+        assertEquals(listOf("checkout"), definition.entryIds)
+    }
 }

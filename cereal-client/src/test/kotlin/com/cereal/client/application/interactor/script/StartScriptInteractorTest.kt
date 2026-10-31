@@ -214,7 +214,7 @@ class StartScriptInteractorTest {
         val scriptPackage =
             base.copy(
                 mainScript =
-                    base.mainScript.copy(
+                    base.mainScript!!.copy(
                         configuration =
                             ScriptConfigurationDefinition(
                                 scriptConfigurationClass = ScriptConfiguration::class,

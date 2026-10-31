@@ -8,20 +8,19 @@ import kotlin.reflect.KClass
 data class ScriptPackage(
     val source: File,
     val manifest: Manifest,
-    val mainScript: MainScript,
+    /** The only entry of a package without [variants]; null when the package has variants instead. */
+    val mainScript: MainScript?,
     val childScripts: Map<String, ChildScript>,
-    /**
-     * User-selectable entry scripts by their stable manifest id. When present they replace the [mainScript] as the
-     * package's entries; the [mainScript] then only serves clients that don't read variants.
-     */
+    /** User-selectable entry scripts (the manifest's `scripts`) by their stable id; when present they are the only entries. */
     val variants: Map<String, ScriptVariant> = emptyMap(),
 ) {
     init {
         require(variants.keys.none { it.isBlank() }) { "A variant id must not be blank." }
+        require(mainScript != null || variants.isNotEmpty()) { "A package needs a main script or variants." }
     }
 }
 
-/** A user-selectable entry script of a package, declared in the manifest's `variants`. */
+/** A user-selectable entry script of a package, declared in the manifest's `scripts`. */
 data class ScriptVariant(
     val name: String,
     val instructions: String?,
@@ -40,7 +39,7 @@ val ScriptPackage.entryIds: List<String?>
  * The entry script for [variantId]: the [ScriptPackage.mainScript] when null and the package has no variants,
  * otherwise that variant. Any other id, or null in a package with variants, throws [UnknownScriptVariantException].
  */
-fun ScriptPackage.entry(variantId: String?): MainScript = if (isDefaultEntry(variantId)) mainScript else variant(variantId).script
+fun ScriptPackage.entry(variantId: String?): MainScript = if (isDefaultEntry(variantId)) checkNotNull(mainScript) else variant(variantId).script
 
 /** The display name of the entry for [variantId]: the variant's name, or the package name for the default entry. */
 fun ScriptPackage.entryName(variantId: String?): String = if (isDefaultEntry(variantId)) manifest.name else variant(variantId).name

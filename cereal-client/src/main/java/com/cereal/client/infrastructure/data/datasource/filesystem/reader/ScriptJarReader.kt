@@ -34,7 +34,7 @@ class ScriptJarReader(
         mutableMapOf()
     var manifest: ManifestDefinition? = null
 
-    /** Variants by manifest id. */
+    /** The manifest's `scripts` by id. */
     val variants: MutableMap<String, LoadedVariant> = mutableMapOf()
 
     init {
@@ -53,23 +53,24 @@ class ScriptJarReader(
             }
 
         manifestJson?.let { json ->
-            json.scriptPackageClass.let { mainScriptClassName ->
+            // With scripts to pick from, the top-level script is no entry, so it isn't loaded.
+            json.scriptPackageClass?.takeIf { json.variants.isEmpty() }?.let { mainScriptClassName ->
                 loadScript(mainScriptClassName)?.let { (scriptClass, configurationClass) ->
                     mainScriptCls = scriptClass
                     mainScriptConfigurationCls = configurationClass
                 }
             }
 
-            // A malformed variant rejects the whole package: the caller treats the exception like an unreadable jar.
+            // A malformed scripts entry rejects the whole package: the caller treats the exception like an unreadable jar.
             json.variants.forEach { variant ->
-                fun reject(reason: String): Nothing = throw InvalidManifestException("Invalid variant in manifest: $reason")
-                val id = variant.id?.takeIf { it.isNotBlank() } ?: reject("a variant has no id.")
-                val name = variant.name?.takeIf { it.isNotBlank() } ?: reject("Variant '$id' has no name.")
-                val script = variant.scriptClass?.takeIf { it.isNotBlank() } ?: reject("Variant '$id' has no script.")
-                if (id in variants) reject("Duplicate variant id '$id'.")
+                fun reject(reason: String): Nothing = throw InvalidManifestException("Invalid scripts entry in manifest: $reason")
+                val id = variant.id?.takeIf { it.isNotBlank() } ?: reject("a script has no id.")
+                val name = variant.name?.takeIf { it.isNotBlank() } ?: reject("Script '$id' has no name.")
+                val script = variant.scriptClass?.takeIf { it.isNotBlank() } ?: reject("Script '$id' has no script class.")
+                if (id in variants) reject("Duplicate script id '$id'.")
                 val (scriptClass, configurationClass) =
                     loadScript(script)?.let { (cls, config) -> config?.let { cls to it } }
-                        ?: reject("Variant '$id' script $script could not be loaded as a Script.")
+                        ?: reject("Script '$id' class $script could not be loaded as a Script.")
                 variants[id] = LoadedVariant(name, variant.instructions, scriptClass, configurationClass)
             }
 

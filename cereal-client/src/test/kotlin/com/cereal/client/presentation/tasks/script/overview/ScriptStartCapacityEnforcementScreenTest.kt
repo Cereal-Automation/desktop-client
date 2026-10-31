@@ -114,7 +114,7 @@ class ScriptStartCapacityEnforcementScreenTest {
         return base.copy(
             mainScript =
                 MainScript(
-                    clazz = base.mainScript.clazz,
+                    clazz = base.mainScript!!.clazz,
                     configuration =
                         ScriptConfigurationDefinition(
                             scriptConfigurationClass = ScriptConfiguration::class,

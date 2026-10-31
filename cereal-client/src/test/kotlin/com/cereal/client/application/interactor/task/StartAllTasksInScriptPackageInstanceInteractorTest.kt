@@ -50,7 +50,7 @@ class StartAllTasksInScriptPackageInstanceInteractorTest {
             val childScript =
                 ChildScript(
                     name = "child",
-                    clazz = base.definition.mainScript.clazz,
+                    clazz = base.definition.mainScript!!.clazz,
                     configuration = base.definition.mainScript.configuration,
                 )
             val invalidInstance =

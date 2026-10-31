@@ -35,7 +35,7 @@ class ScriptEntryPickerScreenTest {
         runPickerScreenTest(
             aScriptPackageWithVariant(PACKAGE_NAME, variantId = "checkout", variantName = "Checkout").let {
                 // The package's main script as the first variant, so the picker opens on a form without "Variant field".
-                it.copy(variants = mapOf("main" to ScriptVariant("Main", instructions = null, script = it.mainScript)) + it.variants)
+                it.copy(variants = mapOf("main" to ScriptVariant("Main", instructions = null, script = it.mainScript!!)) + it.variants)
             },
         ) {
             waitForText("2 available")
