@@ -17,7 +17,7 @@ import testutil.setScreenContent
 import kotlin.test.Test
 import kotlin.test.assertEquals
 
-/** Home's recent goal runs on the in-memory graph. Self-skips where skiko is unavailable. */
+/** Home's recent runs on the in-memory graph. Self-skips where skiko is unavailable. */
 @OptIn(ExperimentalTestApi::class)
 class HomeActivitySectionsScreenTest {
     private val withRun =
@@ -54,11 +54,11 @@ class HomeActivitySectionsScreenTest {
     }
 
     @Test
-    fun `empty state when there are no goal runs`() =
+    fun `empty state when there are no runs`() =
         runScreenTest {
             setScreenContent { HomeScreen() }
 
-            onNodeWithText("No goal runs yet. Describe a goal above to start one.").performScrollTo().assertIsDisplayed()
+            onNodeWithText("No runs yet. Describe a goal above or run a script to start one.").performScrollTo().assertIsDisplayed()
         }
 
     private companion object {

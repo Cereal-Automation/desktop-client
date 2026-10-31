@@ -20,7 +20,6 @@ import com.cereal.client.application.interactor.app.ObserveSidebarCollapsedInter
 import com.cereal.client.application.interactor.app.SetSidebarCollapsedInteractor
 import com.cereal.client.application.interactor.auth.GetAuthenticatedUserInteractor
 import com.cereal.client.application.interactor.notification.ObserveUnseenNotificationCountInteractor
-import com.cereal.client.application.interactor.script.GetScriptsInteractor
 import com.cereal.client.application.interactor.task.ObserveTasksInteractor
 import com.cereal.client.domain.model.task.TaskStatus
 import com.cereal.client.domain.model.task.needsAttention
@@ -59,7 +58,6 @@ class MainViewModel(
     private val applicationConfig: ApplicationConfig,
     private val checkForUpdatesInteractor: CheckForUpdatesInteractor,
     private val menuReselectionCoordinator: MenuReselectionCoordinator,
-    getScriptsInteractor: GetScriptsInteractor,
     private val observeTasksInteractor: ObserveTasksInteractor,
     private val observeUnseenNotificationCountInteractor: ObserveUnseenNotificationCountInteractor,
     observeSidebarCollapsedInteractor: ObserveSidebarCollapsedInteractor,
@@ -81,7 +79,6 @@ class MainViewModel(
     private var unseenNotificationCount: Int = 0
 
     val menuItems = mutableStateOf(buildMenuItems())
-    val activeScriptCount = mutableStateOf(0)
     val isSidebarCollapsed = mutableStateOf(false)
 
     /** Toggles waiting to be saved; conflated, so a burst of clicks only saves the latest choice. */
@@ -101,32 +98,7 @@ class MainViewModel(
             }
         }
 
-        // Re-subscribe to the script flow on every login/logout. `GetScriptsInteractor`
-        // calls `UserSession.requireUser()` which throws synchronously if no user is set,
-        // so launching it before login (which is when this VM is constructed) would
-        // permanently fail the flow. Gating on the user makes the count update after
-        // login and reset on logout.
-        scope.launch(dispatcherProvider.io) {
-            getAuthenticatedUserInteractor(Interactor.None())
-                .map { (it as? SuspendableResult.Success)?.value }
-                .flatMapLatest { user ->
-                    if (user == null) {
-                        activeScriptCount.value = 0
-                        emptyFlow()
-                    } else {
-                        getScriptsInteractor(Interactor.None())
-                    }
-                }.collectLatest { result ->
-                    if (result is SuspendableResult.Success) {
-                        val count = result.value.size
-                        withContext(dispatcherProvider.main) {
-                            activeScriptCount.value = count
-                        }
-                    }
-                }
-        }
-
-        // The preference is stored per user, so (like the script count) it is only readable once logged in.
+        // The preference is stored per user, so it is only readable once logged in.
         scope.launch(dispatcherProvider.io) {
             getAuthenticatedUserInteractor(Interactor.None())
                 .map { (it as? SuspendableResult.Success)?.value }
@@ -232,7 +204,7 @@ class MainViewModel(
                         route = Root.Routing.Home,
                         resourcePath = IconSource.Vector(Icons.Filled.Home),
                         titleResource = Res.string.home,
-                        section = MenuSection.AGENT,
+                        section = MenuSection.WORKSPACE,
                     )
             }
             this +=
@@ -240,7 +212,7 @@ class MainViewModel(
                     route = Root.Routing.Tasks(),
                     resourcePath = IconSource.Vector(Icons.Filled.Bolt),
                     titleResource = Res.string.tasks,
-                    section = MenuSection.AGENT,
+                    section = MenuSection.WORKSPACE,
                     // Red only when something needs the user; otherwise a neutral running count.
                     badge = (if (attentionTaskCount > 0) attentionTaskCount else runningTaskCount).takeIf { it > 0 },
                     isBadgeAttention = attentionTaskCount > 0,
@@ -250,8 +222,10 @@ class MainViewModel(
                     route = Root.Routing.NotificationCenter,
                     resourcePath = IconSource.Vector(Icons.Filled.Notifications),
                     titleResource = Res.string.notifications,
-                    section = MenuSection.AGENT,
+                    section = MenuSection.WORKSPACE,
                     badge = unseenNotificationCount.takeIf { it > 0 },
+                    // Unread notifications are informational; red stays for tasks that need the user.
+                    isBadgeAttention = false,
                 )
             // Ready-made scripts are hidden in white-label builds: the appliance is locked to its
             // Brand scripts, with no browsing or installing of others (see docs/adr/0003).

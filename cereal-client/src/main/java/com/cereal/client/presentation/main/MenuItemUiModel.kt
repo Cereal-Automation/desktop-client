@@ -4,10 +4,9 @@ import androidx.compose.runtime.Immutable
 import androidx.compose.ui.graphics.vector.ImageVector
 import com.cereal.client.presentation.navigation.Root
 import com.cereal_automation.cereal_client.generated.resources.Res
-import com.cereal_automation.cereal_client.generated.resources.nav_section_agent
 import com.cereal_automation.cereal_client.generated.resources.nav_section_ready_made_scripts
 import com.cereal_automation.cereal_client.generated.resources.nav_section_resources
-import com.cereal_automation.cereal_client.generated.resources.nav_section_system
+import com.cereal_automation.cereal_client.generated.resources.nav_section_workspace
 import org.jetbrains.compose.resources.DrawableResource
 import org.jetbrains.compose.resources.StringResource
 
@@ -22,14 +21,14 @@ sealed interface IconSource {
     ) : IconSource
 }
 
-/** Sidebar sections, rendered top to bottom in declaration order. */
+/** Sidebar sections, rendered top to bottom in declaration order; an untitled section sits above the user card. */
 enum class MenuSection(
-    val titleResource: StringResource,
+    val titleResource: StringResource?,
 ) {
-    AGENT(Res.string.nav_section_agent),
+    WORKSPACE(Res.string.nav_section_workspace),
     READY_MADE_SCRIPTS(Res.string.nav_section_ready_made_scripts),
     RESOURCES(Res.string.nav_section_resources),
-    SYSTEM(Res.string.nav_section_system),
+    SYSTEM(null),
 }
 
 @Immutable

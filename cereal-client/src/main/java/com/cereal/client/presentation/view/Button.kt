@@ -24,6 +24,9 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.lerp
+import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
@@ -72,12 +75,12 @@ fun CerealButton(
     val colors =
         when (type) {
             CerealButtonType.Primary -> {
-                ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary)
+                ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary.readableUnderWhite())
             }
 
             CerealButtonType.Secondary -> {
                 ButtonDefaults.buttonColors(
-                    containerColor = MaterialTheme.colorScheme.secondary,
+                    containerColor = MaterialTheme.colorScheme.secondary.readableUnderWhite(),
                 )
             }
 
@@ -300,3 +303,15 @@ private fun cerealButtonTextStyle(size: CerealButtonSize) =
         CerealButtonSize.Small -> MaterialTheme.typography.labelLarge.copy(fontWeight = FontWeight.Medium)
         CerealButtonSize.Large -> MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Medium)
     }
+
+/** Darkens a fill until white label text on it meets WCAG AA (4.5:1); covers white-label brand colors too. */
+private fun Color.readableUnderWhite(): Color {
+    var fill = this
+    while (WHITE_LUMINANCE_OFFSET / (fill.luminance() + LUMINANCE_OFFSET) < AA_CONTRAST) fill = lerp(fill, Color.Black, DARKEN_STEP)
+    return fill
+}
+
+private const val LUMINANCE_OFFSET = 0.05f
+private const val WHITE_LUMINANCE_OFFSET = 1f + LUMINANCE_OFFSET
+private const val AA_CONTRAST = 4.5f
+private const val DARKEN_STEP = 0.05f

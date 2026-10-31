@@ -100,7 +100,7 @@ object HomeTestTags {
 
 /**
  * The agent home: a two-step setup (connect a model, then the goal composer), or the install/update card
- * when the agent can't run. Recent goal runs go below.
+ * when the agent can't run. Recent runs go below.
  */
 @Composable
 fun HomeScreen(
@@ -142,7 +142,17 @@ fun HomeScreen(
                 verticalArrangement = Arrangement.spacedBy(14.dp),
             ) {
                 val slot = viewModel.slot.value
-                if (slot != HomeComposerSlot.Loading) Intro(ready = slot == HomeComposerSlot.Composer)
+                // Connecting in place keeps the guided layout; the composer-first one is for a later visit.
+                var connectedHere by remember { mutableStateOf(false) }
+                LaunchedEffect(slot) { if (slot == HomeComposerSlot.NoAiProvider) connectedHere = true }
+                val provider = (aiState as? HomeAiProviderState.Configured)?.provider
+                if (slot != HomeComposerSlot.Loading) {
+                    Intro(
+                        ready = slot == HomeComposerSlot.Composer,
+                        provider = provider?.takeUnless { connectedHere },
+                        onChangeModel = onNavigateToAiSettings,
+                    )
+                }
                 when (slot) {
                     HomeComposerSlot.Loading -> {}
 
@@ -156,8 +166,8 @@ fun HomeScreen(
 
                     HomeComposerSlot.Composer -> {
                         if (installViewModel.isUnderMaintenance.value) MaintenanceBanner()
-                        (aiState as? HomeAiProviderState.Configured)?.let { ConnectedStep(it.provider, onNavigateToAiSettings) }
-                        GoalStep(viewModel)
+                        if (connectedHere) provider?.let { ConnectedStep(it, onNavigateToAiSettings) }
+                        GoalStep(viewModel, numbered = connectedHere)
                     }
 
                     HomeComposerSlot.NoAiProvider -> {
@@ -172,8 +182,13 @@ fun HomeScreen(
     }
 }
 
+/** The pitch, or with a [provider] the connected model in its place so the composer leads. */
 @Composable
-private fun Intro(ready: Boolean) {
+private fun Intro(
+    ready: Boolean,
+    provider: AiProviderUiModel?,
+    onChangeModel: () -> Unit,
+) {
     Column(
         modifier = Modifier.padding(bottom = 6.dp),
         verticalArrangement = Arrangement.spacedBy(4.dp),
@@ -183,11 +198,15 @@ private fun Intro(ready: Boolean) {
             style = MaterialTheme.typography.headlineSmall.copy(fontSize = 22.sp, fontWeight = FontWeight.Bold),
             color = MaterialTheme.colorScheme.onBackground,
         )
-        CerealText(
-            text = stringResource(Res.string.home_pitch),
-            style = MaterialTheme.typography.bodyMedium,
-            color = CerealTheme.colorScheme.contentTertiary,
-        )
+        if (provider != null) {
+            ModelLine(provider, onChangeModel)
+        } else {
+            CerealText(
+                text = stringResource(Res.string.home_pitch),
+                style = MaterialTheme.typography.bodyMedium,
+                color = CerealTheme.colorScheme.contentTertiary,
+            )
+        }
     }
 }
 
@@ -249,10 +268,10 @@ private fun MaintenanceBanner() {
 
 private enum class StepBadge { Number, Done, Locked }
 
-/** A numbered setup step: badge, title and [subtitle] in the head, then the optional [body]. */
+/** A setup step: badge (when [number] is set), title and [subtitle] in the head, then the optional [body]. */
 @Composable
 private fun HomeStep(
-    number: Int,
+    number: Int?,
     title: String,
     subtitle: @Composable () -> Unit,
     badge: StepBadge = StepBadge.Number,
@@ -264,7 +283,7 @@ private fun HomeStep(
             modifier = Modifier.fillMaxWidth().padding(horizontal = 22.dp, vertical = 20.dp),
             horizontalArrangement = Arrangement.spacedBy(14.dp),
         ) {
-            StepNumber(number, badge)
+            number?.let { StepNumber(it, badge) }
             Column(modifier = Modifier.weight(1f)) {
                 CerealText(
                     text = title,
@@ -324,7 +343,7 @@ private fun ConnectStep(viewModel: HomeAiProviderViewModel) {
     }
 }
 
-/** Step 1 done: the provider and model, with Change opening Settings → AI. */
+/** Step 1 done, right after connecting: the provider and model, with Change opening Settings → AI. */
 @Composable
 private fun ConnectedStep(
     provider: AiProviderUiModel,
@@ -355,6 +374,27 @@ private fun ConnectedStep(
     )
 }
 
+/** The connected provider and model, with Change opening Settings → AI. */
+@Composable
+private fun ModelLine(
+    provider: AiProviderUiModel,
+    onChangeModel: () -> Unit,
+) {
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(10.dp),
+    ) {
+        CerealText(
+            stringResource(provider.preset.label()),
+            style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.SemiBold),
+            color = MaterialTheme.colorScheme.onSurface,
+        )
+        Box(Modifier.size(3.dp).clip(CircleShape).background(CerealTheme.colorScheme.contentSubtle))
+        CerealText(provider.model, style = MaterialTheme.typography.bodyMedium, color = CerealTheme.colorScheme.contentSecondary)
+        CerealButton(onClick = onChangeModel, text = stringResource(Res.string.home_ai_change), type = CerealButtonType.Surface)
+    }
+}
+
 /** Step 2 before a model is connected: collapsed, with nothing to focus. */
 @Composable
 private fun LockedGoalStep() {
@@ -375,14 +415,17 @@ private fun LockedGoalStep() {
 }
 
 @Composable
-private fun GoalStep(viewModel: HomeViewModel) {
+private fun GoalStep(
+    viewModel: HomeViewModel,
+    numbered: Boolean,
+) {
     HomeStep(
-        number = 2,
+        number = 2.takeIf { numbered },
         title = stringResource(Res.string.home_composer_title),
         subtitle = { StepSubtitle(stringResource(Res.string.home_composer_subtitle)) },
     ) {
         Column(
-            modifier = Modifier.padding(start = 62.dp, end = 22.dp, bottom = 22.dp),
+            modifier = Modifier.padding(start = if (numbered) 62.dp else 22.dp, end = 22.dp, bottom = 22.dp),
             verticalArrangement = Arrangement.spacedBy(18.dp),
         ) {
             val entryOptions = viewModel.entryOptions.value

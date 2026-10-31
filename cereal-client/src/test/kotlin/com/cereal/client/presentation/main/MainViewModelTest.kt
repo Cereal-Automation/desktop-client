@@ -9,10 +9,8 @@ import com.cereal.client.application.interactor.app.ObserveSidebarCollapsedInter
 import com.cereal.client.application.interactor.app.SetSidebarCollapsedInteractor
 import com.cereal.client.application.interactor.auth.GetAuthenticatedUserInteractor
 import com.cereal.client.application.interactor.notification.ObserveUnseenNotificationCountInteractor
-import com.cereal.client.application.interactor.script.GetScriptsInteractor
 import com.cereal.client.application.interactor.task.ObserveTasksInteractor
 import com.cereal.client.domain.model.app.Version
-import com.cereal.client.domain.model.script.ScriptPackage
 import com.cereal.client.domain.model.task.JobTask
 import com.cereal.client.domain.model.task.TaskStatus
 import com.cereal.client.domain.model.task.UserInteraction
@@ -59,7 +57,6 @@ class MainViewModelTest {
     private val applicationConfig: ApplicationConfig = mockk(relaxed = true)
     private val checkForUpdatesInteractor: CheckForUpdatesInteractor = mockk(relaxed = true)
     private val menuReselectionCoordinator = MenuReselectionCoordinator()
-    private val getScriptsInteractor: GetScriptsInteractor = mockk(relaxed = true)
     private val tasksRepository = InMemoryTasksRepository()
     private val observeTasksInteractor = ObserveTasksInteractor(tasksRepository)
     private val observeUnseenNotificationCountInteractor: ObserveUnseenNotificationCountInteractor = mockk(relaxed = true)
@@ -71,7 +68,6 @@ class MainViewModelTest {
     fun setUp() {
         Dispatchers.setMain(dispatcher)
         coEvery { getAuthenticatedUserInteractor(any()) } returns flowOf(SuspendableResult.Success(user()))
-        coEvery { getScriptsInteractor(any()) } returns flowOf(SuspendableResult.Success(emptyList()))
         coEvery { observeUnseenNotificationCountInteractor(any()) } returns flowOf(SuspendableResult.Success(0))
     }
 
@@ -87,7 +83,6 @@ class MainViewModelTest {
             applicationConfig = applicationConfig,
             checkForUpdatesInteractor = checkForUpdatesInteractor,
             menuReselectionCoordinator = menuReselectionCoordinator,
-            getScriptsInteractor = getScriptsInteractor,
             observeTasksInteractor = observeTasksInteractor,
             observeUnseenNotificationCountInteractor = observeUnseenNotificationCountInteractor,
             observeSidebarCollapsedInteractor = ObserveSidebarCollapsedInteractor(preferences),
@@ -110,7 +105,7 @@ class MainViewModelTest {
 
         val first = viewModel.menuItems.value.first()
         assertEquals(Root.Routing.Home, first.route)
-        assertEquals(MenuSection.AGENT, first.section)
+        assertEquals(MenuSection.WORKSPACE, first.section)
         assertTrue(first.selected)
     }
 
@@ -122,6 +117,7 @@ class MainViewModelTest {
 
         val notifications = viewModel.menuItems.value.first { it.route is Root.Routing.NotificationCenter }
         assertEquals(3, notifications.badge)
+        assertFalse(notifications.isBadgeAttention)
     }
 
     @Test
@@ -208,16 +204,6 @@ class MainViewModelTest {
 
         val profile = viewModel.menuItems.value.first { it.route is Root.Routing.Profile }
         assertEquals("Jane", profile.titleOverride)
-    }
-
-    @Test
-    fun `init reflects the active script count`() {
-        coEvery { getScriptsInteractor(any()) } returns
-            flowOf(SuspendableResult.Success(listOf(mockk<ScriptPackage>(), mockk<ScriptPackage>())))
-        val viewModel = createViewModel()
-        dispatcher.scheduler.advanceUntilIdle()
-
-        assertEquals(2, viewModel.activeScriptCount.value)
     }
 
     private fun task(

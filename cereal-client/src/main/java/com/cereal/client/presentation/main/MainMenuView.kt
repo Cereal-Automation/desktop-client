@@ -75,16 +75,13 @@ import com.cereal_automation.cereal_client.generated.resources.application
 import com.cereal_automation.cereal_client.generated.resources.collapse_sidebar
 import com.cereal_automation.cereal_client.generated.resources.expand_sidebar
 import com.cereal_automation.cereal_client.generated.resources.nav_user_fallback
-import com.cereal_automation.cereal_client.generated.resources.scripts_count
 import kotlinx.collections.immutable.ImmutableList
 import org.jetbrains.compose.resources.painterResource
-import org.jetbrains.compose.resources.pluralStringResource
 import org.jetbrains.compose.resources.stringResource
 
 @Composable
 fun MainMenu(
     menuItems: ImmutableList<MenuItemUiModel>,
-    activeScriptCount: Int,
     collapsed: Boolean = false,
     onToggleCollapsed: () -> Unit = {},
     onClick: (MenuItemUiModel) -> Unit,
@@ -124,9 +121,9 @@ fun MainMenu(
             contentAlignment = Alignment.TopStart,
         ) { isCollapsed ->
             Column {
-                MenuSection.entries.filter { it in sections }.forEachIndexed { index, section ->
+                MenuSection.entries.filter { it in sections && it.titleResource != null }.forEachIndexed { index, section ->
                     if (!isCollapsed) {
-                        MenuSectionLabel(stringResource(section.titleResource))
+                        MenuSectionLabel(stringResource(section.titleResource!!))
                     } else if (index > 0) {
                         HorizontalDivider(
                             thickness = 1.dp,
@@ -143,9 +140,15 @@ fun MainMenu(
 
         Spacer(Modifier.weight(1f))
 
+        // Unlabelled sections sit just above the user card, not under a header of their own.
+        MenuSection.entries.filter { it.titleResource == null }.forEach { section ->
+            sections[section]?.forEach { item ->
+                MenuNavItem(item = item, collapsed = collapsed, onClick = { onClick(item) })
+            }
+        }
+
         UserCard(
             username = username,
-            activeScriptCount = activeScriptCount,
             collapsed = collapsed,
             onClick = { profileItem?.let { onClick(it) } },
         )
@@ -243,8 +246,8 @@ private fun MenuNavItem(
     collapsed: Boolean,
     onClick: () -> Unit,
 ) {
-    val accent = MaterialTheme.colorScheme.primary
-    val accentTint = accent.copy(alpha = 0.10f)
+    // Selection stays neutral: red is reserved for badges that need the user.
+    val accent = MaterialTheme.colorScheme.onSurface
     val label = item.titleOverride ?: stringResource(item.titleResource)
     val iconTint = if (item.selected) accent else MaterialTheme.colorScheme.onSurfaceVariant
 
@@ -273,7 +276,7 @@ private fun MenuNavItem(
                         .fillMaxWidth()
                         .padding(horizontal = 8.dp)
                         .clip(MaterialTheme.shapes.small)
-                        .background(if (item.selected) accentTint else Color.Transparent)
+                        .background(if (item.selected) MaterialTheme.colorScheme.surfaceVariant else Color.Transparent)
                         .clickable(
                             onClick = onClick,
                             indication = ripple(color = accent),
@@ -428,14 +431,12 @@ private fun SidebarTooltip(
 @Composable
 private fun UserCard(
     username: String?,
-    activeScriptCount: Int,
     collapsed: Boolean,
     onClick: () -> Unit,
 ) {
     val fallback = stringResource(Res.string.nav_user_fallback)
     val initials = remember(username, fallback) { initialsOf(username, fallback.first()) }
     val name = username ?: fallback
-    val scriptCountLabel = pluralStringResource(Res.plurals.scripts_count, activeScriptCount, activeScriptCount)
 
     if (collapsed) {
         Box(
@@ -476,22 +477,14 @@ private fun UserCard(
     ) {
         Avatar(initials = initials)
 
-        Column(modifier = Modifier.weight(1f)) {
-            CerealText(
-                text = name,
-                style = CerealTypography.rowTitle,
-                color = MaterialTheme.colorScheme.onSurface,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-            )
-            CerealText(
-                text = scriptCountLabel,
-                style = MaterialTheme.typography.labelSmall,
-                color = CerealTheme.colorScheme.contentTertiary,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-            )
-        }
+        CerealText(
+            text = name,
+            modifier = Modifier.weight(1f),
+            style = CerealTypography.rowTitle,
+            color = MaterialTheme.colorScheme.onSurface,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+        )
 
         Icon(
             imageVector = Icons.AutoMirrored.Filled.KeyboardArrowRight,

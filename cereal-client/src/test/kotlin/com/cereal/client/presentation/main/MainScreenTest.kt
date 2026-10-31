@@ -31,7 +31,7 @@ class MainScreenTest {
                 onAllNodesWithText("Tasks").fetchSemanticsNodes().isNotEmpty()
             }
 
-            val headers = listOf("AGENT", "READY-MADE SCRIPTS", "RESOURCES", "SYSTEM")
+            val headers = listOf("WORKSPACE", "READY-MADE SCRIPTS", "RESOURCES")
             headers.forEach { onNodeWithText(it).assertIsDisplayed() }
             // Sections render top to bottom in the given order.
             val headerTops = headers.map { onNodeWithText(it).fetchSemanticsNode().boundsInRoot.top }

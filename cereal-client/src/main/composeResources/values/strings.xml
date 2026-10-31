@@ -223,10 +223,9 @@
     <string name="script_capacity_unlimited">Unlimited %1$s</string>
     <string name="marketplace_view_details">VIEW DETAILS</string>
     <string name="more_options">More options</string>
-    <string name="nav_section_agent">Agent</string>
+    <string name="nav_section_workspace">Workspace</string>
     <string name="nav_section_ready_made_scripts">Ready-made scripts</string>
     <string name="nav_section_resources">Resources</string>
-    <string name="nav_section_system">System</string>
     <string name="nav_user_fallback">User</string>
     <string name="collapse_sidebar">Collapse sidebar</string>
     <string name="expand_sidebar">Expand sidebar</string>
@@ -449,10 +448,6 @@
     <string name="settings_proxy_health_check_off">Off</string>
     <string name="settings_proxy_health_check_6h">Every 6h</string>
     <string name="settings_proxy_health_check_24h">Every 24h</string>
-    <plurals name="scripts_count">
-        <item quantity="one">%1$d script</item>
-        <item quantity="other">%1$d scripts</item>
-    </plurals>
     <plurals name="task_setups_count">
         <item quantity="one">%1$d setup</item>
         <item quantity="other">%1$d setups</item>
@@ -602,9 +597,9 @@
     <string name="ai_spend_limits_openrouter">OpenRouter spends your prepaid credits. Set a credit limit on your key in [OpenRouter keys ↗](https://openrouter.ai/settings/keys).</string>
     <string name="ai_spend_limits_other">Your provider bills you directly for tokens. Set a spend limit in its dashboard.</string>
     <string name="home">Home</string>
-    <string name="home_recent_runs">Recent goal runs</string>
+    <string name="home_recent_runs">Recent runs</string>
     <string name="home_all_in_tasks">All in Tasks →</string>
-    <string name="home_recent_runs_empty">No goal runs yet. Describe a goal above to start one.</string>
+    <string name="home_recent_runs_empty">No runs yet. Describe a goal above or run a script to start one.</string>
     <string name="home_pitch">A free AI browser agent that runs on your machine, with your model and your key.</string>
     <string name="home_composer_title">Tell the agent what to do</string>
     <string name="home_start">Start</string>
@@ -629,11 +624,11 @@
     <string name="home_ai_privacy_local">your local model</string>
     <string name="home_ai_privacy_other">the server you set</string>
     <string name="home_ai_change">Change</string>
+    <string name="home_ai_connected">Model connected</string>
     <string name="home_title_setup">Set up your agent</string>
     <string name="home_title_ready">Ready when you are</string>
     <string name="home_composer_subtitle">Describe the outcome you want. The agent opens a browser and works it out.</string>
     <string name="home_composer_locked">Available once a model is connected.</string>
-    <string name="home_ai_connected">Model connected</string>
     <string name="home_install_failed">The install failed.</string>
     <string name="ai_connection_testing">Testing…</string>
     <plurals name="ai_connection_connected">
