@@ -21,7 +21,6 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.outlined.Lock
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
@@ -68,7 +67,6 @@ import com.cereal_automation.cereal_client.generated.resources.Res
 import com.cereal_automation.cereal_client.generated.resources.cancel
 import com.cereal_automation.cereal_client.generated.resources.home
 import com.cereal_automation.cereal_client.generated.resources.home_ai_change
-import com.cereal_automation.cereal_client.generated.resources.home_ai_connected
 import com.cereal_automation.cereal_client.generated.resources.home_ai_setup_subtitle
 import com.cereal_automation.cereal_client.generated.resources.home_ai_setup_title
 import com.cereal_automation.cereal_client.generated.resources.home_ai_show
@@ -144,7 +142,13 @@ fun HomeScreen(
                 verticalArrangement = Arrangement.spacedBy(14.dp),
             ) {
                 val slot = viewModel.slot.value
-                if (slot != HomeComposerSlot.Loading) Intro(ready = slot == HomeComposerSlot.Composer)
+                if (slot != HomeComposerSlot.Loading) {
+                    Intro(
+                        ready = slot == HomeComposerSlot.Composer,
+                        provider = (aiState as? HomeAiProviderState.Configured)?.provider,
+                        onChangeModel = onNavigateToAiSettings,
+                    )
+                }
                 when (slot) {
                     HomeComposerSlot.Loading -> {}
 
@@ -158,7 +162,6 @@ fun HomeScreen(
 
                     HomeComposerSlot.Composer -> {
                         if (installViewModel.isUnderMaintenance.value) MaintenanceBanner()
-                        (aiState as? HomeAiProviderState.Configured)?.let { ConnectedStep(it.provider, onNavigateToAiSettings) }
                         GoalStep(viewModel)
                     }
 
@@ -174,8 +177,13 @@ fun HomeScreen(
     }
 }
 
+/** Setup shows the pitch; once ready, the connected model takes its place so the composer leads. */
 @Composable
-private fun Intro(ready: Boolean) {
+private fun Intro(
+    ready: Boolean,
+    provider: AiProviderUiModel?,
+    onChangeModel: () -> Unit,
+) {
     Column(
         modifier = Modifier.padding(bottom = 6.dp),
         verticalArrangement = Arrangement.spacedBy(4.dp),
@@ -185,11 +193,15 @@ private fun Intro(ready: Boolean) {
             style = MaterialTheme.typography.headlineSmall.copy(fontSize = 22.sp, fontWeight = FontWeight.Bold),
             color = MaterialTheme.colorScheme.onBackground,
         )
-        CerealText(
-            text = stringResource(Res.string.home_pitch),
-            style = MaterialTheme.typography.bodyMedium,
-            color = CerealTheme.colorScheme.contentTertiary,
-        )
+        if (!ready) {
+            CerealText(
+                text = stringResource(Res.string.home_pitch),
+                style = MaterialTheme.typography.bodyMedium,
+                color = CerealTheme.colorScheme.contentTertiary,
+            )
+        } else {
+            provider?.let { ModelLine(it, onChangeModel) }
+        }
     }
 }
 
@@ -249,12 +261,12 @@ private fun MaintenanceBanner() {
     WarningBox(text = stringResource(Res.string.home_maintenance_banner))
 }
 
-private enum class StepBadge { Number, Done, Locked }
+private enum class StepBadge { Number, Locked }
 
-/** A numbered setup step: badge, title and [subtitle] in the head, then the optional [body]. */
+/** A setup step: badge (when [number] is set), title and [subtitle] in the head, then the optional [body]. */
 @Composable
 private fun HomeStep(
-    number: Int,
+    number: Int?,
     title: String,
     subtitle: @Composable () -> Unit,
     badge: StepBadge = StepBadge.Number,
@@ -266,7 +278,7 @@ private fun HomeStep(
             modifier = Modifier.fillMaxWidth().padding(horizontal = 22.dp, vertical = 20.dp),
             horizontalArrangement = Arrangement.spacedBy(14.dp),
         ) {
-            StepNumber(number, badge)
+            number?.let { StepNumber(it, badge) }
             Column(modifier = Modifier.weight(1f)) {
                 CerealText(
                     text = title,
@@ -289,7 +301,6 @@ private fun StepNumber(
     val color =
         when (badge) {
             StepBadge.Number -> MaterialTheme.colorScheme.primary
-            StepBadge.Done -> CerealTheme.colorScheme.success
             StepBadge.Locked -> CerealTheme.colorScheme.contentSubtle
         }
     Box(
@@ -301,11 +312,7 @@ private fun StepNumber(
                 .border(1.dp, if (badge == StepBadge.Locked) CerealTheme.colorScheme.borderDark else color.copy(alpha = BADGE_BORDER), CircleShape),
         contentAlignment = Alignment.Center,
     ) {
-        if (badge == StepBadge.Done) {
-            Icon(Icons.Default.Check, contentDescription = null, modifier = Modifier.size(14.dp), tint = color)
-        } else {
-            CerealText(number.toString(), style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Bold), color = color)
-        }
+        CerealText(number.toString(), style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Bold), color = color)
     }
 }
 
@@ -326,35 +333,25 @@ private fun ConnectStep(viewModel: HomeAiProviderViewModel) {
     }
 }
 
-/** Step 1 done: the provider and model, with Change opening Settings → AI. */
+/** The connected provider and model, with Change opening Settings → AI. */
 @Composable
-private fun ConnectedStep(
+private fun ModelLine(
     provider: AiProviderUiModel,
-    onNavigateToAiSettings: () -> Unit,
+    onChangeModel: () -> Unit,
 ) {
-    HomeStep(
-        number = 1,
-        badge = StepBadge.Done,
-        title = stringResource(Res.string.home_ai_connected),
-        subtitle = {
-            Row(
-                modifier = Modifier.padding(top = 2.dp),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(10.dp),
-            ) {
-                CerealText(
-                    stringResource(provider.preset.label()),
-                    style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.SemiBold),
-                    color = MaterialTheme.colorScheme.onSurface,
-                )
-                Box(Modifier.size(3.dp).clip(CircleShape).background(CerealTheme.colorScheme.contentSubtle))
-                CerealText(provider.model, style = MaterialTheme.typography.bodyMedium, color = CerealTheme.colorScheme.contentSecondary)
-            }
-        },
-        trailing = {
-            CerealButton(onClick = onNavigateToAiSettings, text = stringResource(Res.string.home_ai_change), type = CerealButtonType.Surface)
-        },
-    )
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(10.dp),
+    ) {
+        CerealText(
+            stringResource(provider.preset.label()),
+            style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.SemiBold),
+            color = MaterialTheme.colorScheme.onSurface,
+        )
+        Box(Modifier.size(3.dp).clip(CircleShape).background(CerealTheme.colorScheme.contentSubtle))
+        CerealText(provider.model, style = MaterialTheme.typography.bodyMedium, color = CerealTheme.colorScheme.contentSecondary)
+        CerealButton(onClick = onChangeModel, text = stringResource(Res.string.home_ai_change), type = CerealButtonType.Surface)
+    }
 }
 
 /** Step 2 before a model is connected: collapsed, with nothing to focus. */
@@ -379,12 +376,12 @@ private fun LockedGoalStep() {
 @Composable
 private fun GoalStep(viewModel: HomeViewModel) {
     HomeStep(
-        number = 2,
+        number = null,
         title = stringResource(Res.string.home_composer_title),
         subtitle = { StepSubtitle(stringResource(Res.string.home_composer_subtitle)) },
     ) {
         Column(
-            modifier = Modifier.padding(start = 62.dp, end = 22.dp, bottom = 22.dp),
+            modifier = Modifier.padding(start = 22.dp, end = 22.dp, bottom = 22.dp),
             verticalArrangement = Arrangement.spacedBy(18.dp),
         ) {
             val entryOptions = viewModel.entryOptions.value
