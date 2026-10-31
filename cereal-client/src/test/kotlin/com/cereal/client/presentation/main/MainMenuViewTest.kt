@@ -56,7 +56,7 @@ class MainMenuViewTest {
                 titleResource = Res.string.tasks,
                 titleOverride = null,
                 selected = true,
-                section = MenuSection.AGENT,
+                section = MenuSection.WORKSPACE,
             ),
             readyMadeItem(Root.Routing.Marketplace, Res.string.marketplace),
             MenuItemUiModel(
@@ -85,15 +85,15 @@ class MainMenuViewTest {
             setScreenContent {
                 MainMenu(
                     menuItems = menuFixture,
-                    activeScriptCount = 2,
                     onClick = {},
                 )
             }
 
             // Section labels are uppercased by MenuSectionLabel.
-            onNodeWithText("AGENT").assertIsDisplayed()
+            onNodeWithText("WORKSPACE").assertIsDisplayed()
             onNodeWithText("READY-MADE SCRIPTS").assertIsDisplayed()
-            onNodeWithText("SYSTEM").assertIsDisplayed()
+            // Settings sits unlabelled above the user card.
+            onNodeWithText("SYSTEM").assertDoesNotExist()
             // A section without items (no Resources in this fixture) is not shown.
             onNodeWithText("RESOURCES").assertDoesNotExist()
 
@@ -101,7 +101,7 @@ class MainMenuViewTest {
             onNodeWithText("Tasks").assertIsDisplayed()
             onNodeWithText("Marketplace").assertIsDisplayed()
 
-            // System items: the profile item renders its titleOverride, not "Profile".
+            // Bottom items: the profile item renders its titleOverride, not "Profile".
             onNodeWithText("Settings").assertIsDisplayed()
             onNodeWithText("Ada Lovelace").assertIsDisplayed()
         }
@@ -113,7 +113,6 @@ class MainMenuViewTest {
             setScreenContent {
                 MainMenu(
                     menuItems = menuFixture,
-                    activeScriptCount = 0,
                     onClick = { clicked = it },
                 )
             }
@@ -131,13 +130,12 @@ class MainMenuViewTest {
             setScreenContent {
                 MainMenu(
                     menuItems = withBadge,
-                    activeScriptCount = 2,
                     collapsed = true,
                     onClick = { clicked = it },
                 )
             }
 
-            onNodeWithText("AGENT").assertDoesNotExist()
+            onNodeWithText("WORKSPACE").assertDoesNotExist()
             onNodeWithText("Marketplace").assertDoesNotExist()
             onNodeWithText("3").assertIsDisplayed()
 
@@ -156,7 +154,6 @@ class MainMenuViewTest {
             setScreenContent {
                 MainMenu(
                     menuItems = menuFixture,
-                    activeScriptCount = 0,
                     collapsed = collapsed,
                     onToggleCollapsed = { collapsed = !collapsed },
                     onClick = {},
