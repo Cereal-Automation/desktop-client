@@ -4,6 +4,7 @@ import androidx.compose.runtime.State
 import androidx.compose.runtime.mutableStateOf
 import com.cereal.client.application.CoroutinesDispatcherProvider
 import com.cereal.client.application.Interactor
+import com.cereal.client.application.agent.GoalRunDetails
 import com.cereal.client.application.agent.goalRunDetails
 import com.cereal.client.application.agent.isAiBrowserAgent
 import com.cereal.client.application.interactor.task.ObserveTasksInteractor
@@ -27,7 +28,7 @@ data class RecentRunUiModel(
     val cost: String?,
 )
 
-/** The recent goal runs below Home's composer slot. */
+/** The recent runs below Home's composer slot. */
 class HomeActivityViewModel(
     scope: CoroutineScope,
     dispatcherProvider: CoroutinesDispatcherProvider,
@@ -42,7 +43,6 @@ class HomeActivityViewModel(
                 if (result is SuspendableResult.Success) {
                     val runs =
                         result.value
-                            .filter { it.scriptInstance.packageInstance.definition.isAiBrowserAgent }
                             .sortedByDescending { it.createdAt }
                             .take(RECENT_RUNS)
                             .map { it.toRecentRun() }
@@ -53,12 +53,13 @@ class HomeActivityViewModel(
     }
 
     private fun Task.toRecentRun(): RecentRunUiModel {
-        val details = goalRunDetails()
+        val packageInstance = scriptInstance.packageInstance
+        val details = if (packageInstance.definition.isAiBrowserAgent) goalRunDetails() else GoalRunDetails("", "", "", null)
         return RecentRunUiModel(
             taskId = id,
             status = status.toDisplayStatus(),
-            // Only the goal composer's entry has a goal; the agent's other entries are titled by their name.
-            goal = details.goal.ifEmpty { scriptInstance.packageInstance.entryName },
+            // Only the goal composer's entry has a goal; other runs are titled by their entry's name.
+            goal = details.goal.ifEmpty { packageInstance.entryName },
             site = runCatching { URI(details.startUrl).host }.getOrNull() ?: details.startUrl,
             mode = details.mode,
             cost = details.cost,

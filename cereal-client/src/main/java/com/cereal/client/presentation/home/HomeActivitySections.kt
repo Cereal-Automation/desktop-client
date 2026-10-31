@@ -29,7 +29,7 @@ import org.jetbrains.compose.resources.stringResource
 import org.koin.core.parameter.parametersOf
 import org.koin.java.KoinJavaComponent
 
-/** Recent goal runs; independent of the composer slot's state. */
+/** Recent runs; independent of the composer slot's state. */
 @Composable
 fun HomeActivitySections(
     onOpenTasks: (focusTaskId: String?) -> Unit,
