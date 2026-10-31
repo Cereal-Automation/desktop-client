@@ -1,14 +1,18 @@
 package com.cereal.client.presentation.marketplace
 
+import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
@@ -42,11 +46,11 @@ import com.cereal.client.presentation.theme.CerealTheme
 import com.cereal.client.presentation.view.CerealCard
 import com.cereal.client.presentation.view.CerealIconButton
 import com.cereal.client.presentation.view.CerealText
+import com.cereal.client.presentation.view.WarningBox
 import com.cereal_automation.cereal_client.generated.resources.Res
 import com.cereal_automation.cereal_client.generated.resources.close
-import com.cereal_automation.cereal_client.generated.resources.marketplace_developer
-import com.cereal_automation.cereal_client.generated.resources.marketplace_rating
 import com.cereal_automation.cereal_client.generated.resources.marketplace_release_notes
+import com.cereal_automation.cereal_client.generated.resources.marketplace_status_maintenance
 import com.cereal_automation.cereal_client.generated.resources.marketplace_tags
 import com.cereal_automation.cereal_client.generated.resources.marketplace_updated
 import com.cereal_automation.cereal_client.generated.resources.marketplace_version
@@ -98,158 +102,157 @@ fun ScriptDetailDialog(
     }
     Popup(
         alignment = Alignment.Center,
-        properties =
-            PopupProperties(
-                focusable = true,
-                dismissOnClickOutside = true,
-            ),
+        properties = PopupProperties(focusable = true),
         onDismissRequest = onDismiss,
     ) {
-        CerealCard(
+        // Full-window scrim: dims the marketplace behind the dialog, and a click on it dismisses.
+        Box(
             modifier =
                 Modifier
-                    .width(1000.dp)
-                    .heightIn(max = 800.dp)
-                    .padding(horizontal = 16.dp)
-                    .onKeyEvent { event ->
-                        if (event.key == Key.Escape && event.type == KeyEventType.KeyDown) {
-                            onDismiss()
-                            true
-                        } else {
-                            false
-                        }
-                    },
+                    .fillMaxSize()
+                    .background(MaterialTheme.colorScheme.scrim.copy(alpha = 0.55f))
+                    .clickable(interactionSource = null, indication = null, onClick = onDismiss),
+            contentAlignment = Alignment.Center,
         ) {
-            Column {
-                // Title bar
-                TopAppBar(
-                    title = {
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(CerealTheme.spacing.xs),
-                        ) {
-                            CerealText(
-                                text = script.title,
-                                style = MaterialTheme.typography.headlineSmall,
-                                maxLines = 1,
-                                modifier = Modifier.weight(1f, fill = false),
-                            )
-                            ScriptStatusDot(script.maintenanceMode)
-                        }
-                    },
-                    actions = {
-                        CerealIconButton(onClick = onDismiss) {
-                            Icon(Icons.Filled.Close, stringResource(Res.string.close))
-                        }
-                    },
-                    colors =
-                        TopAppBarDefaults.topAppBarColors(
-                            containerColor = Color.Transparent,
-                        ),
-                )
-
-                HorizontalDivider(color = CerealTheme.colorScheme.borderDark)
-
-                // Scrollable content
-                Column(
-                    modifier =
-                        Modifier
-                            .weight(1f)
-                            .verticalScroll(rememberScrollState())
-                            .padding(CerealTheme.spacing.xl),
-                    verticalArrangement = Arrangement.spacedBy(CerealTheme.spacing.lg),
-                ) {
-                    // Hero: icon + meta
-                    ScriptDetailHero(script)
-
-                    // Description
-                    script.description?.let { desc ->
-                        if (desc.isNotBlank()) {
-                            DetailSection(title = null) {
-                                MarkdownText(
-                                    text = desc,
-                                    modifier = Modifier.fillMaxWidth(),
+            CerealCard(
+                modifier =
+                    Modifier
+                        .widthIn(max = 720.dp)
+                        .heightIn(max = 800.dp)
+                        .padding(horizontal = 16.dp)
+                        // Swallow clicks so they don't fall through to the dismissing scrim.
+                        .clickable(interactionSource = null, indication = null) {}
+                        .onKeyEvent { event ->
+                            if (event.key == Key.Escape && event.type == KeyEventType.KeyDown) {
+                                onDismiss()
+                                true
+                            } else {
+                                false
+                            }
+                        },
+            ) {
+                Column {
+                    // Title bar
+                    TopAppBar(
+                        title = {
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(CerealTheme.spacing.xs),
+                            ) {
+                                CerealText(
+                                    text = script.title,
+                                    style = MaterialTheme.typography.headlineSmall,
+                                    maxLines = 1,
+                                    modifier = Modifier.weight(1f, fill = false),
                                 )
                             }
-                        }
-                    }
+                        },
+                        actions = {
+                            CerealIconButton(onClick = onDismiss) {
+                                Icon(Icons.Filled.Close, stringResource(Res.string.close))
+                            }
+                        },
+                        colors =
+                            TopAppBarDefaults.topAppBarColors(
+                                containerColor = Color.Transparent,
+                            ),
+                    )
 
-                    // Tags
-                    if (script.tags.isNotEmpty()) {
-                        DetailSection(title = stringResource(Res.string.marketplace_tags)) {
-                            FlowRow(
-                                horizontalArrangement = Arrangement.spacedBy(CerealTheme.spacing.sm),
-                                verticalArrangement = Arrangement.spacedBy(CerealTheme.spacing.sm),
-                            ) {
-                                script.tags.forEach { tag ->
-                                    TagChip(tag)
+                    HorizontalDivider(color = CerealTheme.colorScheme.borderDark)
+
+                    // Scrollable content
+                    Column(
+                        modifier =
+                            Modifier
+                                .weight(1f, fill = false)
+                                .verticalScroll(rememberScrollState())
+                                .padding(CerealTheme.spacing.xl),
+                        verticalArrangement = Arrangement.spacedBy(CerealTheme.spacing.lg),
+                    ) {
+                        if (script.maintenanceMode) {
+                            WarningBox(text = stringResource(Res.string.marketplace_status_maintenance))
+                        }
+
+                        // Hero: icon + meta
+                        ScriptDetailHero(script)
+
+                        // Description
+                        script.description?.let { desc ->
+                            if (desc.isNotBlank()) {
+                                DetailSection(title = null) {
+                                    MarkdownText(
+                                        text = desc,
+                                        modifier = Modifier.fillMaxWidth(),
+                                    )
+                                }
+                            }
+                        }
+
+                        // Tags
+                        if (script.tags.isNotEmpty()) {
+                            DetailSection(title = stringResource(Res.string.marketplace_tags)) {
+                                FlowRow(
+                                    horizontalArrangement = Arrangement.spacedBy(CerealTheme.spacing.sm),
+                                    verticalArrangement = Arrangement.spacedBy(CerealTheme.spacing.sm),
+                                ) {
+                                    script.tags.forEach { tag ->
+                                        TagChip(tag)
+                                    }
+                                }
+                            }
+                        }
+
+                        // Release notes
+                        script.latestRelease?.releaseNotes?.let { notes ->
+                            if (notes.isNotBlank()) {
+                                DetailSection(title = stringResource(Res.string.marketplace_release_notes)) {
+                                    CerealText(
+                                        text = notes,
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = CerealTheme.colorScheme.contentSecondary,
+                                    )
+                                }
+                            }
+                        }
+
+                        // Metadata table
+                        DetailSection(title = null) {
+                            Column(verticalArrangement = Arrangement.spacedBy(CerealTheme.spacing.sm)) {
+                                script.latestRelease?.let { release ->
+                                    MetaRow(
+                                        label = stringResource(Res.string.marketplace_version),
+                                        value = release.versionName,
+                                    )
+                                }
+                                script.updatedAt?.let { updated ->
+                                    MetaRow(
+                                        label = stringResource(Res.string.marketplace_updated),
+                                        value = formatMarketplaceDate(updated),
+                                    )
                                 }
                             }
                         }
                     }
 
-                    // Release notes
-                    script.latestRelease?.releaseNotes?.let { notes ->
-                        if (notes.isNotBlank()) {
-                            DetailSection(title = stringResource(Res.string.marketplace_release_notes)) {
-                                CerealText(
-                                    text = notes,
-                                    style = MaterialTheme.typography.bodySmall,
-                                    color = CerealTheme.colorScheme.contentSecondary,
-                                )
-                            }
-                        }
-                    }
-
-                    // Metadata table
-                    DetailSection(title = null) {
-                        Column(verticalArrangement = Arrangement.spacedBy(CerealTheme.spacing.sm)) {
-                            script.latestRelease?.let { release ->
-                                MetaRow(
-                                    label = stringResource(Res.string.marketplace_version),
-                                    value = release.versionName,
-                                )
-                            }
-                            script.developer?.let { dev ->
-                                MetaRow(
-                                    label = stringResource(Res.string.marketplace_developer),
-                                    value = dev.name,
-                                )
-                            }
-                            script.averageRating?.let { rating ->
-                                MetaRow(
-                                    label = stringResource(Res.string.marketplace_rating),
-                                    value = "$rating ★",
-                                )
-                            }
-                            script.updatedAt?.let { updated ->
-                                MetaRow(
-                                    label = stringResource(Res.string.marketplace_updated),
-                                    value = formatMarketplaceDate(updated),
-                                )
-                            }
-                        }
-                    }
+                    // Sticky bottom actions
+                    ScriptDetailActions(
+                        script = script,
+                        installState = installState,
+                        onInstall = { viewModel.onInstall(script) },
+                        onOpenUrl = viewModel::onOpenUrl,
+                        onLoginClick = {
+                            authDialogMode.value = AuthenticationDialogMode.LOGIN
+                            showAuthDialog.value = true
+                        },
+                        onRegisterClick = {
+                            authDialogMode.value = AuthenticationDialogMode.REGISTRATION
+                            showAuthDialog.value = true
+                        },
+                        onStartNewInstance = viewModel::onStartNewInstance,
+                        onRemove = viewModel::onRemoveClicked,
+                        onRemoveEnabled = !viewModel.hasRunningTasks.value,
+                    )
                 }
-
-                // Sticky bottom actions
-                ScriptDetailActions(
-                    script = script,
-                    installState = installState,
-                    onInstall = { viewModel.onInstall(script) },
-                    onOpenUrl = viewModel::onOpenUrl,
-                    onLoginClick = {
-                        authDialogMode.value = AuthenticationDialogMode.LOGIN
-                        showAuthDialog.value = true
-                    },
-                    onRegisterClick = {
-                        authDialogMode.value = AuthenticationDialogMode.REGISTRATION
-                        showAuthDialog.value = true
-                    },
-                    onStartNewInstance = viewModel::onStartNewInstance,
-                    onRemove = viewModel::onRemoveClicked,
-                    onRemoveEnabled = !viewModel.hasRunningTasks.value,
-                )
             }
         }
     }

@@ -182,7 +182,6 @@
     <string name="marketplace_start_new_instance">Start new instance</string>
     <string name="marketplace_awaiting_checkout">Awaiting checkout…</string>
     <string name="marketplace_community_badge">Community</string>
-    <string name="marketplace_developer">Developer</string>
     <string name="marketplace_filter_community_all">Any Creator</string>
     <string name="marketplace_filter_community_yes">Community Only</string>
     <string name="marketplace_filter_price_all">All Prices</string>
@@ -191,7 +190,7 @@
     <string name="marketplace_free_badge">FREE</string>
     <string name="marketplace_free_trial">Free Trial Available</string>
     <string name="marketplace_free_trial_days">%1$d-day free trial</string>
-    <string name="marketplace_guest_purchase_required">Login or register to purchase this script</string>
+    <string name="marketplace_guest_purchase_required">Sign in or create an account to continue</string>
     <string name="marketplace_install">Install</string>
     <string name="marketplace_install_success">Script installed successfully!</string>
     <string name="marketplace_installing">Installing…</string>
@@ -202,13 +201,11 @@
     <string name="marketplace_remove_running_tasks_blocked">Stop running tasks before removing this script.</string>
     <string name="marketplace_load_error">Failed to load scripts. Please check your connection and try again.</string>
     <string name="marketplace_new_badge">NEW</string>
-    <string name="marketplace_status_operational">Operational</string>
     <string name="marketplace_status_maintenance_short">Maintenance</string>
     <string name="marketplace_status_maintenance">Under Maintenance — this script may be temporarily unavailable</string>
     <string name="marketplace_no_release">No release available</string>
     <string name="marketplace_no_scripts_found">No scripts found. Try a different search query.</string>
     <string name="marketplace_purchase">Purchase</string>
-    <string name="marketplace_rating">Rating</string>
     <string name="marketplace_ratings">ratings</string>
     <string name="marketplace_release_notes">Release Notes</string>
     <string name="marketplace_retry">Retry</string>

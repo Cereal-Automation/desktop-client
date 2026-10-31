@@ -57,8 +57,6 @@ import com.cereal_automation.cereal_client.generated.resources.marketplace_statu
 import com.cereal_automation.cereal_client.generated.resources.marketplace_status_maintenance_short
 import org.jetbrains.compose.resources.stringResource
 
-private val PricePillBg = Color(0xFF232323)
-
 @Composable
 internal fun ScriptCard(
     script: MarketplaceScript,
@@ -98,7 +96,7 @@ internal fun ScriptCard(
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(12.dp),
             ) {
-                MarketplaceCardIcon(script)
+                ScriptIcon(script = script, size = 45.dp)
 
                 Column(modifier = Modifier.weight(1f)) {
                     CerealText(
@@ -125,15 +123,9 @@ internal fun ScriptCard(
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(8.dp),
                 ) {
-                    if (script.maintenanceMode) {
-                        MarketplaceMaintenanceBadge()
-                    }
-                    if (script.freeTrialEnabled) {
-                        script.freeTrialDays?.takeIf { it > 0 }?.let { days ->
-                            MarketplaceTrialBadge(days = days)
-                        }
-                    }
-                    MarketplacePriceChip(script = script)
+                    if (script.maintenanceMode) MaintenanceBadge()
+                    FreeTrialBadge(script)
+                    PriceBadge(script)
                 }
             }
 
@@ -150,139 +142,28 @@ internal fun ScriptCard(
 
             Spacer(Modifier.weight(1f))
 
-            // Meta: rating + install button
+            // Meta: rating. The whole card opens the detail dialog, where install/purchase lives.
             Row(
-                modifier = Modifier.fillMaxWidth(),
                 verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(5.dp),
             ) {
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(5.dp),
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.Star,
-                        contentDescription = null,
-                        tint =
-                            if (script.averageRating != null) {
-                                CerealTheme.colorScheme.warning
-                            } else {
-                                CerealTheme.colorScheme.contentSubtle
-                            },
-                        modifier = Modifier.size(14.dp),
-                    )
-                    CerealText(
-                        text = script.averageRating?.let { "%.1f".format(it) } ?: "—",
-                        style = CerealTypography.controlLabel,
-                        color = CerealTheme.colorScheme.contentSecondary,
-                    )
-                }
-
-                Spacer(Modifier.weight(1f))
-
-                InstallButton(onClick = onClick)
-            }
-        }
-    }
-}
-
-@Composable
-private fun MarketplaceCardIcon(script: MarketplaceScript) {
-    val color = scriptColorFor(script.id)
-    val letter =
-        script.title
-            .firstOrNull { it.isLetter() }
-            ?.uppercaseChar()
-            ?.toString() ?: "#"
-
-    Box(
-        modifier =
-            Modifier
-                .size(45.dp)
-                .clip(RoundedCornerShape(10.dp))
-                .background(color),
-        contentAlignment = Alignment.Center,
-    ) {
-        CerealText(
-            text = letter,
-            style = MaterialTheme.typography.titleMedium,
-            color = Color.White,
-        )
-    }
-}
-
-@Composable
-private fun MarketplaceTrialBadge(days: Int) {
-    val accent = CerealTheme.colorScheme.success
-    Pill(
-        text = stringResource(Res.string.marketplace_free_trial_days, days),
-        contentColor = accent,
-        backgroundColor = accent.copy(alpha = 0.12f),
-        borderColor = accent.copy(alpha = 0.35f),
-        contentPadding = PaddingValues(horizontal = 9.dp, vertical = 3.dp),
-        textStyle = CerealTypography.statusChipLabel.copy(fontWeight = FontWeight.SemiBold),
-    )
-}
-
-@OptIn(ExperimentalFoundationApi::class)
-@Composable
-private fun MarketplaceMaintenanceBadge() {
-    val accent = CerealTheme.colorScheme.warning
-    TooltipArea(
-        tooltip = {
-            Surface(
-                modifier = Modifier.shadow(4.dp),
-                shape = MaterialTheme.shapes.extraSmall,
-            ) {
+                Icon(
+                    imageVector = Icons.Default.Star,
+                    contentDescription = null,
+                    tint =
+                        if (script.averageRating != null) {
+                            CerealTheme.colorScheme.warning
+                        } else {
+                            CerealTheme.colorScheme.contentSubtle
+                        },
+                    modifier = Modifier.size(14.dp),
+                )
                 CerealText(
-                    text = stringResource(Res.string.marketplace_status_maintenance),
-                    modifier = Modifier.padding(CerealTheme.spacing.sm),
-                    style = MaterialTheme.typography.bodySmall,
+                    text = script.averageRating?.let { "%.1f".format(it) } ?: "—",
+                    style = CerealTypography.controlLabel,
+                    color = CerealTheme.colorScheme.contentSecondary,
                 )
             }
-        },
-        delayMillis = 0,
-    ) {
-        Pill(
-            text = stringResource(Res.string.marketplace_status_maintenance_short),
-            contentColor = accent,
-            backgroundColor = accent.copy(alpha = 0.12f),
-            borderColor = accent.copy(alpha = 0.35f),
-            contentPadding = PaddingValues(horizontal = 9.dp, vertical = 3.dp),
-            textStyle = CerealTypography.statusChipLabel.copy(fontWeight = FontWeight.SemiBold),
-        )
-    }
-}
-
-@Composable
-private fun MarketplacePriceChip(
-    script: MarketplaceScript,
-    modifier: Modifier = Modifier,
-) {
-    val priceText =
-        when {
-            script.isFree -> stringResource(Res.string.marketplace_free_badge)
-            else -> script.formattedPrice ?: script.price?.let { "$$it" } ?: return
         }
-    Pill(
-        text = priceText,
-        contentColor = Color.White,
-        backgroundColor = PricePillBg,
-        modifier = modifier,
-        contentPadding = PaddingValues(horizontal = 10.dp, vertical = 3.dp),
-    )
-}
-
-@Composable
-private fun InstallButton(onClick: () -> Unit) {
-    CerealToolbarButton(
-        variant = CerealToolbarButtonVariant.Primary,
-        onClick = onClick,
-    ) {
-        Icon(
-            imageVector = Icons.Default.Add,
-            contentDescription = null,
-            modifier = Modifier.size(ButtonDefaults.IconSize),
-        )
-        CerealText(text = stringResource(Res.string.marketplace_install))
     }
 }

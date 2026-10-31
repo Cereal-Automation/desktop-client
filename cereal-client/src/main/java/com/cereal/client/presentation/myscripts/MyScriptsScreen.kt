@@ -310,16 +310,14 @@ private fun StatusChip(status: MyScriptsViewModel.InstalledScriptStatus?) {
         MyScriptsViewModel.InstalledScriptStatus.UPDATE_AVAILABLE -> {
             ScriptBadge(
                 text = stringResource(Res.string.my_scripts_update_available),
-                containerColor = CerealTheme.colorScheme.info.copy(alpha = 0.12f),
-                textColor = CerealTheme.colorScheme.info,
+                accent = CerealTheme.colorScheme.info,
             )
         }
 
         MyScriptsViewModel.InstalledScriptStatus.RUNNING_TASKS -> {
             ScriptBadge(
                 text = stringResource(Res.string.my_scripts_running_tasks),
-                containerColor = CerealTheme.colorScheme.success.copy(alpha = 0.12f),
-                textColor = CerealTheme.colorScheme.success,
+                accent = CerealTheme.colorScheme.success,
             )
         }
 
