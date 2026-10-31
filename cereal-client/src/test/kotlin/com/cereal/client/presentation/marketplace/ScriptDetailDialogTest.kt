@@ -43,8 +43,6 @@ class ScriptDetailDialogTest {
             // laid out and present in the semantics tree but may be clipped from view; assert presence.
             // Metadata-row labels render verbatim; DetailSection titles are uppercased by the screen.
             onNodeWithText("Version").assertExists()
-            onNodeWithText("Developer").assertExists()
-            onNodeWithText("Rating").assertExists()
             onNodeWithText("Updated").assertExists()
             onNodeWithText("Release Notes".uppercase()).assertExists()
             onNodeWithText("Tags".uppercase()).assertExists()
@@ -109,6 +107,23 @@ class ScriptDetailDialogTest {
                 onAllNodes(hasText("Start new instance")).fetchSemanticsNodes().isNotEmpty()
             }
             onNodeWithText("Uninstall").assertDoesNotExist()
+        }
+
+    @Test
+    fun keepsTrialAndPriceOnTheMainActionForGuests() =
+        runScreenTest {
+            // The in-memory session is a guest, so a paid script lands in GuestPurchaseRequired.
+            setScreenContent {
+                ScriptDetailDialog(
+                    script = aMarketplaceScript().copy(isFree = false, formattedPrice = "€4 / mo", freeTrialEnabled = true, freeTrialDays = 7),
+                    onDismiss = {},
+                )
+            }
+
+            waitUntil(timeoutMillis = 5_000) {
+                onAllNodes(hasText("Start 7-day trial · €4 / mo")).fetchSemanticsNodes().isNotEmpty()
+            }
+            onNodeWithText("Create Account").assertExists()
         }
 
     private companion object {

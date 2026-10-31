@@ -54,8 +54,8 @@ internal fun ScriptDetailHero(script: MarketplaceScript) {
             ) {
                 if (script.isCommunity) CommunityBadge()
                 if (script.isNew) NewBadge()
+                FreeTrialBadge(script)
                 PriceBadge(script)
-                if (script.freeTrialEnabled) FreeTrialBadge()
             }
 
             // Short description

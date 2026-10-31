@@ -23,7 +23,6 @@ import com.cereal.client.presentation.view.CerealCircularProgressIndicator
 import com.cereal.client.presentation.view.CerealText
 import com.cereal_automation.cereal_client.generated.resources.Res
 import com.cereal_automation.cereal_client.generated.resources.create_account
-import com.cereal_automation.cereal_client.generated.resources.login
 import com.cereal_automation.cereal_client.generated.resources.marketplace_awaiting_checkout
 import com.cereal_automation.cereal_client.generated.resources.marketplace_guest_purchase_required
 import com.cereal_automation.cereal_client.generated.resources.marketplace_install
@@ -165,13 +164,14 @@ internal fun ScriptDetailActions(
                             color = CerealTheme.colorScheme.contentSecondary,
                         )
                         CerealButton(
-                            onClick = onLoginClick,
-                            text = stringResource(Res.string.login),
-                            type = CerealButtonType.Surface,
-                        )
-                        CerealButton(
                             onClick = onRegisterClick,
                             text = stringResource(Res.string.create_account),
+                            type = CerealButtonType.Surface,
+                        )
+                        // Keep what the guest came for (trial / price) on the main action; it asks them to sign in.
+                        CerealButton(
+                            onClick = onLoginClick,
+                            text = purchaseButtonText(script),
                             type = CerealButtonType.Primary,
                         )
                     }
@@ -200,28 +200,9 @@ internal fun ScriptDetailActions(
                             type = CerealButtonType.Success,
                         )
                     } else {
-                        val priceText = script.formattedPrice ?: script.price?.let { "$$it" }
-                        val trialDays = script.freeTrialDays
-
-                        val buttonText =
-                            if (hasRelease) {
-                                if (script.freeTrialEnabled && trialDays != null && trialDays > 0) {
-                                    "${
-                                        stringResource(
-                                            Res.string.marketplace_start_trial,
-                                            trialDays,
-                                        )
-                                    }${priceText?.let { " · $it" } ?: ""}"
-                                } else {
-                                    "${stringResource(Res.string.marketplace_purchase)}${priceText?.let { " · $it" } ?: ""}"
-                                }
-                            } else {
-                                stringResource(Res.string.marketplace_no_release)
-                            }
-
                         CerealButton(
                             onClick = onInstall,
-                            text = buttonText,
+                            text = if (hasRelease) purchaseButtonText(script) else stringResource(Res.string.marketplace_no_release),
                             enabled = hasRelease,
                             type = CerealButtonType.Primary,
                         )
@@ -230,4 +211,18 @@ internal fun ScriptDetailActions(
             }
         }
     }
+}
+
+/** "Start 7-day trial · €4 / mo" or "Purchase · €4 / mo" for a paid script. */
+@Composable
+private fun purchaseButtonText(script: MarketplaceScript): String {
+    val priceText = script.formattedPrice ?: script.price?.let { "$$it" }
+    val trialDays = script.freeTrialDays?.takeIf { script.freeTrialEnabled && it > 0 }
+    val action =
+        if (trialDays != null) {
+            stringResource(Res.string.marketplace_start_trial, trialDays)
+        } else {
+            stringResource(Res.string.marketplace_purchase)
+        }
+    return action + (priceText?.let { " · $it" } ?: "")
 }

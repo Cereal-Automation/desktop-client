@@ -1,10 +1,10 @@
 package com.cereal.client.presentation.marketplace
 
-import androidx.compose.foundation.hoverable
-import androidx.compose.foundation.interaction.MutableInteractionSource
-import androidx.compose.foundation.interaction.collectIsHoveredAsState
+import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.TooltipArea
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -15,32 +15,30 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
-import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.window.Popup
-import androidx.compose.ui.window.PopupProperties
 import com.cereal.client.domain.model.marketplace.MarketplaceScript
 import com.cereal.client.domain.model.marketplace.ScriptOwner
 import com.cereal.client.presentation.theme.CerealTheme
+import com.cereal.client.presentation.theme.CerealTypography
 import com.cereal.client.presentation.view.CerealText
+import com.cereal.client.presentation.view.chip.Pill
 import com.cereal_automation.cereal_client.generated.resources.Res
 import com.cereal_automation.cereal_client.generated.resources.marketplace_community_badge
 import com.cereal_automation.cereal_client.generated.resources.marketplace_free_badge
 import com.cereal_automation.cereal_client.generated.resources.marketplace_free_trial
+import com.cereal_automation.cereal_client.generated.resources.marketplace_free_trial_days
 import com.cereal_automation.cereal_client.generated.resources.marketplace_new_badge
 import com.cereal_automation.cereal_client.generated.resources.marketplace_status_maintenance
-import com.cereal_automation.cereal_client.generated.resources.marketplace_status_operational
+import com.cereal_automation.cereal_client.generated.resources.marketplace_status_maintenance_short
 import com.cereal_automation.cereal_client.generated.resources.script_update_required_badge
 import io.kamel.image.KamelImage
 import io.kamel.image.asyncPainterResource
@@ -186,89 +184,86 @@ internal fun DeveloperRow(
 }
 
 /**
- * A small badge with a colored background and text label.
- *
- * @param text           The label to display.
- * @param containerColor The background color of the badge.
- * @param textColor      The color of the text.
+ * A pill badge tinted with [accent]: the one badge style used on marketplace cards, the script detail
+ * dialog and My Scripts.
  */
 @Composable
 internal fun ScriptBadge(
     text: String,
-    containerColor: Color,
-    textColor: Color,
-) {
-    Surface(
-        shape = MaterialTheme.shapes.extraSmall,
-        color = containerColor,
+    accent: Color,
+) = Pill(
+    text = text,
+    contentColor = accent,
+    backgroundColor = accent.copy(alpha = 0.12f),
+    borderColor = accent.copy(alpha = 0.35f),
+    contentPadding = PaddingValues(horizontal = 9.dp, vertical = 3.dp),
+    textStyle = CerealTypography.statusChipLabel.copy(fontWeight = FontWeight.SemiBold),
+)
+
+@Composable
+internal fun CommunityBadge() = ScriptBadge(stringResource(Res.string.marketplace_community_badge), CerealTheme.colorScheme.info)
+
+@Composable
+internal fun NewBadge() = ScriptBadge(stringResource(Res.string.marketplace_new_badge), CerealTheme.colorScheme.warning)
+
+@Composable
+internal fun UpdateRequiredBadge() = ScriptBadge(stringResource(Res.string.script_update_required_badge), CerealTheme.colorScheme.warning)
+
+@Composable
+internal fun FreeTrialBadge(script: MarketplaceScript) {
+    if (!script.freeTrialEnabled) return
+    val days = script.freeTrialDays?.takeIf { it > 0 }
+    ScriptBadge(
+        text =
+            if (days != null) {
+                stringResource(Res.string.marketplace_free_trial_days, days)
+            } else {
+                stringResource(Res.string.marketplace_free_trial)
+            },
+        accent = CerealTheme.colorScheme.success,
+    )
+}
+
+/** Warning badge for a script under maintenance; hovering explains what that means. */
+@OptIn(ExperimentalFoundationApi::class)
+@Composable
+internal fun MaintenanceBadge() {
+    TooltipArea(
+        tooltip = {
+            Surface(
+                modifier = Modifier.shadow(4.dp),
+                shape = MaterialTheme.shapes.extraSmall,
+            ) {
+                CerealText(
+                    text = stringResource(Res.string.marketplace_status_maintenance),
+                    modifier = Modifier.padding(CerealTheme.spacing.sm),
+                    style = MaterialTheme.typography.bodySmall,
+                )
+            }
+        },
+        delayMillis = 0,
     ) {
-        CerealText(
-            text = text,
-            modifier =
-                Modifier.padding(
-                    horizontal = CerealTheme.spacing.sm,
-                    vertical = 2.dp,
-                ),
-            style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold),
-            color = textColor,
-        )
+        ScriptBadge(stringResource(Res.string.marketplace_status_maintenance_short), CerealTheme.colorScheme.warning)
     }
 }
 
-@Composable
-internal fun CommunityBadge() =
-    ScriptBadge(
-        text = stringResource(Res.string.marketplace_community_badge),
-        containerColor = CerealTheme.colorScheme.info.copy(alpha = 0.12f),
-        textColor = CerealTheme.colorScheme.info,
-    )
-
-@Composable
-internal fun NewBadge() =
-    ScriptBadge(
-        text = stringResource(Res.string.marketplace_new_badge),
-        containerColor = CerealTheme.colorScheme.warning.copy(alpha = 0.12f),
-        textColor = CerealTheme.colorScheme.warning,
-    )
-
-@Composable
-internal fun UpdateRequiredBadge() =
-    ScriptBadge(
-        text = stringResource(Res.string.script_update_required_badge),
-        containerColor = CerealTheme.colorScheme.warning.copy(alpha = 0.12f),
-        textColor = CerealTheme.colorScheme.warning,
-    )
-
-@Composable
-internal fun FreeTrialBadge() =
-    ScriptBadge(
-        text = stringResource(Res.string.marketplace_free_trial),
-        containerColor = CerealTheme.colorScheme.warning.copy(alpha = 0.12f),
-        textColor = CerealTheme.colorScheme.warning,
-    )
-
-/**
- * Badge showing either "Free", a formatted price, or nothing for a script.
- */
+/** The script's price, or "Free", as a neutral pill; renders nothing when a paid script has no price. */
 @Composable
 internal fun PriceBadge(script: MarketplaceScript) {
-    if (script.isFree) {
-        ScriptBadge(
-            text = stringResource(Res.string.marketplace_free_badge),
-            containerColor = CerealTheme.colorScheme.success.copy(alpha = 0.12f),
-            textColor = CerealTheme.colorScheme.success,
-        )
-    } else {
-        val priceText = script.formattedPrice ?: script.price?.let { "$$it" }
-        if (priceText != null) {
-            ScriptBadge(
-                text = priceText,
-                containerColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.12f),
-                textColor = MaterialTheme.colorScheme.primary,
-            )
+    val priceText =
+        when {
+            script.isFree -> stringResource(Res.string.marketplace_free_badge)
+            else -> script.formattedPrice ?: script.price?.let { "$$it" } ?: return
         }
-    }
+    Pill(
+        text = priceText,
+        contentColor = Color.White,
+        backgroundColor = PricePillBg,
+        contentPadding = PaddingValues(horizontal = 10.dp, vertical = 3.dp),
+    )
 }
+
+private val PricePillBg = Color(0xFF232323)
 
 /**
  * Star icon + rating value, aligned in a row. Shows "–" when [rating] is null.
@@ -290,67 +285,6 @@ internal fun RatingRow(rating: Double?) {
             style = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.SemiBold),
             color = MaterialTheme.colorScheme.onSurface,
         )
-    }
-}
-
-/**
- * A small coloured dot that communicates the script's maintenance status.
- * Green = operational, orange = under maintenance.
- * Displays a tooltip on hover that explains the status in plain language.
- *
- * @param maintenanceMode True when the script is under maintenance.
- */
-@Composable
-internal fun ScriptStatusDot(maintenanceMode: Boolean) {
-    val interactionSource = remember { MutableInteractionSource() }
-    val isHovered by interactionSource.collectIsHoveredAsState()
-    val density = LocalDensity.current
-
-    val dotColor = if (maintenanceMode) CerealTheme.colorScheme.warning else CerealTheme.colorScheme.success
-    val tooltipText =
-        stringResource(
-            if (maintenanceMode) {
-                Res.string.marketplace_status_maintenance
-            } else {
-                Res.string.marketplace_status_operational
-            },
-        )
-
-    Box(
-        modifier =
-            Modifier
-                .size(10.dp)
-                .hoverable(interactionSource),
-    ) {
-        Surface(
-            modifier = Modifier.size(10.dp),
-            shape = CircleShape,
-            color = dotColor,
-        ) {}
-
-        if (isHovered) {
-            Popup(
-                alignment = Alignment.BottomCenter,
-                offset = IntOffset(0, with(density) { -36.dp.roundToPx() }),
-                properties = PopupProperties(focusable = false),
-            ) {
-                Surface(
-                    shape = MaterialTheme.shapes.extraSmall,
-                    color = MaterialTheme.colorScheme.inverseSurface,
-                ) {
-                    CerealText(
-                        text = tooltipText,
-                        modifier =
-                            Modifier.padding(
-                                horizontal = CerealTheme.spacing.sm,
-                                vertical = CerealTheme.spacing.xs,
-                            ),
-                        style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.inverseOnSurface,
-                    )
-                }
-            }
-        }
     }
 }
 
