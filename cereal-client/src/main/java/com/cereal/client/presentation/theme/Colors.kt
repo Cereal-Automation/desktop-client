@@ -9,7 +9,7 @@ class CerealColors(
     val border: Color = Color(0xFF2A2A2A),
     val contentSecondary: Color = Color(0xFFB4AFB6),
     val contentTertiary: Color = Color(0xFF8A8A8A),
-    val contentSubtle: Color = Color(0xFF6A6A6A),
+    val contentSubtle: Color = Color(0xFF848484),
     val backgroundLight: Color = Color(0xFFF6F6F6),
     val backgroundDark: Color = Color(0xFF141414),
     val cardDark: Color = Color(0xFF161616),

@@ -67,16 +67,16 @@ class HomeScreenTest {
     private fun ComposeUiTest.enterApiKey(key: String) = onNode(hasSetTextAction() and hasAnyAncestor(hasTestTag(AI_API_KEY_TAG))).performTextInput(key)
 
     @Test
-    fun `renders the pitch and the goal composer`() =
+    fun `renders the goal composer with the connected model in place of the pitch`() =
         runScreenTest(overrides = ready) {
             setScreenContent { HomeScreen() }
 
-            onNodeWithText("A free AI browser agent that runs on your machine, with your model and your key.").assertIsDisplayed()
+            onNodeWithText("A free AI browser agent that runs on your machine, with your model and your key.").assertDoesNotExist()
             onNodeWithText("Tell the agent what to do").assertIsDisplayed()
             onNodeWithText("Start").assertIsDisplayed()
             onNodeWithText("More options").assertIsDisplayed()
             onNodeWithText("Ready when you are").assertIsDisplayed()
-            onNodeWithText("Model connected").assertIsDisplayed()
+            onNodeWithText("Change").assertIsDisplayed()
             onNodeWithText("claude-opus-5-5").assertIsDisplayed()
             onNodeWithText("Connect an AI model").assertDoesNotExist()
         }
@@ -144,6 +144,7 @@ class HomeScreenTest {
             awaitText("Connect an AI model")
 
             onNodeWithText("Available once a model is connected.").assertIsDisplayed()
+            onNodeWithText("A free AI browser agent that runs on your machine, with your model and your key.").assertIsDisplayed()
             onNodeWithTag(HomeTestTags.FIELDS).assertDoesNotExist()
             onNodeWithText("Start").assertDoesNotExist()
         }
@@ -176,6 +177,9 @@ class HomeScreenTest {
             onNodeWithTag(HomeTestTags.FIELDS).assertExists()
             onNodeWithText("gemini-3.8-flash").assertIsDisplayed()
             onNodeWithText("Change").assertIsDisplayed()
+            // Connecting in place keeps the guided layout instead of jumping to the composer-first one.
+            onNodeWithText("Model connected").assertIsDisplayed()
+            onNodeWithText("A free AI browser agent that runs on your machine, with your model and your key.").assertIsDisplayed()
             assertEquals("gemini-3.8-flash", savedConfig()?.model)
         }
 }
