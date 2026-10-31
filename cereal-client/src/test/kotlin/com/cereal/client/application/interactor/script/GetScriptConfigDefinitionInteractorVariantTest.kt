@@ -5,6 +5,8 @@ import com.cereal.client.infrastructure.data.repository.inmemory.InMemoryCustomD
 import com.cereal.client.infrastructure.data.repository.inmemory.InMemoryProxyRepository
 import fixtures.VARIANT_FIELD
 import fixtures.aScriptPackageWithVariant
+import fixtures.agentConfigurationItems
+import fixtures.anAgentWithCheckoutVariant
 import kotlinx.coroutines.test.runTest
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Test
@@ -28,5 +30,17 @@ class GetScriptConfigDefinitionInteractorVariantTest {
             assertFailsWith<UnknownScriptVariantException> {
                 interactor.run(GetScriptConfigDefinitionInteractor.Params(scriptPackage, null))
             }
+        }
+
+    @Test
+    fun `run should show a variant that reuses the main script's class with each field once`() =
+        runTest {
+            // Like the agent's manifest: the top-level script is also its first variant, "browser-agent".
+            val agent = anAgentWithCheckoutVariant()
+
+            val result = interactor.run(GetScriptConfigDefinitionInteractor.Params(agent, null, variantId = "browser-agent"))
+
+            assertEquals(agentConfigurationItems().map { it.key }, result.mainConfiguration.map { it.definition.key })
+            assertEquals(emptyMap<String, Any>(), result.childConfigurations)
         }
 }
