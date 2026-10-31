@@ -39,7 +39,7 @@ class HomeActivityViewModelTest {
     }
 
     @Test
-    fun `shows the 3 newest goal runs, newest first, and skips other scripts' tasks`() =
+    fun `shows the 3 newest runs of any script, newest first`() =
         runTest {
             tasks.addAllTasks(
                 listOf(
@@ -53,7 +53,10 @@ class HomeActivityViewModelTest {
             val vm = homeActivity()
             advanceUntilIdle()
 
-            assertEquals(listOf("t4", "t3", "t2"), vm.recentRuns.value.map { it.taskId })
+            // aTask is created now, so the other script's run is the newest.
+            assertEquals(listOf("other", "t4", "t3"), vm.recentRuns.value.map { it.taskId })
+            val other = vm.recentRuns.value.first()
+            assertEquals(listOf("", "", null), listOf(other.site, other.mode, other.cost))
         }
 
     @Test

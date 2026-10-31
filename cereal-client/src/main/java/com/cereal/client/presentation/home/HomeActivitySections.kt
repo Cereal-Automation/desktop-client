@@ -34,7 +34,7 @@ import org.jetbrains.compose.resources.stringResource
 import org.koin.core.parameter.parametersOf
 import org.koin.java.KoinJavaComponent
 
-/** Recent goal runs and the ready-made scripts strip; independent of the composer slot's state. */
+/** Recent runs and the ready-made scripts strip; independent of the composer slot's state. */
 @Composable
 fun HomeActivitySections(
     onOpenTasks: (focusTaskId: String?) -> Unit,

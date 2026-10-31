@@ -25,7 +25,7 @@ import testutil.setScreenContent
 import kotlin.test.Test
 import kotlin.test.assertEquals
 
-/** Home's recent goal runs and ready-made scripts strip on the in-memory graph. Self-skips where skiko is unavailable. */
+/** Home's recent runs and ready-made scripts strip on the in-memory graph. Self-skips where skiko is unavailable. */
 @OptIn(ExperimentalTestApi::class)
 class HomeActivitySectionsScreenTest {
     private val restock = aScriptPackage("com.example.restock").let { it.copy(manifest = it.manifest.copy(name = "Restock Monitor")) }
@@ -101,11 +101,11 @@ class HomeActivitySectionsScreenTest {
     }
 
     @Test
-    fun `empty states when there are no goal runs and no ready-made scripts`() =
+    fun `empty states when there are no runs and no ready-made scripts`() =
         runScreenTest(overrides = listOf(nothingInstalled)) {
             setScreenContent { HomeScreen() }
 
-            onNodeWithText("No goal runs yet. Describe a goal above to start one.").performScrollTo().assertIsDisplayed()
+            onNodeWithText("No runs yet. Describe a goal above or run a script to start one.").performScrollTo().assertIsDisplayed()
             onNodeWithText("No ready-made scripts installed yet.").performScrollTo().assertIsDisplayed()
         }
 

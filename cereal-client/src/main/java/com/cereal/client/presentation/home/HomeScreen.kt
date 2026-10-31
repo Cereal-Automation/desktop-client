@@ -101,7 +101,7 @@ object HomeTestTags {
 
 /**
  * The agent home: a two-step setup (connect a model, then the goal composer), or the install/update card
- * when the agent can't run. Recent goal runs and the scripts strip go below.
+ * when the agent can't run. Recent runs and the scripts strip go below.
  */
 @Composable
 fun HomeScreen(
