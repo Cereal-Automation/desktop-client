@@ -177,6 +177,9 @@ class HomeScreenTest {
             onNodeWithTag(HomeTestTags.FIELDS).assertExists()
             onNodeWithText("gemini-3.8-flash").assertIsDisplayed()
             onNodeWithText("Change").assertIsDisplayed()
+            // Connecting in place keeps the guided layout instead of jumping to the composer-first one.
+            onNodeWithText("Model connected").assertIsDisplayed()
+            onNodeWithText("A free AI browser agent that runs on your machine, with your model and your key.").assertIsDisplayed()
             assertEquals("gemini-3.8-flash", savedConfig()?.model)
         }
 }

@@ -633,6 +633,7 @@
     <string name="home_ai_privacy_local">your local model</string>
     <string name="home_ai_privacy_other">the server you set</string>
     <string name="home_ai_change">Change</string>
+    <string name="home_ai_connected">Model connected</string>
     <string name="home_title_setup">Set up your agent</string>
     <string name="home_title_ready">Ready when you are</string>
     <string name="home_composer_subtitle">Describe the outcome you want. The agent opens a browser and works it out.</string>
