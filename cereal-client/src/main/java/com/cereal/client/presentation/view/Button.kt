@@ -11,27 +11,15 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.ElevatedButton
-import androidx.compose.material3.FilledIconButton
-import androidx.compose.material3.FilledIconToggleButton
-import androidx.compose.material3.FilledTonalButton
-import androidx.compose.material3.FilledTonalIconButton
-import androidx.compose.material3.FilledTonalIconToggleButton
-import androidx.compose.material3.FloatingActionButton
-import androidx.compose.material3.FloatingActionButtonDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.IconButtonDefaults
-import androidx.compose.material3.IconToggleButton
-import androidx.compose.material3.IconToggleButtonColors
 import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.LocalTextStyle
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedIconButton
-import androidx.compose.material3.OutlinedIconToggleButton
 import androidx.compose.material3.TextButton
-import androidx.compose.material3.contentColorFor
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.remember
@@ -42,7 +30,6 @@ import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import com.cereal.client.presentation.theme.CerealTheme
 import org.jetbrains.compose.resources.DrawableResource
 import org.jetbrains.compose.resources.painterResource
@@ -229,107 +216,6 @@ fun CerealIconButton(
 }
 
 @Composable
-fun CerealIconToggleButton(
-    checked: Boolean,
-    onCheckedChange: (Boolean) -> Unit,
-    modifier: Modifier = Modifier,
-    enabled: Boolean = true,
-    colors: IconToggleButtonColors = IconButtonDefaults.iconToggleButtonColors(),
-    interactionSource: MutableInteractionSource = remember { MutableInteractionSource() },
-    content: @Composable () -> Unit,
-) {
-    IconToggleButton(
-        checked = checked,
-        onCheckedChange = onCheckedChange,
-        modifier = modifier,
-        enabled = enabled,
-        colors = colors,
-        interactionSource = interactionSource,
-        content = content,
-    )
-}
-
-@Composable
-fun CerealFilledIconButton(
-    onClick: () -> Unit,
-    modifier: Modifier = Modifier,
-    enabled: Boolean = true,
-    interactionSource: MutableInteractionSource = remember { MutableInteractionSource() },
-    content: @Composable () -> Unit,
-) {
-    FilledIconButton(
-        onClick = onClick,
-        modifier = modifier,
-        enabled = enabled,
-        shape = MaterialTheme.shapes.small,
-        colors = IconButtonDefaults.filledIconButtonColors(),
-        interactionSource = interactionSource,
-        content = content,
-    )
-}
-
-@Composable
-fun CerealFilledIconToggleButton(
-    checked: Boolean,
-    onCheckedChange: (Boolean) -> Unit,
-    modifier: Modifier = Modifier,
-    enabled: Boolean = true,
-    interactionSource: MutableInteractionSource = remember { MutableInteractionSource() },
-    content: @Composable () -> Unit,
-) {
-    FilledIconToggleButton(
-        checked = checked,
-        onCheckedChange = onCheckedChange,
-        modifier = modifier,
-        enabled = enabled,
-        shape = MaterialTheme.shapes.small,
-        colors = IconButtonDefaults.filledIconToggleButtonColors(),
-        interactionSource = interactionSource,
-        content = content,
-    )
-}
-
-@Composable
-fun CerealFilledTonalIconButton(
-    onClick: () -> Unit,
-    modifier: Modifier = Modifier,
-    enabled: Boolean = true,
-    interactionSource: MutableInteractionSource = remember { MutableInteractionSource() },
-    content: @Composable () -> Unit,
-) {
-    FilledTonalIconButton(
-        onClick = onClick,
-        modifier = modifier,
-        enabled = enabled,
-        shape = MaterialTheme.shapes.small,
-        colors = IconButtonDefaults.filledTonalIconButtonColors(),
-        interactionSource = interactionSource,
-        content = content,
-    )
-}
-
-@Composable
-fun CerealFilledTonalIconToggleButton(
-    checked: Boolean,
-    onCheckedChange: (Boolean) -> Unit,
-    modifier: Modifier = Modifier,
-    enabled: Boolean = true,
-    interactionSource: MutableInteractionSource = remember { MutableInteractionSource() },
-    content: @Composable () -> Unit,
-) {
-    FilledTonalIconToggleButton(
-        checked = checked,
-        onCheckedChange = onCheckedChange,
-        modifier = modifier,
-        enabled = enabled,
-        shape = MaterialTheme.shapes.small,
-        colors = IconButtonDefaults.filledTonalIconToggleButtonColors(),
-        interactionSource = interactionSource,
-        content = content,
-    )
-}
-
-@Composable
 fun CerealOutlinedIconButton(
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
@@ -346,70 +232,6 @@ fun CerealOutlinedIconButton(
         border = BorderStroke(1.dp, CerealTheme.colorScheme.border.copy(alpha = if (enabled) 1f else 0.4f)),
         interactionSource = interactionSource,
         content = content,
-    )
-}
-
-@Composable
-fun CerealOutlinedIconToggleButton(
-    checked: Boolean,
-    onCheckedChange: (Boolean) -> Unit,
-    modifier: Modifier = Modifier,
-    enabled: Boolean = true,
-    interactionSource: MutableInteractionSource = remember { MutableInteractionSource() },
-    content: @Composable () -> Unit,
-) {
-    OutlinedIconToggleButton(
-        checked = checked,
-        onCheckedChange = onCheckedChange,
-        modifier = modifier,
-        enabled = enabled,
-        shape = MaterialTheme.shapes.small,
-        colors = IconButtonDefaults.outlinedIconToggleButtonColors(),
-        border = IconButtonDefaults.outlinedIconToggleButtonBorder(enabled, checked),
-        interactionSource = interactionSource,
-        content = content,
-    )
-}
-
-@Composable
-fun CerealElevatedButton(
-    onClick: () -> Unit,
-    modifier: Modifier = Modifier,
-    enabled: Boolean = true,
-    size: CerealButtonSize = CerealButtonSize.Small,
-    contentPadding: PaddingValues = ButtonDefaults.ContentPadding,
-    interactionSource: MutableInteractionSource = remember { MutableInteractionSource() },
-    content: @Composable RowScope.() -> Unit,
-) {
-    ElevatedButton(
-        onClick = onClick,
-        modifier = modifier.heightIn(min = size.height),
-        enabled = enabled,
-        shape = MaterialTheme.shapes.small,
-        contentPadding = contentPadding,
-        interactionSource = interactionSource,
-        content = { ProvideButtonTextStyle(size) { content() } },
-    )
-}
-
-@Composable
-fun CerealFilledTonalButton(
-    onClick: () -> Unit,
-    modifier: Modifier = Modifier,
-    enabled: Boolean = true,
-    size: CerealButtonSize = CerealButtonSize.Small,
-    contentPadding: PaddingValues = ButtonDefaults.ContentPadding,
-    interactionSource: MutableInteractionSource = remember { MutableInteractionSource() },
-    content: @Composable RowScope.() -> Unit,
-) {
-    FilledTonalButton(
-        onClick = onClick,
-        modifier = modifier.heightIn(min = size.height),
-        enabled = enabled,
-        shape = MaterialTheme.shapes.small,
-        contentPadding = contentPadding,
-        interactionSource = interactionSource,
-        content = { ProvideButtonTextStyle(size) { content() } },
     )
 }
 
@@ -460,27 +282,6 @@ fun CerealOutlinedButton(
         contentPadding = contentPadding,
         interactionSource = interactionSource,
         content = { ProvideButtonTextStyle(size) { content() } },
-    )
-}
-
-@Composable
-fun CerealFloatingActionButton(
-    onClick: () -> Unit,
-    modifier: Modifier = Modifier,
-    interactionSource: MutableInteractionSource = remember { MutableInteractionSource() },
-    containerColor: Color = MaterialTheme.colorScheme.primary,
-    contentColor: Color = contentColorFor(MaterialTheme.colorScheme.primary),
-    content: @Composable () -> Unit,
-) {
-    FloatingActionButton(
-        onClick = onClick,
-        modifier = modifier,
-        shape = FloatingActionButtonDefaults.shape,
-        containerColor = containerColor,
-        contentColor = contentColor,
-        elevation = FloatingActionButtonDefaults.elevation(),
-        interactionSource = interactionSource,
-        content = content,
     )
 }
 

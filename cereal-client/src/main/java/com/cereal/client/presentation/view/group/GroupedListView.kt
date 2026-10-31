@@ -7,10 +7,8 @@ import androidx.compose.foundation.VerticalScrollbar
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -31,7 +29,6 @@ import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.DpOffset
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import com.cereal.client.presentation.view.ActivityIndicator
 import com.cereal.client.presentation.view.CerealBadge
 import com.cereal.client.presentation.view.CerealText
@@ -76,36 +73,6 @@ fun <T> GroupedListView(
             modifier = Modifier.align(Alignment.CenterEnd).fillMaxHeight(),
             adapter = rememberScrollbarAdapter(scrollState = listState),
         )
-    }
-}
-
-@Composable
-fun HeaderGroupedListView(
-    headerTitle: String,
-    headerSubtitle: String? = null,
-    subMenu: @Composable RowScope.() -> Unit = { },
-) {
-    Column(modifier = Modifier.padding(horizontal = 25.dp).padding(top = 25.dp, bottom = 12.dp)) {
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            Column {
-                CerealText(
-                    text = headerTitle,
-                    style = MaterialTheme.typography.headlineMedium.copy(fontWeight = FontWeight.Bold),
-                )
-                headerSubtitle?.let {
-                    CerealText(
-                        text = it,
-                        style = MaterialTheme.typography.titleMedium,
-                    )
-                }
-            }
-
-            Spacer(Modifier.weight(1f))
-
-            subMenu()
-        }
-
-        Spacer(Modifier.height(20.dp))
     }
 }
 

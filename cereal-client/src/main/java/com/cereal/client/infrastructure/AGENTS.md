@@ -39,7 +39,6 @@ infrastructure/
 ├── provider/                   – Provider implementations (*ProviderImpl); external/OS/channel adapters
 ├── di/
 │   ├── Injector.kt              – startKoin entry point; loads all modules
-│   ├── NotificationChannelQualifiers.kt
 │   ├── UserScopeProvider.kt
 │   └── modules/
 │       ├── ApplicationModule.kt
@@ -83,7 +82,6 @@ Implement `NotificationStrategy<T>` for each channel (Discord webhook, Email, Te
 
 - Each strategy translates a domain `Notification` into the channel-specific wire format using mappers in `mapper/`.
 - HTTP clients (`DiscordHttpClient`, `TelegramHttpClient`) are private to this package — do not expose them via DI.
-- Strategies are registered with Koin qualifiers defined in `di/NotificationChannelQualifiers.kt`.
 
 ### `data/repository/` — Data Repository Implementations
 
