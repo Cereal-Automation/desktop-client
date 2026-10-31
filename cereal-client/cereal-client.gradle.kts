@@ -180,6 +180,7 @@ tasks {
 
 tasks.withType<Test> {
     useJUnitPlatform() // This is required for JUnit 5
+    maxParallelForks = (Runtime.getRuntime().availableProcessors() / 2).coerceAtLeast(1)
 }
 
 // The sandboxed `mock` flavor bundles script JARs so runnable scripts are available out-of-the-box
