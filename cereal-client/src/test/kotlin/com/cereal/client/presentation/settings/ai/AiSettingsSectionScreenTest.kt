@@ -305,6 +305,19 @@ class AiSettingsSectionScreenTest {
         }
 
     @Test
+    fun theArrowShowsTheWholeListWhenTheModelMatchesNothing() =
+        runScreenTest {
+            llmProvider.models = listOf(LlmModel("qwen3"), LlmModel("llama3"))
+            save(LlmProviderConfig.of(LlmProviderType.OPENAI_COMPATIBLE, "http://localhost:1234/v1", "", "gemini-3.8-flash"))
+            setScreenContent { AiSettingsSection() }
+            waitUntil(timeoutMillis = 5_000) { onAllNodes(hasTestTag(AI_MODEL_OPEN_TAG)).fetchSemanticsNodes().isNotEmpty() }
+
+            onNodeWithTag(AI_MODEL_OPEN_TAG).performClick()
+
+            onNodeWithText("llama3").assertIsDisplayed()
+        }
+
+    @Test
     fun withoutAFetchedListTheModelIsPlainText() =
         runScreenTest {
             setScreenContent { AiSettingsSection() }

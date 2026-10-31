@@ -231,8 +231,10 @@ private fun AiModelField(
                     }
                 }
             }
-            // A picked id shows the whole list again; other text filters it.
-            val visible = if (state.text in models) models else models.filter { it.contains(state.text, ignoreCase = true) }
+            // A picked id, or text that matches nothing (e.g. a saved id the provider doesn't list), shows the
+            // whole list; other text filters it.
+            val filtered = models.filter { it.contains(state.text, ignoreCase = true) }
+            val visible = if (state.text in models || filtered.isEmpty()) models else filtered
             DropdownMenu(
                 expanded = expanded && visible.isNotEmpty(),
                 onDismissRequest = { expanded = false },
