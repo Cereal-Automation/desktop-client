@@ -38,8 +38,8 @@ kdriver = "0.6.1"
 markdown-renderer = "0.46.0"
 sekret = "2.4.0"
 sekret-lib = "2.4.0"
-cereal-sdk = "1.14.0"
-cereal-test-utils = "1.14.0"
+cereal-sdk = "1.15.0"
+cereal-test-utils = "1.15.0"
 
 # Java native interface
 jna = "5.19.1"

@@ -5,10 +5,10 @@ import androidx.compose.runtime.mutableStateOf
 import com.cereal.client.application.CoroutinesDispatcherProvider
 import com.cereal.client.application.Interactor
 import com.cereal.client.application.agent.goalRunDetails
-import com.cereal.client.application.agent.isAiBrowserAgentDefaultEntry
-import com.cereal.client.application.agent.readyMadeEntryIds
+import com.cereal.client.application.agent.isAiBrowserAgent
 import com.cereal.client.application.interactor.script.GetScriptsInteractor
 import com.cereal.client.application.interactor.task.ObserveTasksInteractor
+import com.cereal.client.domain.model.script.entryIds
 import com.cereal.client.domain.model.script.entryName
 import com.cereal.client.domain.model.task.Task
 import com.cereal.client.presentation.tasks.mappers.toDisplayStatus
@@ -55,7 +55,7 @@ class HomeActivityViewModel(
                 if (result is SuspendableResult.Success) {
                     val runs =
                         result.value
-                            .filter { it.scriptInstance.packageInstance.isAiBrowserAgentDefaultEntry }
+                            .filter { it.scriptInstance.packageInstance.definition.isAiBrowserAgent }
                             .sortedByDescending { it.createdAt }
                             .take(RECENT_RUNS)
                             .map { it.toRecentRun() }
@@ -68,7 +68,7 @@ class HomeActivityViewModel(
                 if (result is SuspendableResult.Success) {
                     val scripts =
                         result.value.flatMap { pkg ->
-                            pkg.readyMadeEntryIds.map { id -> ReadyMadeScriptUiModel(pkg.manifest.packageName, pkg.entryName(id), id) }
+                            pkg.entryIds.map { id -> ReadyMadeScriptUiModel(pkg.manifest.packageName, pkg.entryName(id), id) }
                         }
                     withContext(dispatcherProvider.main) { _readyMadeScripts.value = scripts }
                 }
@@ -81,7 +81,8 @@ class HomeActivityViewModel(
         return RecentRunUiModel(
             taskId = id,
             status = status.toDisplayStatus(),
-            goal = details.goal,
+            // Only the goal composer's entry has a goal; the agent's other entries are titled by their name.
+            goal = details.goal.ifEmpty { scriptInstance.packageInstance.entryName },
             site = runCatching { URI(details.startUrl).host }.getOrNull() ?: details.startUrl,
             mode = details.mode,
             cost = details.cost,

@@ -10,7 +10,10 @@ data class ScriptPackage(
     val manifest: Manifest,
     val mainScript: MainScript,
     val childScripts: Map<String, ChildScript>,
-    /** Additional entry scripts by their stable manifest id. The [mainScript] is the default entry. */
+    /**
+     * User-selectable entry scripts by their stable manifest id. When present they replace the [mainScript] as the
+     * package's entries; the [mainScript] then only serves clients that don't read variants.
+     */
     val variants: Map<String, ScriptVariant> = emptyMap(),
 ) {
     init {
@@ -18,7 +21,7 @@ data class ScriptPackage(
     }
 }
 
-/** An additional, user-selectable entry script of a package, declared in the manifest's `variants`. */
+/** A user-selectable entry script of a package, declared in the manifest's `variants`. */
 data class ScriptVariant(
     val name: String,
     val instructions: String?,
@@ -29,19 +32,25 @@ data class ScriptVariant(
     }
 }
 
+/** The ids of the entries a user can pick, in manifest order: the variants, or only the default entry (null) without them. */
+val ScriptPackage.entryIds: List<String?>
+    get() = variants.keys.toList().ifEmpty { listOf(null) }
+
 /**
- * The entry script for [variantId]: the [ScriptPackage.mainScript] when null, otherwise that variant. An id the
- * package doesn't contain throws [UnknownScriptVariantException]; it never falls back to the default entry.
+ * The entry script for [variantId]: the [ScriptPackage.mainScript] when null and the package has no variants,
+ * otherwise that variant. Any other id, or null in a package with variants, throws [UnknownScriptVariantException].
  */
-fun ScriptPackage.entry(variantId: String?): MainScript = if (variantId == null) mainScript else variant(variantId).script
+fun ScriptPackage.entry(variantId: String?): MainScript = if (isDefaultEntry(variantId)) mainScript else variant(variantId).script
 
 /** The display name of the entry for [variantId]: the variant's name, or the package name for the default entry. */
-fun ScriptPackage.entryName(variantId: String?): String = if (variantId == null) manifest.name else variant(variantId).name
+fun ScriptPackage.entryName(variantId: String?): String = if (isDefaultEntry(variantId)) manifest.name else variant(variantId).name
 
 /** The instructions of the entry for [variantId]; a variant never falls back to the package's instructions. */
-fun ScriptPackage.entryInstructions(variantId: String?): String? = if (variantId == null) manifest.instructions else variant(variantId).instructions
+fun ScriptPackage.entryInstructions(variantId: String?): String? = if (isDefaultEntry(variantId)) manifest.instructions else variant(variantId).instructions
 
-private fun ScriptPackage.variant(variantId: String): ScriptVariant = variants[variantId] ?: throw UnknownScriptVariantException(variantId)
+private fun ScriptPackage.isDefaultEntry(variantId: String?) = variantId == null && variants.isEmpty()
+
+private fun ScriptPackage.variant(variantId: String?): ScriptVariant = variants[variantId] ?: throw UnknownScriptVariantException(variantId)
 
 interface Script {
     val clazz: KClass<out com.cereal.sdk.Script<*>>

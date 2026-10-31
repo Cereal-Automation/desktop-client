@@ -57,7 +57,7 @@ import com.cereal_automation.cereal_client.generated.resources.script_entry_sear
 import org.jetbrains.compose.resources.stringResource
 
 /**
- * Picks which entry of a package to configure: its default entry or one of its variants. Disabled when the entry is
+ * Picks which of a package's variants to configure. Disabled when the entry is
  * fixed (editing or duplicating a setup). The search box only appears once the list is long enough to need it.
  */
 @Composable

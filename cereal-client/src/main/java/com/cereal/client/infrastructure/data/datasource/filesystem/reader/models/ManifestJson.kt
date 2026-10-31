@@ -24,12 +24,12 @@ data class ManifestJson(
     @SerialName("sdk_version") val sdkVersion: String? = null,
     /** Script features the script uses, as raw manifest values. Missing means none. */
     @SerialName("features") val features: List<String> = emptyList(),
-    /** Additional entry scripts. Missing means the package only has its default entry, [scriptPackageClass]. */
+    /** The entry scripts users pick from, replacing [scriptPackageClass] as an entry. Missing means that is the only entry. */
     @SerialName("variants") val variants: List<VariantJson> = emptyList(),
 )
 
 /**
- * An additional entry script of a package, listed in the manifest's `variants`. Required fields are nullable so a
+ * An entry script of a package, listed in the manifest's `variants`. Required fields are nullable so a
  * missing key is rejected by the reader with a reason naming it, like a blank value.
  */
 @Serializable

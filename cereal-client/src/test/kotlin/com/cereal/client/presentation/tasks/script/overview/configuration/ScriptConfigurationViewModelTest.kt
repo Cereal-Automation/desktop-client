@@ -304,8 +304,9 @@ class ScriptConfigurationViewModelTest {
     }
 
     @Test
-    fun `the default entry's form keeps the package instructions`() {
-        val viewModel = createViewModel(scriptPackage = packageWithInstructions())
+    fun `the default entry's form of a package without variants keeps the package instructions`() {
+        val scriptPackage = fixtures.aScriptPackage("com.example").let { it.copy(manifest = it.manifest.copy(instructions = "Package instructions")) }
+        val viewModel = createViewModel(scriptPackage = scriptPackage)
 
         assertEquals("Package instructions", viewModel.scriptInstructions)
     }

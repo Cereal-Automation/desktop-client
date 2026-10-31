@@ -3,6 +3,7 @@ package com.cereal.client.presentation.home
 import androidx.compose.ui.test.ExperimentalTestApi
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.hasText
+import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
@@ -48,8 +49,8 @@ class HomeActivitySectionsScreenTest {
             }
         }
 
-    private val agentOnly =
-        module { single<ScriptRepository> { InMemoryScriptRepository().apply { seed(listOf(anAgentPackage())) } } }
+    // Every installed package lists at least one entry, so only an empty install has no ready-made scripts.
+    private val nothingInstalled = module { single<ScriptRepository> { InMemoryScriptRepository() } }
 
     @Test
     fun `recent runs open Tasks focused on the run, and All in Tasks opens Tasks`() {
@@ -75,8 +76,7 @@ class HomeActivitySectionsScreenTest {
 
             waitUntilAtLeastOneExists(hasText("Restock Monitor"), LOAD_TIMEOUT_MS)
             onNodeWithText("Restock Monitor").performScrollTo().assertIsDisplayed()
-            onNodeWithText("AI Browser Agent").assertDoesNotExist()
-            onNodeWithText("Run").performScrollTo().performClick()
+            onAllNodesWithText("Run")[1].performScrollTo().performClick()
             onNodeWithText("Browse marketplace →").performScrollTo().performClick()
         }
         assertEquals(listOf(ScriptRequest("com.example.restock")), run)
@@ -102,7 +102,7 @@ class HomeActivitySectionsScreenTest {
 
     @Test
     fun `empty states when there are no goal runs and no ready-made scripts`() =
-        runScreenTest(overrides = listOf(agentOnly)) {
+        runScreenTest(overrides = listOf(nothingInstalled)) {
             setScreenContent { HomeScreen() }
 
             onNodeWithText("No goal runs yet. Describe a goal above to start one.").performScrollTo().assertIsDisplayed()

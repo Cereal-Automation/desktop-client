@@ -1,5 +1,6 @@
 package com.cereal.client.application.interactor.script
 
+import com.cereal.client.domain.model.exception.UnknownScriptVariantException
 import com.cereal.client.infrastructure.data.repository.inmemory.InMemoryCustomDatasetRepository
 import com.cereal.client.infrastructure.data.repository.inmemory.InMemoryProxyRepository
 import fixtures.VARIANT_FIELD
@@ -7,6 +8,7 @@ import fixtures.aScriptPackageWithVariant
 import kotlinx.coroutines.test.runTest
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Test
+import kotlin.test.assertFailsWith
 
 class GetScriptConfigDefinitionInteractorVariantTest {
     private val interactor = GetScriptConfigDefinitionInteractor(InMemoryProxyRepository(), InMemoryCustomDatasetRepository())
@@ -21,10 +23,10 @@ class GetScriptConfigDefinitionInteractorVariantTest {
         }
 
     @Test
-    fun `run should return the main script's fields when no variant is requested`() =
+    fun `run should fail when no variant is requested from a package with variants`() =
         runTest {
-            val result = interactor.run(GetScriptConfigDefinitionInteractor.Params(scriptPackage, null))
-
-            assertEquals(emptyList<String>(), result.mainConfiguration.map { it.definition.key })
+            assertFailsWith<UnknownScriptVariantException> {
+                interactor.run(GetScriptConfigDefinitionInteractor.Params(scriptPackage, null))
+            }
         }
 }

@@ -101,7 +101,10 @@ fun anAgentPackage(items: List<ScriptConfigurationItemDefinition> = agentConfigu
     )
 }
 
-/** The agent with a "product-checkout" variant whose only field is a required product URL, so Home shows it. */
+/**
+ * The agent as it ships with variants: its goal composer as the first variant, "browser-agent" ("Custom goal"), then a
+ * "product-checkout" variant whose only field is a required product URL, so Home shows it.
+ */
 fun anAgentWithCheckoutVariant(): ScriptPackage {
     val agent = anAgentPackage()
     val checkout =
@@ -109,7 +112,13 @@ fun anAgentWithCheckoutVariant(): ScriptPackage {
             configuration =
                 ScriptConfigurationDefinition(ScriptConfiguration::class, listOf(anAgentItem("productUrl", ConfigItemType.StringConfigItem, 0))),
         )
-    return agent.copy(variants = mapOf("product-checkout" to ScriptVariant("Product Checkout", instructions = null, script = checkout)))
+    return agent.copy(
+        variants =
+            mapOf(
+                "browser-agent" to ScriptVariant("Custom goal", instructions = null, script = agent.mainScript),
+                "product-checkout" to ScriptVariant("Product Checkout", instructions = null, script = checkout),
+            ),
+    )
 }
 
 /** An installed agent that declares an SDK newer than the client's (the in-memory client SDK is 1.0.0). */

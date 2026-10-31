@@ -18,6 +18,7 @@ import com.cereal.client.domain.model.script.ScriptConfigurationValues
 import com.cereal.client.domain.model.script.ScriptFeature
 import com.cereal.client.domain.model.script.ScriptPackage
 import com.cereal.client.domain.model.script.ScriptPackageInstance
+import com.cereal.client.domain.model.script.entryIds
 import com.cereal.client.domain.model.script.entryName
 import com.cereal.client.domain.model.script.isClientUpdateRequired
 import com.cereal.client.domain.model.task.ScriptPackageGroup
@@ -68,7 +69,7 @@ class ScriptSelectionViewModel(
     /** The selected package's name, heading the configuration pane; null while nothing is selected. */
     val selectedPackageName = mutableStateOf<String?>(null)
 
-    /** The selected package's entries: its default entry first, then each variant. The picker shows when there are several. */
+    /** The selected package's entries: its variants in manifest order, or only its default entry without them. The picker shows when there are several. */
     val entryOptions = mutableStateOf<List<ScriptEntryOption>>(emptyList())
     val selectedEntry = mutableStateOf<ScriptEntryOption?>(null)
 
@@ -181,7 +182,7 @@ class ScriptSelectionViewModel(
         // Reset first so a previous script's cap never lingers while the new one's capacity loads.
         selectedScriptCapacity.value = ScriptCapacity.None
         scriptsListViewModel.selectedItem?.let { selectedScript ->
-            val options = (listOf(null) + selectedScript.variants.keys).map { ScriptEntryOption(it, selectedScript.entryName(it)) }
+            val options = selectedScript.entryIds.map { ScriptEntryOption(it, selectedScript.entryName(it)) }
             selectedPackageName.value = selectedScript.manifest.name
             entryOptions.value = options
             // The edited or duplicated setup's package always reopens on its own entry; a request applies once.

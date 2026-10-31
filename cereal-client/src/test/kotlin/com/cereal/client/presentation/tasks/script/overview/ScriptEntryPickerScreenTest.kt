@@ -10,6 +10,7 @@ import androidx.compose.ui.test.performClick
 import com.cereal.client.domain.model.script.ScriptCapacity
 import com.cereal.client.domain.model.script.ScriptEntitlement
 import com.cereal.client.domain.model.script.ScriptPackage
+import com.cereal.client.domain.model.script.ScriptVariant
 import com.cereal.client.domain.model.task.ScriptPackageGroup
 import com.cereal.client.domain.model.user.Subscription
 import com.cereal.client.domain.provider.AuthProvider
@@ -31,7 +32,12 @@ import testutil.setScreenContent
 class ScriptEntryPickerScreenTest {
     @Test
     fun `picking a variant in the picker opens that variant's form`() =
-        runPickerScreenTest(aScriptPackageWithVariant(PACKAGE_NAME, variantId = "checkout", variantName = "Checkout")) {
+        runPickerScreenTest(
+            aScriptPackageWithVariant(PACKAGE_NAME, variantId = "checkout", variantName = "Checkout").let {
+                // The package's main script as the first variant, so the picker opens on a form without "Variant field".
+                it.copy(variants = mapOf("main" to ScriptVariant("Main", instructions = null, script = it.mainScript)) + it.variants)
+            },
+        ) {
             waitForText("2 available")
 
             onNodeWithText("Variant field").assertDoesNotExist()
