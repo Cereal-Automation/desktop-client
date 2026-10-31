@@ -136,14 +136,14 @@ private fun EmptyState(onOpenMarketplace: () -> Unit) {
                 Modifier
                     .size(64.dp)
                     .clip(CircleShape)
-                    .background(CerealTheme.colorScheme.cardDark)
+                    .background(MaterialTheme.colorScheme.surface)
                     .border(1.dp, CerealTheme.colorScheme.border, CircleShape),
             contentAlignment = Alignment.Center,
         ) {
             Icon(
                 imageVector = Icons.Outlined.Extension,
                 contentDescription = null,
-                tint = CerealTheme.colorScheme.contentSubtle,
+                tint = CerealTheme.colorScheme.contentTertiary,
                 modifier = Modifier.size(28.dp),
             )
         }

@@ -21,6 +21,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.selection.SelectionContainer
@@ -45,6 +46,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -56,6 +58,7 @@ import com.cereal.client.presentation.theme.CerealTheme
 import com.cereal.client.presentation.theme.CerealTypography
 import com.cereal.client.presentation.view.CerealIconButton
 import com.cereal.client.presentation.view.CerealText
+import com.cereal.client.presentation.view.CerealToggle
 import com.cereal.client.presentation.view.SectionLabel
 import com.cereal_automation.cereal_client.generated.resources.Res
 import com.cereal_automation.cereal_client.generated.resources.artifacts
@@ -83,8 +86,6 @@ import java.util.Locale
 import kotlin.time.ExperimentalTime
 
 internal const val CLEAR_BUTTON_TEST_TAG = "logOutputClearButton"
-
-private val ToggleThumb = Color.White
 
 /** The log box lives in the inspector's scrolling column, so it needs a bounded height of its own. */
 private val LogBoxMaxHeight = 320.dp
@@ -152,7 +153,7 @@ fun TaskLogSection(
                     imageVector = Icons.Filled.CleaningServices,
                     contentDescription = stringResource(Res.string.clear),
                     modifier = Modifier.size(14.dp),
-                    tint = if (clearEnabled) CerealTheme.colorScheme.contentTertiary else CerealTheme.colorScheme.contentSubtle,
+                    tint = if (clearEnabled) CerealTheme.colorScheme.contentTertiary else CerealTheme.colorScheme.contentTertiary,
                 )
             }
             val copyEnabled = filteredEvents.isNotEmpty()
@@ -165,7 +166,7 @@ fun TaskLogSection(
                         when {
                             copied -> Color.White
                             copyEnabled -> CerealTheme.colorScheme.contentTertiary
-                            else -> CerealTheme.colorScheme.contentSubtle
+                            else -> CerealTheme.colorScheme.contentTertiary
                         },
                 )
             }
@@ -232,7 +233,7 @@ private fun EmptyHint(
     CerealText(
         text = text,
         modifier = modifier,
-        color = CerealTheme.colorScheme.contentSubtle,
+        color = CerealTheme.colorScheme.contentTertiary,
         style = MaterialTheme.typography.bodyMedium.copy(fontSize = 13.sp),
     )
 }
@@ -296,10 +297,10 @@ private fun AutoScrollControl(
     Row(
         modifier =
             Modifier
-                .clickable(
-                    onClick = { onChange(!enabled) },
-                    indication = null,
-                    interactionSource = remember { MutableInteractionSource() },
+                .toggleable(
+                    value = enabled,
+                    role = Role.Switch,
+                    onValueChange = onChange,
                 ),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(6.dp),
@@ -309,33 +310,7 @@ private fun AutoScrollControl(
             color = CerealTheme.colorScheme.contentTertiary,
             style = CerealTypography.controlLabel.copy(fontWeight = FontWeight.Normal),
         )
-        PillToggle(enabled = enabled)
-    }
-}
-
-@Composable
-private fun PillToggle(enabled: Boolean) {
-    val trackColor = if (enabled) MaterialTheme.colorScheme.primary else CerealTheme.colorScheme.border
-    val thumbOffset by animateDpAsState(
-        targetValue = if (enabled) 18.dp else 2.dp,
-        label = "pillToggleThumb",
-    )
-    Box(
-        modifier =
-            Modifier
-                .width(36.dp)
-                .height(22.dp)
-                .clip(RoundedCornerShape(11.dp))
-                .background(trackColor),
-    ) {
-        Box(
-            modifier =
-                Modifier
-                    .offset(x = thumbOffset, y = 3.dp)
-                    .size(16.dp)
-                    .clip(CircleShape)
-                    .background(ToggleThumb),
-        )
+        CerealToggle(checked = enabled, onCheckedChange = null)
     }
 }
 
@@ -352,7 +327,7 @@ private fun LogLine(event: LoggingEvent) {
         verticalAlignment = Alignment.Top,
         horizontalArrangement = Arrangement.spacedBy(6.dp),
     ) {
-        CerealText(text = timestamp, color = CerealTheme.colorScheme.contentSubtle, maxLines = 1, style = style)
+        CerealText(text = timestamp, color = CerealTheme.colorScheme.contentTertiary, maxLines = 1, style = style)
         CerealText(text = glyphFor(event.priority), color = glyphColorFor(event.priority), style = style.copy(fontWeight = FontWeight.Bold))
         CerealText(
             text = event.message,
@@ -418,7 +393,7 @@ private fun ArtifactRow(
             )
             CerealText(
                 text = "${formatBytes(artifact.sizeBytes)} · ${TimeFormatter.format(Date(artifact.createdAt.toEpochMilliseconds()).toInstant())}",
-                color = CerealTheme.colorScheme.contentSubtle,
+                color = CerealTheme.colorScheme.contentTertiary,
                 maxLines = 1,
                 style = MaterialTheme.typography.bodySmall.copy(fontFamily = FontFamily.Monospace),
             )

@@ -56,9 +56,7 @@ val PaneTableRowPaddingVertical = 12.dp
 val PaneTableActionAreaWidth = 100.dp
 val PaneTableIconButtonGlyphSize = 16.dp
 
-val PaneTableMetaIconColor = cerealColors.contentSubtle
-val PaneTableRowDividerColor = Color(0xFF232323)
-private val PaneTableHeaderBackground = Color(0xFF1A1A1A)
+val PaneTableMetaIconColor = cerealColors.contentTertiary
 private val EncryptedBannerCircleSize = 44.dp
 private val EncryptedBannerGlyphSize = 18.dp
 
@@ -104,7 +102,7 @@ fun PaneTableCard(
                 .padding(horizontal = PaneTablePadding, vertical = 16.dp)
                 .clip(RoundedCornerShape(PaneTableCornerRadius))
                 .border(1.dp, CerealTheme.colorScheme.border, RoundedCornerShape(PaneTableCornerRadius))
-                .background(CerealTheme.colorScheme.cardDark),
+                .background(MaterialTheme.colorScheme.surface),
     ) {
         content()
     }
@@ -119,7 +117,7 @@ fun PaneTableHeader(
         modifier =
             Modifier
                 .fillMaxWidth()
-                .background(PaneTableHeaderBackground)
+                .background(CerealTheme.colorScheme.surfaceHeader)
                 .padding(horizontal = PaneTableRowPaddingHorizontal, vertical = PaneTableRowPaddingVertical),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(12.dp),
@@ -131,7 +129,7 @@ fun PaneTableHeader(
                     CerealTypography.sectionLabel.copy(
                         letterSpacing = TextUnit(0.1f, TextUnitType.Em),
                     ),
-                color = CerealTheme.colorScheme.contentSubtle,
+                color = CerealTheme.colorScheme.contentTertiary,
                 modifier = Modifier.weight(column.weight),
             )
         }
@@ -162,7 +160,7 @@ fun PaneTableRow(
 
 @Composable
 fun PaneTableRowDivider() {
-    HorizontalDivider(thickness = 1.dp, color = PaneTableRowDividerColor)
+    HorizontalDivider(thickness = 1.dp, color = CerealTheme.colorScheme.divider)
 }
 
 @Composable
@@ -304,8 +302,6 @@ fun PaneTableActions(content: @Composable RowScope.() -> Unit) {
     )
 }
 
-private val PaneMetaStripDividerColor = Color(0xFF232323)
-
 /**
  * Horizontal strip of label/value pairs, shown under a [PaneDetailsHeader] to surface
  * summary stats for a drill-down view (e.g. endpoint counts on a proxy pool, record
@@ -322,7 +318,7 @@ fun PaneMetaStrip(content: @Composable RowScope.() -> Unit) {
                 .padding(start = PaneTablePadding, end = PaneTablePadding, top = 14.dp)
                 .clip(RoundedCornerShape(PaneTableCornerRadius))
                 .border(1.dp, CerealTheme.colorScheme.border, RoundedCornerShape(PaneTableCornerRadius))
-                .background(CerealTheme.colorScheme.cardDark)
+                .background(MaterialTheme.colorScheme.surface)
                 .padding(vertical = 12.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.Start,
@@ -348,7 +344,7 @@ fun PaneMetaCell(
                 CerealTypography.sectionLabel.copy(
                     letterSpacing = TextUnit(0.1f, TextUnitType.Em),
                 ),
-            color = CerealTheme.colorScheme.contentSubtle,
+            color = CerealTheme.colorScheme.contentTertiary,
         )
         if (emphasis) {
             CerealText(
@@ -390,7 +386,7 @@ fun SchemaStrip(
                 .padding(top = 10.dp)
                 .clip(RoundedCornerShape(8.dp))
                 .border(1.dp, CerealTheme.colorScheme.border, RoundedCornerShape(8.dp))
-                .background(SchemaStripBackground)
+                .background(CerealTheme.colorScheme.surfaceHeader)
                 .padding(horizontal = 14.dp, vertical = 10.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(12.dp),
@@ -402,7 +398,7 @@ fun SchemaStrip(
             Icon(
                 imageVector = Icons.Outlined.TableChart,
                 contentDescription = null,
-                tint = CerealTheme.colorScheme.contentSubtle,
+                tint = CerealTheme.colorScheme.contentTertiary,
                 modifier = Modifier.size(12.dp),
             )
             CerealText(
@@ -411,7 +407,7 @@ fun SchemaStrip(
                     CerealTypography.sectionLabel.copy(
                         letterSpacing = TextUnit(0.1f, TextUnitType.Em),
                     ),
-                color = CerealTheme.colorScheme.contentSubtle,
+                color = CerealTheme.colorScheme.contentTertiary,
             )
         }
         FlowRow(
@@ -433,7 +429,7 @@ fun PaneMetaDivider() {
             Modifier
                 .height(32.dp)
                 .width(1.dp)
-                .background(PaneMetaStripDividerColor),
+                .background(CerealTheme.colorScheme.divider),
     )
 }
 
@@ -443,7 +439,7 @@ private fun SchemaPill(column: SchemaColumn) {
         modifier =
             Modifier
                 .clip(RoundedCornerShape(4.dp))
-                .background(SchemaPillBackground)
+                .background(CerealTheme.colorScheme.surfaceRaised)
                 .padding(horizontal = 8.dp, vertical = 2.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(6.dp),
@@ -467,9 +463,6 @@ private fun SchemaPill(column: SchemaColumn) {
     }
 }
 
-private val SchemaStripBackground = Color(0xFF1A1A1A)
-private val SchemaPillBackground = Color(0xFF232323)
-
 @Composable
 fun EncryptedBanner(
     title: String,
@@ -488,7 +481,7 @@ fun EncryptedBanner(
                 Modifier
                     .size(EncryptedBannerCircleSize)
                     .clip(CircleShape)
-                    .background(CerealTheme.colorScheme.cardDark)
+                    .background(MaterialTheme.colorScheme.surface)
                     .border(1.dp, CerealTheme.colorScheme.border, CircleShape),
             contentAlignment = Alignment.Center,
         ) {

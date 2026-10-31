@@ -195,7 +195,7 @@ private fun OrDivider() {
         CerealText(
             text = stringResource(Res.string.login_or).uppercase(),
             style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold, letterSpacing = 0.14.em),
-            color = CerealTheme.colorScheme.contentSubtle,
+            color = CerealTheme.colorScheme.contentTertiary,
         )
         HorizontalDivider(modifier = Modifier.weight(1f), color = CerealTheme.colorScheme.border)
     }
@@ -247,7 +247,7 @@ fun GuestLoginButton(loginViewModel: LoginViewModel) {
             Icon(
                 imageVector = Icons.AutoMirrored.Filled.ArrowForward,
                 contentDescription = null,
-                tint = CerealTheme.colorScheme.contentSubtle,
+                tint = CerealTheme.colorScheme.contentTertiary,
                 modifier = Modifier.size(16.dp),
             )
         }

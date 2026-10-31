@@ -130,7 +130,7 @@ private fun NotificationCenterContent(
                             onToggle = { viewModel.onToggleExpand(item.id) },
                             onOpenTask = { onOpenTask(item.taskId) },
                         )
-                        HorizontalDivider(color = CerealTheme.colorScheme.progressTrack)
+                        HorizontalDivider(color = CerealTheme.colorScheme.surfaceRaised)
                     }
                 }
             }
@@ -180,14 +180,14 @@ private fun NotificationCenterEmptyState() {
                 Modifier
                     .size(64.dp)
                     .clip(CircleShape)
-                    .background(CerealTheme.colorScheme.cardDark)
+                    .background(MaterialTheme.colorScheme.surface)
                     .border(1.dp, CerealTheme.colorScheme.border, CircleShape),
             contentAlignment = Alignment.Center,
         ) {
             Icon(
                 imageVector = Icons.Filled.Notifications,
                 contentDescription = null,
-                tint = CerealTheme.colorScheme.contentSubtle,
+                tint = CerealTheme.colorScheme.contentTertiary,
                 modifier = Modifier.size(28.dp),
             )
         }
@@ -222,7 +222,7 @@ private fun NotificationRow(
         modifier =
             Modifier
                 .fillMaxWidth()
-                .background(if (expanded) CerealTheme.colorScheme.cardDark else MaterialTheme.colorScheme.background)
+                .background(if (expanded) MaterialTheme.colorScheme.surface else MaterialTheme.colorScheme.background)
                 .clickable(
                     onClick = onToggle,
                     indication = null,
@@ -296,7 +296,7 @@ private fun NotificationRow(
             Icon(
                 imageVector = Icons.Filled.ExpandMore,
                 contentDescription = null,
-                tint = CerealTheme.colorScheme.contentSubtle,
+                tint = CerealTheme.colorScheme.contentTertiary,
                 modifier = Modifier.size(16.dp).rotate(chevronRotation),
             )
         }
@@ -363,7 +363,7 @@ private fun NoChannelsNotice() {
             Modifier
                 .fillMaxWidth()
                 .clip(MaterialTheme.shapes.small)
-                .background(CerealTheme.colorScheme.cardDark)
+                .background(MaterialTheme.colorScheme.surface)
                 .border(1.dp, CerealTheme.colorScheme.border, MaterialTheme.shapes.small)
                 .padding(CerealTheme.spacing.md),
         horizontalArrangement = Arrangement.spacedBy(CerealTheme.spacing.sm),
@@ -408,7 +408,7 @@ private fun DeliveryChannelRow(attempt: NotificationDeliveryUiModel) {
                 Modifier
                     .size(26.dp)
                     .clip(MaterialTheme.shapes.small)
-                    .background(CerealTheme.colorScheme.cardDark),
+                    .background(MaterialTheme.colorScheme.surface),
             contentAlignment = Alignment.Center,
         ) {
             Icon(

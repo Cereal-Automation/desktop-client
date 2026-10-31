@@ -144,7 +144,7 @@ internal fun TaskGroupLabel(
             contentPadding = PaddingValues(),
         )
         Spacer(Modifier.weight(1f))
-        MoreOptionsMenu(tint = CerealTheme.colorScheme.contentSubtle, buttonModifier = Modifier.size(28.dp)) { close ->
+        MoreOptionsMenu(tint = CerealTheme.colorScheme.contentTertiary, buttonModifier = Modifier.size(28.dp)) { close ->
             GroupMenuOption.entries.forEach { option ->
                 MenuItem(stringResource(option.label)) {
                     close()
@@ -325,7 +325,7 @@ private fun SetupTitle(
             CerealText(
                 text = section.subtitle,
                 style = MaterialTheme.typography.labelMedium,
-                color = CerealTheme.colorScheme.contentSubtle,
+                color = CerealTheme.colorScheme.contentTertiary,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
             )

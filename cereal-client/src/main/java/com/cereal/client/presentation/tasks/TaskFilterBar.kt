@@ -67,7 +67,7 @@ internal fun TaskFilterBar(
                         CerealText(
                             text = chip.count.toString(),
                             style = MaterialTheme.typography.bodyMedium.copy(fontSize = 13.sp, fontWeight = FontWeight.SemiBold),
-                            color = if (chip.active) CerealTheme.colorScheme.contentSecondary else CerealTheme.colorScheme.contentSubtle,
+                            color = if (chip.active) CerealTheme.colorScheme.contentSecondary else CerealTheme.colorScheme.contentTertiary,
                         )
                     }
                 }

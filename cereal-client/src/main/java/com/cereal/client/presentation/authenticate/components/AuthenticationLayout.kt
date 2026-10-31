@@ -52,9 +52,7 @@ import com.cereal.client.presentation.theme.CerealTheme
 import com.cereal.client.presentation.view.CerealCard
 import com.cereal.client.presentation.view.CerealText
 import com.cereal.client.presentation.view.CerealTextField
-import com.cereal.client.presentation.view.InputBg
 import com.cereal.client.presentation.view.InputBorder
-import com.cereal.client.presentation.view.InputPlaceholder
 import com.cereal_automation.cereal_client.generated.resources.Res
 import com.cereal_automation.cereal_client.generated.resources.application
 import com.cereal_automation.cereal_client.generated.resources.introduction_slogan
@@ -185,7 +183,7 @@ private fun FooterLink(
         text = text,
         modifier = Modifier.clickable(role = Role.Button) { onClick() }.pointerHoverIcon(PointerIcon.Hand),
         style = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.Medium),
-        color = CerealTheme.colorScheme.contentSubtle,
+        color = CerealTheme.colorScheme.contentTertiary,
     )
 }
 
@@ -252,7 +250,7 @@ fun AuthTextField(
                 Icon(
                     imageVector = icon,
                     contentDescription = null,
-                    tint = CerealTheme.colorScheme.contentSubtle,
+                    tint = CerealTheme.colorScheme.contentTertiary,
                     modifier = Modifier.size(15.dp),
                 )
             },

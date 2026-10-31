@@ -156,7 +156,7 @@ internal fun TaskRow(
                     .fillMaxWidth()
                     .height(1.dp)
                     .align(Alignment.BottomCenter)
-                    .background(CerealTheme.colorScheme.progressTrack),
+                    .background(CerealTheme.colorScheme.surfaceRaised),
         )
     }
 }

@@ -41,7 +41,6 @@ import com.cereal.client.presentation.view.CerealButton
 import com.cereal.client.presentation.view.CerealCircularProgressIndicator
 import com.cereal.client.presentation.view.CerealText
 import com.cereal.client.presentation.view.ClickableUrlText
-import com.cereal.client.presentation.view.InputBg
 import com.cereal.client.presentation.view.text
 import com.cereal_automation.cereal_client.generated.resources.Res
 import com.cereal_automation.cereal_client.generated.resources.ai_api_key
@@ -130,7 +129,7 @@ internal fun HomeConnectForm(viewModel: HomeAiProviderViewModel) {
             CerealText(
                 text = footError ?: stringResource(if (hasKey) Res.string.home_ai_connect_hint else Res.string.home_ai_connect_hint_local),
                 style = MaterialTheme.typography.bodySmall,
-                color = if (footError != null) MaterialTheme.colorScheme.error else CerealTheme.colorScheme.contentSubtle,
+                color = if (footError != null) MaterialTheme.colorScheme.error else CerealTheme.colorScheme.contentTertiary,
             )
         }
         PrivacyLine(preset)
@@ -185,12 +184,12 @@ private fun SpendNote(text: String) {
             Modifier
                 .fillMaxWidth()
                 .clip(TileShape)
-                .background(InputBg)
+                .background(CerealTheme.colorScheme.inputBackground)
                 .border(1.dp, CerealTheme.colorScheme.border, TileShape)
                 .padding(horizontal = 12.dp, vertical = 10.dp),
         horizontalArrangement = Arrangement.spacedBy(9.dp),
     ) {
-        Icon(Icons.Outlined.Info, contentDescription = null, modifier = Modifier.padding(top = 2.dp).size(14.dp), tint = CerealTheme.colorScheme.contentSubtle)
+        Icon(Icons.Outlined.Info, contentDescription = null, modifier = Modifier.padding(top = 2.dp).size(14.dp), tint = CerealTheme.colorScheme.contentTertiary)
         ClickableUrlText(text)
     }
 }
@@ -204,8 +203,8 @@ private fun PrivacyLine(preset: LlmPreset) {
             else -> stringResource(preset.label())
         }
     Row(horizontalArrangement = Arrangement.spacedBy(7.dp)) {
-        Icon(Icons.Outlined.Lock, contentDescription = null, modifier = Modifier.padding(top = 1.dp).size(13.dp), tint = CerealTheme.colorScheme.contentSubtle)
-        CerealText(stringResource(Res.string.home_ai_privacy, target), style = MaterialTheme.typography.bodySmall, color = CerealTheme.colorScheme.contentSubtle)
+        Icon(Icons.Outlined.Lock, contentDescription = null, modifier = Modifier.padding(top = 1.dp).size(13.dp), tint = CerealTheme.colorScheme.contentTertiary)
+        CerealText(stringResource(Res.string.home_ai_privacy, target), style = MaterialTheme.typography.bodySmall, color = CerealTheme.colorScheme.contentTertiary)
     }
 }
 

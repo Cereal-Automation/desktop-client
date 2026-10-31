@@ -59,7 +59,6 @@ import com.cereal.client.presentation.view.CerealCard
 import com.cereal.client.presentation.view.CerealText
 import com.cereal.client.presentation.view.CerealTextField
 import com.cereal.client.presentation.view.ConfirmationDialog
-import com.cereal.client.presentation.view.InputPlaceholder
 import com.cereal.client.presentation.view.WarningBox
 import com.cereal.client.presentation.view.table.PaneToolbar
 import com.cereal.client.presentation.view.text
@@ -307,7 +306,7 @@ private fun StepNumber(
         when (badge) {
             StepBadge.Number -> MaterialTheme.colorScheme.primary
             StepBadge.Done -> CerealTheme.colorScheme.success
-            StepBadge.Locked -> CerealTheme.colorScheme.contentSubtle
+            StepBadge.Locked -> CerealTheme.colorScheme.contentTertiary
         }
     Box(
         modifier =
@@ -364,7 +363,7 @@ private fun ConnectedStep(
                     style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.SemiBold),
                     color = MaterialTheme.colorScheme.onSurface,
                 )
-                Box(Modifier.size(3.dp).clip(CircleShape).background(CerealTheme.colorScheme.contentSubtle))
+                Box(Modifier.size(3.dp).clip(CircleShape).background(CerealTheme.colorScheme.contentTertiary))
                 CerealText(provider.model, style = MaterialTheme.typography.bodyMedium, color = CerealTheme.colorScheme.contentSecondary)
             }
         },
@@ -389,7 +388,7 @@ private fun ModelLine(
             style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.SemiBold),
             color = MaterialTheme.colorScheme.onSurface,
         )
-        Box(Modifier.size(3.dp).clip(CircleShape).background(CerealTheme.colorScheme.contentSubtle))
+        Box(Modifier.size(3.dp).clip(CircleShape).background(CerealTheme.colorScheme.contentTertiary))
         CerealText(provider.model, style = MaterialTheme.typography.bodyMedium, color = CerealTheme.colorScheme.contentSecondary)
         CerealButton(onClick = onChangeModel, text = stringResource(Res.string.home_ai_change), type = CerealButtonType.Surface)
     }
@@ -408,7 +407,7 @@ private fun LockedGoalStep() {
                 Icons.Outlined.Lock,
                 contentDescription = null,
                 modifier = Modifier.padding(top = 5.dp).size(15.dp),
-                tint = CerealTheme.colorScheme.contentSubtle,
+                tint = CerealTheme.colorScheme.contentTertiary,
             )
         },
     )
@@ -439,7 +438,7 @@ private fun GoalStep(
                     modifier = Modifier.fillMaxWidth(),
                 )
                 // The picked script's own fields sit below a rule, as one form.
-                HorizontalDivider(thickness = 1.dp, color = FormDivider)
+                HorizontalDivider(thickness = 1.dp, color = CerealTheme.colorScheme.divider)
             }
             Column(
                 modifier = Modifier.testTag(HomeTestTags.FIELDS),
@@ -491,7 +490,6 @@ private const val BADGE_TINT = 0.12f
 private const val BADGE_BORDER = 0.3f
 
 // The design's divider token, between the script picker and the picked script's fields.
-private val FormDivider = Color(0xFF232323)
 
 @Composable
 internal fun ComposerField(
@@ -529,7 +527,7 @@ internal fun ComposerField(
                 },
         )
         val note = error ?: help
-        note?.let { CerealText(it, style = MaterialTheme.typography.bodySmall, color = if (error != null) MaterialTheme.colorScheme.error else CerealTheme.colorScheme.contentSubtle) }
+        note?.let { CerealText(it, style = MaterialTheme.typography.bodySmall, color = if (error != null) MaterialTheme.colorScheme.error else CerealTheme.colorScheme.contentTertiary) }
     }
 }
 

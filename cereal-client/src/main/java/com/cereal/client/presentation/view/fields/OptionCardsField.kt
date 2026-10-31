@@ -21,7 +21,6 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.cereal.client.presentation.theme.CerealTheme
 import com.cereal.client.presentation.view.CerealText
-import com.cereal.client.presentation.view.InputBg
 import com.cereal.client.presentation.view.InputBorder
 import com.cereal.client.presentation.view.fields.state.DropDownFieldState
 
@@ -41,7 +40,7 @@ fun <T : Any> OptionCardsField(state: DropDownFieldState<T>) {
                 modifier =
                     Modifier
                         .selectableGroup()
-                        .background(InputBg, RoundedCornerShape(8.dp))
+                        .background(CerealTheme.colorScheme.inputBackground, RoundedCornerShape(8.dp))
                         .border(1.dp, InputBorder, RoundedCornerShape(8.dp))
                         .padding(3.dp),
                 horizontalArrangement = Arrangement.spacedBy(2.dp),

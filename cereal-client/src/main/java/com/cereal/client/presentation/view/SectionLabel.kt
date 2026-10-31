@@ -19,7 +19,7 @@ import com.cereal.client.presentation.theme.CerealTypography
 fun SectionLabel(
     text: String,
     modifier: Modifier = Modifier,
-    color: Color = CerealTheme.colorScheme.contentSubtle,
+    color: Color = CerealTheme.colorScheme.contentTertiary,
     contentPadding: PaddingValues = PaddingValues(horizontal = 18.dp, vertical = 4.dp),
 ) {
     CerealText(
