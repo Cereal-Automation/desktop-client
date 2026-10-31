@@ -44,6 +44,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.DpOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.cereal.client.presentation.tasks.script.overview.configuration.FieldLabel
 import com.cereal.client.presentation.theme.CerealTheme
 import com.cereal.client.presentation.view.CerealText
 import com.cereal.client.presentation.view.CerealTextField
@@ -78,11 +79,7 @@ fun ScriptEntryPicker(
     val label = stringResource(Res.string.script_entry_label)
     Column(modifier = modifier, verticalArrangement = Arrangement.spacedBy(6.dp)) {
         Row(verticalAlignment = Alignment.Bottom, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-            CerealText(
-                text = label,
-                style = MaterialTheme.typography.bodySmall.copy(fontSize = 12.5.sp, fontWeight = FontWeight.SemiBold),
-                color = CerealTheme.colorScheme.contentSecondary,
-            )
+            FieldLabel(label, isRequired = false)
             CerealText(
                 text = stringResource(Res.string.script_entry_count, options.size),
                 style = MaterialTheme.typography.bodySmall.copy(fontSize = 12.5.sp, fontWeight = FontWeight.Medium),
