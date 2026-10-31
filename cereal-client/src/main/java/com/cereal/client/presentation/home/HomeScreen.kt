@@ -49,7 +49,6 @@ import androidx.compose.ui.unit.sp
 import com.cereal.client.presentation.error.errorView
 import com.cereal.client.presentation.settings.ai.label
 import com.cereal.client.presentation.tasks.script.overview.ScriptEntryPicker
-import com.cereal.client.presentation.tasks.script.overview.ScriptRequest
 import com.cereal.client.presentation.tasks.script.overview.ScriptSelectionDialog
 import com.cereal.client.presentation.tasks.script.overview.configuration.ConfigField
 import com.cereal.client.presentation.tasks.script.overview.configuration.FormFieldContent
@@ -101,14 +100,13 @@ object HomeTestTags {
 
 /**
  * The agent home: a two-step setup (connect a model, then the goal composer), or the install/update card
- * when the agent can't run. Recent goal runs and the scripts strip go below.
+ * when the agent can't run. Recent goal runs go below.
  */
 @Composable
 fun HomeScreen(
     onNavigateToMarketplace: () -> Unit = {},
     onOpenClientUpdate: () -> Unit = {},
     onOpenTasks: (focusTaskId: String?) -> Unit = {},
-    onRunScript: (ScriptRequest) -> Unit = {},
     onNavigateToAiSettings: () -> Unit = {},
 ) {
     val scope = rememberCoroutineScope()
@@ -168,7 +166,7 @@ fun HomeScreen(
                     }
                 }
                 Spacer(Modifier.height(CerealTheme.spacing.md))
-                HomeActivitySections(onOpenTasks, onRunScript, onNavigateToMarketplace)
+                HomeActivitySections(onOpenTasks)
             }
         }
     }

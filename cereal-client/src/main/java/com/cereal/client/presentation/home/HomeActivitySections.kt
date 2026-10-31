@@ -16,7 +16,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import com.cereal.client.presentation.tasks.script.overview.ScriptRequest
 import com.cereal.client.presentation.theme.CerealTheme
 import com.cereal.client.presentation.view.CerealCard
 import com.cereal.client.presentation.view.CerealText
@@ -24,22 +23,16 @@ import com.cereal.client.presentation.view.SettingsButtonVariant
 import com.cereal.client.presentation.view.SettingsSmallButton
 import com.cereal_automation.cereal_client.generated.resources.Res
 import com.cereal_automation.cereal_client.generated.resources.home_all_in_tasks
-import com.cereal_automation.cereal_client.generated.resources.home_browse_marketplace
-import com.cereal_automation.cereal_client.generated.resources.home_ready_made_scripts
-import com.cereal_automation.cereal_client.generated.resources.home_ready_made_scripts_empty
 import com.cereal_automation.cereal_client.generated.resources.home_recent_runs
 import com.cereal_automation.cereal_client.generated.resources.home_recent_runs_empty
-import com.cereal_automation.cereal_client.generated.resources.home_run_script
 import org.jetbrains.compose.resources.stringResource
 import org.koin.core.parameter.parametersOf
 import org.koin.java.KoinJavaComponent
 
-/** Recent goal runs and the ready-made scripts strip; independent of the composer slot's state. */
+/** Recent goal runs; independent of the composer slot's state. */
 @Composable
 fun HomeActivitySections(
     onOpenTasks: (focusTaskId: String?) -> Unit,
-    onRunScript: (ScriptRequest) -> Unit,
-    onNavigateToMarketplace: () -> Unit,
 ) {
     val scope = rememberCoroutineScope()
     val viewModel =
@@ -74,33 +67,6 @@ fun HomeActivitySections(
                     color = CerealTheme.colorScheme.contentSecondary,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
-                )
-            }
-        }
-    }
-
-    Section(
-        title = stringResource(Res.string.home_ready_made_scripts),
-        action = stringResource(Res.string.home_browse_marketplace),
-        onAction = onNavigateToMarketplace,
-        empty = stringResource(Res.string.home_ready_made_scripts_empty).takeIf { viewModel.readyMadeScripts.value.isEmpty() },
-    ) {
-        viewModel.readyMadeScripts.value.forEachIndexed { index, script ->
-            if (index > 0) RowDivider()
-            Row(
-                modifier = Modifier.fillMaxWidth().padding(CerealTheme.spacing.md),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                CerealText(
-                    text = script.name,
-                    color = MaterialTheme.colorScheme.onSurface,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                    modifier = Modifier.weight(1f).padding(end = CerealTheme.spacing.md),
-                )
-                SettingsSmallButton(
-                    text = stringResource(Res.string.home_run_script),
-                    onClick = { onRunScript(ScriptRequest(script.packageName, script.variantId)) },
                 )
             }
         }

@@ -2,13 +2,10 @@ package com.cereal.client.presentation.home
 
 import com.cereal.client.application.CoroutinesDispatcherProvider
 import com.cereal.client.application.agent.AI_BROWSER_AGENT_PACKAGE
-import com.cereal.client.application.interactor.script.GetScriptsInteractor
 import com.cereal.client.application.interactor.task.ObserveTasksInteractor
-import com.cereal.client.infrastructure.data.repository.inmemory.InMemoryScriptRepository
 import com.cereal.client.infrastructure.data.repository.inmemory.InMemoryTasksRepository
 import fixtures.aGoalRun
 import fixtures.aScriptInstance
-import fixtures.aScriptPackage
 import fixtures.aScriptPackageInstance
 import fixtures.aScriptPackageWithVariant
 import fixtures.aTask
@@ -22,11 +19,10 @@ import kotlinx.coroutines.test.runTest
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Test
 
-/** [HomeActivityViewModel] over in-memory task and script repositories. */
+/** [HomeActivityViewModel] over an in-memory task repository. */
 @OptIn(ExperimentalCoroutinesApi::class)
 class HomeActivityViewModelTest {
     private val tasks = InMemoryTasksRepository()
-    private val scripts = InMemoryScriptRepository()
 
     private fun TestScope.homeActivity(): HomeActivityViewModel {
         val dispatcher = StandardTestDispatcher(testScheduler)
@@ -34,7 +30,6 @@ class HomeActivityViewModelTest {
             scope = CoroutineScope(dispatcher),
             dispatcherProvider = CoroutinesDispatcherProvider(dispatcher, dispatcher, dispatcher),
             observeTasksInteractor = ObserveTasksInteractor(tasks),
-            getScriptsInteractor = GetScriptsInteractor(scripts),
         )
     }
 
@@ -95,23 +90,6 @@ class HomeActivityViewModelTest {
             advanceUntilIdle()
 
             assertEquals(listOf("t2", "t1"), vm.recentRuns.value.map { it.taskId })
-        }
-
-    @Test
-    fun `the ready-made strip lists every installed script's entries`() =
-        runTest {
-            val restock = aScriptPackage("com.example.restock").let { it.copy(manifest = it.manifest.copy(name = "Restock Monitor")) }
-            scripts.seed(listOf(restock, anAgentWithCheckoutVariant()))
-            val vm = homeActivity()
-            advanceUntilIdle()
-
-            assertEquals(
-                listOf(
-                    ReadyMadeScriptUiModel("com.example.restock", "Restock Monitor"),
-                    ReadyMadeScriptUiModel(AI_BROWSER_AGENT_PACKAGE, "Product Monitor & Checkout", variantId = "product-checkout"),
-                ),
-                vm.readyMadeScripts.value,
-            )
         }
 
     @Test

@@ -83,11 +83,6 @@ interface Root {
                                         backStack.newRoot(route)
                                         onNavigateTo?.invoke(route)
                                     },
-                                    onRunScript = { request ->
-                                        val route = Routing.Tasks(openScriptSelectionFor = request)
-                                        backStack.newRoot(route)
-                                        onNavigateTo?.invoke(route)
-                                    },
                                     onNavigateToAiSettings = {
                                         val route = Routing.ApplicationSettings(scrollToAi = true)
                                         backStack.newRoot(route)
