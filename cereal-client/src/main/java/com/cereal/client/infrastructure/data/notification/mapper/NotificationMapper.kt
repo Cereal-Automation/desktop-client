@@ -3,7 +3,6 @@ package com.cereal.client.infrastructure.data.notification.mapper
 import com.cereal.client.domain.model.notification.AuthorEmbed as DomainAuthorEmbed
 import com.cereal.client.domain.model.notification.DiscordEmbed as DomainDiscordEmbed
 import com.cereal.client.domain.model.notification.DiscordNotificationData as DomainDiscordNotificationData
-import com.cereal.client.domain.model.notification.EmailNotificationData as DomainEmailNotificationData
 import com.cereal.client.domain.model.notification.FieldEmbed as DomainFieldEmbed
 import com.cereal.client.domain.model.notification.FooterEmbed as DomainFooterEmbed
 import com.cereal.client.domain.model.notification.ImageEmbed as DomainImageEmbed
@@ -21,7 +20,6 @@ import com.cereal.sdk.component.notification.discord.model.embed.ImageEmbed as S
 import com.cereal.sdk.component.notification.discord.model.embed.ProviderEmbed as SdkProviderEmbed
 import com.cereal.sdk.component.notification.discord.model.embed.ThumbnailEmbed as SdkThumbnailEmbed
 import com.cereal.sdk.component.notification.discord.model.embed.VideoEmbed as SdkVideoEmbed
-import com.cereal.sdk.component.notification.email.model.EmailMessage as SdkEmailMessage
 import com.cereal.sdk.component.notification.telegram.model.TelegramMessage as SdkTelegramMessage
 import com.cereal.sdk.component.notification.telegram.model.TelegramParseMode as SdkTelegramParseMode
 
@@ -153,19 +151,3 @@ fun DomainTelegramParseMode.toSdkTelegramParseMode(): SdkTelegramParseMode =
         DomainTelegramParseMode.MARKDOWN_V2 -> SdkTelegramParseMode.MARKDOWN_V2
         DomainTelegramParseMode.HTML -> SdkTelegramParseMode.HTML
     }
-
-/**
- * Maps domain EmailNotificationData to SDK EmailMessage.
- */
-fun DomainEmailNotificationData.toSdkEmailMessage(): SdkEmailMessage =
-    SdkEmailMessage(
-        to = this.to,
-        from = this.from,
-        subject = this.subject,
-        body = this.body,
-        smtpHost = this.smtpHost,
-        smtpPort = this.smtpPort,
-        username = this.username,
-        password = this.password,
-        useTls = this.useTls,
-    )

@@ -32,7 +32,7 @@
 - **Map interactor output → UiModel → ViewState** — domain objects must not leak into composables.
 - **Invoke interactors** — one interactor call per user action; orchestration belongs in the application layer.
 - **Manage UI state** — expose `mutableStateOf` / `State<T>` from ViewModels; composables observe and render.
-- **Error presentation** — observe `ErrorResolver.errorAction` and render `ErrorView` / `ErrorDialog` accordingly.
+- **Error presentation** — observe `ErrorResolver.errorAction` and render `ErrorView` accordingly.
 
 ---
 
