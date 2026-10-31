@@ -198,7 +198,7 @@ fun ApplicationSettingsScreen(
                             text = stringResource(Res.string.version, applicationConfig.versionName).uppercase(),
                             style =
                                 CerealTypography.sectionLabel.copy(
-                                    color = CerealTheme.colorScheme.contentSubtle,
+                                    color = CerealTheme.colorScheme.contentTertiary,
                                 ),
                             modifier = Modifier.padding(top = 3.dp), // 2 × 1.25
                         )

@@ -21,10 +21,10 @@ import com.cereal.client.presentation.settings.state.EmailToState
 import com.cereal.client.presentation.settings.state.EmailUsernameState
 import com.cereal.client.presentation.settings.state.TelegramBotTokenState
 import com.cereal.client.presentation.settings.state.TelegramChatIdState
+import com.cereal.client.presentation.view.CerealToggle
 import com.cereal.client.presentation.view.InfoTooltip
 import com.cereal.client.presentation.view.SettingsFieldRow
 import com.cereal.client.presentation.view.SettingsTextInput
-import com.cereal.client.presentation.view.SettingsToggle
 import com.cereal_automation.cereal_client.generated.resources.Res
 import com.cereal_automation.cereal_client.generated.resources.bot_token
 import com.cereal_automation.cereal_client.generated.resources.chat_id
@@ -217,7 +217,7 @@ fun EmailUseTlsField(
         label = stringResource(Res.string.email_use_tls),
         description = stringResource(Res.string.email_use_tls_desc),
     ) {
-        SettingsToggle(
+        CerealToggle(
             checked = useTls.value,
             onCheckedChange = onUseTlsChange,
         )

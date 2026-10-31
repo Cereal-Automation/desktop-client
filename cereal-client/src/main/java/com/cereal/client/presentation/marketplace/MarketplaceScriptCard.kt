@@ -154,7 +154,7 @@ internal fun ScriptCard(
                         if (script.averageRating != null) {
                             CerealTheme.colorScheme.warning
                         } else {
-                            CerealTheme.colorScheme.contentSubtle
+                            CerealTheme.colorScheme.contentTertiary
                         },
                     modifier = Modifier.size(14.dp),
                 )

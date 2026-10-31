@@ -364,7 +364,7 @@ private fun DatasetRecordRow(
                 style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Medium),
                 color =
                     if (value == null) {
-                        CerealTheme.colorScheme.contentSubtle
+                        CerealTheme.colorScheme.contentTertiary
                     } else {
                         CerealTheme.colorScheme.contentSecondary
                     },

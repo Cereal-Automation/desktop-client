@@ -48,11 +48,6 @@ import com.cereal.client.presentation.view.fields.state.TextFieldState
 
 // All dimensions below are the design CSS px × 1.25 (project's px→dp/sp ratio).
 private val SectionBorder = cerealColors.border
-private val SectionRowDivider = Color(0xFF232323)
-private val SectionTitleBg = Color(0xFF181818)
-private val ConfigPanelBg = Color(0xFF121212)
-
-private val ToggleOffTrack = Color(0xFF2A2A2A)
 
 enum class SettingsButtonVariant { Flat, Primary, Ghost }
 
@@ -85,40 +80,6 @@ fun SettingsSmallButton(
         SettingsButtonVariant.Ghost -> {
             CerealOutlinedButton(onClick, modifier, enabled, type = CerealButtonType.Neutral, contentPadding = contentPadding, content = content)
         }
-    }
-}
-
-@Composable
-fun SettingsToggle(
-    checked: Boolean,
-    onCheckedChange: (Boolean) -> Unit,
-    modifier: Modifier = Modifier,
-    enabled: Boolean = true,
-) {
-    val trackColor = if (checked) MaterialTheme.colorScheme.primary else ToggleOffTrack
-    val thumbOffset by animateDpAsState(if (checked) 17.5.dp else 2.5.dp) // 14/2 × 1.25
-    val alpha = if (enabled) 1f else 0.4f
-    Box(
-        modifier =
-            modifier
-                .size(width = 35.dp, height = 20.dp) // 28×16 × 1.25
-                .clip(RoundedCornerShape(10.dp)) // 8px × 1.25
-                .background(trackColor.copy(alpha = trackColor.alpha * alpha))
-                .clickable(
-                    enabled = enabled,
-                    interactionSource = remember { MutableInteractionSource() },
-                    indication = null,
-                    onClick = { onCheckedChange(!checked) },
-                ),
-    ) {
-        Box(
-            modifier =
-                Modifier
-                    .offset(x = thumbOffset, y = 2.5.dp)
-                    .size(15.dp) // 12px × 1.25
-                    .clip(CircleShape)
-                    .background(Color.White.copy(alpha = alpha)),
-        )
     }
 }
 
@@ -165,13 +126,13 @@ fun SettingsSectionCard(
                     .fillMaxWidth()
                     .clip(RoundedCornerShape(15.dp)) // 12px × 1.25
                     .border(1.dp, SectionBorder, RoundedCornerShape(15.dp))
-                    .background(CerealTheme.colorScheme.cardDark, RoundedCornerShape(15.dp)),
+                    .background(MaterialTheme.colorScheme.surface, RoundedCornerShape(15.dp)),
         ) {
             Box(
                 modifier =
                     Modifier
                         .fillMaxWidth()
-                        .background(SectionTitleBg)
+                        .background(CerealTheme.colorScheme.surfaceHeader)
                         .padding(horizontal = 22.dp, vertical = 18.dp), // 18/14 × 1.25
             ) {
                 CerealText(
@@ -247,7 +208,7 @@ fun SettingsRowIcon(
             modifier
                 .size(35.dp) // 28px × 1.25
                 .clip(RoundedCornerShape(8.dp)) // 6px × 1.25
-                .background(Color(0xFF1C1C1C))
+                .background(CerealTheme.colorScheme.inputBackground)
                 .border(1.dp, cerealColors.border, RoundedCornerShape(8.dp)),
         contentAlignment = Alignment.Center,
     ) {
@@ -264,13 +225,14 @@ fun SettingsSectionRow(
     icon: (@Composable () -> Unit)? = null,
     trailing: @Composable () -> Unit,
 ) {
+    val dividerColor = CerealTheme.colorScheme.divider
     Row(
         modifier =
             Modifier
                 .fillMaxWidth()
                 .drawBehind {
                     drawLine(
-                        color = SectionRowDivider,
+                        color = dividerColor,
                         start = Offset(0f, 0f),
                         end = Offset(size.width, 0f),
                         strokeWidth = 1f,
@@ -343,7 +305,7 @@ fun SettingsToggleRow(
     onCheckedChange: (Boolean) -> Unit,
 ) {
     SettingsSectionRow(title = title, description = description) {
-        SettingsToggle(
+        CerealToggle(
             checked = checked,
             enabled = enabled,
             onCheckedChange = onCheckedChange,
@@ -381,14 +343,15 @@ fun SettingsActionRow(
 
 @Composable
 fun ConfigurationPanel(content: @Composable ColumnScope.() -> Unit) {
+    val dividerColor = CerealTheme.colorScheme.divider
     Column(
         modifier =
             Modifier
                 .fillMaxWidth()
-                .background(ConfigPanelBg)
+                .background(CerealTheme.colorScheme.surfaceSunken)
                 .drawBehind {
                     drawLine(
-                        color = SectionRowDivider,
+                        color = dividerColor,
                         start = Offset(0f, 0f),
                         end = Offset(size.width, 0f),
                         strokeWidth = 1f,
@@ -414,11 +377,7 @@ fun TestButton(
     }
 }
 
-internal val InputBg = Color(0xFF1C1C1C)
 internal val InputBorder = cerealColors.border
-internal val InputPlaceholder = Color(0xFF5A5A5A)
-private val FieldLabel = Color(0xFFE8E8E8)
-private val FieldDesc = Color(0xFF717171)
 
 @Composable
 fun SettingsFieldRow(
@@ -439,7 +398,7 @@ fun SettingsFieldRow(
                     style =
                         MaterialTheme.typography.bodyLarge.copy(
                             fontWeight = FontWeight.SemiBold,
-                            color = FieldLabel,
+                            color = MaterialTheme.colorScheme.onSurface,
                         ),
                 )
                 if (help != null) {
@@ -453,7 +412,7 @@ fun SettingsFieldRow(
                 style =
                     MaterialTheme.typography.bodyMedium.copy(
                         lineHeight = 20.sp, // 16.5px × 1.25 ≈ 20
-                        color = FieldDesc,
+                        color = CerealTheme.colorScheme.contentTertiary,
                     ),
             )
         }

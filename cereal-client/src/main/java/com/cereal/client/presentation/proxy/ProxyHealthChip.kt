@@ -86,7 +86,7 @@ private fun HealthBadge(
         modifier =
             modifier
                 .background(
-                    color = CerealTheme.colorScheme.cardDark,
+                    color = MaterialTheme.colorScheme.surface,
                     shape = RoundedCornerShape(6.dp),
                 ).padding(horizontal = 8.dp, vertical = 3.dp),
         horizontalArrangement = Arrangement.spacedBy(6.dp),

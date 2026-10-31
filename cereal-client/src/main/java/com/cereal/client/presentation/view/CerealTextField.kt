@@ -75,7 +75,7 @@ fun CerealTextField(
                 modifier =
                     Modifier
                         .fillMaxWidth()
-                        .background(InputBg, shape)
+                        .background(CerealTheme.colorScheme.inputBackground, shape)
                         .border(1.dp, border, shape)
                         .padding(horizontal = 12.dp, vertical = if (singleLine) 0.dp else 12.dp),
                 verticalAlignment = if (singleLine) Alignment.CenterVertically else Alignment.Top,
@@ -83,7 +83,7 @@ fun CerealTextField(
             ) {
                 leadingIcon?.invoke()
                 Box(Modifier.weight(1f)) {
-                    if (value.isEmpty() && placeholder != null) CerealText(placeholder, style = style.copy(color = InputPlaceholder))
+                    if (value.isEmpty() && placeholder != null) CerealText(placeholder, style = style.copy(color = CerealTheme.colorScheme.inputPlaceholder))
                     inner()
                 }
                 trailingIcon?.invoke()

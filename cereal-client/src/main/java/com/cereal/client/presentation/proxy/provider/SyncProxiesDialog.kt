@@ -154,7 +154,7 @@ fun SyncProxiesDialog(
                     Modifier
                         .width(DialogWidth)
                         .border(1.dp, CerealTheme.colorScheme.borderDark, RoundedCornerShape(14.dp))
-                        .background(CerealTheme.colorScheme.cardDark, RoundedCornerShape(14.dp)),
+                        .background(MaterialTheme.colorScheme.surface, RoundedCornerShape(14.dp)),
             ) {
                 SyncHeader(providerName, state.step, onClose)
                 if (state.step != SyncWizardStep.DONE) {
@@ -473,7 +473,7 @@ private fun SyncPreview(
         CerealText(
             text = stringResource(Res.string.proxies_sync_preview_label).uppercase(),
             style = CerealTypography.sectionLabel,
-            color = CerealTheme.colorScheme.contentSubtle,
+            color = CerealTheme.colorScheme.contentTertiary,
         )
         CerealText(text = preview, style = MaterialTheme.typography.bodySmall, color = CerealTheme.colorScheme.contentSecondary)
         CerealText(
@@ -800,7 +800,7 @@ private fun Dropdown(
                         Modifier
                             .width(DialogWidth - 80.dp)
                             .border(1.dp, CerealTheme.colorScheme.borderDark, RoundedCornerShape(8.dp))
-                            .background(CerealTheme.colorScheme.cardDark, RoundedCornerShape(8.dp))
+                            .background(MaterialTheme.colorScheme.surface, RoundedCornerShape(8.dp))
                             .verticalScroll(rememberScrollState())
                             .padding(5.dp),
                 ) {

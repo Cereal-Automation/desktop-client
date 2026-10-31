@@ -101,7 +101,7 @@ private fun SectionHeader(
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        CerealText(text = label.uppercase(), style = CerealTypography.sectionLabel, color = CerealTheme.colorScheme.contentSubtle)
+        CerealText(text = label.uppercase(), style = CerealTypography.sectionLabel, color = CerealTheme.colorScheme.contentTertiary)
         CerealText(text = sub, style = MaterialTheme.typography.bodySmall, color = CerealTheme.colorScheme.contentTertiary)
     }
 }
@@ -118,7 +118,7 @@ private fun ConnectedProviderCard(
             Modifier
                 .fillMaxWidth()
                 .border(1.dp, CerealTheme.colorScheme.border, RoundedCornerShape(CardCornerRadius))
-                .background(CerealTheme.colorScheme.cardDark, RoundedCornerShape(CardCornerRadius))
+                .background(MaterialTheme.colorScheme.surface, RoundedCornerShape(CardCornerRadius))
                 .padding(20.dp),
     ) {
         Row(verticalAlignment = Alignment.Top, horizontalArrangement = Arrangement.spacedBy(16.dp)) {
@@ -187,7 +187,7 @@ private fun ConnectHero(onConnect: () -> Unit) {
             Modifier
                 .fillMaxWidth()
                 .border(1.dp, CerealTheme.colorScheme.border, RoundedCornerShape(CardCornerRadius))
-                .background(CerealTheme.colorScheme.cardDark, RoundedCornerShape(CardCornerRadius))
+                .background(MaterialTheme.colorScheme.surface, RoundedCornerShape(CardCornerRadius))
                 .padding(CerealTheme.spacing.xl),
     ) {
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(16.dp)) {
@@ -238,11 +238,11 @@ private fun StatCell(
 ) {
     Column {
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-            Icon(icon, contentDescription = null, tint = CerealTheme.colorScheme.contentSubtle, modifier = Modifier.size(12.dp))
+            Icon(icon, contentDescription = null, tint = CerealTheme.colorScheme.contentTertiary, modifier = Modifier.size(12.dp))
             CerealText(
                 text = label,
                 style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.SemiBold),
-                color = CerealTheme.colorScheme.contentSubtle,
+                color = CerealTheme.colorScheme.contentTertiary,
             )
         }
         CerealText(

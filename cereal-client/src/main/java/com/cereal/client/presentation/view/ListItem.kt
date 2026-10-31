@@ -60,7 +60,7 @@ fun ListItem(
     menuOptions: List<MenuOption> = emptyList(),
     onMenuOptionClick: ((obj: MenuOption) -> Unit)? = null,
     onLongClick: (() -> Unit)? = null,
-    backgroundColor: Color = CerealTheme.colorScheme.cardDark,
+    backgroundColor: Color = MaterialTheme.colorScheme.surface,
     outerPadding: PaddingValues = PaddingValues(horizontal = 25.dp, vertical = 3.dp),
     hoverActions: @Composable RowScope.() -> Unit = {},
     alwaysShowActions: Boolean = false,

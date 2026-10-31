@@ -184,7 +184,7 @@ private fun LockedFeaturesCard() {
             Modifier
                 .fillMaxWidth()
                 .clip(RoundedCornerShape(16.dp))
-                .background(CerealTheme.colorScheme.cardDark)
+                .background(MaterialTheme.colorScheme.surface)
                 .border(
                     width = 1.dp,
                     color = CerealTheme.colorScheme.borderDark,

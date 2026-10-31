@@ -464,7 +464,7 @@ private fun UserCard(
             Modifier
                 .padding(start = 12.dp, end = 12.dp, top = 8.dp, bottom = 4.dp)
                 .fillMaxWidth()
-                .background(CerealTheme.colorScheme.cardDark, MaterialTheme.shapes.medium)
+                .background(MaterialTheme.colorScheme.surface, MaterialTheme.shapes.medium)
                 .border(1.dp, CerealTheme.colorScheme.borderDark, MaterialTheme.shapes.medium)
                 .clip(MaterialTheme.shapes.medium)
                 .clickable(

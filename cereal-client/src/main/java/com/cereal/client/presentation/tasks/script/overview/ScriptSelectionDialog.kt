@@ -131,7 +131,7 @@ fun ScriptSelectionDialog(
                         .fillMaxSize()
                         .clip(DialogShape)
                         .border(1.dp, CerealTheme.colorScheme.borderDark, DialogShape)
-                        .background(CerealTheme.colorScheme.cardDark),
+                        .background(MaterialTheme.colorScheme.surface),
             ) {
                 // An edit keeps its script, so there is nothing to choose.
                 if (!viewModel.editing) {
@@ -297,21 +297,21 @@ private fun ScriptRail(
                 CerealText(
                     text = count.toString(),
                     style = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.SemiBold),
-                    color = CerealTheme.colorScheme.contentSubtle,
+                    color = CerealTheme.colorScheme.contentTertiary,
                 )
             }
         }
         Box(Modifier.fillMaxWidth().weight(1f)) {
             list()
         }
-        HorizontalDivider(color = DividerColor)
+        HorizontalDivider(color = CerealTheme.colorScheme.divider)
         Row(modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp)) {
             SyncIconButton(viewModel.scriptRefreshState.value) {
                 viewModel.refreshScriptList()
             }
         }
     }
-    VerticalDivider(color = DividerColor)
+    VerticalDivider(color = CerealTheme.colorScheme.divider)
 }
 
 @Composable
@@ -343,7 +343,7 @@ private fun ConfigHeader(
             Icon(Icons.Outlined.Close, contentDescription = stringResource(Res.string.close), tint = CerealTheme.colorScheme.contentTertiary)
         }
     }
-    HorizontalDivider(color = DividerColor)
+    HorizontalDivider(color = CerealTheme.colorScheme.divider)
 }
 
 @Composable
@@ -354,7 +354,7 @@ private fun ConfigFooter(
     isEditing: Boolean,
     onStart: () -> Unit,
 ) {
-    HorizontalDivider(color = DividerColor)
+    HorizontalDivider(color = CerealTheme.colorScheme.divider)
     Row(
         modifier =
             Modifier
@@ -401,8 +401,6 @@ private fun ConfigFooter(
         }
     }
 }
-
-private val DividerColor = Color(0xFF232323)
 
 @Composable
 private fun NoItemSelectedView() {

@@ -451,7 +451,7 @@ private fun RowScope.ProxyGroupNameCell(
         Icon(
             imageVector = if (group.provider != null) Icons.Outlined.Cloud else Icons.Outlined.Description,
             contentDescription = null,
-            tint = CerealTheme.colorScheme.contentSubtle,
+            tint = CerealTheme.colorScheme.contentTertiary,
             modifier = Modifier.size(PaneTableIconButtonGlyphSize),
         )
         Column(modifier = Modifier.weight(1f)) {
@@ -473,7 +473,7 @@ private fun RowScope.ProxyGroupNameCell(
                         CerealText(
                             text = geo,
                             style = MaterialTheme.typography.bodySmall,
-                            color = CerealTheme.colorScheme.contentSubtle,
+                            color = CerealTheme.colorScheme.contentTertiary,
                             maxLines = 1,
                             overflow = TextOverflow.Ellipsis,
                         )
@@ -729,7 +729,7 @@ private fun EndpointCell(
             ) {
                 append(address)
             }
-            withStyle(SpanStyle(color = CerealTheme.colorScheme.contentSubtle)) {
+            withStyle(SpanStyle(color = CerealTheme.colorScheme.contentTertiary)) {
                 append(":$port")
             }
         }
@@ -762,13 +762,13 @@ private fun AuthCell(
             CerealText(
                 text = stringResource(Res.string.proxies_auth_none),
                 style = MaterialTheme.typography.bodyMedium,
-                color = CerealTheme.colorScheme.contentSubtle,
+                color = CerealTheme.colorScheme.contentTertiary,
             )
         } else {
             Icon(
                 imageVector = Icons.Outlined.Key,
                 contentDescription = null,
-                tint = CerealTheme.colorScheme.contentSubtle,
+                tint = CerealTheme.colorScheme.contentTertiary,
                 modifier = Modifier.size(PaneTableIconButtonGlyphSize),
             )
             CerealText(
@@ -798,7 +798,7 @@ private fun buildAuthText(
             append(username)
         }
         if (password != null) {
-            withStyle(SpanStyle(color = CerealTheme.colorScheme.contentSubtle)) {
+            withStyle(SpanStyle(color = CerealTheme.colorScheme.contentTertiary)) {
                 append(":${maskPassword(password)}")
             }
         }

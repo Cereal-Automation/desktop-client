@@ -19,7 +19,7 @@ fun CerealCard(
         shape = MaterialTheme.shapes.extraLarge,
         colors =
             CardDefaults.cardColors(
-                containerColor = CerealTheme.colorScheme.cardDark,
+                containerColor = MaterialTheme.colorScheme.surface,
                 contentColor = MaterialTheme.colorScheme.onSurface,
             ),
         elevation = CardDefaults.cardElevation(),

@@ -90,8 +90,6 @@ private val RemoveColumnWidth = 45.dp // 36px × 1.25
 private val MinCellWidth = 150.dp // 120px × 1.25
 private val CellHeight = 50.dp // 40px × 1.25
 private val TableShape = RoundedCornerShape(15.dp) // 12px × 1.25
-private val TableBackground = Color(0xFF121212)
-private val RuleColor = Color(0xFF232323)
 
 /**
  * A list configuration item as one table: a column per field of the record, a numbered row per entry.
@@ -114,7 +112,7 @@ internal fun ListField(
             CerealText(
                 text = "${state.completeRowCount()}/${state.rows.size}",
                 style = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.SemiBold),
-                color = CerealTheme.colorScheme.contentSubtle,
+                color = CerealTheme.colorScheme.contentTertiary,
             )
             Spacer(Modifier.weight(1f))
             if (state.showImportButton()) {
@@ -126,7 +124,7 @@ internal fun ListField(
             }
         }
         if (!description.isNullOrBlank()) {
-            ClickableUrlText(description, color = CerealTheme.colorScheme.contentSubtle)
+            ClickableUrlText(description, color = CerealTheme.colorScheme.contentTertiary)
         }
         ListTable(state)
         ListErrors(state)
@@ -147,7 +145,7 @@ private fun ListTable(state: ListFieldState) {
                 .fillMaxWidth()
                 .clip(TableShape)
                 .border(1.dp, CerealTheme.colorScheme.border, TableShape)
-                .background(TableBackground),
+                .background(CerealTheme.colorScheme.surfaceSunken),
     ) {
         BoxWithConstraints(Modifier.fillMaxWidth()) {
             val fields = state.fieldDefinitions
@@ -200,7 +198,7 @@ private fun HeaderRow(
     ) {
         Spacer(Modifier.width(NumberColumnWidth))
         fields.forEach { field ->
-            VerticalDivider(color = RuleColor)
+            VerticalDivider(color = CerealTheme.colorScheme.divider)
             TooltipArea(
                 modifier = cell(),
                 tooltip = { field.description.takeIf { it.isNotBlank() }?.let { HeaderTooltip(it) } },
@@ -209,7 +207,7 @@ private fun HeaderRow(
                     CerealText(
                         text = field.name.uppercase(),
                         style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold),
-                        color = CerealTheme.colorScheme.contentSubtle,
+                        color = CerealTheme.colorScheme.contentTertiary,
                         maxLines = 1,
                     )
                     if (!field.isNullable) {
@@ -224,7 +222,7 @@ private fun HeaderRow(
         }
         Spacer(Modifier.width(RemoveColumnWidth))
     }
-    HorizontalDivider(color = RuleColor)
+    HorizontalDivider(color = CerealTheme.colorScheme.divider)
 }
 
 @Composable
@@ -257,11 +255,11 @@ private fun TableRow(
             text = (index + 1).toString(),
             modifier = Modifier.width(NumberColumnWidth),
             style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.SemiBold),
-            color = CerealTheme.colorScheme.contentSubtle,
+            color = CerealTheme.colorScheme.contentTertiary,
             textAlign = TextAlign.Center,
         )
         row.fieldDefinitions.forEach { field ->
-            VerticalDivider(color = RuleColor)
+            VerticalDivider(color = CerealTheme.colorScheme.divider)
             val fieldState = row.fieldStates[field.key]
             Box(
                 modifier =
@@ -274,7 +272,7 @@ private fun TableRow(
                 fieldState?.let { TableCell(field, it) }
             }
         }
-        VerticalDivider(color = RuleColor)
+        VerticalDivider(color = CerealTheme.colorScheme.divider)
         // Hidden until the row is hovered, like the design — but still reachable by keyboard, and shown
         // while it has focus so a keyboard user can see what they are about to press.
         CerealIconButton(
@@ -285,12 +283,12 @@ private fun TableRow(
             Icon(
                 Icons.Outlined.Close,
                 contentDescription = stringResource(Res.string.remove_entry),
-                tint = CerealTheme.colorScheme.contentSubtle,
+                tint = CerealTheme.colorScheme.contentTertiary,
                 modifier = Modifier.size(18.dp),
             )
         }
     }
-    HorizontalDivider(color = RuleColor)
+    HorizontalDivider(color = CerealTheme.colorScheme.divider)
 }
 
 @Composable
@@ -314,7 +312,7 @@ private fun TableCell(
                         Icon(
                             imageVector = if (isRevealed) Icons.Outlined.VisibilityOff else Icons.Outlined.Visibility,
                             contentDescription = stringResource(if (isRevealed) Res.string.secret_field_hide else Res.string.secret_field_reveal),
-                            tint = CerealTheme.colorScheme.contentSubtle,
+                            tint = CerealTheme.colorScheme.contentTertiary,
                             modifier = Modifier.size(18.dp),
                         )
                     }
@@ -366,7 +364,7 @@ private fun CellTextInput(
         decorationBox = { inner ->
             Box(Modifier.padding(horizontal = 15.dp), contentAlignment = Alignment.CenterStart) {
                 if (state.text.isEmpty() && !placeholder.isNullOrBlank()) {
-                    CerealText(placeholder, style = textStyle, color = CerealTheme.colorScheme.contentSubtle, maxLines = 1)
+                    CerealText(placeholder, style = textStyle, color = CerealTheme.colorScheme.contentTertiary, maxLines = 1)
                 }
                 inner()
             }

@@ -17,6 +17,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.rememberScrollbarAdapter
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
@@ -378,7 +379,7 @@ private fun TaskListContent(
             viewModel.onScrolledToTask()
         }
     }
-    val cardFill = CerealTheme.colorScheme.cardDark
+    val cardFill = MaterialTheme.colorScheme.surface
     val cardBorder = CerealTheme.colorScheme.border
     Box(Modifier.fillMaxSize()) {
         LazyColumn(state = lazyListState, contentPadding = PaddingValues(top = 4.dp, bottom = 16.dp)) {

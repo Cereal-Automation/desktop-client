@@ -32,7 +32,7 @@ fun TasksEmptyState(
         modifier =
             Modifier
                 .fillMaxSize()
-                .background(CerealTheme.colorScheme.cardDark)
+                .background(MaterialTheme.colorScheme.surface)
                 .padding(CerealTheme.spacing.xl),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.spacedBy(CerealTheme.spacing.md, Alignment.CenterVertically),

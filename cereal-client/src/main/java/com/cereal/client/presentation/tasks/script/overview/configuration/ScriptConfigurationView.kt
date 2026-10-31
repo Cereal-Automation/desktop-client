@@ -229,8 +229,6 @@ fun ScriptConfigurationView(viewModel: ScriptConfigurationViewModel) {
     }
 }
 
-private val SectionRuleColor = Color(0xFF232323)
-
 /** A configuration field stacked as label, control, then hint — the label names the control, so it carries none itself. */
 @Composable
 internal fun ConfigField(
@@ -243,7 +241,7 @@ internal fun ConfigField(
         FieldLabel(title, isRequired)
         content()
         if (!description.isNullOrBlank()) {
-            ClickableUrlText(description, color = CerealTheme.colorScheme.contentSubtle)
+            ClickableUrlText(description, color = CerealTheme.colorScheme.contentTertiary)
         }
     }
 }
@@ -292,7 +290,7 @@ private fun ConfigSectionHeader(
             Icon(
                 imageVector = if (isOpen) Icons.Default.KeyboardArrowUp else Icons.Default.KeyboardArrowDown,
                 contentDescription = null,
-                tint = CerealTheme.colorScheme.contentSubtle,
+                tint = CerealTheme.colorScheme.contentTertiary,
                 modifier = Modifier.size(18.dp),
             )
         }
@@ -303,7 +301,7 @@ private fun ConfigSectionHeader(
                 color = MaterialTheme.colorScheme.error,
             )
         }
-        HorizontalDivider(modifier = Modifier.weight(1f), color = SectionRuleColor)
+        HorizontalDivider(modifier = Modifier.weight(1f), color = CerealTheme.colorScheme.divider)
     }
 }
 

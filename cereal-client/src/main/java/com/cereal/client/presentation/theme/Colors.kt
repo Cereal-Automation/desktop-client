@@ -9,11 +9,18 @@ class CerealColors(
     val border: Color = Color(0xFF2A2A2A),
     val contentSecondary: Color = Color(0xFFB4AFB6),
     val contentTertiary: Color = Color(0xFF8A8A8A),
-    val contentSubtle: Color = Color(0xFF848484),
-    val backgroundLight: Color = Color(0xFFF6F6F6),
     val backgroundDark: Color = Color(0xFF141414),
-    val cardDark: Color = Color(0xFF161616),
     val borderDark: Color = Color(0xFF3E3E3E),
+    /** Hairline rules between rows and sections; quieter than [border]. */
+    val divider: Color = Color(0xFF232323),
+    /** Fill a step above the surface: hover rows, pills, progress tracks. */
+    val surfaceRaised: Color = Color(0xFF232323),
+    /** Header strips above tables and settings sections. */
+    val surfaceHeader: Color = Color(0xFF1A1A1A),
+    /** Recessed panels, e.g. tables nested inside a card. */
+    val surfaceSunken: Color = Color(0xFF121212),
+    val inputBackground: Color = Color(0xFF1C1C1C),
+    val inputPlaceholder: Color = Color(0xFF5A5A5A),
     val success: Color = Color(0xFF2ECC71),
     /** Content on [success]; dark, because white on this green fails contrast. */
     val onSuccess: Color = Color(0xFF0C2418),
@@ -21,7 +28,6 @@ class CerealColors(
     val info: Color = Color(0xFF4F8CFF),
     val link: Color = Color(0xFF64B5F6),
     val highlight: Color = Color(0xFF0075FF),
-    val progressTrack: Color = Color(0xFF232323),
     val securityWeak: Color = Color(0xFFE54848),
     val securityFair: Color = Color(0xFFF2C94C),
     val securityGood: Color = Color(0xFF3B82F6),

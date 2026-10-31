@@ -36,7 +36,7 @@ fun LinearProgressBar(
     modifier: Modifier = Modifier,
     heightDp: Float = 8f,
     baseColor: Color = MaterialTheme.colorScheme.primary,
-    bgColor: Color = CerealTheme.colorScheme.progressTrack,
+    bgColor: Color = CerealTheme.colorScheme.surfaceRaised,
 ) {
     val infinite = rememberInfiniteTransition()
 

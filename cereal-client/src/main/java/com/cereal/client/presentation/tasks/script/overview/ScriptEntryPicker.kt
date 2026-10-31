@@ -48,7 +48,6 @@ import com.cereal.client.presentation.tasks.script.overview.configuration.FieldL
 import com.cereal.client.presentation.theme.CerealTheme
 import com.cereal.client.presentation.view.CerealText
 import com.cereal.client.presentation.view.CerealTextField
-import com.cereal.client.presentation.view.InputBg
 import com.cereal.client.presentation.view.InputBorder
 import com.cereal_automation.cereal_client.generated.resources.Res
 import com.cereal_automation.cereal_client.generated.resources.script_entry_count
@@ -83,7 +82,7 @@ fun ScriptEntryPicker(
             CerealText(
                 text = stringResource(Res.string.script_entry_count, options.size),
                 style = MaterialTheme.typography.bodySmall.copy(fontSize = 12.5.sp, fontWeight = FontWeight.Medium),
-                color = CerealTheme.colorScheme.contentSubtle,
+                color = CerealTheme.colorScheme.contentTertiary,
             )
         }
         Box {
@@ -94,7 +93,7 @@ fun ScriptEntryPicker(
                         .height(42.dp)
                         .onSizeChanged { triggerWidthPx = it.width }
                         .clip(MediumShape)
-                        .background(InputBg)
+                        .background(CerealTheme.colorScheme.inputBackground)
                         .border(1.dp, if (open) CerealTheme.colorScheme.borderDark else InputBorder, MediumShape)
                         .clickable(enabled = enabled) { open = true }
                         .semantics { contentDescription = label }
@@ -113,7 +112,7 @@ fun ScriptEntryPicker(
                         Icons.Default.KeyboardArrowDown,
                         contentDescription = null,
                         modifier = Modifier.size(16.dp),
-                        tint = CerealTheme.colorScheme.contentSubtle,
+                        tint = CerealTheme.colorScheme.contentTertiary,
                     )
                 }
             }
@@ -123,7 +122,7 @@ fun ScriptEntryPicker(
                 modifier = Modifier.width(with(LocalDensity.current) { triggerWidthPx.toDp() }),
                 offset = DpOffset(0.dp, 6.dp),
                 shape = MediumShape,
-                containerColor = CerealTheme.colorScheme.cardDark,
+                containerColor = MaterialTheme.colorScheme.surface,
                 border = BorderStroke(1.dp, CerealTheme.colorScheme.borderDark),
                 shadowElevation = 12.dp,
                 tonalElevation = 0.dp,
@@ -151,7 +150,7 @@ fun ScriptEntryPicker(
                             text = stringResource(Res.string.script_entry_no_match, query),
                             modifier = Modifier.padding(horizontal = 10.dp, vertical = 12.dp),
                             style = MaterialTheme.typography.bodySmall.copy(fontSize = 12.5.sp),
-                            color = CerealTheme.colorScheme.contentSubtle,
+                            color = CerealTheme.colorScheme.contentTertiary,
                         )
                     }
                 }
@@ -176,7 +175,7 @@ private fun EntryOptionRow(
                 .background(
                     when {
                         isSelected -> MaterialTheme.colorScheme.primary.copy(alpha = SELECTED_TINT)
-                        hovered -> HoverBg
+                        hovered -> CerealTheme.colorScheme.surfaceRaised
                         else -> Color.Transparent
                     },
                 ).hoverable(interactionSource)
@@ -202,4 +201,3 @@ private const val SEARCH_THRESHOLD = 6
 private const val SELECTED_TINT = 0.07f
 private val MediumShape = RoundedCornerShape(8.dp)
 private val SmallShape = RoundedCornerShape(6.dp)
-private val HoverBg = Color(0xFF232323)

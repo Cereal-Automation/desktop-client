@@ -87,7 +87,7 @@ internal fun TaskInspector(
     modifier: Modifier = Modifier,
 ) {
     val task = state.task
-    Column(modifier.testTag(TASK_INSPECTOR_TEST_TAG).fillMaxHeight().background(CerealTheme.colorScheme.cardDark)) {
+    Column(modifier.testTag(TASK_INSPECTOR_TEST_TAG).fillMaxHeight().background(MaterialTheme.colorScheme.surface)) {
         Row(
             modifier = Modifier.fillMaxWidth().height(56.dp).padding(start = PanePadding, end = 12.dp),
             verticalAlignment = Alignment.CenterVertically,

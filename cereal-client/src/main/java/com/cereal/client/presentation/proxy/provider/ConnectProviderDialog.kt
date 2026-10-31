@@ -107,7 +107,7 @@ fun ConnectProviderDialog(
                     Modifier
                         .width(DialogWidth)
                         .border(1.dp, CerealTheme.colorScheme.borderDark, RoundedCornerShape(14.dp))
-                        .background(CerealTheme.colorScheme.cardDark, RoundedCornerShape(14.dp)),
+                        .background(MaterialTheme.colorScheme.surface, RoundedCornerShape(14.dp)),
             ) {
                 val selected = options.firstOrNull { it.provider == state.selectedProvider }
                 Header(selected, state.step, onClose)
@@ -295,7 +295,7 @@ private fun SoonTag() {
                 .border(1.dp, CerealTheme.colorScheme.border, RoundedCornerShape(20.dp))
                 .padding(horizontal = 10.dp, vertical = 3.dp),
     ) {
-        CerealText(text = stringResource(Res.string.proxies_connect_soon), style = CerealTypography.statusChipLabel, color = CerealTheme.colorScheme.contentSubtle)
+        CerealText(text = stringResource(Res.string.proxies_connect_soon), style = CerealTypography.statusChipLabel, color = CerealTheme.colorScheme.contentTertiary)
     }
 }
 
