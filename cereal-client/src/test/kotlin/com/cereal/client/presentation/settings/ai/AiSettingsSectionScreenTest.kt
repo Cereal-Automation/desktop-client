@@ -317,6 +317,19 @@ class AiSettingsSectionScreenTest {
         }
 
     @Test
+    fun whenThePresetModelIsNotListedTheFieldAsksToPickAModel() =
+        runScreenTest {
+            llmProvider.models = listOf(LlmModel("gpt-6", created = Instant.parse("2026-05-01T00:00:00Z")))
+            setScreenContent { AiSettingsSection() }
+            onNodeWithText("OpenAI").performClick()
+
+            input(AI_API_KEY_TAG).performTextInput("sk-1")
+
+            awaitTag(AI_MODEL_OPEN_TAG)
+            onNodeWithTag(AI_MODEL_OPEN_TAG).assert(hasText("Pick a model"))
+        }
+
+    @Test
     fun whileTheListLoadsTheModelShowsLoading() =
         runScreenTest {
             llmProvider.listModelsLatencyMillis = 60_000

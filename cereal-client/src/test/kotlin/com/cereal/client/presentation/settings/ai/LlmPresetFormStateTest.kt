@@ -43,16 +43,27 @@ class LlmPresetFormStateTest {
     }
 
     @Test
-    fun `the list loads about 500 ms after the key makes a valid connection`() =
+    fun `the list loads about 500 ms after the key makes a valid connection, showing Loading meanwhile`() =
         runTest {
             val form = form()
 
             form.apiKeyState.onValueChange("sk-ant-1")
             advance(499)
-            assertEquals(ModelListState.Idle, form.modelList.value)
+            assertEquals(0, provider.listModelsRequests.size)
+            assertEquals(ModelListState.Loading, form.modelList.value)
 
             advance(1)
             assertEquals(ModelListState.Loaded(models), form.modelList.value)
+        }
+
+    @Test
+    fun `choosing Local shows Loading at once, since its default address is usable`() =
+        runTest {
+            val form = form(initial = null)
+
+            form.select(LlmPreset.LOCAL)
+
+            assertEquals(ModelListState.Loading, form.modelList.value)
         }
 
     @Test

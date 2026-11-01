@@ -14,6 +14,7 @@ import com.cereal.client.infrastructure.data.repository.inmemory.InMemoryLlmProv
 import com.cereal.client.infrastructure.provider.fixtures.llmProviderOverHttp
 import com.cereal.client.infrastructure.provider.inmemory.InMemoryLlmProvider
 import com.cereal.client.presentation.error.ErrorResolver
+import com.cereal.client.presentation.feedback.FeedbackAction
 import com.cereal.client.presentation.view.UiText
 import com.cereal_automation.cereal_client.generated.resources.Res
 import com.cereal_automation.cereal_client.generated.resources.ai_connection_bad_key
@@ -32,6 +33,7 @@ import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
+import java.time.Instant
 
 /**
  * Settings → AI's Test connection and model list, through the real interactors and HTTP backends with
@@ -266,6 +268,23 @@ class AiSettingsViewModelTest {
         vm.form.retry()
 
         await { vm.form.modelList.value is ModelListState.Loaded }
+        assertEquals("claude-opus-5-5", vm.form.modelState.text)
+    }
+
+    @Test
+    fun `a saved default model is kept when a later key edit reloads the list`() {
+        val provider = InMemoryLlmProvider(models = listOf(LlmModel("claude-opus-5-5", created = Instant.parse("2025-01-01T00:00:00Z"))))
+        val vm = viewModel(provider)
+        vm.selectPreset(LlmPreset.ANTHROPIC)
+        vm.form.apiKeyState.onValueChange("sk-ant-1")
+        await { vm.form.modelState.text == "claude-opus-5-5" }
+        vm.save()
+        await { runBlocking { repository.get() } != null && vm.feedbackAction.value != FeedbackAction.None }
+
+        provider.models = listOf(LlmModel("claude-opus-6", created = Instant.parse("2026-01-01T00:00:00Z"))) + provider.models
+        vm.form.apiKeyState.onValueChange("sk-ant-2")
+
+        await { provider.listModelsRequests.size == 2 && vm.form.modelList.value is ModelListState.Loaded }
         assertEquals("claude-opus-5-5", vm.form.modelState.text)
     }
 }

@@ -7,11 +7,13 @@ import kotlinx.coroutines.test.runTest
 import org.jetbrains.compose.resources.getString
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertFalse
+import org.junit.jupiter.api.Assertions.assertNull
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.params.ParameterizedTest
 import org.junit.jupiter.params.provider.CsvSource
 import org.junit.jupiter.params.provider.EnumSource
+import java.time.Instant
 
 class LlmPresetTest {
     @ParameterizedTest
@@ -77,6 +79,14 @@ class LlmPresetTest {
     @EnumSource(LlmPreset::class, names = ["ANTHROPIC", "OPENAI", "GEMINI"])
     fun `first-party providers never show free`(preset: LlmPreset) {
         assertFalse(preset.showsFree(LlmModel("m", pricedFree = true)))
+    }
+
+    @ParameterizedTest
+    @EnumSource(LlmPreset::class, names = ["OPENAI", "GEMINI"])
+    fun `a preset with its own model leaves the pick to the user when that model is not listed`(preset: LlmPreset) {
+        val listed = listOf(LlmModel("newest", created = Instant.parse("2026-01-01T00:00:00Z"), pricedFree = true))
+
+        assertNull(preset.defaultModel(listed))
     }
 
     @Test
