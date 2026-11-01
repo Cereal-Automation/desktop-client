@@ -276,6 +276,28 @@ class ScriptSelectionViewModelVariantTest {
     }
 
     @Test
+    fun `an update to the selected package stays on the picked variant`() {
+        val viewModel = createViewModel()
+        viewModel.pickEntry("Monitor")
+
+        scriptRepository.seed(listOf(agent.copy(manifest = agent.manifest.copy(versionCode = 2)), plain))
+        dispatcher.scheduler.advanceUntilIdle()
+
+        assertEquals("Monitor", viewModel.selectedEntryName())
+    }
+
+    @Test
+    fun `removing the selected package selects the first remaining one`() {
+        val viewModel = createViewModel()
+        viewModel.selectRow("Plain")
+
+        scriptRepository.seed(listOf(agent))
+        dispatcher.scheduler.advanceUntilIdle()
+
+        assertEquals("Agent", viewModel.selectedPackageName.value)
+    }
+
+    @Test
     fun `starting a picked variant creates an instance that runs the variant`() =
         runTest {
             val viewModel = createViewModel()

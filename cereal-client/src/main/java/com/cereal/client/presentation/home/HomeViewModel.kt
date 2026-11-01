@@ -205,6 +205,8 @@ class HomeViewModel(
             ) { result ->
                 withContext(dispatcherProvider.main) {
                     result.handleFailureOrElse(errorResolver) { definition ->
+                        // The agent updated while this loaded: its forms were rebuilt, so this one is stale.
+                        if (this@HomeViewModel.agent?.manifest?.versionCode != agent.manifest.versionCode) return@handleFailureOrElse
                         // Home renders no field that imports a file, so there's nothing to open an import for.
                         val form = ConfigurationItemsFormSection(definition.mainConfiguration) { _, _, _ -> }.apply { applyStateModifiers() }
                         forms[variantId] = form

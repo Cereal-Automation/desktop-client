@@ -171,7 +171,8 @@ internal fun ScriptDetailActions(
                         // Keep what the guest came for (trial / price) on the main action; it asks them to sign in.
                         CerealButton(
                             onClick = onLoginClick,
-                            text = purchaseButtonText(script),
+                            text = if (script.latestRelease != null) purchaseButtonText(script) else stringResource(Res.string.marketplace_no_release),
+                            enabled = script.latestRelease != null,
                             type = CerealButtonType.Primary,
                         )
                     }

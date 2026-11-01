@@ -1,5 +1,6 @@
 package com.cereal.client.application.auth
 
+import com.cereal.client.application.script.ScriptManager
 import com.cereal.client.application.script.ScriptSyncManager
 import com.cereal.client.application.script.SyncProgress
 import com.cereal.client.application.task.TaskManager
@@ -25,6 +26,7 @@ class UserAuthManager(
     private val scriptSyncManager: ScriptSyncManager,
     private val scriptInstanceRepository: ScriptInstanceRepository,
     private val taskManager: TaskManager,
+    private val scriptManager: ScriptManager,
 ) {
     /**
      * Returns the user authentication state flow if user is authenticated or null when user is not authenticated.
@@ -74,6 +76,7 @@ class UserAuthManager(
     suspend fun deauthenticate() {
         discordRepository.disconnect()
         taskManager.removeAllTasks()
+        scriptManager.clearReleasesRequiringClientUpdate()
         sessionRepository.setSessionUser(null)
     }
 

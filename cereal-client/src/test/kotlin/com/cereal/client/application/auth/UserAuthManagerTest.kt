@@ -31,6 +31,7 @@ class UserAuthManagerTest {
                     scriptSyncManager = scriptSyncManager,
                     scriptInstanceRepository = InMemoryScriptInstanceRepository(),
                     taskManager = mockk(relaxed = true),
+                    scriptManager = mockk(relaxed = true),
                 )
 
             userAuthManager.register(registeredUser.name, registeredUser.email, "s3cret")
