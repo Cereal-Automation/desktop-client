@@ -75,6 +75,7 @@ object ViewModelModule {
                     getScriptsInteractor = get(),
                     getSdkVersionInteractor = get(),
                     getPackagesWithRunningTasksInteractor = get(),
+                    getReleasesRequiringClientUpdateInteractor = get(),
                     getMarketplaceListingsInteractor = get(),
                     removeMarketplaceScriptInteractor = get(),
                     errorResolver = get(),
