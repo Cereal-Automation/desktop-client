@@ -137,6 +137,10 @@ class HomeViewModel(
 
     val dialog = mutableStateOf<HomeDialog?>(null)
     val isStarting = mutableStateOf(false)
+
+    /** The task a start just launched: the screen opens Tasks on it. */
+    private val _startedTaskId = mutableStateOf<String?>(null)
+    val startedTaskId: State<String?> = _startedTaskId
     val errorAction = errorResolver.errorAction
 
     private var agent: ScriptPackage? = null
@@ -281,7 +285,7 @@ class HomeViewModel(
         if (!startOnCreate) return
         scope.launch(dispatcherProvider.io) {
             startAllTasksInScriptPackageInstanceInteractor(StartAllTasksInScriptPackageInstanceInteractor.Params(instance)) { result ->
-                withContext(dispatcherProvider.main) { result.handleFailureOrElse(errorResolver) { } }
+                withContext(dispatcherProvider.main) { result.handleFailureOrElse(errorResolver) { _startedTaskId.value = it.firstOrNull() } }
             }
         }
     }
@@ -314,11 +318,10 @@ class HomeViewModel(
             ) { result ->
                 withContext(dispatcherProvider.main) {
                     isStarting.value = false
-                    // The composer keeps its text so the user can tweak it and run again.
                     if (result is SuspendableResult.Failure && result.error is NoNotificationChannelsException) {
                         dialog.value = HomeDialog.NoNotificationChannelsWarning
                     } else {
-                        result.handleFailureOrElse(errorResolver) { }
+                        result.handleFailureOrElse(errorResolver) { _startedTaskId.value = it.firstOrNull() }
                     }
                 }
             }

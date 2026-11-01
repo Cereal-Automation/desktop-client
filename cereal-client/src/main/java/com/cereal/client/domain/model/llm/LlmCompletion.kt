@@ -1,5 +1,7 @@
 package com.cereal.client.domain.model.llm
 
+import java.time.Instant
+
 /**
  * One model call in client-owned terms, independent of the SDK's script-facing types and of any
  * provider's wire format. Backends of [com.cereal.client.domain.provider.LlmProvider] translate it to
@@ -97,8 +99,15 @@ data class LlmTokenUsage(
     val output: Int,
 )
 
-/** A model a provider offers, from its `/models` list. */
+/**
+ * A model a provider offers, from its `/models` list. Models that can't chat are left out of the list.
+ *
+ * @param created when the provider published (or, on Local, pulled) it; null when the list doesn't say.
+ * @param pricedFree the list prices both prompt and completion at zero.
+ */
 data class LlmModel(
     val id: String,
     val displayName: String? = null,
+    val created: Instant? = null,
+    val pricedFree: Boolean = false,
 )

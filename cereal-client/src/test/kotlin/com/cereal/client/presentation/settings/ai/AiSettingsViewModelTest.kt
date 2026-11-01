@@ -5,11 +5,16 @@ import com.cereal.client.application.interactor.settings.ai.ClearLlmProviderConf
 import com.cereal.client.application.interactor.settings.ai.GetLlmProviderConfigInteractor
 import com.cereal.client.application.interactor.settings.ai.ListLlmModelsInteractor
 import com.cereal.client.application.interactor.settings.ai.SaveLlmProviderConfigInteractor
+import com.cereal.client.domain.model.exception.LlmCallException
+import com.cereal.client.domain.model.llm.LlmModel
 import com.cereal.client.domain.model.llm.LlmProviderConfig
 import com.cereal.client.domain.model.llm.LlmProviderType
+import com.cereal.client.domain.provider.LlmProvider
 import com.cereal.client.infrastructure.data.repository.inmemory.InMemoryLlmProviderConfigRepository
 import com.cereal.client.infrastructure.provider.fixtures.llmProviderOverHttp
+import com.cereal.client.infrastructure.provider.inmemory.InMemoryLlmProvider
 import com.cereal.client.presentation.error.ErrorResolver
+import com.cereal.client.presentation.feedback.FeedbackAction
 import com.cereal.client.presentation.view.UiText
 import com.cereal_automation.cereal_client.generated.resources.Res
 import com.cereal_automation.cereal_client.generated.resources.ai_connection_bad_key
@@ -28,6 +33,7 @@ import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
+import java.time.Instant
 
 /**
  * Settings → AI's Test connection and model list, through the real interactors and HTTP backends with
@@ -48,7 +54,7 @@ class AiSettingsViewModelTest {
         server.shutdown()
     }
 
-    private fun viewModel() =
+    private fun viewModel(llmProvider: LlmProvider = this.llmProvider) =
         AiSettingsViewModel(
             scope = scope,
             dispatcherProvider = CoroutinesDispatcherProvider(Dispatchers.IO, Dispatchers.IO, Dispatchers.IO),
@@ -66,6 +72,8 @@ class AiSettingsViewModelTest {
 
     private fun fixture(path: String) = MockResponse().setBody(javaClass.getResource("/llm/$path")!!.readText())
 
+    private fun LlmPresetFormState.modelIds() = (modelList.value as ModelListState.Loaded).models.map { it.id }
+
     private fun AiSettingsViewModel.chooseAnthropicOnServer() {
         selectPreset(LlmPreset.ANTHROPIC)
         form.baseUrlState.text = server.url("/v1").toString()
@@ -73,7 +81,7 @@ class AiSettingsViewModelTest {
     }
 
     @Test
-    fun `a successful test reports the model count, fills the list and keeps the default model`() {
+    fun `a successful test reports the model count and picks no model`() {
         server.enqueue(fixture("anthropic/models.json"))
         val vm = viewModel()
         vm.chooseAnthropicOnServer()
@@ -82,27 +90,19 @@ class AiSettingsViewModelTest {
 
         await { vm.connectionStatus.value is ConnectionStatus.Connected }
         assertEquals(ConnectionStatus.Connected(2), vm.connectionStatus.value)
-        assertEquals(listOf("claude-opus-5-5", "claude-haiku-4-5-20251001"), vm.form.models.value)
-        assertEquals("claude-opus-5-5", vm.form.modelState.text)
+        assertEquals("", vm.form.modelState.text)
     }
 
     @Test
-    fun `a rejected key reports a bad key and empties the list`() {
-        server.enqueue(fixture("anthropic/models.json"))
+    fun `a rejected key reports a bad key`() {
         server.enqueue(MockResponse().setResponseCode(401))
         val vm = viewModel()
         vm.chooseAnthropicOnServer()
-        vm.testConnection()
-        await {
-            vm.form.models.value
-                .isNotEmpty()
-        }
 
         vm.testConnection()
 
         await { vm.connectionStatus.value is ConnectionStatus.Failed }
         assertEquals(ConnectionStatus.Failed(UiText.Resource(Res.string.ai_connection_bad_key)), vm.connectionStatus.value)
-        assertEquals(emptyList<String>(), vm.form.models.value)
     }
 
     @Test
@@ -157,12 +157,12 @@ class AiSettingsViewModelTest {
         vm.testConnection()
 
         await { vm.connectionStatus.value is ConnectionStatus.Connected }
-        assertEquals(listOf("gpt-5", "gpt-5-mini"), vm.form.models.value)
+        assertEquals(ConnectionStatus.Connected(2), vm.connectionStatus.value)
         assertEquals("", vm.form.modelState.text)
     }
 
     @Test
-    fun `opening with a saved provider fetches the list silently`() {
+    fun `opening with a saved provider loads the list without a status`() {
         server.enqueue(fixture("openai/models.json"))
         runBlocking {
             repository.save(LlmProviderConfig.of(LlmProviderType.OPENAI_COMPATIBLE, server.url("/v1").toString(), "", "gpt-5"))
@@ -170,30 +170,26 @@ class AiSettingsViewModelTest {
 
         val vm = viewModel()
 
-        await {
-            vm.form.models.value
-                .isNotEmpty()
-        }
-        assertEquals(listOf("gpt-5", "gpt-5-mini"), vm.form.models.value)
+        await { vm.form.modelList.value is ModelListState.Loaded }
+        assertEquals(listOf("gpt-5", "gpt-5-mini"), vm.form.modelIds())
         assertEquals(ConnectionStatus.Idle, vm.connectionStatus.value)
         assertEquals("gpt-5", vm.form.modelState.text)
     }
 
     @Test
-    fun `a failed silent fetch shows nothing and save still works`() {
+    fun `a failed load on open shows no status and save still works`() {
         server.enqueue(MockResponse().setResponseCode(401))
         runBlocking {
             repository.save(LlmProviderConfig.of(LlmProviderType.OPENAI_COMPATIBLE, server.url("/v1").toString(), "old", "gpt-5"))
         }
         val vm = viewModel()
-        await { server.requestCount == 1 && vm.form.modelState.text == "gpt-5" }
+        await { vm.form.modelList.value is ModelListState.Failed }
 
         vm.form.modelState.text = "my-own-model"
         vm.save()
 
         await { runBlocking { repository.get() }?.model == "my-own-model" }
         assertEquals(ConnectionStatus.Idle, vm.connectionStatus.value)
-        assertEquals(emptyList<String>(), vm.form.models.value)
     }
 
     @Test
@@ -206,7 +202,7 @@ class AiSettingsViewModelTest {
 
         vm.selectPreset(LlmPreset.OTHER)
 
-        assertEquals(emptyList<String>(), vm.form.models.value)
+        assertEquals(ModelListState.Idle, vm.form.modelList.value)
         assertEquals(ConnectionStatus.Idle, vm.connectionStatus.value)
     }
 
@@ -233,5 +229,78 @@ class AiSettingsViewModelTest {
 
         await { runBlocking { repository.get() } == null }
         assertEquals(null, vm.form.preset.value)
+    }
+
+    @Test
+    fun `Test connection reports status but leaves the loaded list alone`() {
+        val provider = InMemoryLlmProvider(models = listOf(LlmModel("claude-opus-5-5")))
+        runBlocking { repository.save(LlmProviderConfig.of(LlmProviderType.ANTHROPIC, "https://api.anthropic.com/v1", "k", "claude-opus-5-5")) }
+        val vm = viewModel(provider)
+        await { vm.form.modelList.value is ModelListState.Loaded }
+        provider.models = listOf(LlmModel("claude-opus-5-5"), LlmModel("claude-haiku-4-5"))
+
+        vm.testConnection()
+
+        await { vm.connectionStatus.value is ConnectionStatus.Connected }
+        assertEquals(ConnectionStatus.Connected(2), vm.connectionStatus.value)
+        assertEquals(listOf("claude-opus-5-5"), vm.form.modelIds())
+    }
+
+    @Test
+    fun `typing a key loads the list on its own`() {
+        val provider = InMemoryLlmProvider(models = listOf(LlmModel("claude-opus-5-5")))
+        val vm = viewModel(provider)
+        vm.selectPreset(LlmPreset.ANTHROPIC)
+
+        vm.form.apiKeyState.onValueChange("sk-ant-1")
+
+        await { vm.form.modelList.value is ModelListState.Loaded }
+        assertEquals(listOf("sk-ant-1"), provider.listModelsRequests.map { it.apiKey?.reveal() })
+        assertEquals(ConnectionStatus.Idle, vm.connectionStatus.value)
+    }
+
+    @Test
+    fun `Retry after a failed load on open fills the list`() {
+        val provider = InMemoryLlmProvider(models = listOf(LlmModel("claude-opus-5-5")), listModelsError = LlmCallException.Unavailable())
+        runBlocking { repository.save(LlmProviderConfig.of(LlmProviderType.ANTHROPIC, "https://api.anthropic.com/v1", "k", "claude-opus-5-5")) }
+        val vm = viewModel(provider)
+        await { vm.form.modelList.value is ModelListState.Failed }
+
+        provider.listModelsError = null
+        vm.form.retry()
+
+        await { vm.form.modelList.value is ModelListState.Loaded }
+        assertEquals("claude-opus-5-5", vm.form.modelState.text)
+    }
+
+    @Test
+    fun `a saved default model is kept when a later key edit reloads the list`() {
+        val provider = InMemoryLlmProvider(models = listOf(LlmModel("claude-opus-5-5", created = Instant.parse("2025-01-01T00:00:00Z"))))
+        val vm = viewModel(provider)
+        vm.selectPreset(LlmPreset.ANTHROPIC)
+        vm.form.apiKeyState.onValueChange("sk-ant-1")
+        await { vm.form.modelState.text == "claude-opus-5-5" }
+        vm.save()
+        await { runBlocking { repository.get() } != null && vm.feedbackAction.value != FeedbackAction.None }
+
+        provider.models = listOf(LlmModel("claude-opus-6", created = Instant.parse("2026-01-01T00:00:00Z"))) + provider.models
+        vm.form.apiKeyState.onValueChange("sk-ant-2")
+
+        await { provider.listModelsRequests.size == 2 && vm.form.modelList.value is ModelListState.Loaded }
+        assertEquals("claude-opus-5-5", vm.form.modelState.text)
+    }
+
+    @Test
+    fun `Test connection while the list is loading reports that load instead of fetching again`() {
+        val provider = InMemoryLlmProvider(models = listOf(LlmModel("claude-opus-5-5")), listModelsLatencyMillis = 300)
+        val vm = viewModel(provider)
+        vm.selectPreset(LlmPreset.ANTHROPIC)
+        vm.form.apiKeyState.onValueChange("sk-ant-1")
+
+        vm.testConnection()
+
+        await { vm.connectionStatus.value is ConnectionStatus.Connected }
+        assertEquals(ConnectionStatus.Connected(1), vm.connectionStatus.value)
+        assertEquals(1, provider.listModelsRequests.size)
     }
 }

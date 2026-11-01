@@ -8,7 +8,6 @@ import com.cereal.client.application.interactor.task.GetOrCreateDefaultTaskGroup
 import com.cereal.client.application.interactor.task.StartAllTasksInScriptPackageInstanceInteractor
 import com.cereal.client.domain.model.script.ScriptConfigurationValues
 import com.cereal.client.domain.model.script.ScriptPackage
-import com.cereal.client.domain.model.script.ScriptPackageInstance
 
 /**
  * Starts a goal run from the Home composer: one single-task instance of the AI browser agent in the
@@ -22,8 +21,9 @@ class StartGoalRunInteractor(
     private val getOrCreateDefaultTaskGroupInteractor: GetOrCreateDefaultTaskGroupInteractor,
     private val startScriptInteractor: StartScriptInteractor,
     private val startAllTasksInScriptPackageInstanceInteractor: StartAllTasksInScriptPackageInstanceInteractor,
-) : Interactor<ScriptPackageInstance, StartGoalRunInteractor.Params>() {
-    override suspend fun run(params: Params): ScriptPackageInstance {
+) : Interactor<List<String>, StartGoalRunInteractor.Params>() {
+    /** Returns the ids of the run's tasks, for Home to land on. */
+    override suspend fun run(params: Params): List<String> {
         if (!params.ignoreMissingNotificationChannels &&
             !hasNotificationChannelsConfiguredInteractor.run(HasNotificationChannelsConfiguredInteractor.Params(null))
         ) {
@@ -43,8 +43,7 @@ class StartGoalRunInteractor(
                     ignoreConcurrencyConflicts = true,
                 ),
             )
-        startAllTasksInScriptPackageInstanceInteractor.run(StartAllTasksInScriptPackageInstanceInteractor.Params(instance))
-        return instance
+        return startAllTasksInScriptPackageInstanceInteractor.run(StartAllTasksInScriptPackageInstanceInteractor.Params(instance))
     }
 
     data class Params(

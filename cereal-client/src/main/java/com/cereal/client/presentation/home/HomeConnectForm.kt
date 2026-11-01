@@ -32,8 +32,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.cereal.client.presentation.settings.ai.AI_API_KEY_TAG
 import com.cereal.client.presentation.settings.ai.AI_BASE_URL_TAG
-import com.cereal.client.presentation.settings.ai.AI_MODEL_TAG
 import com.cereal.client.presentation.settings.ai.LlmPreset
+import com.cereal.client.presentation.settings.ai.ModelPicker
 import com.cereal.client.presentation.settings.ai.label
 import com.cereal.client.presentation.settings.ai.spendLimitsHelp
 import com.cereal.client.presentation.theme.CerealTheme
@@ -55,7 +55,6 @@ import com.cereal_automation.cereal_client.generated.resources.home_ai_connect
 import com.cereal_automation.cereal_client.generated.resources.home_ai_connect_hint
 import com.cereal_automation.cereal_client.generated.resources.home_ai_connect_hint_local
 import com.cereal_automation.cereal_client.generated.resources.home_ai_key_help
-import com.cereal_automation.cereal_client.generated.resources.home_ai_model_help
 import com.cereal_automation.cereal_client.generated.resources.home_ai_privacy
 import com.cereal_automation.cereal_client.generated.resources.home_ai_privacy_local
 import com.cereal_automation.cereal_client.generated.resources.home_ai_privacy_other
@@ -104,14 +103,7 @@ internal fun HomeConnectForm(viewModel: HomeAiProviderViewModel) {
                 }
             }
             StepField(stringResource(Res.string.ai_model)) {
-                ComposerField(
-                    value = form.modelState.text,
-                    onValueChange = form.modelState::onValueChange,
-                    error = form.modelState.error,
-                    help = stringResource(Res.string.home_ai_model_help),
-                    placeholder = "model-id",
-                    modifier = Modifier.fillMaxWidth().testTag(AI_MODEL_TAG),
-                )
+                ModelPicker(form)
             }
             preset.spendLimitsHelp()?.let { SpendNote(stringResource(it)) }
         }

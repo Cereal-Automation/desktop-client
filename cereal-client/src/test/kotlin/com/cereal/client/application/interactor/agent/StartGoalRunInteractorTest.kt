@@ -31,7 +31,8 @@ class StartGoalRunInteractorTest {
     @Test
     fun `start saves the composer's configuration as the instance's main configuration`() =
         runTest {
-            val instance = world.startGoalRunInteractor.run(StartGoalRunInteractor.Params(anAgentPackage(), repeatRun))
+            world.startGoalRunInteractor.run(StartGoalRunInteractor.Params(anAgentPackage(), repeatRun))
+            val instance = world.scriptInstances.getScriptPackageInstances().single()
 
             assertEquals(repeatRun, instance.mainConfiguration)
         }
@@ -42,7 +43,8 @@ class StartGoalRunInteractorTest {
             val agent = anAgentWithCheckoutVariant()
             val checkout = mapOf("productUrl" to ConfigValue.StringValue("https://shop.example/pliers"))
 
-            val instance = world.startGoalRunInteractor.run(StartGoalRunInteractor.Params(agent, checkout, variantId = "product-checkout"))
+            world.startGoalRunInteractor.run(StartGoalRunInteractor.Params(agent, checkout, variantId = "product-checkout"))
+            val instance = world.scriptInstances.getScriptPackageInstances().single()
 
             assertEquals("product-checkout", instance.variantId)
             assertSame(agent.variants.getValue("product-checkout").script, instance.entryScript)
@@ -52,7 +54,8 @@ class StartGoalRunInteractorTest {
     @Test
     fun `one start creates one single-task instance in the Default group and starts it`() =
         runTest {
-            val instance = world.startGoalRunInteractor.run(StartGoalRunInteractor.Params(anAgentPackage(), repeatRun))
+            world.startGoalRunInteractor.run(StartGoalRunInteractor.Params(anAgentPackage(), repeatRun))
+            val instance = world.scriptInstances.getScriptPackageInstances().single()
 
             val groups = world.tasksRepository.getTaskGroups().first()
             assertEquals(listOf(ScriptPackageGroup.DEFAULT_GROUP_NAME), groups.map { it.name })
@@ -61,6 +64,15 @@ class StartGoalRunInteractorTest {
             assertEquals(1, instance.numberOfConcurrentTasks)
             coVerify(exactly = 1) { world.taskManager.createTasks(any()) }
             coVerify(exactly = 1) { world.taskManager.startTasksToConcurrencyLimit(any()) }
+        }
+
+    @Test
+    fun `start returns the run's tasks to land on`() =
+        runTest {
+            val taskIds = world.startGoalRunInteractor.run(StartGoalRunInteractor.Params(anAgentPackage(), repeatRun))
+
+            val instance = world.scriptInstances.getScriptPackageInstances().single()
+            assertEquals(world.tasksRepository.getTasks(instance).map { it.id }, taskIds)
         }
 
     @Test

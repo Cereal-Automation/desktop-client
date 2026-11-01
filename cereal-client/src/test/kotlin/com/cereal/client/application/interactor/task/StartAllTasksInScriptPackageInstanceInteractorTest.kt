@@ -7,6 +7,7 @@ import com.cereal.client.domain.model.script.ScriptInstance
 import com.cereal.client.domain.model.script.ScriptPackageInstance
 import com.cereal.client.domain.repository.ScriptInstanceRepository
 import com.cereal.client.infrastructure.data.repository.inmemory.InMemoryScriptInstanceRepository
+import com.cereal.client.infrastructure.data.repository.inmemory.InMemoryTasksRepository
 import fixtures.aScriptInstance
 import fixtures.aScriptPackageInstance
 import io.mockk.coVerify
@@ -35,7 +36,7 @@ class StartAllTasksInScriptPackageInstanceInteractorTest {
             val packageInstance = aScriptPackageInstance("instance-1", "com.example.one")
             val main = aScriptInstance(packageInstance)
             val repository = FixedScriptInstancesRepository(listOf(main))
-            val interactor = StartAllTasksInScriptPackageInstanceInteractor(taskManager, repository)
+            val interactor = StartAllTasksInScriptPackageInstanceInteractor(taskManager, repository, InMemoryTasksRepository())
 
             interactor.run(StartAllTasksInScriptPackageInstanceInteractor.Params(packageInstance))
 
@@ -59,7 +60,7 @@ class StartAllTasksInScriptPackageInstanceInteractorTest {
                     childConfigurations = emptyMap(),
                 )
             val repository = FixedScriptInstancesRepository(listOf(aScriptInstance(base)))
-            val interactor = StartAllTasksInScriptPackageInstanceInteractor(taskManager, repository)
+            val interactor = StartAllTasksInScriptPackageInstanceInteractor(taskManager, repository, InMemoryTasksRepository())
 
             assertThrows<InvalidScriptConfigurationException> {
                 interactor.run(StartAllTasksInScriptPackageInstanceInteractor.Params(invalidInstance))
@@ -73,7 +74,7 @@ class StartAllTasksInScriptPackageInstanceInteractorTest {
         runTest {
             val packageInstance = aScriptPackageInstance("instance-1", "com.example.one")
             val repository = FixedScriptInstancesRepository(emptyList())
-            val interactor = StartAllTasksInScriptPackageInstanceInteractor(taskManager, repository)
+            val interactor = StartAllTasksInScriptPackageInstanceInteractor(taskManager, repository, InMemoryTasksRepository())
 
             interactor.run(StartAllTasksInScriptPackageInstanceInteractor.Params(packageInstance))
 

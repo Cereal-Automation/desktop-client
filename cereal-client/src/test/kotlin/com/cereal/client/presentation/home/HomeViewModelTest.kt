@@ -11,6 +11,7 @@ import com.cereal.client.application.interactor.script.GetSdkVersionInteractor
 import com.cereal.client.application.interactor.script.StartScriptInteractor
 import com.cereal.client.application.interactor.settings.ai.ConnectLlmProviderInteractor
 import com.cereal.client.application.interactor.settings.ai.GetLlmProviderConfigInteractor
+import com.cereal.client.application.interactor.settings.ai.ListLlmModelsInteractor
 import com.cereal.client.application.interactor.settings.ai.SaveLlmProviderConfigInteractor
 import com.cereal.client.domain.model.exception.LlmCallException
 import com.cereal.client.domain.model.llm.LlmProviderConfig
@@ -30,6 +31,7 @@ import com.cereal.client.infrastructure.provider.inmemory.InMemoryLlmProvider
 import com.cereal.client.infrastructure.provider.inmemory.InMemoryMarketplaceProvider
 import com.cereal.client.presentation.error.ErrorResolver
 import com.cereal.client.presentation.settings.ai.LlmPreset
+import com.cereal.client.presentation.settings.ai.ModelListState
 import com.cereal.client.presentation.view.UiText
 import com.cereal.client.presentation.view.fields.state.DropDownFieldState
 import com.cereal.client.presentation.view.fields.state.TextFieldState
@@ -58,6 +60,7 @@ import net.swiftzer.semver.SemVer
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertFalse
 import org.junit.jupiter.api.Assertions.assertInstanceOf
+import org.junit.jupiter.api.Assertions.assertNotNull
 import org.junit.jupiter.api.Assertions.assertNull
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
@@ -128,6 +131,7 @@ class HomeViewModelTest {
                 dispatcherProvider = dispatchers,
                 getLlmProviderConfigInteractor = GetLlmProviderConfigInteractor(llmConfigs),
                 connectLlmProviderInteractor = ConnectLlmProviderInteractor(llmProvider, SaveLlmProviderConfigInteractor(llmConfigs)),
+                listLlmModelsInteractor = ListLlmModelsInteractor(llmProvider),
                 errorResolver = ErrorResolver(),
             )
         advanceUntilIdle()
@@ -287,6 +291,13 @@ class HomeViewModelTest {
             assertEquals(ConfigValue.IntValue(600), instance.mainConfiguration["repeatInterval"])
             assertEquals("Tell me when the pliers are back in stock", (vm.field("goal") as TextFieldState<*>).text)
             assertNull(vm.dialog.value)
+            assertEquals(
+                world.tasksRepository
+                    .getTasks(instance)
+                    .single()
+                    .id,
+                vm.startedTaskId.value,
+            )
         }
 
     @Test
@@ -419,9 +430,12 @@ class HomeViewModelTest {
             assertEquals(HomeDialog.NoNotificationChannelsWarning, vm.dialog.value)
             assertTrue(world.scriptInstances.getScriptPackageInstances().isEmpty())
 
+            assertNull(vm.startedTaskId.value)
+
             vm.onNoNotificationChannelsWarningAccepted()
             advanceUntilIdle()
             assertEquals(1, world.scriptInstances.getScriptPackageInstances().size)
+            assertNotNull(vm.startedTaskId.value)
         }
 
     @Test
@@ -517,6 +531,13 @@ class HomeViewModelTest {
             advanceUntilIdle()
 
             coVerify(exactly = 1) { world.taskManager.startTasksToConcurrencyLimit(any()) }
+            assertEquals(
+                world.tasksRepository
+                    .getTasks(created)
+                    .single()
+                    .id,
+                vm.startedTaskId.value,
+            )
         }
 
     @Test
@@ -527,6 +548,20 @@ class HomeViewModelTest {
 
             assertEquals(HomeAiProviderState.None, vm.state.value)
             assertEquals(LlmPreset.GEMINI, vm.setup.preset.value)
+            assertEquals(ModelListState.Idle, vm.setup.modelList.value)
+        }
+
+    @Test
+    fun `typing a key on the setup card loads the model list`() =
+        runTest {
+            llmConfigs.clear()
+            val vm = aiProvider()
+
+            vm.setup.apiKeyState.onValueChange("gemini-key")
+            advanceUntilIdle()
+
+            assertEquals(ModelListState.Loaded(llmProvider.models), vm.setup.modelList.value)
+            assertEquals(HomeAiProviderState.None, vm.state.value)
         }
 
     @Test

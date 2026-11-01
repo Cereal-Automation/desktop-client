@@ -2,16 +2,34 @@ package com.cereal.client.presentation.settings.ai
 
 import androidx.compose.runtime.State
 import androidx.compose.runtime.mutableStateOf
+import com.cereal.client.application.CoroutinesDispatcherProvider
 import com.cereal.client.application.interactor.settings.ai.ListLlmModelsInteractor
 import com.cereal.client.application.interactor.settings.ai.SaveLlmProviderConfigInteractor
+import com.cereal.client.domain.model.llm.LlmConnection
+import com.cereal.client.domain.model.llm.LlmModel
 import com.cereal.client.domain.model.llm.LlmProviderConfig
+import com.cereal.client.presentation.view.UiText
 import com.cereal.client.presentation.view.fields.state.StringTextFieldState
+import com.github.kittinunf.result.coroutines.SuspendableResult
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 /**
  * The preset tiles and connection fields rendered by [LlmPresetForm]. Hosts (Settings → AI, the Home
  * setup card) own one, add their own primary action, and build interactor params from it.
+ *
+ * The form also loads the provider's model list ([modelList]) by itself: [DEBOUNCE_MILLIS] after an edit
+ * to the base URL or key leaves a valid [LlmConnection], and at once on [show] and [retry]. Another edit
+ * cancels a pending or running load. At setup a load also selects the preset's [LlmPreset.defaultModel], until
+ * the user picks one; a saved config's model is never replaced.
  */
 class LlmPresetFormState(
+    private val scope: CoroutineScope,
+    private val dispatcherProvider: CoroutinesDispatcherProvider,
+    private val listLlmModelsInteractor: ListLlmModelsInteractor,
     initial: LlmPreset? = null,
 ) {
     /** The chosen preset; null means none picked (no saved config). */
@@ -26,19 +44,27 @@ class LlmPresetFormState(
      */
     val customBaseUrl: State<Boolean> = _customBaseUrl
 
-    val baseUrlState = StringTextFieldState()
-    val apiKeyState = StringTextFieldState()
-    val modelState = StringTextFieldState()
+    val baseUrlState = StringTextFieldState(onValueChange = { loadModels(debounce = true) })
+    val apiKeyState = StringTextFieldState(onValueChange = { loadModels(debounce = true) })
+    val modelState = StringTextFieldState(onValueChange = { modelOwnedByUser = true })
 
-    /** Model ids from the host's last successful `/models` fetch; empty means the model field is plain text. */
-    val models = mutableStateOf<List<String>>(emptyList())
+    /**
+     * Whether a load keeps [modelState] instead of selecting the default: a saved config is showing, the host
+     * saved the form ([markSaved]), or the user picked since choosing the preset.
+     */
+    private var modelOwnedByUser = false
+
+    private val _modelList = mutableStateOf<ModelListState>(ModelListState.Idle)
+    val modelList: State<ModelListState> = _modelList
+
+    private var loadJob: Job? = null
 
     init {
         select(initial)
     }
 
     /**
-     * Switching preset resets base URL and model to the preset's and clears the key and fetched models,
+     * Switching preset resets base URL and model to the preset's and clears the key and the model list,
      * so a key is never sent to another provider's host, even between presets of the same provider type.
      * Returns false (and changes nothing) when [preset] is already selected.
      */
@@ -49,8 +75,10 @@ class LlmPresetFormState(
         baseUrlState.text = preset?.baseUrl.orEmpty()
         apiKeyState.text = ""
         modelState.text = preset?.model.orEmpty()
-        models.value = emptyList()
+        modelOwnedByUser = false
         clearFieldErrors()
+        _modelList.value = ModelListState.Idle
+        loadModels(debounce = true)
         return true
     }
 
@@ -61,7 +89,25 @@ class LlmPresetFormState(
         baseUrlState.text = config.baseUrl.value
         apiKeyState.text = config.apiKey?.reveal().orEmpty()
         modelState.text = config.model
+        modelOwnedByUser = true
+        loadModels(debounce = false)
     }
+
+    /**
+     * The host is saving the form: its model is now the user's, so a load still running (or a later one) never
+     * replaces it. Call before saving, not after, so a load that finishes mid-save can't change what was saved.
+     */
+    fun markSaved() {
+        modelOwnedByUser = true
+    }
+
+    /** Loads the list again now, e.g. after a failed load. */
+    fun retry() {
+        loadModels(debounce = false)
+    }
+
+    /** The load waiting out its debounce or running, if any; it ends with [modelList] set, unless an edit replaces it. */
+    fun activeLoad(): Job? = loadJob?.takeIf { it.isActive }
 
     fun connectionParams(): ListLlmModelsInteractor.Params? = _preset.value?.let { ListLlmModelsInteractor.Params(it.provider, baseUrlState.text, apiKeyState.text) }
 
@@ -76,6 +122,49 @@ class LlmPresetFormState(
         LlmProviderConfig.Field.entries.forEach { fieldState(it).resetValidationErrors() }
     }
 
+    /**
+     * Cancels any load, then starts one when the fields make a valid connection, showing [ModelListState.Loading]
+     * from now on (also through the debounce); otherwise the list is [ModelListState.Idle].
+     */
+    private fun loadModels(debounce: Boolean) {
+        loadJob?.cancel()
+        val params = usableConnectionParams()
+        val preset = _preset.value
+        if (params == null || preset == null) {
+            _modelList.value = ModelListState.Idle
+            return
+        }
+        _modelList.value = ModelListState.Loading
+        loadJob =
+            scope.launch(dispatcherProvider.io) {
+                if (debounce) delay(DEBOUNCE_MILLIS)
+                listLlmModelsInteractor(params) { result ->
+                    withContext(dispatcherProvider.main) {
+                        _modelList.value =
+                            when (result) {
+                                // Stable, and nulls sort lowest: newest first, undated last in API order.
+                                is SuspendableResult.Success -> {
+                                    val models = result.value.sortedByDescending { it.created }
+                                    if (!modelOwnedByUser) modelState.text = preset.defaultModel(models)?.id.orEmpty()
+                                    ModelListState.Loaded(models)
+                                }
+
+                                is SuspendableResult.Failure -> {
+                                    ModelListState.Failed(result.error)
+                                }
+                            }
+                    }
+                }
+            }
+    }
+
+    /** The connection params when they make a valid [LlmConnection] and, for a keyed preset, include a key. */
+    private fun usableConnectionParams(): ListLlmModelsInteractor.Params? {
+        val params = connectionParams() ?: return null
+        if (_preset.value?.needsKey == true && apiKeyState.text.isBlank()) return null
+        return params.takeIf { runCatching { LlmConnection.of(it.provider, it.baseUrl, it.apiKey) }.isSuccess }
+    }
+
     private fun fieldState(field: LlmProviderConfig.Field) =
         when (field) {
             LlmProviderConfig.Field.BASE_URL -> baseUrlState
@@ -83,3 +172,26 @@ class LlmPresetFormState(
             LlmProviderConfig.Field.MODEL -> modelState
         }
 }
+
+/** Where the form's model list stands. */
+sealed interface ModelListState {
+    /** No valid connection yet: no preset, no key on a keyed preset, or an invalid base URL. */
+    data object Idle : ModelListState
+
+    /** A load is waiting out the debounce or running. */
+    data object Loading : ModelListState
+
+    /** [models] newest first; undated ones last, in the provider's order. */
+    data class Loaded(
+        val models: List<LlmModel>,
+    ) : ModelListState
+
+    /** The load failed with [error]; [message] is the reason, as Test connection words it. */
+    data class Failed(
+        val error: Exception,
+    ) : ModelListState {
+        val message: UiText get() = connectionFailureMessage(error)
+    }
+}
+
+private const val DEBOUNCE_MILLIS = 500L
