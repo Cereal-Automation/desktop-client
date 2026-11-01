@@ -6,6 +6,7 @@ import java.io.IOException
 import java.nio.file.Files
 import java.nio.file.StandardCopyOption
 import java.util.Properties
+import java.util.UUID
 
 /**
  * A tiny boolean preference store that can be read and written *before* dependency injection starts.
@@ -66,6 +67,15 @@ class BootstrapPreferences(
         return store(properties)
     }
 
+    /**
+     * The pseudonymous id goal run reports carry: a random UUID created and stored on first call, so it exists
+     * before anyone signs in. If storing it fails, each call returns a new one.
+     */
+    fun installId(): String =
+        load()?.getProperty(INSTALL_ID_KEY) ?: UUID.randomUUID().toString().also { id ->
+            store((load() ?: Properties()).apply { setProperty(INSTALL_ID_KEY, id) })
+        }
+
     private fun load(): Properties? {
         if (!file.isFile) return null
         return runCatching {
@@ -115,6 +125,7 @@ class BootstrapPreferences(
         private val logger = LoggerFactory.getLogger(BootstrapPreferences::class.java)
 
         private const val FILE_NAME = "bootstrap.properties"
+        private const val INSTALL_ID_KEY = "install_id"
 
         private const val COMMENT =
             "Cereal settings that must be readable before the application is wired up. " +

@@ -6,6 +6,7 @@ import com.cereal.client.domain.provider.CheckoutProvider
 import com.cereal.client.domain.provider.CrashReportingProvider
 import com.cereal.client.domain.provider.DatasetFileProvider
 import com.cereal.client.domain.provider.DiscordProvider
+import com.cereal.client.domain.provider.GoalRunReportProvider
 import com.cereal.client.domain.provider.LlmProvider
 import com.cereal.client.domain.provider.LoggerProvider
 import com.cereal.client.domain.provider.MarketplaceProvider
@@ -19,6 +20,7 @@ import com.cereal.client.infrastructure.provider.inmemory.InMemoryCheckoutProvid
 import com.cereal.client.infrastructure.provider.inmemory.InMemoryCrashReportingProvider
 import com.cereal.client.infrastructure.provider.inmemory.InMemoryDatasetFileProvider
 import com.cereal.client.infrastructure.provider.inmemory.InMemoryDiscordProvider
+import com.cereal.client.infrastructure.provider.inmemory.InMemoryGoalRunReportProvider
 import com.cereal.client.infrastructure.provider.inmemory.InMemoryLlmProvider
 import com.cereal.client.infrastructure.provider.inmemory.InMemoryLoggerProvider
 import com.cereal.client.infrastructure.provider.inmemory.InMemoryMarketplaceProvider
@@ -45,6 +47,7 @@ object InMemoryProviderModule {
             single<DiscordProvider> { InMemoryDiscordProvider() }
             single<LoggerProvider> { InMemoryLoggerProvider() }
             single<CrashReportingProvider> { InMemoryCrashReportingProvider() }
+            single<GoalRunReportProvider> { InMemoryGoalRunReportProvider() }
             single<AppUpdateProvider> { InMemoryAppUpdateProvider() }
             single<AuthProvider> { InMemoryAuthProvider() }
             single<NotificationProvider> { InMemoryNotificationProvider() }

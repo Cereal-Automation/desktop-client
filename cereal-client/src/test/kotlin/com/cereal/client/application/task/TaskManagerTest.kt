@@ -105,6 +105,7 @@ class TaskManagerTest {
                     scriptInstanceRepository = scriptInstanceRepository,
                     jobTaskFactory = mockk(relaxed = true),
                     artifactRepository = mockk(relaxed = true),
+                    goalRunReporter = mockk(relaxed = true),
                 )
 
             val task = buildTask("task-race")
@@ -160,6 +161,7 @@ class TaskManagerTest {
                     scriptInstanceRepository = scriptInstanceRepository,
                     jobTaskFactory = mockk(relaxed = true),
                     artifactRepository = mockk(relaxed = true),
+                    goalRunReporter = mockk(relaxed = true),
                 )
 
             // Simulate a task that was persisted in the Running state when the app was closed.
@@ -197,6 +199,7 @@ class TaskManagerTest {
                     scriptInstanceRepository = scriptInstances,
                     jobTaskFactory = mockk(relaxed = true),
                     artifactRepository = mockk(relaxed = true),
+                    goalRunReporter = mockk(relaxed = true),
                 )
             tasksRepository.addTask(buildTask("running", listOf(TaskStatus.Running("Working", Clock.System.now()))).copy(scriptInstance = capturedScript))
             tasksRepository.addTask(buildTask("idle").copy(scriptInstance = capturedScript))
@@ -218,6 +221,7 @@ class TaskManagerTest {
                     scriptInstanceRepository = scriptInstanceRepository,
                     jobTaskFactory = mockk(relaxed = true),
                     artifactRepository = mockk(relaxed = true),
+                    goalRunReporter = mockk(relaxed = true),
                 )
             tasksRepository.addTask(
                 buildTask("running", statusHistory = listOf(TaskStatus.Running("Working", Clock.System.now()))),

@@ -28,6 +28,8 @@
     <string name="collapse">Collapse</string>
     <string name="configuration_for">Configuration for "%1$s"</string>
     <string name="crash_reporting">Send crash reports</string>
+    <string name="goal_sharing">Share my goals to help improve Cereal</string>
+    <string name="goal_sharing_desc">Sends the goals you give the AI agent (sensitive details masked) so we can build better workflows.</string>
     <string name="crash_reporting_desc">When Cereal crashes, the error and stack trace go to Sentry, our crash-reporting provider, together with your operating system, app version, the path to your Cereal folder, and the names, sizes and checksums of your installed script files. Nothing else leaves your machine: no product analytics, and never script contents, passwords or proxies. Switching this off shuts the reporter down straight away — no restart needed.</string>
     <string name="confirm">Confirm</string>
     <string name="contact_support">Contact support</string>
@@ -607,6 +609,9 @@
     <string name="home_retry">Retry</string>
     <string name="home_update_required_title">Update Cereal to use the AI browser agent</string>
     <string name="home_update_cereal">Update Cereal</string>
+    <string name="home_goal_sharing_notice">Cereal now shares the goals you give the AI agent to help build better workflows. You can turn this off in Settings › Privacy.</string>
+    <string name="home_goal_sharing_notice_settings">Privacy settings</string>
+    <string name="home_goal_sharing_notice_dismiss">Dismiss</string>
     <string name="home_maintenance_banner">The AI browser agent is under maintenance. Runs may not work right now.</string>
     <string name="home_ai_setup_title">Connect an AI model</string>
     <string name="home_ai_setup_subtitle">The agent thinks with a model you choose. Gemini's free tier costs nothing.</string>

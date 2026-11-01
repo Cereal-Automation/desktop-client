@@ -89,7 +89,11 @@ import com.cereal.client.application.interactor.settings.discord.SetDiscordActiv
 import com.cereal.client.application.interactor.settings.notifications.SaveAllNotificationSettingsInteractor
 import com.cereal.client.application.interactor.settings.notifications.SendNotificationTestMessageInteractor
 import com.cereal.client.application.interactor.settings.privacy.GetCrashReportingEnabledInteractor
+import com.cereal.client.application.interactor.settings.privacy.GetGoalSharingEnabledInteractor
+import com.cereal.client.application.interactor.settings.privacy.GetGoalSharingNoticeSeenInteractor
+import com.cereal.client.application.interactor.settings.privacy.MarkGoalSharingNoticeSeenInteractor
 import com.cereal.client.application.interactor.settings.privacy.SetCrashReportingEnabledInteractor
+import com.cereal.client.application.interactor.settings.privacy.SetGoalSharingEnabledInteractor
 import com.cereal.client.application.interactor.settings.proxy.ObserveProxyHealthCheckIntervalInteractor
 import com.cereal.client.application.interactor.settings.proxy.SetProxyHealthCheckIntervalInteractor
 import com.cereal.client.application.interactor.task.ChangeScriptPackageInstanceGroupInteractor
@@ -189,6 +193,10 @@ object InteractorModule {
             factory { SetDiscordActivityStatusEnabledInteractor(get(), get()) }
             factory { GetCrashReportingEnabledInteractor(get()) }
             factory { SetCrashReportingEnabledInteractor(get()) }
+            factory { GetGoalSharingEnabledInteractor(get()) }
+            factory { SetGoalSharingEnabledInteractor(get()) }
+            factory { GetGoalSharingNoticeSeenInteractor(get()) }
+            factory { MarkGoalSharingNoticeSeenInteractor(get()) }
             factory { SendNotificationTestMessageInteractor(get(), get()) }
             factory { SaveAllNotificationSettingsInteractor(get()) }
             factory { GetLlmProviderConfigInteractor(get()) }

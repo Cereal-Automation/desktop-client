@@ -6,6 +6,7 @@ import com.cereal.client.domain.provider.CheckoutProvider
 import com.cereal.client.domain.provider.CrashReportingProvider
 import com.cereal.client.domain.provider.DatasetFileProvider
 import com.cereal.client.domain.provider.DiscordProvider
+import com.cereal.client.domain.provider.GoalRunReportProvider
 import com.cereal.client.domain.provider.LlmProvider
 import com.cereal.client.domain.provider.LoggerProvider
 import com.cereal.client.domain.provider.MarketplaceProvider
@@ -20,6 +21,7 @@ import com.cereal.client.infrastructure.provider.CheckoutProviderImpl
 import com.cereal.client.infrastructure.provider.CrashReportingProviderImpl
 import com.cereal.client.infrastructure.provider.DatasetFileProviderImpl
 import com.cereal.client.infrastructure.provider.DiscordProviderImpl
+import com.cereal.client.infrastructure.provider.GoalRunReportProviderImpl
 import com.cereal.client.infrastructure.provider.LlmProviderImpl
 import com.cereal.client.infrastructure.provider.LoggerProviderImpl
 import com.cereal.client.infrastructure.provider.MarketplaceProviderImpl
@@ -64,5 +66,6 @@ object ProviderModule {
             // BootstrapPreferences.default is resolved here rather than bound in Koin: it is a
             // path holder that deliberately re-resolves the application home on every access.
             single<CrashReportingProvider> { CrashReportingProviderImpl(BootstrapPreferences.default, get()) }
+            single<GoalRunReportProvider> { GoalRunReportProviderImpl(get()) }
         }
 }

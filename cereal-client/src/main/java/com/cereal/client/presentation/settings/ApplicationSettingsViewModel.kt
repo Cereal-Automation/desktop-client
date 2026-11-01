@@ -17,7 +17,9 @@ import com.cereal.client.application.interactor.settings.discord.SetDiscordActiv
 import com.cereal.client.application.interactor.settings.notifications.SaveAllNotificationSettingsInteractor
 import com.cereal.client.application.interactor.settings.notifications.SendNotificationTestMessageInteractor
 import com.cereal.client.application.interactor.settings.privacy.GetCrashReportingEnabledInteractor
+import com.cereal.client.application.interactor.settings.privacy.GetGoalSharingEnabledInteractor
 import com.cereal.client.application.interactor.settings.privacy.SetCrashReportingEnabledInteractor
+import com.cereal.client.application.interactor.settings.privacy.SetGoalSharingEnabledInteractor
 import com.cereal.client.application.interactor.settings.proxy.SetProxyHealthCheckIntervalInteractor
 import com.cereal.client.domain.model.app.DownloadStatus
 import com.cereal.client.domain.model.app.UpdateInstallResult
@@ -63,6 +65,8 @@ class ApplicationSettingsViewModel(
     private val setDiscordActivityStatusEnabledInteractor: SetDiscordActivityStatusEnabledInteractor,
     private val getCrashReportingEnabledInteractor: GetCrashReportingEnabledInteractor,
     private val setCrashReportingEnabledInteractor: SetCrashReportingEnabledInteractor,
+    private val getGoalSharingEnabledInteractor: GetGoalSharingEnabledInteractor,
+    private val setGoalSharingEnabledInteractor: SetGoalSharingEnabledInteractor,
     private val sendNotificationTestMessageInteractor: SendNotificationTestMessageInteractor,
     private val saveAllNotificationSettingsInteractor: SaveAllNotificationSettingsInteractor,
     private val checkForUpdatesInteractor: CheckForUpdatesInteractor,
@@ -94,6 +98,10 @@ class ApplicationSettingsViewModel(
     // store, so it is read once here rather than arriving on the settings Flow.
     private val _crashReportingEnabled = mutableStateOf(true)
     val crashReportingEnabled: State<Boolean> = _crashReportingEnabled
+
+    // Bootstrap store too, for the same reason.
+    private val _goalSharingEnabled = mutableStateOf(true)
+    val goalSharingEnabled: State<Boolean> = _goalSharingEnabled
 
     private val _discordWebhookEnabledState = mutableStateOf(false)
     val discordWebhookEnabledState: State<Boolean> = _discordWebhookEnabledState
@@ -162,6 +170,7 @@ class ApplicationSettingsViewModel(
     init {
         getApplicationSettings()
         getCrashReportingEnabled()
+        getGoalSharingEnabled()
         scope.launch(dispatcherProvider.io) {
             checkForUpdatesInteractor(Interactor.None()) { result ->
                 if (result is SuspendableResult.Success) {
@@ -191,6 +200,12 @@ class ApplicationSettingsViewModel(
                     }
                 }
             }
+        }
+    }
+
+    private fun getGoalSharingEnabled() {
+        interactorRunner.launch(getGoalSharingEnabledInteractor, Interactor.None()) { enabled ->
+            _goalSharingEnabled.value = enabled
         }
     }
 
@@ -287,6 +302,13 @@ class ApplicationSettingsViewModel(
         _crashReportingEnabled.value = enabled
         val params = SetCrashReportingEnabledInteractor.Params(enabled)
         interactorRunner.launch(setCrashReportingEnabledInteractor, params) {
+            // No-op, the state above is the only publisher.
+        }
+    }
+
+    fun setGoalSharingEnabled(enabled: Boolean) {
+        _goalSharingEnabled.value = enabled
+        interactorRunner.launch(setGoalSharingEnabledInteractor, SetGoalSharingEnabledInteractor.Params(enabled)) {
             // No-op, the state above is the only publisher.
         }
     }
