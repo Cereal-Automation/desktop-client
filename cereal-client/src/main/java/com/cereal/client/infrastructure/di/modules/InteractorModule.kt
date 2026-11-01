@@ -159,7 +159,7 @@ object InteractorModule {
             factory { StopTasksInScriptPackageInstanceInteractor(get(), get()) }
             factory { UpdateScriptPackageInstanceInteractor(get(), get(), get(), get()) }
             factory { SetConcurrentTaskCountInteractor(get(), get(), get(), get()) }
-            factory { StartAllTasksInScriptPackageInstanceInteractor(get(), get()) }
+            factory { StartAllTasksInScriptPackageInstanceInteractor(get(), get(), get()) }
             factory { UserInteractionDismissedInteractor(get()) }
             factory { ObserveTaskSetupSortInteractor(get()) }
             factory { SetTaskSetupSortInteractor(get()) }

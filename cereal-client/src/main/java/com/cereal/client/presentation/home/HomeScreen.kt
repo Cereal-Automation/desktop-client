@@ -120,6 +120,8 @@ fun HomeScreen(
         if (aiState != HomeAiProviderState.Loading) viewModel.onAiProviderChanged(aiState is HomeAiProviderState.Configured)
     }
 
+    viewModel.startedTaskId.value?.let { taskId -> LaunchedEffect(taskId) { onOpenTasks(taskId) } }
+
     HomeDialogs(viewModel, onNavigateToMarketplace)
     errorView(viewModel.errorAction)
     errorView(aiViewModel.errorAction)
