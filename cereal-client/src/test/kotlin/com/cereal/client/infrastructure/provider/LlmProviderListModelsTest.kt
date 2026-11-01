@@ -187,4 +187,12 @@ class LlmProviderListModelsTest {
 
             assertEquals(listOf(LlmModel("m")), models)
         }
+
+    @Test
+    fun `entries without a string id, or that aren't objects, are skipped`() =
+        runTest {
+            server.enqueue(MockResponse().setBody("""{"data":[{"id":null},{"id":7},{"name":"no id"},"x",{"id":"ok"}]}"""))
+
+            assertEquals(listOf("ok"), provider.listModels(config(LlmProviderType.OPENAI_COMPATIBLE)).map { it.id })
+        }
 }

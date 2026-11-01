@@ -17,7 +17,6 @@ import kotlinx.serialization.json.contentOrNull
 import kotlinx.serialization.json.decodeFromJsonElement
 import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonObject
-import kotlinx.serialization.json.jsonPrimitive
 import kotlinx.serialization.json.longOrNull
 import okhttp3.Headers.Companion.toHeaders
 import okhttp3.MediaType.Companion.toMediaType
@@ -107,16 +106,16 @@ class LlmHttp(
                 .jsonObject
                 .getValue("data")
                 .jsonArray
-                .mapNotNull { it.jsonObject.toChatModel() }
+                .mapNotNull { (it as? JsonObject)?.toChatModel() }
         }
     }
 
     /**
-     * One `/models` entry as an [LlmModel], or null when the entry says the model can't chat. Only `id` is
-     * required; any other field of the wrong shape counts as missing.
+     * One `/models` entry as an [LlmModel], or null when the entry says the model can't chat or has no string
+     * `id` (it's skipped, not fatal). Any other field of the wrong shape counts as missing.
      */
     private fun JsonObject.toChatModel(): LlmModel? {
-        val id = getValue("id").jsonPrimitive.content.removePrefix("models/")
+        val id = string("id")?.removePrefix("models/")?.takeIf { it.isNotBlank() } ?: return null
         val outputs = (this["architecture"] as? JsonObject)?.strings("output_modalities")
         val hidden =
             (outputs != null && outputs != listOf("text")) ||

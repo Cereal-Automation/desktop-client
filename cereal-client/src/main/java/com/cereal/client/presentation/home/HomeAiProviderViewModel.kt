@@ -89,6 +89,7 @@ class HomeAiProviderViewModel(
     /** Tests the connection, then saves; nothing is saved when the test fails. */
     fun onConnect() {
         val form = setup.saveParams() ?: return
+        setup.markSaved()
         val params = ConnectLlmProviderInteractor.Params(form.provider, form.baseUrl, form.apiKey, form.model)
         setup.clearFieldErrors()
         _connectError.value = null

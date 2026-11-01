@@ -72,6 +72,8 @@ class AiSettingsViewModelTest {
 
     private fun fixture(path: String) = MockResponse().setBody(javaClass.getResource("/llm/$path")!!.readText())
 
+    private fun LlmPresetFormState.modelIds() = (modelList.value as ModelListState.Loaded).models.map { it.id }
+
     private fun AiSettingsViewModel.chooseAnthropicOnServer() {
         selectPreset(LlmPreset.ANTHROPIC)
         form.baseUrlState.text = server.url("/v1").toString()
@@ -169,7 +171,7 @@ class AiSettingsViewModelTest {
         val vm = viewModel()
 
         await { vm.form.modelList.value is ModelListState.Loaded }
-        assertEquals(listOf("gpt-5", "gpt-5-mini"), vm.form.models.map { it.id })
+        assertEquals(listOf("gpt-5", "gpt-5-mini"), vm.form.modelIds())
         assertEquals(ConnectionStatus.Idle, vm.connectionStatus.value)
         assertEquals("gpt-5", vm.form.modelState.text)
     }
@@ -241,7 +243,7 @@ class AiSettingsViewModelTest {
 
         await { vm.connectionStatus.value is ConnectionStatus.Connected }
         assertEquals(ConnectionStatus.Connected(2), vm.connectionStatus.value)
-        assertEquals(listOf("claude-opus-5-5"), vm.form.models.map { it.id })
+        assertEquals(listOf("claude-opus-5-5"), vm.form.modelIds())
     }
 
     @Test
@@ -286,5 +288,19 @@ class AiSettingsViewModelTest {
 
         await { provider.listModelsRequests.size == 2 && vm.form.modelList.value is ModelListState.Loaded }
         assertEquals("claude-opus-5-5", vm.form.modelState.text)
+    }
+
+    @Test
+    fun `Test connection while the list is loading reports that load instead of fetching again`() {
+        val provider = InMemoryLlmProvider(models = listOf(LlmModel("claude-opus-5-5")), listModelsLatencyMillis = 300)
+        val vm = viewModel(provider)
+        vm.selectPreset(LlmPreset.ANTHROPIC)
+        vm.form.apiKeyState.onValueChange("sk-ant-1")
+
+        vm.testConnection()
+
+        await { vm.connectionStatus.value is ConnectionStatus.Connected }
+        assertEquals(ConnectionStatus.Connected(1), vm.connectionStatus.value)
+        assertEquals(1, provider.listModelsRequests.size)
     }
 }

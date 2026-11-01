@@ -91,12 +91,34 @@ class AiSettingsViewModel(
         _connectionStatus.value = ConnectionStatus.Idle
     }
 
-    /** Checks the form's setup against the provider and reports the status; the model list loads on its own. */
+    /**
+     * Checks the form's setup against the provider and reports the status; the model list loads on its own and
+     * this never refills it. While the form's own load is pending or running, its outcome is the answer, so the
+     * same `/models` call isn't made twice.
+     */
     fun testConnection() {
         form.clearFieldErrors()
+        fetchJob?.cancel()
+        val load = form.activeLoad()
+        if (load != null) {
+            _connectionStatus.value = ConnectionStatus.Testing
+            fetchJob =
+                scope.launch(dispatcherProvider.main) {
+                    load.join()
+                    _connectionStatus.value =
+                        when (val list = form.modelList.value) {
+                            is ModelListState.Loaded -> ConnectionStatus.Connected(list.models.size)
+
+                            is ModelListState.Failed -> connectionFailure(list.error)
+
+                            // An edit replaced the load: the status no longer describes the fields.
+                            else -> ConnectionStatus.Idle
+                        }
+                }
+            return
+        }
         val params = form.connectionParams() ?: return
         _connectionStatus.value = ConnectionStatus.Testing
-        fetchJob?.cancel()
         fetchJob =
             scope.launch(dispatcherProvider.io) {
                 listLlmModelsInteractor(params) { result ->
@@ -123,12 +145,10 @@ class AiSettingsViewModel(
     fun save() {
         form.clearFieldErrors()
         val params = form.saveParams() ?: return
+        form.markSaved()
         scope.launch(dispatcherProvider.io) {
             saveLlmProviderConfigInteractor(params) { result ->
-                withContext(dispatcherProvider.main) {
-                    if (result is SuspendableResult.Success) form.markSaved()
-                    handleSaveResult(result)
-                }
+                withContext(dispatcherProvider.main) { handleSaveResult(result) }
             }
         }
     }

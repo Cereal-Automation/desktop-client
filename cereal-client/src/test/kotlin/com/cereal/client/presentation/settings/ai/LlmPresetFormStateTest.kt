@@ -144,7 +144,7 @@ class LlmPresetFormStateTest {
             val form = form()
             form.apiKeyState.onValueChange("bad")
             advance(500)
-            assertEquals(ModelListState.Failed(UiText.Resource(Res.string.ai_connection_bad_key)), form.modelList.value)
+            assertEquals(UiText.Resource(Res.string.ai_connection_bad_key), (form.modelList.value as ModelListState.Failed).message)
 
             provider.listModelsError = null
             form.retry()
@@ -164,7 +164,6 @@ class LlmPresetFormStateTest {
             form.select(LlmPreset.OPENAI)
 
             assertEquals(ModelListState.Idle, form.modelList.value)
-            assertEquals(emptyList<LlmModel>(), form.models)
             assertEquals("gpt-5", form.modelState.text)
             assertEquals("", form.apiKeyState.text)
         }
@@ -188,7 +187,7 @@ class LlmPresetFormStateTest {
         val form = form(initial = null)
         form.show(LlmProviderConfig.of(LlmProviderType.ANTHROPIC, "https://api.anthropic.com/v1", "sk-ant-1", "new"))
         runCurrent()
-        return form.models.map { it.id }
+        return (form.modelList.value as ModelListState.Loaded).models.map { it.id }
     }
 
     @Test
@@ -322,5 +321,33 @@ class LlmPresetFormStateTest {
             runCurrent()
 
             assertEquals("claude-haiku-4-5", form.modelState.text)
+        }
+
+    @Test
+    fun `saving while a load is pending keeps the saved model when the load lands`() =
+        runTest {
+            provider.models = listOf(LlmModel("gpt-5-mini", created = Instant.parse("2026-01-01T00:00:00Z")))
+            val form = form(initial = LlmPreset.OPENAI)
+            form.apiKeyState.onValueChange("sk-1")
+            advance(100)
+
+            form.markSaved()
+            advance(1_000)
+
+            assertEquals(ModelListState.Loaded(provider.models), form.modelList.value)
+            assertEquals("gpt-5", form.modelState.text)
+        }
+
+    @Test
+    fun `the active load is the pending or running one, and none once it lands`() =
+        runTest {
+            val form = form()
+            assertEquals(null, form.activeLoad())
+
+            form.apiKeyState.onValueChange("sk-ant-1")
+            assertEquals(true, form.activeLoad()?.isActive)
+
+            advance(500)
+            assertEquals(null, form.activeLoad())
         }
 }

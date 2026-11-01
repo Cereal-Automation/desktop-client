@@ -458,4 +458,67 @@ class AiSettingsSectionScreenTest {
             awaitTag(AI_MODEL_OPEN_TAG)
             onNodeWithText("Retry").assertDoesNotExist()
         }
+
+    @Test
+    fun savingWithoutAModelShowsTheErrorUnderThePicker() =
+        runScreenTest {
+            llmProvider.models = listOf(LlmModel("gpt-6", created = Instant.parse("2026-05-01T00:00:00Z")))
+            setScreenContent { AiSettingsSection() }
+            onNodeWithText("OpenAI").performClick()
+            input(AI_API_KEY_TAG).performTextInput("sk-1")
+            awaitTag(AI_MODEL_OPEN_TAG)
+
+            onNodeWithText("Save").performClick()
+
+            awaitText("Enter a model.")
+        }
+
+    @Test
+    fun aSearchThatMatchesNoIdCanBeUsedAsTheModel() =
+        runScreenTest {
+            llmProvider.models = listOf(LlmModel("llama3"))
+            setScreenContent { AiSettingsSection() }
+            onNodeWithText("Local model").performClick()
+            awaitTag(AI_MODEL_OPEN_TAG)
+
+            onNodeWithTag(AI_MODEL_OPEN_TAG).performClick()
+            input(AI_MODEL_SEARCH_TAG).performTextInput("qwen3:32b")
+            onNodeWithTag(AI_MODEL_USE_CUSTOM_TAG).performClick()
+
+            awaitText("Not offered by provider")
+            onNodeWithText("Save").performClick()
+            awaitSaved { it?.model == "qwen3:32b" }
+        }
+
+    @Test
+    fun dismissingThePopupClearsTheSearch() =
+        runScreenTest {
+            llmProvider.models = listOf(LlmModel("llama3"), LlmModel("qwen3"))
+            setScreenContent { AiSettingsSection() }
+            onNodeWithText("Local model").performClick()
+            awaitTag(AI_MODEL_OPEN_TAG)
+
+            onNodeWithTag(AI_MODEL_OPEN_TAG).performClick()
+            input(AI_MODEL_SEARCH_TAG).performTextInput("qwen")
+            row("llama3").assertDoesNotExist()
+            // A click outside dismisses the popup; Local is already selected, so the tile changes nothing.
+            onNodeWithText("Local model").performClick()
+            onNodeWithTag(AI_MODEL_LIST_TAG).assertDoesNotExist()
+
+            onNodeWithTag(AI_MODEL_OPEN_TAG).performClick()
+            row("llama3").assertIsDisplayed()
+        }
+
+    @Test
+    fun aKeyedPresetWithAKeyButABadAddressWaitsForTheServerAddress() =
+        runScreenTest {
+            // A custom address, so the base URL field shows.
+            save(LlmProviderConfig.of(LlmProviderType.ANTHROPIC, "https://proxy.example.com/v1", "sk-ant-1", "claude-opus-5-5"))
+            setScreenContent { AiSettingsSection() }
+            awaitTag(AI_BASE_URL_TAG)
+
+            input(AI_BASE_URL_TAG).performTextReplacement("not a url")
+
+            awaitText("Chosen after you add the server address")
+        }
 }

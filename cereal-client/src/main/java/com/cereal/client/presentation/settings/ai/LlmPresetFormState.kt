@@ -57,9 +57,6 @@ class LlmPresetFormState(
     private val _modelList = mutableStateOf<ModelListState>(ModelListState.Idle)
     val modelList: State<ModelListState> = _modelList
 
-    /** The loaded models; empty unless [modelList] is [ModelListState.Loaded]. */
-    val models: List<LlmModel> get() = (_modelList.value as? ModelListState.Loaded)?.models.orEmpty()
-
     private var loadJob: Job? = null
 
     init {
@@ -96,13 +93,21 @@ class LlmPresetFormState(
         loadModels(debounce = false)
     }
 
-    /** The host saved the form: its model is now the user's, so a later reload never replaces it. */
+    /**
+     * The host is saving the form: its model is now the user's, so a load still running (or a later one) never
+     * replaces it. Call before saving, not after, so a load that finishes mid-save can't change what was saved.
+     */
     fun markSaved() {
         modelOwnedByUser = true
     }
 
     /** Loads the list again now, e.g. after a failed load. */
-    fun retry() = loadModels(debounce = false)
+    fun retry() {
+        loadModels(debounce = false)
+    }
+
+    /** The load waiting out its debounce or running, if any; it ends with [modelList] set, unless an edit replaces it. */
+    fun activeLoad(): Job? = loadJob?.takeIf { it.isActive }
 
     fun connectionParams(): ListLlmModelsInteractor.Params? = _preset.value?.let { ListLlmModelsInteractor.Params(it.provider, baseUrlState.text, apiKeyState.text) }
 
@@ -145,7 +150,7 @@ class LlmPresetFormState(
                                 }
 
                                 is SuspendableResult.Failure -> {
-                                    ModelListState.Failed(connectionFailureMessage(result.error))
+                                    ModelListState.Failed(result.error)
                                 }
                             }
                     }
@@ -181,10 +186,12 @@ sealed interface ModelListState {
         val models: List<LlmModel>,
     ) : ModelListState
 
-    /** The load failed; [message] is the reason, as Test connection would word it. */
+    /** The load failed with [error]; [message] is the reason, as Test connection words it. */
     data class Failed(
-        val message: UiText,
-    ) : ModelListState
+        val error: Exception,
+    ) : ModelListState {
+        val message: UiText get() = connectionFailureMessage(error)
+    }
 }
 
 private const val DEBOUNCE_MILLIS = 500L

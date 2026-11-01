@@ -40,6 +40,7 @@ import com.cereal.client.presentation.view.CerealCircularProgressIndicator
 import com.cereal.client.presentation.view.CerealText
 import com.cereal.client.presentation.view.CerealTextField
 import com.cereal.client.presentation.view.SettingsTextInput
+import com.cereal.client.presentation.view.fields.FormField
 import com.cereal.client.presentation.view.text
 import com.cereal_automation.cereal_client.generated.resources.Res
 import com.cereal_automation.cereal_client.generated.resources.ai_model_free
@@ -50,6 +51,7 @@ import com.cereal_automation.cereal_client.generated.resources.ai_model_pick
 import com.cereal_automation.cereal_client.generated.resources.ai_model_pulled
 import com.cereal_automation.cereal_client.generated.resources.ai_model_retry
 import com.cereal_automation.cereal_client.generated.resources.ai_model_search
+import com.cereal_automation.cereal_client.generated.resources.ai_model_use_custom
 import com.cereal_automation.cereal_client.generated.resources.ai_model_waiting_key
 import com.cereal_automation.cereal_client.generated.resources.ai_model_waiting_server
 import org.jetbrains.compose.resources.stringResource
@@ -58,31 +60,40 @@ internal const val AI_MODEL_TAG = "ai_model"
 internal const val AI_MODEL_OPEN_TAG = "ai_model_open"
 internal const val AI_MODEL_SEARCH_TAG = "ai_model_search"
 internal const val AI_MODEL_LIST_TAG = "ai_model_list"
+internal const val AI_MODEL_USE_CUSTOM_TAG = "ai_model_use_custom"
 
 /**
  * The model field shared by Settings → AI and the Home connect card. It follows [LlmPresetFormState.modelList]:
  * disabled until the connection is usable, a spinner while loading, a searchable combobox once loaded, and
- * free text with the reason and Retry when the load failed. A pick writes [LlmPresetFormState.modelState].
+ * free text with the reason and Retry when the load failed. A pick writes [LlmPresetFormState.modelState], and
+ * its error (e.g. no model on save) shows under the field in every state.
  */
 @Composable
 fun ModelPicker(form: LlmPresetFormState) {
     Box(Modifier.fillMaxWidth().testTag(AI_MODEL_TAG)) {
         when (val list = form.modelList.value) {
             ModelListState.Idle -> {
-                val waitingFor = if (form.preset.value?.needsKey == false) Res.string.ai_model_waiting_server else Res.string.ai_model_waiting_key
-                DisabledField(stringResource(waitingFor))
+                // A keyed preset with its key filled in is waiting on a usable base URL instead.
+                val waitingForKey = form.preset.value?.needsKey == true && form.apiKeyState.text.isBlank()
+                FormField(textError = form.modelState.error) {
+                    DisabledField(stringResource(if (waitingForKey) Res.string.ai_model_waiting_key else Res.string.ai_model_waiting_server))
+                }
             }
 
             ModelListState.Loading -> {
-                DisabledField(stringResource(Res.string.ai_model_loading)) {
-                    CerealCircularProgressIndicator(modifier = Modifier.size(13.dp), strokeWidth = 2.dp)
+                FormField(textError = form.modelState.error) {
+                    DisabledField(stringResource(Res.string.ai_model_loading)) {
+                        CerealCircularProgressIndicator(modifier = Modifier.size(13.dp), strokeWidth = 2.dp)
+                    }
                 }
             }
 
             is ModelListState.Loaded -> {
                 val preset = form.preset.value
                 val models = remember(list, preset) { list.models.map { it.toUiModel(preset) } }
-                ModelCombobox(models, pulled = preset == LlmPreset.LOCAL, selectedId = form.modelState.text, onPick = form.modelState::onValueChange)
+                FormField(textError = form.modelState.error) {
+                    ModelCombobox(models, pulled = preset == LlmPreset.LOCAL, selectedId = form.modelState.text, onPick = form.modelState::onValueChange)
+                }
             }
 
             is ModelListState.Failed -> {
@@ -117,11 +128,15 @@ private fun ModelCombobox(
 ) {
     var open by remember { mutableStateOf(false) }
     var query by remember { mutableStateOf("") }
+    val close = {
+        open = false
+        query = ""
+    }
     Box {
         ClosedField(selectedId, models, onClick = { open = true })
         DropdownMenu(
             expanded = open,
-            onDismissRequest = { open = false },
+            onDismissRequest = close,
             properties = PopupProperties(focusable = true),
             modifier = Modifier.width(460.dp),
         ) {
@@ -140,9 +155,25 @@ private fun ModelCombobox(
                 visible.forEach { model ->
                     ModelRow(model, selected = model.id == selectedId, pulled = pulled) {
                         onPick(model.id)
-                        open = false
-                        query = ""
+                        close()
                     }
+                }
+                // The list isn't everything a provider serves (hidden models, partial lists): the query can be used as an id.
+                val custom = query.trim()
+                if (custom.isNotEmpty() && models.none { it.id == custom }) {
+                    CerealText(
+                        stringResource(Res.string.ai_model_use_custom, custom),
+                        modifier =
+                            Modifier
+                                .fillMaxWidth()
+                                .clickable {
+                                    onPick(custom)
+                                    close()
+                                }.testTag(AI_MODEL_USE_CUSTOM_TAG)
+                                .padding(horizontal = 12.dp, vertical = 8.dp),
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = CerealTheme.colorScheme.link,
+                    )
                 }
             }
         }
