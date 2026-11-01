@@ -20,6 +20,7 @@ import androidx.compose.ui.test.performScrollToNode
 import androidx.compose.ui.test.performTextClearance
 import androidx.compose.ui.test.performTextInput
 import androidx.compose.ui.test.performTextReplacement
+import com.cereal.client.domain.model.exception.LlmCallException
 import com.cereal.client.domain.model.llm.LlmModel
 import com.cereal.client.domain.model.llm.LlmProviderConfig
 import com.cereal.client.domain.model.llm.LlmProviderType
@@ -86,7 +87,7 @@ class AiSettingsSectionScreenTest {
 
             onNodeWithText("OpenRouter").assertIsSelected()
             onNodeWithText("Get a key ↗").assertIsDisplayed()
-            onNodeWithText("anthropic/claude-opus-5.5", substring = true).assertIsDisplayed()
+            onNodeWithText("Chosen after you add your key").assertIsDisplayed()
             onNodeWithTag(AI_BASE_URL_TAG).assertDoesNotExist()
 
             input(AI_API_KEY_TAG).performTextInput("sk-or-1")
@@ -97,18 +98,6 @@ class AiSettingsSectionScreenTest {
                 LlmProviderConfig.of(LlmProviderType.OPENAI_COMPATIBLE, "https://openrouter.ai/api/v1", "sk-or-1", "anthropic/claude-opus-5.5"),
                 savedConfig(),
             )
-        }
-
-    @Test
-    fun changeRevealsTheModelField() =
-        runScreenTest {
-            setScreenContent { AiSettingsSection() }
-            onNodeWithText("Anthropic").performClick()
-            onNodeWithTag(AI_MODEL_TAG).assertDoesNotExist()
-
-            onNodeWithText("Change").performClick()
-
-            input(AI_MODEL_TAG).assertTextEquals("claude-opus-5-5")
         }
 
     @Test
@@ -263,7 +252,6 @@ class AiSettingsSectionScreenTest {
         runScreenTest {
             setScreenContent { AiSettingsSection() }
             onNodeWithText("Other").performClick()
-            input(AI_MODEL_TAG).performTextInput("llama3")
             input(AI_BASE_URL_TAG).performTextInput("localhost:11434")
 
             onNodeWithText("Save").performClick()
@@ -283,49 +271,7 @@ class AiSettingsSectionScreenTest {
             onNodeWithText("Test connection").performClick()
 
             awaitText("Connected · 2 models")
-            onNodeWithText("claude-opus-5-5", substring = true).assertIsDisplayed()
-        }
-
-    @Test
-    fun theModelListFiltersAsYouTypeAndAPickFillsTheField() =
-        runScreenTest {
-            llmProvider.models = listOf(LlmModel("gpt-5"), LlmModel("gpt-5-mini"), LlmModel("llama3"))
-            setScreenContent { AiSettingsSection() }
-            onNodeWithText("Local model").performClick()
-            // Local's default server address is a valid connection, so the list loads on its own.
-            waitUntil(timeoutMillis = 5_000) { onAllNodes(hasTestTag(AI_MODEL_OPEN_TAG)).fetchSemanticsNodes().isNotEmpty() }
-
-            onNodeWithTag(AI_MODEL_OPEN_TAG).performClick()
-            onNodeWithText("llama3").assertIsDisplayed()
-            input(AI_MODEL_TAG).performTextInput("mini")
-            onNodeWithText("llama3").assertDoesNotExist()
-            onNodeWithText("gpt-5-mini").performClick()
-
-            input(AI_MODEL_TAG).assertTextEquals("gpt-5-mini")
-        }
-
-    @Test
-    fun theArrowShowsTheWholeListWhenTheModelMatchesNothing() =
-        runScreenTest {
-            llmProvider.models = listOf(LlmModel("qwen3"), LlmModel("llama3"))
-            save(LlmProviderConfig.of(LlmProviderType.OPENAI_COMPATIBLE, "http://localhost:1234/v1", "", "gemini-3.8-flash"))
-            setScreenContent { AiSettingsSection() }
-            waitUntil(timeoutMillis = 5_000) { onAllNodes(hasTestTag(AI_MODEL_OPEN_TAG)).fetchSemanticsNodes().isNotEmpty() }
-
-            onNodeWithTag(AI_MODEL_OPEN_TAG).performClick()
-
-            onNodeWithText("llama3").assertIsDisplayed()
-        }
-
-    @Test
-    fun withoutAFetchedListTheModelIsPlainText() =
-        runScreenTest {
-            setScreenContent { AiSettingsSection() }
-            onNodeWithText("Other").performClick()
-
-            onNodeWithTag(AI_MODEL_OPEN_TAG).assertDoesNotExist()
-            input(AI_MODEL_TAG).performTextInput("any-model-id")
-            input(AI_MODEL_TAG).assertTextEquals("any-model-id")
+            awaitText("claude-opus-5-5")
         }
 
     @Test
@@ -337,5 +283,102 @@ class AiSettingsSectionScreenTest {
 
             waitUntil(timeoutMillis = 5_000) { onAllNodes(hasTestTag(AI_MODEL_OPEN_TAG)).fetchSemanticsNodes().isNotEmpty() }
             onNodeWithText("Connected", substring = true).assertDoesNotExist()
+        }
+
+    private fun ComposeUiTest.awaitTag(tag: String) = waitUntil(timeoutMillis = 5_000) { onAllNodes(hasTestTag(tag)).fetchSemanticsNodes().isNotEmpty() }
+
+    private fun ComposeUiTest.row(text: String): SemanticsNodeInteraction = onNode(hasText(text) and hasAnyAncestor(hasTestTag(AI_MODEL_LIST_TAG)))
+
+    @Test
+    fun beforeTheConnectionIsUsableTheModelWaitsForTheKeyOrServer() =
+        runScreenTest {
+            setScreenContent { AiSettingsSection() }
+
+            onNodeWithText("Anthropic").performClick()
+            onNodeWithText("Chosen after you add your key").assertIsDisplayed()
+            onNodeWithTag(AI_MODEL_OPEN_TAG).assertDoesNotExist()
+
+            onNodeWithText("Other").performClick()
+            onNodeWithText("Chosen after you add the server address").assertIsDisplayed()
+        }
+
+    @Test
+    fun whileTheListLoadsTheModelShowsLoading() =
+        runScreenTest {
+            llmProvider.listModelsLatencyMillis = 60_000
+            setScreenContent { AiSettingsSection() }
+
+            onNodeWithText("Local model").performClick()
+
+            awaitText("Loading models…")
+            onNodeWithTag(AI_MODEL_OPEN_TAG).assertDoesNotExist()
+        }
+
+    @Test
+    fun aLoadedListOpensWithSearchAndAPickClosesItAndIsSaved() =
+        runScreenTest {
+            llmProvider.models = listOf(LlmModel("gpt-5"), LlmModel("gpt-5-mini"), LlmModel("llama3"))
+            setScreenContent { AiSettingsSection() }
+            onNodeWithText("Local model").performClick()
+            // Local's default server address is a valid connection, so the list loads on its own.
+            awaitTag(AI_MODEL_OPEN_TAG)
+
+            onNodeWithTag(AI_MODEL_OPEN_TAG).performClick()
+            row("llama3").assertIsDisplayed()
+            input(AI_MODEL_SEARCH_TAG).performTextInput("MINI")
+            row("llama3").assertDoesNotExist()
+            row("gpt-5-mini").performClick()
+
+            onNodeWithTag(AI_MODEL_LIST_TAG).assertDoesNotExist()
+            onNodeWithText("gpt-5-mini").assertIsDisplayed()
+            onNodeWithText("Save").performClick()
+            awaitSaved { it?.model == "gpt-5-mini" }
+        }
+
+    @Test
+    fun searchAlsoMatchesTheDisplayName() =
+        runScreenTest {
+            llmProvider.models = listOf(LlmModel("m-1", displayName = "Fancy Model"), LlmModel("m-2", displayName = "Plain Model"))
+            setScreenContent { AiSettingsSection() }
+            onNodeWithText("Local model").performClick()
+            awaitTag(AI_MODEL_OPEN_TAG)
+
+            onNodeWithTag(AI_MODEL_OPEN_TAG).performClick()
+            input(AI_MODEL_SEARCH_TAG).performTextInput("fancy")
+
+            row("m-1").assertIsDisplayed()
+            row("m-2").assertDoesNotExist()
+        }
+
+    @Test
+    fun aSavedIdMissingFromTheListStaysSelectedWithAWarning() =
+        runScreenTest {
+            llmProvider.models = listOf(LlmModel("qwen3"), LlmModel("llama3"))
+            save(LlmProviderConfig.of(LlmProviderType.OPENAI_COMPATIBLE, "http://localhost:1234/v1", "", "gemini-3.8-flash"))
+            setScreenContent { AiSettingsSection() }
+
+            awaitText("Not offered by provider")
+            onNodeWithText("gemini-3.8-flash").assertIsDisplayed()
+            onNodeWithText("Save").performClick()
+            awaitSaved { it?.model == "gemini-3.8-flash" }
+        }
+
+    @Test
+    fun aFailedLoadFallsBackToFreeTextAndRetryReloads() =
+        runScreenTest {
+            llmProvider.listModelsError = LlmCallException.Authentication()
+            setScreenContent { AiSettingsSection() }
+            onNodeWithText("Local model").performClick()
+
+            awaitText("Retry")
+            onNodeWithText("Bad API key", substring = true).assertIsDisplayed()
+            input(AI_MODEL_TAG).performTextReplacement("typed-model")
+            input(AI_MODEL_TAG).assertTextEquals("typed-model")
+
+            llmProvider.listModelsError = null
+            onNodeWithText("Retry").performClick()
+
+            awaitTag(AI_MODEL_OPEN_TAG)
+            onNodeWithText("Retry").assertDoesNotExist()
         }
 }
