@@ -44,12 +44,13 @@ enum class LlmPreset(
         }
 
     /**
-     * The model a fresh setup selects from [models] (newest first): [model] when listed; else, in a dated list,
-     * the newest priced-free model, else the newest, never an `openrouter/` router (those switch model per
-     * call). Null leaves the pick to the user: never a `-latest` alias or the first row of a dateless list.
+     * The model a fresh setup selects from [models] (newest first). A preset with its own [model] selects it
+     * when listed, else nothing. Others select, in a dated list, the newest priced-free model, else the newest,
+     * never an `openrouter/` router (those switch model per call). Null leaves the pick to the user: never a
+     * `-latest` alias or the first row of a dateless list.
      */
     fun defaultModel(models: List<LlmModel>): LlmModel? {
-        models.firstOrNull { model.isNotEmpty() && it.id == model }?.let { return it }
+        if (model.isNotEmpty()) return models.firstOrNull { it.id == model }
         if (models.none { it.created != null }) return null
         val candidates = models.filterNot { it.id.startsWith("openrouter/") }
         return candidates.firstOrNull { it.pricedFree } ?: candidates.firstOrNull()

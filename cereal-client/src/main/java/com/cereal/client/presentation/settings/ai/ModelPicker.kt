@@ -35,7 +35,6 @@ import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.PopupProperties
-import com.cereal.client.domain.model.llm.LlmModel
 import com.cereal.client.presentation.theme.CerealTheme
 import com.cereal.client.presentation.view.CerealCircularProgressIndicator
 import com.cereal.client.presentation.view.CerealText
@@ -54,8 +53,6 @@ import com.cereal_automation.cereal_client.generated.resources.ai_model_search
 import com.cereal_automation.cereal_client.generated.resources.ai_model_waiting_key
 import com.cereal_automation.cereal_client.generated.resources.ai_model_waiting_server
 import org.jetbrains.compose.resources.stringResource
-import java.time.ZoneId
-import java.time.format.DateTimeFormatter
 
 internal const val AI_MODEL_TAG = "ai_model"
 internal const val AI_MODEL_OPEN_TAG = "ai_model_open"
@@ -68,11 +65,8 @@ internal const val AI_MODEL_LIST_TAG = "ai_model_list"
  * free text with the reason and Retry when the load failed. A pick writes [LlmPresetFormState.modelState].
  */
 @Composable
-fun ModelPicker(
-    form: LlmPresetFormState,
-    modifier: Modifier = Modifier,
-) {
-    Box(modifier.fillMaxWidth().testTag(AI_MODEL_TAG)) {
+fun ModelPicker(form: LlmPresetFormState) {
+    Box(Modifier.fillMaxWidth().testTag(AI_MODEL_TAG)) {
         when (val list = form.modelList.value) {
             ModelListState.Idle -> {
                 val waitingFor = if (form.preset.value?.needsKey == false) Res.string.ai_model_waiting_server else Res.string.ai_model_waiting_key
@@ -86,7 +80,9 @@ fun ModelPicker(
             }
 
             is ModelListState.Loaded -> {
-                ModelCombobox(list.models, form.preset.value, selectedId = form.modelState.text, onPick = form.modelState::onValueChange)
+                val preset = form.preset.value
+                val models = remember(list, preset) { list.models.map { it.toUiModel(preset) } }
+                ModelCombobox(models, pulled = preset == LlmPreset.LOCAL, selectedId = form.modelState.text, onPick = form.modelState::onValueChange)
             }
 
             is ModelListState.Failed -> {
@@ -114,18 +110,15 @@ fun ModelPicker(
 
 @Composable
 private fun ModelCombobox(
-    models: List<LlmModel>,
-    preset: LlmPreset?,
+    models: List<LlmModelUiModel>,
+    pulled: Boolean,
     selectedId: String,
     onPick: (String) -> Unit,
 ) {
     var open by remember { mutableStateOf(false) }
     var query by remember { mutableStateOf("") }
-    val showsFree = { model: LlmModel -> preset?.showsFree(model) == true }
-    // A dateless list (Gemini) hides the date column.
-    val showDates = models.any { it.created != null }
     Box {
-        ClosedField(selectedId, models, showsFree, onClick = { open = true })
+        ClosedField(selectedId, models, onClick = { open = true })
         DropdownMenu(
             expanded = open,
             onDismissRequest = { open = false },
@@ -145,7 +138,7 @@ private fun ModelCombobox(
             // ponytail: not lazy; DropdownMenu measures intrinsics, which lazy lists refuse. Fine for a few hundred models.
             Column(Modifier.heightIn(max = 320.dp).verticalScroll(rememberScrollState()).testTag(AI_MODEL_LIST_TAG)) {
                 visible.forEach { model ->
-                    ModelRow(model, selected = model.id == selectedId, free = showsFree(model), showDate = showDates, pulled = preset == LlmPreset.LOCAL) {
+                    ModelRow(model, selected = model.id == selectedId, pulled = pulled) {
                         onPick(model.id)
                         open = false
                         query = ""
@@ -160,8 +153,7 @@ private fun ModelCombobox(
 @Composable
 private fun ClosedField(
     selectedId: String,
-    models: List<LlmModel>,
-    showsFree: (LlmModel) -> Boolean,
+    models: List<LlmModelUiModel>,
     onClick: () -> Unit,
 ) {
     val selected = models.firstOrNull { it.id == selectedId }
@@ -193,7 +185,7 @@ private fun ClosedField(
                 }
             }
         }
-        if (selected != null && showsFree(selected)) FreeBadge()
+        if (selected?.free == true) FreeBadge()
         Icon(
             Icons.Default.ArrowDropDown,
             contentDescription = stringResource(Res.string.ai_model_open),
@@ -205,10 +197,8 @@ private fun ClosedField(
 
 @Composable
 private fun ModelRow(
-    model: LlmModel,
+    model: LlmModelUiModel,
     selected: Boolean,
-    free: Boolean,
-    showDate: Boolean,
     pulled: Boolean,
     onClick: () -> Unit,
 ) {
@@ -223,11 +213,10 @@ private fun ModelRow(
         horizontalArrangement = Arrangement.spacedBy(10.dp),
     ) {
         Column(Modifier.weight(1f)) { ModelLabel(model) }
-        if (free) FreeBadge()
-        val created = model.created
-        if (showDate && created != null) {
+        if (model.free) FreeBadge()
+        val date = model.date
+        if (date != null) {
             // Local's date is when the model was pulled.
-            val date = DATE_FORMAT.format(created)
             CerealText(
                 if (pulled) stringResource(Res.string.ai_model_pulled, date) else date,
                 style = MaterialTheme.typography.bodySmall,
@@ -239,7 +228,7 @@ private fun ModelRow(
 
 /** What identifies a model in both the closed field and a row: the display name over the id, or just the id. */
 @Composable
-private fun ModelLabel(model: LlmModel) {
+private fun ModelLabel(model: LlmModelUiModel) {
     CerealText(model.displayName ?: model.id, style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.SemiBold))
     if (model.displayName != null) {
         CerealText(model.id, style = MaterialTheme.typography.bodySmall, color = CerealTheme.colorScheme.contentTertiary)
@@ -277,10 +266,9 @@ private fun DisabledField(
     leadingIcon = leading,
 )
 
-private fun LlmModel.matches(query: String) = id.contains(query, ignoreCase = true) || displayName?.contains(query, ignoreCase = true) == true
+private fun LlmModelUiModel.matches(query: String) = id.contains(query, ignoreCase = true) || displayName?.contains(query, ignoreCase = true) == true
 
 private const val SELECTED_ROW_TINT = 0.08f
 private const val FREE_BADGE_FILL = 0.15f
 private const val FREE_BADGE_BORDER = 0.4f
-private val DATE_FORMAT = DateTimeFormatter.ISO_LOCAL_DATE.withZone(ZoneId.systemDefault())
 private val FieldShape = RoundedCornerShape(8.dp)

@@ -125,7 +125,10 @@ class AiSettingsViewModel(
         val params = form.saveParams() ?: return
         scope.launch(dispatcherProvider.io) {
             saveLlmProviderConfigInteractor(params) { result ->
-                withContext(dispatcherProvider.main) { handleSaveResult(result) }
+                withContext(dispatcherProvider.main) {
+                    if (result is SuspendableResult.Success) form.markSaved()
+                    handleSaveResult(result)
+                }
             }
         }
     }

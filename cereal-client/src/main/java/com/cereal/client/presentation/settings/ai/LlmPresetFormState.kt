@@ -46,10 +46,13 @@ class LlmPresetFormState(
 
     val baseUrlState = StringTextFieldState(onValueChange = { loadModels(debounce = true) })
     val apiKeyState = StringTextFieldState(onValueChange = { loadModels(debounce = true) })
-    val modelState = StringTextFieldState(onValueChange = { keepModel = true })
+    val modelState = StringTextFieldState(onValueChange = { modelOwnedByUser = true })
 
-    /** Whether a load keeps [modelState]: a saved config is showing or the user picked since choosing the preset. */
-    private var keepModel = false
+    /**
+     * Whether a load keeps [modelState] instead of selecting the default: a saved config is showing, the host
+     * saved the form ([markSaved]), or the user picked since choosing the preset.
+     */
+    private var modelOwnedByUser = false
 
     private val _modelList = mutableStateOf<ModelListState>(ModelListState.Idle)
     val modelList: State<ModelListState> = _modelList
@@ -75,7 +78,7 @@ class LlmPresetFormState(
         baseUrlState.text = preset?.baseUrl.orEmpty()
         apiKeyState.text = ""
         modelState.text = preset?.model.orEmpty()
-        keepModel = false
+        modelOwnedByUser = false
         clearFieldErrors()
         _modelList.value = ModelListState.Idle
         loadModels(debounce = true)
@@ -89,8 +92,13 @@ class LlmPresetFormState(
         baseUrlState.text = config.baseUrl.value
         apiKeyState.text = config.apiKey?.reveal().orEmpty()
         modelState.text = config.model
-        keepModel = true
+        modelOwnedByUser = true
         loadModels(debounce = false)
+    }
+
+    /** The host saved the form: its model is now the user's, so a later reload never replaces it. */
+    fun markSaved() {
+        modelOwnedByUser = true
     }
 
     /** Loads the list again now, e.g. after a failed load. */
@@ -109,7 +117,10 @@ class LlmPresetFormState(
         LlmProviderConfig.Field.entries.forEach { fieldState(it).resetValidationErrors() }
     }
 
-    /** Cancels any load, then starts one when the fields make a valid connection; otherwise the list is [ModelListState.Idle]. */
+    /**
+     * Cancels any load, then starts one when the fields make a valid connection, showing [ModelListState.Loading]
+     * from now on (also through the debounce); otherwise the list is [ModelListState.Idle].
+     */
     private fun loadModels(debounce: Boolean) {
         loadJob?.cancel()
         val params = usableConnectionParams()
@@ -118,10 +129,10 @@ class LlmPresetFormState(
             _modelList.value = ModelListState.Idle
             return
         }
+        _modelList.value = ModelListState.Loading
         loadJob =
             scope.launch(dispatcherProvider.io) {
                 if (debounce) delay(DEBOUNCE_MILLIS)
-                withContext(dispatcherProvider.main) { _modelList.value = ModelListState.Loading }
                 listLlmModelsInteractor(params) { result ->
                     withContext(dispatcherProvider.main) {
                         _modelList.value =
@@ -129,7 +140,7 @@ class LlmPresetFormState(
                                 // Stable, and nulls sort lowest: newest first, undated last in API order.
                                 is SuspendableResult.Success -> {
                                     val models = result.value.sortedByDescending { it.created }
-                                    if (!keepModel) modelState.text = preset.defaultModel(models)?.id.orEmpty()
+                                    if (!modelOwnedByUser) modelState.text = preset.defaultModel(models)?.id.orEmpty()
                                     ModelListState.Loaded(models)
                                 }
 
@@ -144,9 +155,8 @@ class LlmPresetFormState(
 
     /** The connection params when they make a valid [LlmConnection] and, for a keyed preset, include a key. */
     private fun usableConnectionParams(): ListLlmModelsInteractor.Params? {
-        val preset = _preset.value ?: return null
-        if (preset.needsKey && apiKeyState.text.isBlank()) return null
-        val params = ListLlmModelsInteractor.Params(preset.provider, baseUrlState.text, apiKeyState.text)
+        val params = connectionParams() ?: return null
+        if (_preset.value?.needsKey == true && apiKeyState.text.isBlank()) return null
         return params.takeIf { runCatching { LlmConnection.of(it.provider, it.baseUrl, it.apiKey) }.isSuccess }
     }
 
@@ -160,9 +170,10 @@ class LlmPresetFormState(
 
 /** Where the form's model list stands. */
 sealed interface ModelListState {
-    /** No valid connection yet, or nothing loaded since the preset changed. */
+    /** No valid connection yet: no preset, no key on a keyed preset, or an invalid base URL. */
     data object Idle : ModelListState
 
+    /** A load is waiting out the debounce or running. */
     data object Loading : ModelListState
 
     /** [models] newest first; undated ones last, in the provider's order. */
