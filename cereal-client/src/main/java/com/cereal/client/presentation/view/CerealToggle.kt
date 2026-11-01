@@ -36,7 +36,7 @@ fun CerealToggle(
 ) {
     val interactionSource = remember { MutableInteractionSource() }
     val focused by interactionSource.collectIsFocusedAsState()
-    val trackColor = if (checked) MaterialTheme.colorScheme.primary else CerealTheme.colorScheme.border
+    val trackColor = if (checked) readableUnderWhite(MaterialTheme.colorScheme.primary) else CerealTheme.colorScheme.border
     val thumbOffset by animateDpAsState(if (checked) 17.5.dp else 2.5.dp, label = "cerealToggleThumb")
     val alpha = if (enabled) 1f else 0.4f
     val shape = RoundedCornerShape(10.dp)

@@ -75,12 +75,12 @@ fun CerealButton(
     val colors =
         when (type) {
             CerealButtonType.Primary -> {
-                ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary.readableUnderWhite())
+                ButtonDefaults.buttonColors(containerColor = readableUnderWhite(MaterialTheme.colorScheme.primary))
             }
 
             CerealButtonType.Secondary -> {
                 ButtonDefaults.buttonColors(
-                    containerColor = MaterialTheme.colorScheme.secondary.readableUnderWhite(),
+                    containerColor = readableUnderWhite(MaterialTheme.colorScheme.secondary),
                 )
             }
 
@@ -303,6 +303,10 @@ private fun cerealButtonTextStyle(size: CerealButtonSize) =
         CerealButtonSize.Small -> MaterialTheme.typography.labelLarge.copy(fontWeight = FontWeight.Medium)
         CerealButtonSize.Large -> MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Medium)
     }
+
+/** [fill] darkened until white content on it meets WCAG AA; computed once per color. */
+@Composable
+internal fun readableUnderWhite(fill: Color): Color = remember(fill) { fill.readableUnderWhite() }
 
 /** Darkens a fill until white label text on it meets WCAG AA (4.5:1); covers white-label brand colors too. */
 private fun Color.readableUnderWhite(): Color {

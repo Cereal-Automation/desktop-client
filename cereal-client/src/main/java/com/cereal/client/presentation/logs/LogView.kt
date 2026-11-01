@@ -90,6 +90,8 @@ internal const val CLEAR_BUTTON_TEST_TAG = "logOutputClearButton"
 /** The log box lives in the inspector's scrolling column, so it needs a bounded height of its own. */
 private val LogBoxMaxHeight = 320.dp
 
+private const val DISABLED_ALPHA = 0.38f
+
 private enum class LogFilter { ALL, INFO, WARN, ERR }
 
 private fun LogFilter.labelRes() =
@@ -153,7 +155,7 @@ fun TaskLogSection(
                     imageVector = Icons.Filled.CleaningServices,
                     contentDescription = stringResource(Res.string.clear),
                     modifier = Modifier.size(14.dp),
-                    tint = if (clearEnabled) CerealTheme.colorScheme.contentTertiary else CerealTheme.colorScheme.contentTertiary,
+                    tint = CerealTheme.colorScheme.contentTertiary.copy(alpha = if (clearEnabled) 1f else DISABLED_ALPHA),
                 )
             }
             val copyEnabled = filteredEvents.isNotEmpty()
@@ -165,8 +167,7 @@ fun TaskLogSection(
                     tint =
                         when {
                             copied -> Color.White
-                            copyEnabled -> CerealTheme.colorScheme.contentTertiary
-                            else -> CerealTheme.colorScheme.contentTertiary
+                            else -> CerealTheme.colorScheme.contentTertiary.copy(alpha = if (copyEnabled) 1f else DISABLED_ALPHA)
                         },
                 )
             }
@@ -299,6 +300,8 @@ private fun AutoScrollControl(
             Modifier
                 .toggleable(
                     value = enabled,
+                    interactionSource = remember { MutableInteractionSource() },
+                    indication = null,
                     role = Role.Switch,
                     onValueChange = onChange,
                 ),

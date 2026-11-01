@@ -25,6 +25,11 @@ class ScriptManager(
      */
     val releasesRequiringClientUpdate: StateFlow<Map<String, Long>> = _releasesRequiringClientUpdate.asStateFlow()
 
+    /** Forgets the rejected releases; they belong to the signed-in user's sync. */
+    fun clearReleasesRequiringClientUpdate() {
+        _releasesRequiringClientUpdate.value = emptyMap()
+    }
+
     suspend fun deleteScript(scriptPackage: ScriptPackage) {
         // Delete all script instances that use this script.
         scriptInstanceRepository

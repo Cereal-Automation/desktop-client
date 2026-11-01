@@ -149,11 +149,17 @@ class ScriptSelectionViewModel(
                                     items.find { item -> item.id.manifest.packageName == entry.packageName }
                                 }
                             scriptsListViewModel.updateItems(items, selectFirstWhenNoSelection = initialScript == null)
-                            // An unchanged package comes back equal; an updated one doesn't, so reselect it to load the new version.
-                            scriptsListViewModel.selectedItem
-                                ?.let { selected ->
-                                    items.find { it.id.manifest.packageName == selected.manifest.packageName && it.id != selected }
-                                }?.let { updated -> scriptsListViewModel.selectItem(updated.id) }
+                            // An unchanged package comes back equal; an updated one doesn't, so reselect it to load the new version
+                            // on the same entry. A removed package can't stay selected, so fall back to the first script.
+                            scriptsListViewModel.selectedItem?.let { selected ->
+                                val current = items.find { it.id.manifest.packageName == selected.manifest.packageName }
+                                if (current == null) {
+                                    scriptsListViewModel.selectItem(items.first().id)
+                                } else if (current.id != selected) {
+                                    requestedVariantId = selectedEntry.value?.variantId?.takeIf { it in current.id.variants }
+                                    scriptsListViewModel.selectItem(current.id)
+                                }
+                            }
                             initialScript?.let { scriptItem ->
                                 initialSelectionApplied = true
                                 requestedVariantId = initialEntry.variantId?.takeIf { it in scriptItem.id.variants }
