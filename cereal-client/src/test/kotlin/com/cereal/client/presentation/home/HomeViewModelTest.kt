@@ -60,6 +60,7 @@ import net.swiftzer.semver.SemVer
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertFalse
 import org.junit.jupiter.api.Assertions.assertInstanceOf
+import org.junit.jupiter.api.Assertions.assertNotNull
 import org.junit.jupiter.api.Assertions.assertNull
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
@@ -290,6 +291,13 @@ class HomeViewModelTest {
             assertEquals(ConfigValue.IntValue(600), instance.mainConfiguration["repeatInterval"])
             assertEquals("Tell me when the pliers are back in stock", (vm.field("goal") as TextFieldState<*>).text)
             assertNull(vm.dialog.value)
+            assertEquals(
+                world.tasksRepository
+                    .getTasks(instance)
+                    .single()
+                    .id,
+                vm.startedTaskId.value,
+            )
         }
 
     @Test
@@ -422,9 +430,12 @@ class HomeViewModelTest {
             assertEquals(HomeDialog.NoNotificationChannelsWarning, vm.dialog.value)
             assertTrue(world.scriptInstances.getScriptPackageInstances().isEmpty())
 
+            assertNull(vm.startedTaskId.value)
+
             vm.onNoNotificationChannelsWarningAccepted()
             advanceUntilIdle()
             assertEquals(1, world.scriptInstances.getScriptPackageInstances().size)
+            assertNotNull(vm.startedTaskId.value)
         }
 
     @Test
@@ -520,6 +531,13 @@ class HomeViewModelTest {
             advanceUntilIdle()
 
             coVerify(exactly = 1) { world.taskManager.startTasksToConcurrencyLimit(any()) }
+            assertEquals(
+                world.tasksRepository
+                    .getTasks(created)
+                    .single()
+                    .id,
+                vm.startedTaskId.value,
+            )
         }
 
     @Test

@@ -139,7 +139,7 @@ class TasksScreenWorld(
                 StartTaskInteractor(taskManager),
                 StopTaskInteractor(taskManager),
                 StopTasksInScriptPackageInstanceInteractor(taskManager, tasksRepository),
-                StartAllTasksInScriptPackageInstanceInteractor(taskManager, scriptInstances),
+                StartAllTasksInScriptPackageInstanceInteractor(taskManager, scriptInstances, tasksRepository),
                 UserInteractionDismissedInteractor(tasksRepository),
             ),
             TasksListObserver(

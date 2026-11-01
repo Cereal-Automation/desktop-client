@@ -20,23 +20,30 @@ import com.cereal.client.domain.model.script.ScriptPackageInstance
 import com.cereal.client.domain.model.task.JobTask
 import com.cereal.client.domain.model.user.Subscription
 import com.cereal.client.domain.repository.ScriptInstanceRepository
+import com.cereal.client.fixtures.mainTaskFixture
 import com.cereal.client.infrastructure.data.repository.inmemory.InMemoryApplicationPreferenceRepository
 import com.cereal.client.infrastructure.data.repository.inmemory.InMemoryApplicationRepository
 import com.cereal.client.infrastructure.data.repository.inmemory.InMemoryNotificationSettingsRepository
 import com.cereal.client.infrastructure.data.repository.inmemory.InMemoryScriptInstanceRepository
 import com.cereal.client.infrastructure.data.repository.inmemory.InMemoryTasksRepository
 import com.cereal.client.infrastructure.provider.inmemory.InMemoryAuthProvider
+import io.mockk.coEvery
 import io.mockk.mockk
 
 /**
  * The real goal-run start graph ([StartGoalRunInteractor] over real interactors and in-memory
  * repositories), licensed for the AI browser agent. Only [taskManager] is a (relaxed) mock: it runs
- * script jars, so it is the external edge.
+ * script jars, so it is the external edge. Its [TaskManager.createTasks] still saves one task per setup, as the real one does.
  */
 class GoalRunWorld {
     val tasksRepository = InMemoryTasksRepository()
     val scriptInstances = GroupRecordingScriptInstanceRepository()
-    val taskManager = mockk<TaskManager>(relaxed = true)
+    val taskManager =
+        mockk<TaskManager>(relaxed = true).also { manager ->
+            coEvery { manager.createTasks(any()) } coAnswers {
+                listOf(mainTaskFixture(firstArg<ScriptInstance>().packageInstance.id)).also { tasksRepository.addAllTasks(it) }
+            }
+        }
 
     private val noOpScopeLinker =
         object : ScopeLinker {
@@ -49,7 +56,7 @@ class GoalRunWorld {
 
     val getOrCreateDefaultTaskGroupInteractor = GetOrCreateDefaultTaskGroupInteractor(tasksRepository)
 
-    val startAllTasksInScriptPackageInstanceInteractor = StartAllTasksInScriptPackageInstanceInteractor(taskManager, scriptInstances)
+    val startAllTasksInScriptPackageInstanceInteractor = StartAllTasksInScriptPackageInstanceInteractor(taskManager, scriptInstances, tasksRepository)
 
     val prefillGoalRunFormInteractor = PrefillGoalRunFormInteractor(getOrCreateDefaultTaskGroupInteractor)
 
