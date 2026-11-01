@@ -1,18 +1,25 @@
 package com.cereal.client.presentation.settings.ai
 
+import com.cereal.client.domain.model.llm.LlmModel
 import com.cereal.client.domain.model.llm.LlmProviderConfig
 import com.cereal.client.domain.model.llm.LlmProviderType
+import kotlinx.coroutines.test.runTest
+import org.jetbrains.compose.resources.getString
 import org.junit.jupiter.api.Assertions.assertEquals
+import org.junit.jupiter.api.Assertions.assertFalse
+import org.junit.jupiter.api.Assertions.assertNull
+import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.params.ParameterizedTest
 import org.junit.jupiter.params.provider.CsvSource
 import org.junit.jupiter.params.provider.EnumSource
+import java.time.Instant
 
 class LlmPresetTest {
     @ParameterizedTest
     @EnumSource(LlmPreset::class, names = ["GEMINI", "ANTHROPIC", "OPENAI", "OPENROUTER"])
     fun `a keyed preset round-trips through the stored config`(preset: LlmPreset) {
-        val config = LlmProviderConfig.of(preset.provider, preset.baseUrl, "key-1", preset.model)
+        val config = LlmProviderConfig.of(preset.provider, preset.baseUrl, "key-1", "some-model")
 
         assertEquals(preset, LlmPreset.of(config))
     }
@@ -20,9 +27,9 @@ class LlmPresetTest {
     @ParameterizedTest
     @CsvSource(
         "GEMINI, OPENAI_COMPATIBLE, https://generativelanguage.googleapis.com/v1beta/openai, gemini-3.8-flash",
-        "ANTHROPIC, ANTHROPIC, https://api.anthropic.com/v1, claude-opus-5-5",
+        "ANTHROPIC, ANTHROPIC, https://api.anthropic.com/v1, ''",
         "OPENAI, OPENAI_COMPATIBLE, https://api.openai.com/v1, gpt-5",
-        "OPENROUTER, OPENAI_COMPATIBLE, https://openrouter.ai/api/v1, anthropic/claude-opus-5.5",
+        "OPENROUTER, OPENAI_COMPATIBLE, https://openrouter.ai/api/v1, ''",
         "LOCAL, OPENAI_COMPATIBLE, http://localhost:11434/v1, ''",
         "OTHER, OPENAI_COMPATIBLE, '', ''",
     )
@@ -55,4 +62,51 @@ class LlmPresetTest {
 
         assertEquals(LlmPreset.ANTHROPIC, LlmPreset.of(config))
     }
+
+    @Test
+    fun `every Local model is free, priced or not`() {
+        assertTrue(LlmPreset.LOCAL.showsFree(LlmModel("qwen3:480b-cloud")))
+    }
+
+    @ParameterizedTest
+    @EnumSource(LlmPreset::class, names = ["OPENROUTER", "OTHER"])
+    fun `elsewhere a model is free only when priced free`(preset: LlmPreset) {
+        assertTrue(preset.showsFree(LlmModel("m", pricedFree = true)))
+        assertFalse(preset.showsFree(LlmModel("m")))
+    }
+
+    @ParameterizedTest
+    @EnumSource(LlmPreset::class, names = ["ANTHROPIC", "OPENAI", "GEMINI"])
+    fun `first-party providers never show free`(preset: LlmPreset) {
+        assertFalse(preset.showsFree(LlmModel("m", pricedFree = true)))
+    }
+
+    @ParameterizedTest
+    @EnumSource(LlmPreset::class, names = ["OPENAI", "GEMINI"])
+    fun `a preset with its own model leaves the pick to the user when that model is not listed`(preset: LlmPreset) {
+        val listed = listOf(LlmModel("newest", created = Instant.parse("2026-01-01T00:00:00Z"), pricedFree = true))
+
+        assertNull(preset.defaultModel(listed))
+    }
+
+    @Test
+    fun `gemini note covers the free tier`() =
+        runTest {
+            assertEquals(
+                "The free tier doesn't bill you, but it's rate-limited and Google may use your prompts to improve its products. " +
+                    "On a paid key, set a budget alert in [Google Cloud Billing ↗](https://console.cloud.google.com/billing).",
+                getString(LlmPreset.GEMINI.spendLimitsHelp()!!),
+            )
+        }
+
+    @Test
+    fun `openrouter note covers free models`() =
+        runTest {
+            assertEquals(
+                "OpenRouter spends your prepaid credits. Free models cost nothing but have daily request limits, " +
+                    "and some of their providers may log your prompts. " +
+                    "Set a credit limit on your key in [OpenRouter keys ↗](https://openrouter.ai/settings/keys).",
+                getString(LlmPreset.OPENROUTER.spendLimitsHelp()!!),
+            )
+        }
 }
