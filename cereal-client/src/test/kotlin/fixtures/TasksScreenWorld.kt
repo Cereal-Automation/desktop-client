@@ -2,6 +2,7 @@ package fixtures
 
 import com.cereal.client.application.CoroutinesDispatcherProvider
 import com.cereal.client.application.Interactor
+import com.cereal.client.application.agent.GoalRunReporter
 import com.cereal.client.application.interactor.artifact.ObserveArtifactsInteractor
 import com.cereal.client.application.interactor.artifact.SaveArtifactToFileInteractor
 import com.cereal.client.application.interactor.script.GetScriptsInGroupInteractor
@@ -49,14 +50,18 @@ import com.cereal.client.domain.model.task.TaskStatus
 import com.cereal.client.domain.model.task.UserInteraction
 import com.cereal.client.domain.model.user.Subscription
 import com.cereal.client.domain.repository.ApplicationPreferenceRepository
+import com.cereal.client.infrastructure.data.repository.inmemory.InMemoryApplicationConfig
 import com.cereal.client.infrastructure.data.repository.inmemory.InMemoryApplicationPreferenceRepository
 import com.cereal.client.infrastructure.data.repository.inmemory.InMemoryArtifactRepository
 import com.cereal.client.infrastructure.data.repository.inmemory.InMemoryCustomDatasetRepository
+import com.cereal.client.infrastructure.data.repository.inmemory.InMemoryGoalSharingRepository
+import com.cereal.client.infrastructure.data.repository.inmemory.InMemoryLlmProviderConfigRepository
 import com.cereal.client.infrastructure.data.repository.inmemory.InMemoryLogEventRepository
 import com.cereal.client.infrastructure.data.repository.inmemory.InMemoryProxyRepository
 import com.cereal.client.infrastructure.data.repository.inmemory.InMemoryScriptInstanceRepository
 import com.cereal.client.infrastructure.data.repository.inmemory.InMemoryTasksRepository
 import com.cereal.client.infrastructure.provider.inmemory.InMemoryAuthProvider
+import com.cereal.client.infrastructure.provider.inmemory.InMemoryGoalRunReportProvider
 import com.cereal.client.infrastructure.provider.inmemory.InMemorySystemProvider
 import com.cereal.client.presentation.error.ErrorResolver
 import com.cereal.client.presentation.tasks.TaskInspectorLayoutState
@@ -106,6 +111,7 @@ class TasksScreenWorld(
             scriptInstances,
             JobTaskFactory(noOpScopeLinker),
             artifactRepository,
+            GoalRunReporter(InMemoryGoalRunReportProvider(), InMemoryGoalSharingRepository(), InMemoryLlmProviderConfigRepository(), InMemoryApplicationConfig()),
         )
 
     private val getOrCreateDefaultTaskGroupInteractor = GetOrCreateDefaultTaskGroupInteractor(tasksRepository)

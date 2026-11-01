@@ -87,6 +87,8 @@ import com.cereal_automation.cereal_client.generated.resources.general
 import com.cereal_automation.cereal_client.generated.resources.get_in_touch
 import com.cereal_automation.cereal_client.generated.resources.github
 import com.cereal_automation.cereal_client.generated.resources.github_desc
+import com.cereal_automation.cereal_client.generated.resources.goal_sharing
+import com.cereal_automation.cereal_client.generated.resources.goal_sharing_desc
 import com.cereal_automation.cereal_client.generated.resources.logs_directory
 import com.cereal_automation.cereal_client.generated.resources.logs_directory_desc
 import com.cereal_automation.cereal_client.generated.resources.notifications
@@ -123,6 +125,7 @@ import org.koin.core.parameter.parametersOf
 import org.koin.java.KoinJavaComponent
 
 private const val AI_SECTION_INDEX = 3
+private const val PRIVACY_SECTION_INDEX = 6
 
 @Composable
 @ExperimentalFoundationApi
@@ -139,10 +142,12 @@ fun ApplicationSettingsScreen(
     aiVm: AiSettingsViewModel = rememberAiSettingsViewModel(),
     checkForUpdatesOnOpen: Boolean = false,
     scrollToAiOnOpen: Boolean = false,
+    scrollToPrivacyOnOpen: Boolean = false,
 ) {
     val listState = rememberLazyListState()
     LaunchedEffect(Unit) { if (checkForUpdatesOnOpen) vm.checkForUpdates() }
     LaunchedEffect(Unit) { if (scrollToAiOnOpen) listState.scrollToItem(AI_SECTION_INDEX) }
+    LaunchedEffect(Unit) { if (scrollToPrivacyOnOpen) listState.scrollToItem(PRIVACY_SECTION_INDEX) }
     Scaffold { paddingValues ->
         Box(
             modifier =
@@ -376,7 +381,7 @@ fun ApplicationSettingsScreen(
                     }
                 }
 
-                // Privacy Section
+                // Privacy Section, keep at PRIVACY_SECTION_INDEX.
                 item {
                     SettingsSectionCard(title = stringResource(Res.string.privacy)) {
                         SettingsToggleRow(
@@ -384,6 +389,12 @@ fun ApplicationSettingsScreen(
                             description = stringResource(Res.string.crash_reporting_desc),
                             checked = vm.crashReportingEnabled.value,
                             onCheckedChange = { vm.setCrashReportingEnabled(it) },
+                        )
+                        SettingsToggleRow(
+                            title = stringResource(Res.string.goal_sharing),
+                            description = stringResource(Res.string.goal_sharing_desc),
+                            checked = vm.goalSharingEnabled.value,
+                            onCheckedChange = { vm.setGoalSharingEnabled(it) },
                         )
                     }
                 }

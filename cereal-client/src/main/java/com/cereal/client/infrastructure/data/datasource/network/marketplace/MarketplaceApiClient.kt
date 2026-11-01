@@ -11,6 +11,8 @@ import com.cereal.client.infrastructure.data.datasource.network.marketplace.inte
 import com.cereal.client.infrastructure.data.datasource.network.marketplace.interceptor.JsonHeadersInterceptor
 import com.cereal.client.infrastructure.data.datasource.network.marketplace.interceptor.SignatureInterceptor
 import com.cereal.client.infrastructure.data.datasource.network.marketplace.request.ForgotPasswordRequestBody
+import com.cereal.client.infrastructure.data.datasource.network.marketplace.request.GoalRunFinishRequestBody
+import com.cereal.client.infrastructure.data.datasource.network.marketplace.request.GoalRunStartRequestBody
 import com.cereal.client.infrastructure.data.datasource.network.marketplace.request.GuestLoginRequestBody
 import com.cereal.client.infrastructure.data.datasource.network.marketplace.request.LoginRequestBody
 import com.cereal.client.infrastructure.data.datasource.network.marketplace.request.OAuthExchangeRequestBody
@@ -513,6 +515,44 @@ class MarketplaceApiClient(
     }
 
     suspend fun getAuthenticatedUser(): User = getUser()
+
+    /**
+     * Reports an AI browser agent run's start (ADR 0011). Sends the user or guest token when there is one.
+     * @throws IOException - on a connectivity problem or timeout.
+     * @throws ApiException - if a non 2xx response was received.
+     */
+    @Throws(IOException::class, ApiException::class)
+    suspend fun reportGoalRunStart(body: GoalRunStartRequestBody) =
+        sendTelemetry(
+            Request
+                .Builder()
+                .url("${apiUrl}telemetry/goal-runs")
+                .post(json.encodeToString(GoalRunStartRequestBody.serializer(), body).toRequestBody())
+                .build(),
+        )
+
+    /**
+     * Reports how the run [runId] ended.
+     * @throws IOException - on a connectivity problem or timeout.
+     * @throws ApiException - if a non 2xx response was received.
+     */
+    @Throws(IOException::class, ApiException::class)
+    suspend fun reportGoalRunFinish(
+        runId: String,
+        body: GoalRunFinishRequestBody,
+    ) = sendTelemetry(
+        Request
+            .Builder()
+            .url("${apiUrl}telemetry/goal-runs/$runId")
+            .patch(json.encodeToString(GoalRunFinishRequestBody.serializer(), body).toRequestBody())
+            .build(),
+    )
+
+    private suspend fun sendTelemetry(request: Request) {
+        apiClient.newCall(request).await().use { response ->
+            if (!response.isSuccessful) throw apiException(response, null)
+        }
+    }
 
     private fun requireToken() {
         if (tokenDataSource.getToken() == null) {

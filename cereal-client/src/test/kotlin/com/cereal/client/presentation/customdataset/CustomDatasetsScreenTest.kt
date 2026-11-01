@@ -30,6 +30,8 @@ class CustomDatasetsScreenTest {
     fun rendersTableHeadersAndSeededGroup() =
         runScreenTest {
             setScreenContent { CustomDatasetsScreen() }
+            // The groups load asynchronously and the table, headers included, only renders once they have.
+            waitUntilAtLeastOneExists(hasText("EU sneaker SKUs"), LOAD_TIMEOUT_MS)
 
             // Column headers are rendered upper-cased by PaneTableHeader.
             onNodeWithText("NAME").assertIsDisplayed()
@@ -37,9 +39,7 @@ class CustomDatasetsScreenTest {
             onNodeWithText("CREATED").assertIsDisplayed()
 
             // A deterministic seeded group and its thousands-formatted row count. The separator is
-            // locale-dependent, so format it the same way the row cell does ("%,d"). The groups load
-            // asynchronously, so wait for them before asserting.
-            waitUntilAtLeastOneExists(hasText("EU sneaker SKUs"), LOAD_TIMEOUT_MS)
+            // locale-dependent, so format it the same way the row cell does ("%,d").
             onNodeWithText("EU sneaker SKUs").assertIsDisplayed()
             onNodeWithText("%,d".format(1240)).assertIsDisplayed()
         }

@@ -27,8 +27,10 @@ import com.cereal.client.domain.model.script.ScriptPackage
 import com.cereal.client.domain.provider.LlmProvider
 import com.cereal.client.domain.provider.MarketplaceProvider
 import com.cereal.client.domain.provider.ScriptInstallProvider
+import com.cereal.client.domain.repository.GoalSharingRepository
 import com.cereal.client.domain.repository.LlmProviderConfigRepository
 import com.cereal.client.domain.repository.ScriptRepository
+import com.cereal.client.infrastructure.data.repository.inmemory.InMemoryGoalSharingRepository
 import com.cereal.client.infrastructure.data.repository.inmemory.InMemoryLlmProviderConfigRepository
 import com.cereal.client.infrastructure.data.repository.inmemory.InMemoryScriptRepository
 import com.cereal.client.infrastructure.provider.inmemory.InMemoryLlmProvider
@@ -186,6 +188,41 @@ class HomeScreenTest {
             onNodeWithText("Model connected").assertIsDisplayed()
             onNodeWithText("A free AI browser agent that runs on your machine, with your model and your key.").assertIsDisplayed()
             assertEquals("gemini-3.8-flash", savedConfig()?.model)
+        }
+
+    @Test
+    fun `the goal sharing notice shows until dismissed, then stays gone`() =
+        runScreenTest(overrides = ready) {
+            val notice = "Cereal now shares the goals you give the AI agent"
+            setScreenContent { HomeScreen() }
+            awaitText(notice)
+
+            onNodeWithText("Dismiss").performScrollTo().performClick()
+
+            onNodeWithText(notice, substring = true).assertDoesNotExist()
+            waitUntil(timeoutMillis = 5_000) { KoinJavaComponent.get<GoalSharingRepository>(GoalSharingRepository::class.java).isNoticeSeen() }
+        }
+
+    @Test
+    fun `the goal sharing notice links to Privacy settings and counts as seen`() =
+        runScreenTest(overrides = ready) {
+            var openedPrivacy = false
+            setScreenContent { HomeScreen(onNavigateToPrivacySettings = { openedPrivacy = true }) }
+            awaitText("Privacy settings")
+
+            onNodeWithText("Privacy settings").performScrollTo().performClick()
+
+            assertTrue(openedPrivacy)
+            waitUntil(timeoutMillis = 5_000) { KoinJavaComponent.get<GoalSharingRepository>(GoalSharingRepository::class.java).isNoticeSeen() }
+        }
+
+    @Test
+    fun `a goal sharing notice that was seen before isn't shown`() =
+        runScreenTest(overrides = ready + module { single<GoalSharingRepository> { InMemoryGoalSharingRepository(noticeSeen = true) } }) {
+            setScreenContent { HomeScreen() }
+            awaitText("Tell the agent what to do")
+
+            onNodeWithText("Cereal now shares the goals you give the AI agent", substring = true).assertDoesNotExist()
         }
 
     @Test

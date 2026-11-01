@@ -3,6 +3,7 @@ package com.cereal.client.infrastructure.di.modules
 import com.cereal.client.application.ApplicationConfig
 import com.cereal.client.application.CoroutinesDispatcherProvider
 import com.cereal.client.application.Environment
+import com.cereal.client.application.agent.GoalRunReporter
 import com.cereal.client.application.auth.UserAuthManager
 import com.cereal.client.application.script.ScriptInstanceFactory
 import com.cereal.client.application.script.ScriptInstanceManager
@@ -75,7 +76,8 @@ object ApplicationModule {
             factory { ScriptSyncManager(get(), get(), get(), get(), get(), get()) }
             factory { ScriptInstanceManager(get(), get(), get()) }
             factory { UserAuthManager(get(), get(), get(), get(), get(), get(), get()) }
-            single { TaskManager(get(), get(), get(), get(), get(), get()) }
+            single { TaskManager(get(), get(), get(), get(), get(), get(), get()) }
+            single { GoalRunReporter(get(), get(), get(), get()) }
             single { ScriptManager(get(), get(), get(), get()) }
             single { TaskConfigurationBuilder(get(), get(), get()) }
             single { ScriptLicenseChecker(get(), get()) }

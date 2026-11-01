@@ -59,6 +59,7 @@ import com.cereal.client.presentation.view.CerealCard
 import com.cereal.client.presentation.view.CerealText
 import com.cereal.client.presentation.view.CerealTextField
 import com.cereal.client.presentation.view.ConfirmationDialog
+import com.cereal.client.presentation.view.InfoBox
 import com.cereal.client.presentation.view.WarningBox
 import com.cereal.client.presentation.view.table.PaneToolbar
 import com.cereal.client.presentation.view.text
@@ -73,6 +74,9 @@ import com.cereal_automation.cereal_client.generated.resources.home_ai_show
 import com.cereal_automation.cereal_client.generated.resources.home_composer_locked
 import com.cereal_automation.cereal_client.generated.resources.home_composer_subtitle
 import com.cereal_automation.cereal_client.generated.resources.home_composer_title
+import com.cereal_automation.cereal_client.generated.resources.home_goal_sharing_notice
+import com.cereal_automation.cereal_client.generated.resources.home_goal_sharing_notice_dismiss
+import com.cereal_automation.cereal_client.generated.resources.home_goal_sharing_notice_settings
 import com.cereal_automation.cereal_client.generated.resources.home_install
 import com.cereal_automation.cereal_client.generated.resources.home_installing
 import com.cereal_automation.cereal_client.generated.resources.home_maintenance_banner
@@ -107,6 +111,7 @@ fun HomeScreen(
     onOpenClientUpdate: () -> Unit = {},
     onOpenTasks: (focusTaskId: String?) -> Unit = {},
     onNavigateToAiSettings: () -> Unit = {},
+    onNavigateToPrivacySettings: () -> Unit = {},
 ) {
     val scope = rememberCoroutineScope()
     val viewModel = remember { KoinJavaComponent.get<HomeViewModel>(HomeViewModel::class.java, parameters = { parametersOf(scope) }) }
@@ -114,6 +119,9 @@ fun HomeScreen(
         remember { KoinJavaComponent.get<HomeAiProviderViewModel>(HomeAiProviderViewModel::class.java, parameters = { parametersOf(scope) }) }
     val installViewModel =
         remember { KoinJavaComponent.get<AgentInstallViewModel>(AgentInstallViewModel::class.java, parameters = { parametersOf(scope) }) }
+
+    val noticeViewModel =
+        remember { KoinJavaComponent.get<GoalSharingNoticeViewModel>(GoalSharingNoticeViewModel::class.java, parameters = { parametersOf(scope) }) }
 
     val aiState = aiViewModel.state.value
     LaunchedEffect(aiState) {
@@ -175,6 +183,15 @@ fun HomeScreen(
                         ConnectStep(aiViewModel)
                         LockedGoalStep()
                     }
+                }
+                if (noticeViewModel.visible.value) {
+                    GoalSharingNotice(
+                        onOpenSettings = {
+                            noticeViewModel.dismiss()
+                            onNavigateToPrivacySettings()
+                        },
+                        onDismiss = noticeViewModel::dismiss,
+                    )
                 }
                 Spacer(Modifier.height(CerealTheme.spacing.md))
                 HomeActivitySections(onOpenTasks)
@@ -259,6 +276,20 @@ private fun InstallCard(
 private fun UpdateRequiredCard(onOpenClientUpdate: () -> Unit) {
     SlotCard(stringResource(Res.string.home_update_required_title)) {
         CerealButton(onClick = onOpenClientUpdate, text = stringResource(Res.string.home_update_cereal))
+    }
+}
+
+@Composable
+private fun GoalSharingNotice(
+    onOpenSettings: () -> Unit,
+    onDismiss: () -> Unit,
+) {
+    Column(verticalArrangement = Arrangement.spacedBy(CerealTheme.spacing.sm)) {
+        InfoBox(text = stringResource(Res.string.home_goal_sharing_notice))
+        Row(horizontalArrangement = Arrangement.spacedBy(CerealTheme.spacing.sm)) {
+            CerealButton(onClick = onOpenSettings, text = stringResource(Res.string.home_goal_sharing_notice_settings), type = CerealButtonType.Surface)
+            CerealButton(onClick = onDismiss, text = stringResource(Res.string.home_goal_sharing_notice_dismiss), type = CerealButtonType.Neutral)
+        }
     }
 }
 

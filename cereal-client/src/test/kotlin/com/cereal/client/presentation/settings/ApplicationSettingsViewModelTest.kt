@@ -14,13 +14,16 @@ import com.cereal.client.application.interactor.settings.discord.SetDiscordActiv
 import com.cereal.client.application.interactor.settings.notifications.SaveAllNotificationSettingsInteractor
 import com.cereal.client.application.interactor.settings.notifications.SendNotificationTestMessageInteractor
 import com.cereal.client.application.interactor.settings.privacy.GetCrashReportingEnabledInteractor
+import com.cereal.client.application.interactor.settings.privacy.GetGoalSharingEnabledInteractor
 import com.cereal.client.application.interactor.settings.privacy.SetCrashReportingEnabledInteractor
+import com.cereal.client.application.interactor.settings.privacy.SetGoalSharingEnabledInteractor
 import com.cereal.client.application.interactor.settings.proxy.SetProxyHealthCheckIntervalInteractor
 import com.cereal.client.domain.model.app.DownloadStatus
 import com.cereal.client.domain.model.app.UpdateInstallResult
 import com.cereal.client.domain.model.app.Version
 import com.cereal.client.domain.model.settings.ApplicationPreferenceSettings
 import com.cereal.client.domain.model.settings.ProxyHealthCheckInterval
+import com.cereal.client.infrastructure.data.repository.inmemory.InMemoryGoalSharingRepository
 import com.cereal.client.infrastructure.provider.inmemory.InMemoryCrashReportingProvider
 import com.cereal.client.presentation.error.ErrorResolver
 import com.cereal.client.presentation.feedback.FeedbackAction
@@ -103,6 +106,8 @@ class ApplicationSettingsViewModelTest {
                 setDiscordActivityStatusEnabledInteractor = setDiscordActivityStatusEnabledInteractor,
                 getCrashReportingEnabledInteractor = getCrashReportingEnabledInteractor,
                 setCrashReportingEnabledInteractor = setCrashReportingEnabledInteractor,
+                getGoalSharingEnabledInteractor = GetGoalSharingEnabledInteractor(InMemoryGoalSharingRepository()),
+                setGoalSharingEnabledInteractor = SetGoalSharingEnabledInteractor(InMemoryGoalSharingRepository()),
                 sendNotificationTestMessageInteractor = sendNotificationTestMessageInteractor,
                 saveAllNotificationSettingsInteractor = saveAllNotificationSettingsInteractor,
                 checkForUpdatesInteractor = checkForUpdatesInteractor,

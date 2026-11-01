@@ -1,6 +1,7 @@
 package com.cereal.client.application.task
 
 import com.cereal.client.application.CoroutinesDispatcherProvider
+import com.cereal.client.application.agent.GoalRunReporter
 import com.cereal.client.application.exception.MaxConcurrentTasksReachedException
 import com.cereal.client.domain.model.exception.InvalidScriptConfigurationException
 import com.cereal.client.domain.model.script.ScriptInstance
@@ -39,6 +40,7 @@ class TaskManager(
     private val scriptInstanceRepository: ScriptInstanceRepository,
     private val jobTaskFactory: JobTaskFactory,
     private val artifactRepository: ArtifactRepository,
+    private val goalRunReporter: GoalRunReporter,
 ) {
     private val scope = CoroutineScope(Dispatchers.Default + SupervisorJob())
 
@@ -185,11 +187,14 @@ class TaskManager(
             // configuration and status rows in place, keeping its artifacts.
             tasksRepository.createPersistedTask(freshTask.id)
             tasksRepository.addStatusHistory(freshTask.id, TaskStatus.Running("Starting script", Clock.System.now()))
+            goalRunReporter.onStarted(freshTask)
             val job =
                 scope.launch(dispatcherProvider.io) {
                     val result = executor.run()
                     withContext(NonCancellable) {
                         tasksRepository.addStatusHistory(freshTask.id, result)
+                        // Re-read for the status history, which holds the cost the agent reported.
+                        goalRunReporter.onFinished(tasksRepository.getTask(freshTask.id) ?: freshTask, result)
                     }
 
                     if (result.inFinishedState()) {

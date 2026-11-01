@@ -39,10 +39,14 @@ interface Root {
 
         data object MyScripts : Routing()
 
-        /** [checkForUpdates] opens Settings straight into the client update flow; [scrollToAi] opens it at the AI section. */
+        /**
+         * [checkForUpdates] opens Settings straight into the client update flow; [scrollToAi] and [scrollToPrivacy]
+         * open it at that section.
+         */
         data class ApplicationSettings(
             val checkForUpdates: Boolean = false,
             val scrollToAi: Boolean = false,
+            val scrollToPrivacy: Boolean = false,
         ) : Routing()
     }
 
@@ -85,6 +89,11 @@ interface Root {
                                     },
                                     onNavigateToAiSettings = {
                                         val route = Routing.ApplicationSettings(scrollToAi = true)
+                                        backStack.newRoot(route)
+                                        onNavigateTo?.invoke(route)
+                                    },
+                                    onNavigateToPrivacySettings = {
+                                        val route = Routing.ApplicationSettings(scrollToPrivacy = true)
                                         backStack.newRoot(route)
                                         onNavigateTo?.invoke(route)
                                     },
@@ -148,6 +157,7 @@ interface Root {
                                 ApplicationSettingsScreen(
                                     checkForUpdatesOnOpen = route.checkForUpdates,
                                     scrollToAiOnOpen = route.scrollToAi,
+                                    scrollToPrivacyOnOpen = route.scrollToPrivacy,
                                 )
                             }
                         }

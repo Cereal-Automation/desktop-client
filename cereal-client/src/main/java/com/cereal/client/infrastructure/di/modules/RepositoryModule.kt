@@ -6,6 +6,7 @@ import com.cereal.client.domain.repository.ApplicationRepository
 import com.cereal.client.domain.repository.ArtifactRepository
 import com.cereal.client.domain.repository.CustomDatasetRepository
 import com.cereal.client.domain.repository.FeatureFlagRepository
+import com.cereal.client.domain.repository.GoalSharingRepository
 import com.cereal.client.domain.repository.LlmProviderConfigRepository
 import com.cereal.client.domain.repository.LogEventRepository
 import com.cereal.client.domain.repository.NotificationHistoryRepository
@@ -18,6 +19,7 @@ import com.cereal.client.domain.repository.ScriptPreferenceRepository
 import com.cereal.client.domain.repository.ScriptRepository
 import com.cereal.client.domain.repository.SessionRepository
 import com.cereal.client.domain.repository.TasksRepository
+import com.cereal.client.infrastructure.bootstrap.BootstrapPreferences
 import com.cereal.client.infrastructure.data.datasource.auth.UserSession
 import com.cereal.client.infrastructure.data.datasource.filesystem.FileSystemProxyTemplateDataSource
 import com.cereal.client.infrastructure.data.repository.ApplicationPreferenceRepositoryImpl
@@ -25,6 +27,7 @@ import com.cereal.client.infrastructure.data.repository.ApplicationRepositoryImp
 import com.cereal.client.infrastructure.data.repository.ArtifactRepositoryImpl
 import com.cereal.client.infrastructure.data.repository.CustomDatasetRepositoryImpl
 import com.cereal.client.infrastructure.data.repository.FeatureFlagRepositoryImpl
+import com.cereal.client.infrastructure.data.repository.GoalSharingRepositoryImpl
 import com.cereal.client.infrastructure.data.repository.LlmProviderConfigRepositoryImpl
 import com.cereal.client.infrastructure.data.repository.LogEventRepositoryImpl
 import com.cereal.client.infrastructure.data.repository.NotificationHistoryRepositoryImpl
@@ -68,6 +71,7 @@ object RepositoryModule {
             single<NotificationSettingsRepository> { NotificationSettingsRepositoryImpl(get(), get()) }
             single<ProxyProviderCredentialRepository> { ProxyProviderCredentialRepositoryImpl(get(), get()) }
             single<LlmProviderConfigRepository> { LlmProviderConfigRepositoryImpl(get(), get()) }
+            single<GoalSharingRepository> { GoalSharingRepositoryImpl(BootstrapPreferences.default) }
             single<FeatureFlagRepository> { FeatureFlagRepositoryImpl(isDebugBuild = BuildConfig.IS_DEBUG) }
             single<ScriptPreferenceRepository> { ScriptPreferenceRepositoryImpl(get(), get()) }
             single<ScriptInstanceRepository> { ScriptInstanceRepositoryImpl(get(), get(), get(), get()) }

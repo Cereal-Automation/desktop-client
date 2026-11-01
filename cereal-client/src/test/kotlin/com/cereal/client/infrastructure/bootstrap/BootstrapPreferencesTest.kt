@@ -91,4 +91,14 @@ class BootstrapPreferencesTest {
         assertFalse(store.set(BootstrapPreferenceKey.CrashReportingEnabled, false))
         assertTrue(store.get(BootstrapPreferenceKey.CrashReportingEnabled), "still the default")
     }
+
+    @Test
+    fun `the install id is created once and kept, alongside other keys`() {
+        preferences().set(BootstrapPreferenceKey.CrashReportingEnabled, false)
+
+        val id = preferences().installId()
+
+        assertEquals(id, preferences().installId())
+        assertFalse(preferences().get(BootstrapPreferenceKey.CrashReportingEnabled))
+    }
 }
