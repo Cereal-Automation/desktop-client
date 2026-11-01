@@ -111,13 +111,13 @@ private fun PresetFields(
     when (preset) {
         LlmPreset.LOCAL -> {
             AiTextField(AI_BASE_URL_TAG, Res.string.ai_server, Res.string.ai_server_desc, form.baseUrlState)
-            AiModelField(form.modelState, form.models.value)
+            PrototypeModelRow()
         }
 
         LlmPreset.OTHER -> {
             AiTextField(AI_BASE_URL_TAG, Res.string.ai_base_url, Res.string.ai_base_url_desc, form.baseUrlState)
             AiTextField(AI_API_KEY_TAG, Res.string.ai_api_key, Res.string.ai_api_key_desc_optional, form.apiKeyState, isPassword = true)
-            AiModelField(form.modelState, form.models.value)
+            PrototypeModelRow()
         }
 
         else -> {
@@ -125,15 +125,17 @@ private fun PresetFields(
                 AiTextField(AI_BASE_URL_TAG, Res.string.ai_base_url, Res.string.ai_base_url_desc, form.baseUrlState)
             }
             AiTextField(AI_API_KEY_TAG, Res.string.ai_api_key, Res.string.ai_api_key_desc_required, form.apiKeyState, isPassword = true, keyUrl = preset.keyUrl)
-            var changingModel by remember(preset) { mutableStateOf(false) }
-            if (changingModel) {
-                AiModelField(form.modelState, form.models.value)
-            } else {
-                ModelSummary(model = form.modelState.text, onChange = { changingModel = true })
-            }
+            PrototypeModelRow()
         }
     }
 }
+
+// PROTOTYPE (wayfinder #249)
+@Composable
+private fun PrototypeModelRow() =
+    SettingsFieldRow(label = stringResource(Res.string.ai_model), description = stringResource(Res.string.ai_model_desc)) {
+        ModelPickerPrototype()
+    }
 
 @OptIn(ExperimentalLayoutApi::class)
 @Composable

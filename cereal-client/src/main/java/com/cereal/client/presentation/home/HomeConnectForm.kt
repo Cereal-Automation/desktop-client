@@ -104,14 +104,8 @@ internal fun HomeConnectForm(viewModel: HomeAiProviderViewModel) {
                 }
             }
             StepField(stringResource(Res.string.ai_model)) {
-                ComposerField(
-                    value = form.modelState.text,
-                    onValueChange = form.modelState::onValueChange,
-                    error = form.modelState.error,
-                    help = stringResource(Res.string.home_ai_model_help),
-                    placeholder = "model-id",
-                    modifier = Modifier.fillMaxWidth().testTag(AI_MODEL_TAG),
-                )
+                // PROTOTYPE (wayfinder #249)
+                com.cereal.client.presentation.settings.ai.ModelPickerPrototype(compact = true)
             }
             preset.spendLimitsHelp()?.let { SpendNote(stringResource(it)) }
         }
