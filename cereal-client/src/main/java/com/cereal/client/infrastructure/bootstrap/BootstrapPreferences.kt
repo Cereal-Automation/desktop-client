@@ -56,6 +56,7 @@ class BootstrapPreferences(
      * Writes [key], preserving any other keys already in the file. Returns `false` if the write
      * failed, in which case a subsequent [get] will report the previous value.
      */
+    @Synchronized
     fun set(
         key: BootstrapPreferenceKey,
         value: Boolean,
@@ -69,8 +70,10 @@ class BootstrapPreferences(
 
     /**
      * The pseudonymous id goal run reports carry: a random UUID created and stored on first call, so it exists
-     * before anyone signs in. If storing it fails, each call returns a new one.
+     * before anyone signs in. If storing it fails, each call returns a new one. Synchronized with [set]: both
+     * rewrite the whole file, so unsynchronized they could drop each other's write (an opt-out included).
      */
+    @Synchronized
     fun installId(): String =
         load()?.getProperty(INSTALL_ID_KEY) ?: UUID.randomUUID().toString().also { id ->
             store((load() ?: Properties()).apply { setProperty(INSTALL_ID_KEY, id) })

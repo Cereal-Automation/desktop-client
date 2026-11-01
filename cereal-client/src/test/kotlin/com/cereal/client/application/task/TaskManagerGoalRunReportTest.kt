@@ -181,23 +181,24 @@ class TaskManagerGoalRunReportTest {
         runTest {
             val goal =
                 "email me at jane.doe@example.com, pay with 4111 1111 1111 1111, call +31 6 12345678, " +
-                    "watch HTTPS://shop.example.com/item?ref=abc#top and nike.com/shop?size=44 on 2026-11-01"
+                    "watch HTTPS://shop.example.com/item?ref=abc#top and nike.com/shop?size=44 on 2026-11-01 in sizes 40 41 42 43 44"
             taskManager().run(
                 agentTask(
                     SucceedingScript::class,
                     goal = goal,
-                    startUrl = "https://shop.example.com/login?token=secret#frag",
+                    startUrl = "https://bob:hunter3@shop.example.com/login?token=secret#frag",
                     extraConfig = mapOf("password" to ConfigValue.StringValue("hunter2")),
                 ),
             )
 
             val start = reports.starts.single()
             assertEquals(
-                "email me at [email], pay with [card], call [phone], watch HTTPS://shop.example.com/item and nike.com/shop on 2026-11-01",
+                "email me at [email], pay with [card], call [phone], watch HTTPS://shop.example.com/item and nike.com/shop on 2026-11-01 in sizes 40 41 42 43 44",
                 start.goal,
             )
             assertEquals("https://shop.example.com/login", start.startUrl)
             assertFalse(start.toString().contains("hunter2"))
+            assertFalse(start.toString().contains("bob"))
         }
 
     @Test

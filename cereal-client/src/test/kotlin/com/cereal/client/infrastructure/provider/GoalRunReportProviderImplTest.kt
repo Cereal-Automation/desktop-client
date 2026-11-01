@@ -99,7 +99,7 @@ class GoalRunReportProviderImplTest {
             assertEquals("PATCH", request.method)
             assertEquals("/api/telemetry/goal-runs/run-1", request.path)
             assertEquals("Bearer guest-token", request.getHeader("Authorization"))
-            assertEquals("""{"outcome":"stopped","cost":0.42,"durationSeconds":90}""", request.body.readUtf8())
+            assertEquals("""{"outcome":"stopped","cost":"0.42","durationSeconds":90}""", request.body.readUtf8())
         }
 
     @Test
