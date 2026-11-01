@@ -23,6 +23,16 @@ One record per start of an AI browser agent task, sent to our server with its fi
 One configured ready-made script (or AI browser agent) in Tasks: its config plus a number of concurrent **tasks**, each one run of it. Shown as Group → Task setup → Task. A copy term only; the code type is `ScriptPackageInstance`. "Script" means only the thing a user buys or owns.
 _Avoid_: script, script instance (in copy)
 
+## AI models
+
+**Free model**:
+A model that costs $0 per token, as the provider's own API states, or any model run locally. Earns the Free badge in the model picker. Never inferred from a name or a client-side price list.
+_Avoid_: free tier (a different thing), no-cost model
+
+**Free tier**:
+A provider's no-cost plan with limits attached (rate limits, prompts possibly used for training), e.g. Gemini's AI Studio tier or OpenRouter's `:free` variants. A property of the provider account, not of a model: shown as a note on the preset, never as a badge.
+_Avoid_: free model, free plan (when the badge is meant)
+
 ## White-label
 
 **White-label build**:
