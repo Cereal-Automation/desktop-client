@@ -132,11 +132,13 @@ class GoalRunReporter(
                 // A digit count, not the shape, tells a phone number from a date like 2026-11-01.
                 .replace(PHONE) { if (it.value.count(Char::isDigit) >= MIN_PHONE_DIGITS) "[phone]" else it.value }
 
+        // Luhn's doubled digit, with the digits of the product summed: 5 → 10 → 1.
+        const val LUHN_DOUBLED = "0246813579"
+        const val LUHN_MODULUS = 10
+
         fun String.passesLuhn(): Boolean =
             reversed()
-                .mapIndexed { i, c ->
-                    val d = c.digitToInt()
-                    if (i % 2 == 1) (d * 2).let { if (it > 9) it - 9 else it } else d
-                }.sum() % 10 == 0
+                .mapIndexed { i, c -> if (i % 2 == 1) LUHN_DOUBLED[c.digitToInt()].digitToInt() else c.digitToInt() }
+                .sum() % LUHN_MODULUS == 0
     }
 }
