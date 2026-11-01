@@ -19,6 +19,7 @@ import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.runTest
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Test
+import java.time.Instant
 
 /** The form's automatic model-list load, over [InMemoryLlmProvider] in virtual time. */
 @OptIn(ExperimentalCoroutinesApi::class)
@@ -169,5 +170,33 @@ class LlmPresetFormStateTest {
 
             assertEquals(0, provider.listModelsRequests.size)
             assertEquals(ModelListState.Idle, form.modelList.value)
+        }
+
+    private fun TestScope.loadedIds(vararg listed: LlmModel): List<String> {
+        provider.models = listed.toList()
+        val form = form(initial = null)
+        form.show(LlmProviderConfig.of(LlmProviderType.ANTHROPIC, "https://api.anthropic.com/v1", "sk-ant-1", "new"))
+        runCurrent()
+        return form.models.map { it.id }
+    }
+
+    @Test
+    fun `the list is newest first with undated models last in API order`() =
+        runTest {
+            val ids =
+                loadedIds(
+                    LlmModel("undated-1"),
+                    LlmModel("old", created = Instant.parse("2025-01-01T00:00:00Z")),
+                    LlmModel("undated-2"),
+                    LlmModel("new", created = Instant.parse("2026-01-01T00:00:00Z")),
+                )
+
+            assertEquals(listOf("new", "old", "undated-1", "undated-2"), ids)
+        }
+
+    @Test
+    fun `a list without any dates keeps the API order`() =
+        runTest {
+            assertEquals(listOf("b", "a", "c"), loadedIds(LlmModel("b"), LlmModel("a"), LlmModel("c")))
         }
 }

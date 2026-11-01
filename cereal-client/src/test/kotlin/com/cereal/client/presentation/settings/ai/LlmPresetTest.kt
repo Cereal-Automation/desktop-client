@@ -1,10 +1,13 @@
 package com.cereal.client.presentation.settings.ai
 
+import com.cereal.client.domain.model.llm.LlmModel
 import com.cereal.client.domain.model.llm.LlmProviderConfig
 import com.cereal.client.domain.model.llm.LlmProviderType
 import kotlinx.coroutines.test.runTest
 import org.jetbrains.compose.resources.getString
 import org.junit.jupiter.api.Assertions.assertEquals
+import org.junit.jupiter.api.Assertions.assertFalse
+import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.params.ParameterizedTest
 import org.junit.jupiter.params.provider.CsvSource
@@ -56,6 +59,24 @@ class LlmPresetTest {
         val config = LlmProviderConfig.of(LlmProviderType.ANTHROPIC, "https://proxy.example.com/v1", "k", "claude-opus-5-5")
 
         assertEquals(LlmPreset.ANTHROPIC, LlmPreset.of(config))
+    }
+
+    @Test
+    fun `every Local model is free, priced or not`() {
+        assertTrue(LlmPreset.LOCAL.showsFree(LlmModel("qwen3:480b-cloud")))
+    }
+
+    @ParameterizedTest
+    @EnumSource(LlmPreset::class, names = ["OPENROUTER", "OTHER"])
+    fun `elsewhere a model is free only when priced free`(preset: LlmPreset) {
+        assertTrue(preset.showsFree(LlmModel("m", pricedFree = true)))
+        assertFalse(preset.showsFree(LlmModel("m")))
+    }
+
+    @ParameterizedTest
+    @EnumSource(LlmPreset::class, names = ["ANTHROPIC", "OPENAI", "GEMINI"])
+    fun `first-party providers never show free`(preset: LlmPreset) {
+        assertFalse(preset.showsFree(LlmModel("m", pricedFree = true)))
     }
 
     @Test
