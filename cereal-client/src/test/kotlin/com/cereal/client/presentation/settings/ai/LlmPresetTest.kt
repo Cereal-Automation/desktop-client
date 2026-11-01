@@ -2,6 +2,8 @@ package com.cereal.client.presentation.settings.ai
 
 import com.cereal.client.domain.model.llm.LlmProviderConfig
 import com.cereal.client.domain.model.llm.LlmProviderType
+import kotlinx.coroutines.test.runTest
+import org.jetbrains.compose.resources.getString
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.params.ParameterizedTest
@@ -55,4 +57,25 @@ class LlmPresetTest {
 
         assertEquals(LlmPreset.ANTHROPIC, LlmPreset.of(config))
     }
+
+    @Test
+    fun `gemini note covers the free tier`() =
+        runTest {
+            assertEquals(
+                "The free tier doesn't bill you, but it's rate-limited and Google may use your prompts to improve its products. " +
+                    "On a paid key, set a budget alert in [Google Cloud Billing ↗](https://console.cloud.google.com/billing).",
+                getString(LlmPreset.GEMINI.spendLimitsHelp()!!),
+            )
+        }
+
+    @Test
+    fun `openrouter note covers free models`() =
+        runTest {
+            assertEquals(
+                "OpenRouter spends your prepaid credits. Free models cost nothing but have daily request limits, " +
+                    "and some of their providers may log your prompts. " +
+                    "Set a credit limit on your key in [OpenRouter keys ↗](https://openrouter.ai/settings/keys).",
+                getString(LlmPreset.OPENROUTER.spendLimitsHelp()!!),
+            )
+        }
 }

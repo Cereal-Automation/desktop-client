@@ -588,10 +588,10 @@
     <string name="ai_model_desc">The model id every script call uses.</string>
     <string name="ai_model_open">Show models</string>
     <string name="ai_test_connection">Test connection</string>
-    <string name="ai_spend_limits_gemini">The free tier doesn't bill you. On a paid key, set a budget alert in [Google Cloud Billing ↗](https://console.cloud.google.com/billing).</string>
+    <string name="ai_spend_limits_gemini">The free tier doesn't bill you, but it's rate-limited and Google may use your prompts to improve its products. On a paid key, set a budget alert in [Google Cloud Billing ↗](https://console.cloud.google.com/billing).</string>
     <string name="ai_spend_limits_anthropic">Anthropic bills you directly for tokens. Set a spend limit in the [Anthropic Console ↗](https://console.anthropic.com/settings/limits).</string>
     <string name="ai_spend_limits_openai">OpenAI bills you directly for tokens. Set a spend limit in [OpenAI usage limits ↗](https://platform.openai.com/settings/organization/limits).</string>
-    <string name="ai_spend_limits_openrouter">OpenRouter spends your prepaid credits. Set a credit limit on your key in [OpenRouter keys ↗](https://openrouter.ai/settings/keys).</string>
+    <string name="ai_spend_limits_openrouter">OpenRouter spends your prepaid credits. Free models cost nothing but have daily request limits, and some of their providers may log your prompts. Set a credit limit on your key in [OpenRouter keys ↗](https://openrouter.ai/settings/keys).</string>
     <string name="ai_spend_limits_other">Your provider bills you directly for tokens. Set a spend limit in its dashboard.</string>
     <string name="home">Home</string>
     <string name="home_recent_runs">Recent runs</string>
