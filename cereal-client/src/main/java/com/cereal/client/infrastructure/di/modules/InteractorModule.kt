@@ -62,6 +62,7 @@ import com.cereal.client.application.interactor.proxy.provider.ConnectProxyProvi
 import com.cereal.client.application.interactor.proxy.provider.DisconnectProxyProviderInteractor
 import com.cereal.client.application.interactor.proxy.provider.GetConnectedProxyProviderInteractor
 import com.cereal.client.application.interactor.proxy.provider.SyncProxiesInteractor
+import com.cereal.client.application.interactor.script.GetReleasesRequiringClientUpdateInteractor
 import com.cereal.client.application.interactor.script.GetScriptCapacityInteractor
 import com.cereal.client.application.interactor.script.GetScriptConfigDefinitionInteractor
 import com.cereal.client.application.interactor.script.GetScriptPackageInstancesByPackageNameInteractor
@@ -211,6 +212,7 @@ object InteractorModule {
             factory { RemoveMarketplaceScriptInteractor(get(), get(), get(), get()) }
             factory { HasRunningTasksForScriptInteractor(get()) }
             factory { GetPackagesWithRunningTasksInteractor(get()) }
+            factory { GetReleasesRequiringClientUpdateInteractor(get()) }
             // Auth
             factory { AuthenticateInteractor(get()) }
             factory { AuthenticateGuestInteractor(get()) }

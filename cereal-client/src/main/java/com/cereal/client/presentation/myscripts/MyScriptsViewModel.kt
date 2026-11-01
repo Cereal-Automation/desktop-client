@@ -9,6 +9,7 @@ import com.cereal.client.application.agent.canUninstall
 import com.cereal.client.application.interactor.marketplace.GetMarketplaceListingsInteractor
 import com.cereal.client.application.interactor.marketplace.GetPackagesWithRunningTasksInteractor
 import com.cereal.client.application.interactor.marketplace.RemoveMarketplaceScriptInteractor
+import com.cereal.client.application.interactor.script.GetReleasesRequiringClientUpdateInteractor
 import com.cereal.client.application.interactor.script.GetScriptsInteractor
 import com.cereal.client.application.interactor.script.GetSdkVersionInteractor
 import com.cereal.client.domain.model.marketplace.MarketplaceScript
@@ -34,6 +35,7 @@ class MyScriptsViewModel(
     private val getScriptsInteractor: GetScriptsInteractor,
     private val getSdkVersionInteractor: GetSdkVersionInteractor,
     private val getPackagesWithRunningTasksInteractor: GetPackagesWithRunningTasksInteractor,
+    private val getReleasesRequiringClientUpdateInteractor: GetReleasesRequiringClientUpdateInteractor,
     private val getMarketplaceListingsInteractor: GetMarketplaceListingsInteractor,
     private val removeMarketplaceScriptInteractor: RemoveMarketplaceScriptInteractor,
     private val errorResolver: ErrorResolver,
@@ -69,6 +71,7 @@ class MyScriptsViewModel(
 
     private val installedScripts = mutableStateOf<List<ScriptPackage>>(emptyList())
     private val packagesWithRunningTasks = mutableStateOf<Set<String>>(emptySet())
+    private val releasesRequiringClientUpdate = mutableStateOf<Map<String, Long>>(emptyMap())
     private val listings = mutableStateOf<Map<String, MarketplaceScript>>(emptyMap())
     private val sdkVersion = mutableStateOf<SemVer?>(null)
     private val removingPackages = mutableStateOf<Set<String>>(emptySet())
@@ -133,6 +136,15 @@ class MyScriptsViewModel(
                 }
             }
         }
+        scope.launch(dispatcherProvider.io) {
+            getReleasesRequiringClientUpdateInteractor(Interactor.None()).collectLatest { result ->
+                withContext(dispatcherProvider.main) {
+                    if (result is SuspendableResult.Success) {
+                        releasesRequiringClientUpdate.value = result.value
+                    }
+                }
+            }
+        }
     }
 
     private fun statusOf(
@@ -143,9 +155,13 @@ class MyScriptsViewModel(
         val version = sdkVersion.value
         val latestVersionCode = listing?.latestRelease?.versionCode
         return when {
-            version != null && pkg.isClientUpdateRequired(version) -> InstalledScriptStatus.CLIENT_UPDATE_REQUIRED
+            (version != null && pkg.isClientUpdateRequired(version)) ||
+                pkg.manifest.versionCode < (releasesRequiringClientUpdate.value[pkg.manifest.packageName] ?: 0) -> InstalledScriptStatus.CLIENT_UPDATE_REQUIRED
+
             latestVersionCode != null && pkg.manifest.versionCode < latestVersionCode -> InstalledScriptStatus.UPDATE_AVAILABLE
+
             hasRunningTasks -> InstalledScriptStatus.RUNNING_TASKS
+
             else -> null
         }
     }

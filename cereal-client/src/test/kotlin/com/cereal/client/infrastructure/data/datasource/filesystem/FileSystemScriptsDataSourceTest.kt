@@ -1,6 +1,7 @@
 package com.cereal.client.infrastructure.data.datasource.filesystem
 
 import com.cereal.client.application.ApplicationConfig
+import com.cereal.client.application.exception.ClientUpdateRequiredException
 import com.cereal.client.application.exception.LoadScriptException
 import com.cereal.client.domain.model.script.Release
 import com.cereal.client.domain.model.user.User
@@ -17,6 +18,7 @@ import org.junit.jupiter.api.assertThrows
 import org.junit.jupiter.api.io.TempDir
 import org.junit.jupiter.params.ParameterizedTest
 import org.junit.jupiter.params.provider.ValueSource
+import java.io.ByteArrayOutputStream
 import java.io.File
 import java.nio.file.Path
 import java.util.jar.JarEntry
@@ -169,14 +171,18 @@ class FileSystemScriptsDataSourceTest {
 
     /** Writes an unencrypted, manifest-only jar into the user's script directory; its classes come from the test classpath. */
     private fun writeJar(manifest: String) {
-        File(File(tempDir.toFile(), testUser.id), "script.jar").outputStream().use { out ->
-            JarOutputStream(out).use { jar ->
-                jar.putNextEntry(JarEntry("manifest.json"))
-                jar.write(manifest.trimIndent().toByteArray())
-                jar.closeEntry()
-            }
-        }
+        File(File(tempDir.toFile(), testUser.id), "script.jar").writeBytes(jarBytes(manifest))
     }
+
+    private fun jarBytes(manifest: String): ByteArray =
+        ByteArrayOutputStream()
+            .also { out ->
+                JarOutputStream(out).use { jar ->
+                    jar.putNextEntry(JarEntry("manifest.json"))
+                    jar.write(manifest.trimIndent().toByteArray())
+                    jar.closeEntry()
+                }
+            }.toByteArray()
 
     @Test
     fun `getScriptDefinitions should return empty flow for new user`() =
@@ -472,6 +478,34 @@ class FileSystemScriptsDataSourceTest {
             }
 
             assertTrue(installedJar.exists())
+        }
+
+    @Test
+    fun `updateScript should keep the installed script when the new release needs a newer client`() =
+        runTest {
+            writeJar(
+                """{ "package_name": "com.example.agent", "name": "Agent", "version_code": 1, "script": "fixtures.scripts.DefaultEntryScript" }""",
+            )
+            val dataSource = realBuilderDataSource()
+            val installed = dataSource.getScriptPackageDefinition("com.example.agent", testUser)!!
+            assertThrows<ClientUpdateRequiredException> {
+                dataSource.updateScript(
+                    installed.toScriptPackage(supportUrl = null),
+                    Release("2.0.0", 2, null),
+                    jarBytes(
+                        """{ "package_name": "com.example.agent", "name": "Agent", "version_code": 2, "sdk_version": "9.0.0",
+                             "script": "fixtures.scripts.DefaultEntryScript" }""",
+                    ).inputStream(),
+                    testUser,
+                    SemVer(1, 12, 0),
+                )
+            }
+
+            assertTrue(installed.source.exists())
+            assertEquals(
+                listOf(1L),
+                dataSource.getScriptDefinitions(testUser).first().map { it.manifest.versionCode },
+            )
         }
 
     @Test

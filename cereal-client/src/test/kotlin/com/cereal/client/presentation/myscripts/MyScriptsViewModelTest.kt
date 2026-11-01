@@ -2,6 +2,8 @@ package com.cereal.client.presentation.myscripts
 
 import com.cereal.client.application.CoroutinesDispatcherProvider
 import com.cereal.client.application.agent.AI_BROWSER_AGENT_PACKAGE
+import com.cereal.client.application.exception.ClientUpdateRequiredException
+import com.cereal.client.application.script.ScriptManager
 import com.cereal.client.domain.model.marketplace.MarketplaceDirection
 import com.cereal.client.domain.model.marketplace.MarketplaceScript
 import com.cereal.client.domain.model.marketplace.MarketplaceSort
@@ -11,6 +13,7 @@ import com.cereal.client.domain.model.marketplace.ScriptSubscriptionResult
 import com.cereal.client.domain.model.script.Release
 import com.cereal.client.domain.model.script.ScriptPackage
 import com.cereal.client.domain.provider.MarketplaceProvider
+import com.cereal.client.domain.provider.ScriptInstallProvider
 import com.cereal.client.domain.repository.ScriptInstanceRepository
 import com.cereal.client.domain.repository.ScriptRepository
 import com.cereal.client.domain.repository.TasksRepository
@@ -20,6 +23,7 @@ import com.cereal.client.infrastructure.di.Injector
 import com.cereal.client.infrastructure.di.modules.InMemoryProviderModule
 import com.cereal.client.infrastructure.di.modules.InMemoryRepositoryModule
 import com.cereal.client.infrastructure.provider.inmemory.InMemoryMarketplaceProvider
+import com.cereal.client.infrastructure.provider.inmemory.InMemoryScriptInstallProvider
 import com.cereal.client.presentation.error.ErrorAction
 import com.cereal.client.presentation.myscripts.MyScriptsViewModel.InstalledScriptStatus
 import com.cereal.client.presentation.tasks.script.overview.ScriptRequest
@@ -43,6 +47,7 @@ import org.junit.jupiter.api.Assertions.assertNull
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
+import org.junit.jupiter.api.assertThrows
 import org.koin.core.context.startKoin
 import org.koin.core.context.stopKoin
 import org.koin.core.parameter.parametersOf
@@ -248,10 +253,58 @@ class MyScriptsViewModelTest {
             assertEquals(listOf(ScriptRequest(AI_BROWSER_AGENT_PACKAGE, "checkout")), startedInstances)
         }
 
+    @Test
+    fun `shows update required when the newer release was rejected for needing a newer client`() =
+        runTest(dispatcher) {
+            val installedPackage = installed("com.a", "A", versionCode = 1)
+            val vm =
+                createViewModel(
+                    installed = listOf(installedPackage),
+                    marketplace = InMemoryMarketplaceProvider(listOf(listing("com.a", versionCode = 2))),
+                    installProvider = RejectingInstallProvider,
+                )
+
+            val scriptManager = KoinJavaComponent.get<ScriptManager>(ScriptManager::class.java)
+            assertThrows<ClientUpdateRequiredException> {
+                scriptManager.updateScript(installedPackage, Release("1.0.2", 2, null))
+            }
+            advanceUntilIdle()
+
+            assertEquals(
+                InstalledScriptStatus.CLIENT_UPDATE_REQUIRED,
+                vm.rows.value
+                    .single()
+                    .status,
+            )
+        }
+
+    @Test
+    fun `a rejected release no longer counts once the installed version reaches it`() =
+        runTest(dispatcher) {
+            val vm =
+                createViewModel(
+                    installed = listOf(installed("com.a", "A", versionCode = 2)),
+                    installProvider = RejectingInstallProvider,
+                )
+
+            val scriptManager = KoinJavaComponent.get<ScriptManager>(ScriptManager::class.java)
+            assertThrows<ClientUpdateRequiredException> {
+                scriptManager.updateScript(installed("com.a", "A", versionCode = 1), Release("1.0.2", 2, null))
+            }
+            advanceUntilIdle()
+
+            assertNull(
+                vm.rows.value
+                    .single()
+                    .status,
+            )
+        }
+
     private suspend fun TestScope.createViewModel(
         installed: List<ScriptPackage>,
         marketplace: MarketplaceProvider = InMemoryMarketplaceProvider(),
         runningPackages: List<String> = emptyList(),
+        installProvider: ScriptInstallProvider = InMemoryScriptInstallProvider(),
     ): MyScriptsViewModel {
         stopKoin()
         startKoin {
@@ -260,6 +313,7 @@ class MyScriptsViewModelTest {
                     module {
                         factory { CoroutinesDispatcherProvider(dispatcher, dispatcher, dispatcher) }
                         single<MarketplaceProvider> { marketplace }
+                        single<ScriptInstallProvider> { installProvider }
                     },
             )
         }
@@ -302,6 +356,19 @@ class MyScriptsViewModelTest {
         developer = ScriptOwner(name = "dev"),
         latestRelease = Release(versionName = "1.0.$versionCode", versionCode = versionCode, releaseNotes = null),
     )
+
+    /** Rejects every download the way the data source does when a release needs a newer bundled SDK. */
+    private object RejectingInstallProvider : ScriptInstallProvider {
+        override suspend fun updateScript(
+            scriptPackage: ScriptPackage,
+            release: Release,
+        ): ScriptPackage = throw ClientUpdateRequiredException("9.0.0")
+
+        override suspend fun installScript(
+            packageName: String,
+            release: Release,
+        ): ScriptPackage = throw ClientUpdateRequiredException("9.0.0")
+    }
 
     private object FailingMarketplaceProvider : MarketplaceProvider {
         override suspend fun getMarketplaceScripts(
