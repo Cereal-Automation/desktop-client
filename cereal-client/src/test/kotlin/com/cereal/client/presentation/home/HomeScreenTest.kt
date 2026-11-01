@@ -15,6 +15,7 @@ import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.performTextInput
 import com.cereal.client.application.exception.CerealException
 import com.cereal.client.domain.model.exception.LlmCallException
@@ -143,7 +144,7 @@ class HomeScreenTest {
             setScreenContent { HomeScreen() }
             awaitText("Connect an AI model")
 
-            onNodeWithText("Available once a model is connected.").assertIsDisplayed()
+            onNodeWithText("Available once a model is connected.").performScrollTo().assertIsDisplayed()
             onNodeWithText("A free AI browser agent that runs on your machine, with your model and your key.").assertIsDisplayed()
             onNodeWithTag(HomeTestTags.FIELDS).assertDoesNotExist()
             onNodeWithText("Start").assertDoesNotExist()
