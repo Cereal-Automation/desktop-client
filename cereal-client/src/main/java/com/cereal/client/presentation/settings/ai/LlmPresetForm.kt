@@ -21,6 +21,7 @@ import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -219,6 +220,9 @@ private fun AiModelField(
     models: List<String>,
 ) {
     var expanded by remember { mutableStateOf(false) }
+    // The arrow opens the whole list; typing narrows it again.
+    var showAll by remember { mutableStateOf(false) }
+    LaunchedEffect(state.text) { showAll = false }
     SettingsFieldRow(label = stringResource(Res.string.ai_model), description = stringResource(Res.string.ai_model_desc)) {
         Column {
             Row(verticalAlignment = Alignment.CenterVertically) {
@@ -226,15 +230,16 @@ private fun AiModelField(
                     SettingsTextInput(state = state)
                 }
                 if (models.isNotEmpty()) {
-                    CerealIconButton(onClick = { expanded = !expanded }, modifier = Modifier.testTag(AI_MODEL_OPEN_TAG)) {
+                    CerealIconButton(onClick = {
+                        expanded = !expanded
+                        showAll = true
+                    }, modifier = Modifier.testTag(AI_MODEL_OPEN_TAG)) {
                         Icon(Icons.Default.ArrowDropDown, contentDescription = stringResource(Res.string.ai_model_open))
                     }
                 }
             }
-            // A picked id, or text that matches nothing (e.g. a saved id the provider doesn't list), shows the
-            // whole list; other text filters it.
-            val filtered = models.filter { it.contains(state.text, ignoreCase = true) }
-            val visible = if (state.text in models || filtered.isEmpty()) models else filtered
+            // Opened from the arrow, or on a picked id, it shows the whole list; typed text filters it.
+            val visible = if (showAll || state.text in models) models else models.filter { it.contains(state.text, ignoreCase = true) }
             DropdownMenu(
                 expanded = expanded && visible.isNotEmpty(),
                 onDismissRequest = { expanded = false },

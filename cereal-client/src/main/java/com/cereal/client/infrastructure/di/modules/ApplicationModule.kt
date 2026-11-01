@@ -74,7 +74,7 @@ object ApplicationModule {
             factory { CoroutinesDispatcherProvider() }
             factory { ScriptSyncManager(get(), get(), get(), get(), get(), get()) }
             factory { ScriptInstanceManager(get(), get(), get()) }
-            factory { UserAuthManager(get(), get(), get(), get(), get(), get()) }
+            factory { UserAuthManager(get(), get(), get(), get(), get(), get(), get()) }
             single { TaskManager(get(), get(), get(), get(), get(), get()) }
             single { ScriptManager(get(), get(), get(), get()) }
             single { TaskConfigurationBuilder(get(), get(), get()) }
