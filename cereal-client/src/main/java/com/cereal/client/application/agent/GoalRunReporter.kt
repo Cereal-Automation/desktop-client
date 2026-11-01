@@ -118,19 +118,25 @@ class GoalRunReporter(
     private companion object {
         // ponytail: regex masking is defence in depth, not a guarantee; the server scrubs again.
         // With or without a scheme: "nike.com/shop?size=44" counts too.
+        val URL_USERINFO = Regex("""(?<=://)[^\s/@]+@""")
         val URL_QUERY = Regex("""\b((?:https?://)?(?:[\w-]+\.)+[a-z]{2,}(?:/[^\s?#]*)?)[?#]\S*""", RegexOption.IGNORE_CASE)
         val EMAIL = Regex("""[\w.+-]+@[\w-]+(?:\.[\w-]+)+""")
         val CARD = Regex("""\b(?:\d[ -]?){12,18}\d\b""")
         val PHONE = Regex("""\+?\d[\d ()-]{7,}\d""")
+        val THREE_DIGITS = Regex("""\d{3}""")
         const val MIN_PHONE_DIGITS = 9
 
         fun scrub(text: String): String =
             text
+                .replace(URL_USERINFO, "")
                 .replace(URL_QUERY, "$1")
                 .replace(EMAIL, "[email]")
                 .replace(CARD) { if (it.value.filter(Char::isDigit).passesLuhn()) "[card]" else it.value }
-                // A digit count, not the shape, tells a phone number from a date like 2026-11-01.
-                .replace(PHONE) { if (it.value.count(Char::isDigit) >= MIN_PHONE_DIGITS) "[phone]" else it.value }
+                // A digit count tells a phone number from a date like 2026-11-01, and a run of three digits from a
+                // size list like "40 41 42 43 44".
+                .replace(PHONE) {
+                    if (it.value.count(Char::isDigit) >= MIN_PHONE_DIGITS && THREE_DIGITS.containsMatchIn(it.value)) "[phone]" else it.value
+                }
 
         // Luhn's doubled digit, with the digits of the product summed: 5 → 10 → 1.
         const val LUHN_DOUBLED = "0246813579"

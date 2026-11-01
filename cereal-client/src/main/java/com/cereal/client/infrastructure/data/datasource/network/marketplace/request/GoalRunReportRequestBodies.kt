@@ -24,6 +24,7 @@ data class GoalRunStartRequestBody(
 data class GoalRunFinishRequestBody(
     /** "succeeded", "failed" or "stopped". */
     val outcome: String,
-    val cost: Double?,
+    /** Decimal string such as "0.42", exact as the agent reported it. */
+    val cost: String?,
     val durationSeconds: Long,
 )

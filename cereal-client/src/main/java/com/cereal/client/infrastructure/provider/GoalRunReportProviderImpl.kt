@@ -42,7 +42,7 @@ class GoalRunReportProviderImpl(
         dropOnFailure {
             apiClient.reportGoalRunFinish(
                 report.runId,
-                GoalRunFinishRequestBody(report.outcome.name.lowercase(), report.cost?.toDouble(), report.durationSeconds),
+                GoalRunFinishRequestBody(report.outcome.name.lowercase(), report.cost?.toPlainString(), report.durationSeconds),
             )
         }
 
