@@ -593,6 +593,8 @@
     <string name="ai_model_not_offered">Not offered by provider</string>
     <string name="ai_model_search">Search models</string>
     <string name="ai_model_retry">Retry</string>
+    <string name="ai_model_free">Free</string>
+    <string name="ai_model_pulled">Pulled %1$s</string>
     <string name="ai_test_connection">Test connection</string>
     <string name="ai_spend_limits_gemini">The free tier doesn't bill you, but it's rate-limited and Google may use your prompts to improve its products. On a paid key, set a budget alert in [Google Cloud Billing ↗](https://console.cloud.google.com/billing).</string>
     <string name="ai_spend_limits_anthropic">Anthropic bills you directly for tokens. Set a spend limit in the [Anthropic Console ↗](https://console.anthropic.com/settings/limits).</string>

@@ -4,6 +4,8 @@ import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.ui.test.ComposeUiTest
 import androidx.compose.ui.test.ExperimentalTestApi
 import androidx.compose.ui.test.SemanticsNodeInteraction
+import androidx.compose.ui.test.assert
+import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsNotSelected
 import androidx.compose.ui.test.assertIsSelected
@@ -32,6 +34,7 @@ import kotlinx.coroutines.runBlocking
 import org.koin.java.KoinJavaComponent
 import testutil.runScreenTest
 import testutil.setScreenContent
+import java.time.Instant
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertNull
@@ -348,6 +351,56 @@ class AiSettingsSectionScreenTest {
 
             row("m-1").assertIsDisplayed()
             row("m-2").assertDoesNotExist()
+        }
+
+    @Test
+    fun localRowsShowNameOverIdAFreeBadgeAndThePullDate() =
+        runScreenTest {
+            llmProvider.models = listOf(LlmModel("qwen3:8b", displayName = "Qwen3 8B", created = Instant.parse("2026-03-04T12:00:00Z")))
+            save(LlmProviderConfig.of(LlmProviderType.OPENAI_COMPATIBLE, "http://localhost:11434/v1", "", "qwen3:8b"))
+            setScreenContent { AiSettingsSection() }
+            awaitTag(AI_MODEL_OPEN_TAG)
+
+            // The closed field: name over id, and the badge.
+            onNodeWithTag(AI_MODEL_OPEN_TAG).assert(hasText("Qwen3 8B")).assert(hasText("qwen3:8b")).assert(hasText("Free"))
+
+            onNodeWithTag(AI_MODEL_OPEN_TAG).performClick()
+            row("Qwen3 8B").assertIsDisplayed()
+            row("qwen3:8b").assertIsDisplayed()
+            row("Free").assertIsDisplayed()
+            row("Pulled 2026-03-04").assertIsDisplayed()
+        }
+
+    @Test
+    fun onOpenRouterOnlyPricedFreeModelsShowFreeAndDatesArePlain() =
+        runScreenTest {
+            llmProvider.models =
+                listOf(
+                    LlmModel("paid/model", created = Instant.parse("2026-02-01T12:00:00Z")),
+                    LlmModel("free/model", created = Instant.parse("2026-01-01T12:00:00Z"), pricedFree = true),
+                )
+            save(LlmProviderConfig.of(LlmProviderType.OPENAI_COMPATIBLE, "https://openrouter.ai/api/v1", "sk-or-1", "paid/model"))
+            setScreenContent { AiSettingsSection() }
+            awaitTag(AI_MODEL_OPEN_TAG)
+
+            onNodeWithTag(AI_MODEL_OPEN_TAG).assert(hasText("paid/model")).assert(!hasText("Free"))
+            onNodeWithTag(AI_MODEL_OPEN_TAG).performClick()
+            onAllNodes(hasText("Free") and hasAnyAncestor(hasTestTag(AI_MODEL_LIST_TAG))).assertCountEquals(1)
+            row("2026-02-01").assertIsDisplayed()
+            row("2026-01-01").assertIsDisplayed()
+        }
+
+    @Test
+    fun aListWithoutDatesShowsNoDateColumn() =
+        runScreenTest {
+            llmProvider.models = listOf(LlmModel("qwen3"), LlmModel("llama3"))
+            save(LlmProviderConfig.of(LlmProviderType.OPENAI_COMPATIBLE, "http://localhost:11434/v1", "", "qwen3"))
+            setScreenContent { AiSettingsSection() }
+            awaitTag(AI_MODEL_OPEN_TAG)
+
+            onNodeWithTag(AI_MODEL_OPEN_TAG).performClick()
+            row("llama3").assertIsDisplayed()
+            onNode(hasText("Pulled", substring = true)).assertDoesNotExist()
         }
 
     @Test

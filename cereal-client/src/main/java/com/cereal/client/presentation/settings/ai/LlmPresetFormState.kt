@@ -119,7 +119,9 @@ class LlmPresetFormState(
                     withContext(dispatcherProvider.main) {
                         _modelList.value =
                             when (result) {
-                                is SuspendableResult.Success -> ModelListState.Loaded(result.value)
+                                // Stable, and nulls sort lowest: newest first, undated last in API order.
+                                is SuspendableResult.Success -> ModelListState.Loaded(result.value.sortedByDescending { it.created })
+
                                 is SuspendableResult.Failure -> ModelListState.Failed(connectionFailureMessage(result.error))
                             }
                     }
@@ -150,6 +152,7 @@ sealed interface ModelListState {
 
     data object Loading : ModelListState
 
+    /** [models] newest first; undated ones last, in the provider's order. */
     data class Loaded(
         val models: List<LlmModel>,
     ) : ModelListState

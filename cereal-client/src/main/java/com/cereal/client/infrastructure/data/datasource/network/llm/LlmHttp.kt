@@ -7,12 +7,18 @@ import com.cereal.client.infrastructure.data.datasource.network.util.await
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.delay
-import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonElement
+import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.JsonPrimitive
+import kotlinx.serialization.json.contentOrNull
 import kotlinx.serialization.json.decodeFromJsonElement
+import kotlinx.serialization.json.jsonArray
+import kotlinx.serialization.json.jsonObject
+import kotlinx.serialization.json.jsonPrimitive
+import kotlinx.serialization.json.longOrNull
 import okhttp3.Headers.Companion.toHeaders
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.OkHttpClient
@@ -27,6 +33,7 @@ import java.net.HttpURLConnection.HTTP_FORBIDDEN
 import java.net.HttpURLConnection.HTTP_NOT_FOUND
 import java.net.HttpURLConnection.HTTP_UNAUTHORIZED
 import java.time.Instant
+import java.time.OffsetDateTime
 import java.time.ZonedDateTime
 import java.time.format.DateTimeFormatter
 import kotlin.coroutines.AbstractCoroutineContextElement
@@ -78,7 +85,7 @@ class LlmHttp(
         }
 
     /**
-     * `GET [url]` for a `{"data":[{"id","display_name"?}]}` model list, with the same retries and status
+     * `GET [url]` for a `{"data":[{"id",...}]}` model list (entries read by [toChatModel]), with the same retries and status
      * mapping as [postJson], except that a 404 means the base URL is wrong:
      * [LlmCallException.InvalidRequest] with [NOT_FOUND_MESSAGE].
      */
@@ -94,8 +101,47 @@ class LlmHttp(
                     response.toFailure(response.errorDetail()?.message, null)
                 }
             }
-        return readResponse { json.decodeFromString<ModelList>(body).data.map { LlmModel(it.id, it.displayName) } }
+        return readResponse {
+            json
+                .parseToJsonElement(body)
+                .jsonObject
+                .getValue("data")
+                .jsonArray
+                .mapNotNull { it.jsonObject.toChatModel() }
+        }
     }
+
+    /**
+     * One `/models` entry as an [LlmModel], or null when the entry says the model can't chat. Only `id` is
+     * required; any other field of the wrong shape counts as missing.
+     */
+    private fun JsonObject.toChatModel(): LlmModel? {
+        val id = getValue("id").jsonPrimitive.content.removePrefix("models/")
+        val outputs = (this["architecture"] as? JsonObject)?.strings("output_modalities")
+        val hidden =
+            (outputs != null && outputs != listOf("text")) ||
+                strings("endpoints")?.contains(CHAT_COMPLETIONS_ENDPOINT) == false ||
+                strings("supported_parameters")?.contains("tools") == false
+        if (hidden) return null
+        val pricing = this["pricing"] as? JsonObject
+        return LlmModel(
+            id = id,
+            displayName = string("display_name") ?: string("name"),
+            created = created(),
+            pricedFree = pricing != null && pricing.string("prompt") == "0" && pricing.string("completion") == "0",
+        )
+    }
+
+    /** `created` in Unix seconds (OpenAI-compatible) or `created_at` in RFC 3339 (Anthropic); `0` is unknown. */
+    private fun JsonObject.created(): Instant? {
+        val seconds = (this["created"] as? JsonPrimitive)?.takeUnless { it.isString }?.longOrNull
+        if (seconds != null && seconds > 0) return Instant.ofEpochSecond(seconds)
+        return string("created_at")?.let { runCatching { OffsetDateTime.parse(it).toInstant() }.getOrNull() }
+    }
+
+    private fun JsonObject.string(key: String): String? = (this[key] as? JsonPrimitive)?.takeIf { it.isString }?.content
+
+    private fun JsonObject.strings(key: String): List<String>? = (this[key] as? JsonArray)?.mapNotNull { (it as? JsonPrimitive)?.contentOrNull }
 
     private fun request(
         url: String,
@@ -204,18 +250,6 @@ class LlmHttp(
         val error: ErrorDetail,
     )
 
-    @Serializable
-    private data class ModelList(
-        val data: List<ModelEntry>,
-    )
-
-    // OpenAI-compatible lists have no display name.
-    @Serializable
-    private data class ModelEntry(
-        val id: String,
-        @SerialName("display_name") val displayName: String? = null,
-    )
-
     companion object {
         /** Shared by the datasources: provider responses carry many fields we don't read. */
         val json = Json { ignoreUnknownKeys = true }
@@ -223,6 +257,7 @@ class LlmHttp(
         const val NOT_FOUND_MESSAGE = "Not found: there are no models at this base URL. Check it, including the version path (for example /v1)."
         const val PROVIDER_SWITCHED_MESSAGE =
             "This conversation has a reply from a different AI provider. Start a new conversation after changing the provider in Settings → AI."
+        private const val CHAT_COMPLETIONS_ENDPOINT = "/api/v1/chat/completions"
         private const val HTTP_TOO_MANY_REQUESTS = 429
         private val SERVER_ERRORS = 500..599
         private val JSON = "application/json".toMediaType()

@@ -1,5 +1,6 @@
 package com.cereal.client.presentation.settings.ai
 
+import com.cereal.client.domain.model.llm.LlmModel
 import com.cereal.client.domain.model.llm.LlmProviderConfig
 import com.cereal.client.domain.model.llm.LlmProviderType
 import com.cereal.client.domain.model.url.WebUrl
@@ -29,6 +30,17 @@ enum class LlmPreset(
 
     /** Whether the model list waits for a key; [LOCAL] and [OTHER] only need the server address. */
     val needsKey: Boolean get() = this != LOCAL && this != OTHER
+
+    /**
+     * Whether [model] gets the Free badge: every Local model runs on the user's machine; Anthropic, OpenAI and
+     * Gemini send no price, so never; anyone else when the list prices it free.
+     */
+    fun showsFree(model: LlmModel): Boolean =
+        when (this) {
+            LOCAL -> true
+            ANTHROPIC, OPENAI, GEMINI -> false
+            OPENROUTER, OTHER -> model.pricedFree
+        }
 
     companion object {
         private val LOCAL_HOSTS = setOf("localhost", "127.0.0.1")
