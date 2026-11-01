@@ -6,6 +6,7 @@ import com.cereal.client.application.CoroutinesDispatcherProvider
 import com.cereal.client.application.FlowInteractor
 import com.cereal.client.application.interactor.settings.ai.ConnectLlmProviderInteractor
 import com.cereal.client.application.interactor.settings.ai.GetLlmProviderConfigInteractor
+import com.cereal.client.application.interactor.settings.ai.ListLlmModelsInteractor
 import com.cereal.client.domain.model.exception.InvalidLlmProviderConfigException
 import com.cereal.client.domain.model.llm.LlmProviderConfig
 import com.cereal.client.presentation.error.ErrorResolver
@@ -47,13 +48,14 @@ class HomeAiProviderViewModel(
     private val dispatcherProvider: CoroutinesDispatcherProvider,
     getLlmProviderConfigInteractor: GetLlmProviderConfigInteractor,
     private val connectLlmProviderInteractor: ConnectLlmProviderInteractor,
+    listLlmModelsInteractor: ListLlmModelsInteractor,
     private val errorResolver: ErrorResolver,
 ) {
     private val _state = mutableStateOf<HomeAiProviderState>(HomeAiProviderState.Loading)
     val state: State<HomeAiProviderState> = _state
 
     /** The setup card's preset form; Gemini's free tier is pre-selected. */
-    val setup = LlmPresetFormState(initial = LlmPreset.GEMINI)
+    val setup = LlmPresetFormState(scope, dispatcherProvider, listLlmModelsInteractor, initial = LlmPreset.GEMINI)
 
     private val _connectError = mutableStateOf<UiText?>(null)
     val connectError: State<UiText?> = _connectError

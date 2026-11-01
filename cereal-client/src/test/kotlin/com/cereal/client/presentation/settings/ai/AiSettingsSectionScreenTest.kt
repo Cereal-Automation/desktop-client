@@ -292,8 +292,8 @@ class AiSettingsSectionScreenTest {
             llmProvider.models = listOf(LlmModel("gpt-5"), LlmModel("gpt-5-mini"), LlmModel("llama3"))
             setScreenContent { AiSettingsSection() }
             onNodeWithText("Local model").performClick()
-            onNodeWithText("Test connection").performClick()
-            awaitText("Connected · 3 models")
+            // Local's default server address is a valid connection, so the list loads on its own.
+            waitUntil(timeoutMillis = 5_000) { onAllNodes(hasTestTag(AI_MODEL_OPEN_TAG)).fetchSemanticsNodes().isNotEmpty() }
 
             onNodeWithTag(AI_MODEL_OPEN_TAG).performClick()
             onNodeWithText("llama3").assertIsDisplayed()

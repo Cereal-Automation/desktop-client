@@ -27,6 +27,9 @@ enum class LlmPreset(
     OTHER(LlmProviderType.OPENAI_COMPATIBLE, "", "", null),
     ;
 
+    /** Whether the model list waits for a key; [LOCAL] and [OTHER] only need the server address. */
+    val needsKey: Boolean get() = this != LOCAL && this != OTHER
+
     companion object {
         private val LOCAL_HOSTS = setOf("localhost", "127.0.0.1")
 

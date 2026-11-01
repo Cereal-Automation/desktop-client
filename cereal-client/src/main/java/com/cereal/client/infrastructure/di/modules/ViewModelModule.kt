@@ -65,7 +65,7 @@ object ViewModelModule {
                     errorResolver = get(),
                 )
             }
-            factory { (scope: CoroutineScope) -> HomeAiProviderViewModel(scope, get(), get(), get(), get()) }
+            factory { (scope: CoroutineScope) -> HomeAiProviderViewModel(scope, get(), get(), get(), get(), get()) }
             factory { (scope: CoroutineScope) -> AgentInstallViewModel(scope, get(), get(), get()) }
             factory { (scope: CoroutineScope) -> HomeActivityViewModel(scope, get(), get()) }
             factory { (scope: CoroutineScope, onStartNewInstance: Function1<ScriptRequest, Unit>) ->

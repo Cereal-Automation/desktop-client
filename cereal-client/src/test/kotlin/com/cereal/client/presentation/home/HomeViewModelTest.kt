@@ -11,6 +11,7 @@ import com.cereal.client.application.interactor.script.GetSdkVersionInteractor
 import com.cereal.client.application.interactor.script.StartScriptInteractor
 import com.cereal.client.application.interactor.settings.ai.ConnectLlmProviderInteractor
 import com.cereal.client.application.interactor.settings.ai.GetLlmProviderConfigInteractor
+import com.cereal.client.application.interactor.settings.ai.ListLlmModelsInteractor
 import com.cereal.client.application.interactor.settings.ai.SaveLlmProviderConfigInteractor
 import com.cereal.client.domain.model.exception.LlmCallException
 import com.cereal.client.domain.model.llm.LlmProviderConfig
@@ -30,6 +31,7 @@ import com.cereal.client.infrastructure.provider.inmemory.InMemoryLlmProvider
 import com.cereal.client.infrastructure.provider.inmemory.InMemoryMarketplaceProvider
 import com.cereal.client.presentation.error.ErrorResolver
 import com.cereal.client.presentation.settings.ai.LlmPreset
+import com.cereal.client.presentation.settings.ai.ModelListState
 import com.cereal.client.presentation.view.UiText
 import com.cereal.client.presentation.view.fields.state.DropDownFieldState
 import com.cereal.client.presentation.view.fields.state.TextFieldState
@@ -128,6 +130,7 @@ class HomeViewModelTest {
                 dispatcherProvider = dispatchers,
                 getLlmProviderConfigInteractor = GetLlmProviderConfigInteractor(llmConfigs),
                 connectLlmProviderInteractor = ConnectLlmProviderInteractor(llmProvider, SaveLlmProviderConfigInteractor(llmConfigs)),
+                listLlmModelsInteractor = ListLlmModelsInteractor(llmProvider),
                 errorResolver = ErrorResolver(),
             )
         advanceUntilIdle()
@@ -527,6 +530,20 @@ class HomeViewModelTest {
 
             assertEquals(HomeAiProviderState.None, vm.state.value)
             assertEquals(LlmPreset.GEMINI, vm.setup.preset.value)
+            assertEquals(ModelListState.Idle, vm.setup.modelList.value)
+        }
+
+    @Test
+    fun `typing a key on the setup card loads the model list`() =
+        runTest {
+            llmConfigs.clear()
+            val vm = aiProvider()
+
+            vm.setup.apiKeyState.onValueChange("gemini-key")
+            advanceUntilIdle()
+
+            assertEquals(ModelListState.Loaded(llmProvider.models), vm.setup.modelList.value)
+            assertEquals(HomeAiProviderState.None, vm.state.value)
         }
 
     @Test
