@@ -17,7 +17,7 @@ class LlmPresetTest {
     @ParameterizedTest
     @EnumSource(LlmPreset::class, names = ["GEMINI", "ANTHROPIC", "OPENAI", "OPENROUTER"])
     fun `a keyed preset round-trips through the stored config`(preset: LlmPreset) {
-        val config = LlmProviderConfig.of(preset.provider, preset.baseUrl, "key-1", preset.model)
+        val config = LlmProviderConfig.of(preset.provider, preset.baseUrl, "key-1", "some-model")
 
         assertEquals(preset, LlmPreset.of(config))
     }
@@ -25,9 +25,9 @@ class LlmPresetTest {
     @ParameterizedTest
     @CsvSource(
         "GEMINI, OPENAI_COMPATIBLE, https://generativelanguage.googleapis.com/v1beta/openai, gemini-3.8-flash",
-        "ANTHROPIC, ANTHROPIC, https://api.anthropic.com/v1, claude-opus-5-5",
+        "ANTHROPIC, ANTHROPIC, https://api.anthropic.com/v1, ''",
         "OPENAI, OPENAI_COMPATIBLE, https://api.openai.com/v1, gpt-5",
-        "OPENROUTER, OPENAI_COMPATIBLE, https://openrouter.ai/api/v1, anthropic/claude-opus-5.5",
+        "OPENROUTER, OPENAI_COMPATIBLE, https://openrouter.ai/api/v1, ''",
         "LOCAL, OPENAI_COMPATIBLE, http://localhost:11434/v1, ''",
         "OTHER, OPENAI_COMPATIBLE, '', ''",
     )

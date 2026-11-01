@@ -171,6 +171,7 @@ class HomeScreenTest {
     @Test
     fun `a passing Connect saves the config and swaps the card for the composer`() =
         runScreenTest(overrides = listOf(agentInstalled)) {
+            (KoinJavaComponent.get<LlmProvider>(LlmProvider::class.java) as InMemoryLlmProvider).models = listOf(LlmModel("gemini-3.8-flash"))
             setScreenContent { HomeScreen() }
             awaitText("Connect an AI model")
 
@@ -197,7 +198,8 @@ class HomeScreenTest {
 
             enterApiKey("good-key")
             waitUntil(timeoutMillis = 5_000) { onAllNodes(hasTestTag(AI_MODEL_OPEN_TAG)).fetchSemanticsNodes().isNotEmpty() }
-            onNodeWithText("Not offered by provider").assertIsDisplayed()
+            // Gemini's preset model isn't in this dateless list, so nothing is chosen for the user.
+            onNodeWithText("Pick a model").assertIsDisplayed()
             onNodeWithTag(AI_MODEL_OPEN_TAG).performClick()
             onNode(hasText("gemini-4-pro") and hasAnyAncestor(hasTestTag(AI_MODEL_LIST_TAG))).performClick()
             onNodeWithText("Connect").performClick()

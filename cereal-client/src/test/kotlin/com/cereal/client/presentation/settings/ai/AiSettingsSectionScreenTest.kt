@@ -84,6 +84,11 @@ class AiSettingsSectionScreenTest {
     @Test
     fun selectingAPresetShowsItsKeyLinkAndModelAndSavesItsBaseUrl() =
         runScreenTest {
+            llmProvider.models =
+                listOf(
+                    LlmModel("openrouter/auto", created = Instant.parse("2026-02-01T00:00:00Z")),
+                    LlmModel("meta/llama-free", created = Instant.parse("2025-01-01T00:00:00Z"), pricedFree = true),
+                )
             setScreenContent { AiSettingsSection() }
 
             onNodeWithText("OpenRouter").performClick()
@@ -94,11 +99,13 @@ class AiSettingsSectionScreenTest {
             onNodeWithTag(AI_BASE_URL_TAG).assertDoesNotExist()
 
             input(AI_API_KEY_TAG).performTextInput("sk-or-1")
+            // The default: the newest free model, never the newer router.
+            awaitText("meta/llama-free")
             onNodeWithText("Save").performClick()
 
             awaitSaved { it != null }
             assertEquals(
-                LlmProviderConfig.of(LlmProviderType.OPENAI_COMPATIBLE, "https://openrouter.ai/api/v1", "sk-or-1", "anthropic/claude-opus-5.5"),
+                LlmProviderConfig.of(LlmProviderType.OPENAI_COMPATIBLE, "https://openrouter.ai/api/v1", "sk-or-1", "meta/llama-free"),
                 savedConfig(),
             )
         }
@@ -264,9 +271,13 @@ class AiSettingsSectionScreenTest {
         }
 
     @Test
-    fun testConnectionReportsTheModelCountAndKeepsTheDefaultModel() =
+    fun testConnectionReportsTheModelCountAndTheNewestModelIsSelected() =
         runScreenTest {
-            llmProvider.models = listOf(LlmModel("claude-opus-5-5"), LlmModel("claude-haiku-4-5"))
+            llmProvider.models =
+                listOf(
+                    LlmModel("claude-haiku-4-5", created = Instant.parse("2025-10-01T00:00:00Z")),
+                    LlmModel("claude-opus-5-5", created = Instant.parse("2026-05-01T00:00:00Z")),
+                )
             setScreenContent { AiSettingsSection() }
             onNodeWithText("Anthropic").performClick()
             input(AI_API_KEY_TAG).performTextInput("sk-ant-1")

@@ -77,7 +77,7 @@ class AiSettingsViewModelTest {
     }
 
     @Test
-    fun `a successful test reports the model count and keeps the default model`() {
+    fun `a successful test reports the model count and picks no model`() {
         server.enqueue(fixture("anthropic/models.json"))
         val vm = viewModel()
         vm.chooseAnthropicOnServer()
@@ -86,7 +86,7 @@ class AiSettingsViewModelTest {
 
         await { vm.connectionStatus.value is ConnectionStatus.Connected }
         assertEquals(ConnectionStatus.Connected(2), vm.connectionStatus.value)
-        assertEquals("claude-opus-5-5", vm.form.modelState.text)
+        assertEquals("", vm.form.modelState.text)
     }
 
     @Test

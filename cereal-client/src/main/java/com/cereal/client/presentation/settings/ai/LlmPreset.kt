@@ -11,7 +11,8 @@ import com.cereal.client.domain.model.url.WebUrl
  * base URL and model, so nothing about it is stored.
  *
  * @param baseUrl prefilled base URL; empty for [OTHER], where the user types it.
- * @param model prefilled model id; empty when the user picks one ([LOCAL] after connecting, [OTHER]).
+ * @param model the model a fresh setup starts on when the provider lists it; empty where [defaultModel] picks
+ *   from the list instead.
  * @param keyUrl where to get an API key, or null when the preset takes none or has no single page.
  */
 enum class LlmPreset(
@@ -21,9 +22,9 @@ enum class LlmPreset(
     val keyUrl: String?,
 ) {
     GEMINI(LlmProviderType.OPENAI_COMPATIBLE, "https://generativelanguage.googleapis.com/v1beta/openai", "gemini-3.8-flash", "https://aistudio.google.com/apikey"),
-    ANTHROPIC(LlmProviderType.ANTHROPIC, "https://api.anthropic.com/v1", "claude-opus-5-5", "https://console.anthropic.com/settings/keys"),
+    ANTHROPIC(LlmProviderType.ANTHROPIC, "https://api.anthropic.com/v1", "", "https://console.anthropic.com/settings/keys"),
     OPENAI(LlmProviderType.OPENAI_COMPATIBLE, "https://api.openai.com/v1", "gpt-5", "https://platform.openai.com/api-keys"),
-    OPENROUTER(LlmProviderType.OPENAI_COMPATIBLE, "https://openrouter.ai/api/v1", "anthropic/claude-opus-5.5", "https://openrouter.ai/keys"),
+    OPENROUTER(LlmProviderType.OPENAI_COMPATIBLE, "https://openrouter.ai/api/v1", "", "https://openrouter.ai/keys"),
     LOCAL(LlmProviderType.OPENAI_COMPATIBLE, "http://localhost:11434/v1", "", null),
     OTHER(LlmProviderType.OPENAI_COMPATIBLE, "", "", null),
     ;
@@ -41,6 +42,18 @@ enum class LlmPreset(
             ANTHROPIC, OPENAI, GEMINI -> false
             OPENROUTER, OTHER -> model.pricedFree
         }
+
+    /**
+     * The model a fresh setup selects from [models] (newest first): [model] when listed; else, in a dated list,
+     * the newest priced-free model, else the newest, never an `openrouter/` router (those switch model per
+     * call). Null leaves the pick to the user: never a `-latest` alias or the first row of a dateless list.
+     */
+    fun defaultModel(models: List<LlmModel>): LlmModel? {
+        models.firstOrNull { model.isNotEmpty() && it.id == model }?.let { return it }
+        if (models.none { it.created != null }) return null
+        val candidates = models.filterNot { it.id.startsWith("openrouter/") }
+        return candidates.firstOrNull { it.pricedFree } ?: candidates.firstOrNull()
+    }
 
     companion object {
         private val LOCAL_HOSTS = setOf("localhost", "127.0.0.1")

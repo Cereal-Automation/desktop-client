@@ -23,7 +23,8 @@ import kotlinx.coroutines.withContext
  *
  * The form also loads the provider's model list ([modelList]) by itself: [DEBOUNCE_MILLIS] after an edit
  * to the base URL or key leaves a valid [LlmConnection], and at once on [show] and [retry]. Another edit
- * cancels a pending or running load.
+ * cancels a pending or running load. At setup a load also selects the preset's [LlmPreset.defaultModel], until
+ * the user picks one; a saved config's model is never replaced.
  */
 class LlmPresetFormState(
     private val scope: CoroutineScope,
@@ -45,7 +46,10 @@ class LlmPresetFormState(
 
     val baseUrlState = StringTextFieldState(onValueChange = { loadModels(debounce = true) })
     val apiKeyState = StringTextFieldState(onValueChange = { loadModels(debounce = true) })
-    val modelState = StringTextFieldState()
+    val modelState = StringTextFieldState(onValueChange = { keepModel = true })
+
+    /** Whether a load keeps [modelState]: a saved config is showing or the user picked since choosing the preset. */
+    private var keepModel = false
 
     private val _modelList = mutableStateOf<ModelListState>(ModelListState.Idle)
     val modelList: State<ModelListState> = _modelList
@@ -71,6 +75,7 @@ class LlmPresetFormState(
         baseUrlState.text = preset?.baseUrl.orEmpty()
         apiKeyState.text = ""
         modelState.text = preset?.model.orEmpty()
+        keepModel = false
         clearFieldErrors()
         _modelList.value = ModelListState.Idle
         loadModels(debounce = true)
@@ -84,6 +89,7 @@ class LlmPresetFormState(
         baseUrlState.text = config.baseUrl.value
         apiKeyState.text = config.apiKey?.reveal().orEmpty()
         modelState.text = config.model
+        keepModel = true
         loadModels(debounce = false)
     }
 
@@ -107,7 +113,8 @@ class LlmPresetFormState(
     private fun loadModels(debounce: Boolean) {
         loadJob?.cancel()
         val params = usableConnectionParams()
-        if (params == null) {
+        val preset = _preset.value
+        if (params == null || preset == null) {
             _modelList.value = ModelListState.Idle
             return
         }
@@ -120,9 +127,15 @@ class LlmPresetFormState(
                         _modelList.value =
                             when (result) {
                                 // Stable, and nulls sort lowest: newest first, undated last in API order.
-                                is SuspendableResult.Success -> ModelListState.Loaded(result.value.sortedByDescending { it.created })
+                                is SuspendableResult.Success -> {
+                                    val models = result.value.sortedByDescending { it.created }
+                                    if (!keepModel) modelState.text = preset.defaultModel(models)?.id.orEmpty()
+                                    ModelListState.Loaded(models)
+                                }
 
-                                is SuspendableResult.Failure -> ModelListState.Failed(connectionFailureMessage(result.error))
+                                is SuspendableResult.Failure -> {
+                                    ModelListState.Failed(connectionFailureMessage(result.error))
+                                }
                             }
                     }
                 }

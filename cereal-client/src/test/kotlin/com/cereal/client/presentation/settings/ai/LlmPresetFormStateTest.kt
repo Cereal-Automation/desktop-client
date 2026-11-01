@@ -199,4 +199,117 @@ class LlmPresetFormStateTest {
         runTest {
             assertEquals(listOf("b", "a", "c"), loadedIds(LlmModel("b"), LlmModel("a"), LlmModel("c")))
         }
+
+    private val old = Instant.parse("2025-01-01T00:00:00Z")
+    private val mid = Instant.parse("2025-06-01T00:00:00Z")
+    private val new = Instant.parse("2026-01-01T00:00:00Z")
+
+    /** Sets up [preset] from scratch, lets [listed] load, and returns the model the form then holds. */
+    private fun TestScope.defaultModel(
+        preset: LlmPreset,
+        vararg listed: LlmModel,
+    ): String {
+        provider.models = listed.toList()
+        val form = form(initial = preset)
+        if (preset == LlmPreset.OTHER) form.baseUrlState.onValueChange("https://llm.example.com/v1")
+        form.apiKeyState.onValueChange("key-1")
+        advance(500)
+        return form.modelState.text
+    }
+
+    @Test
+    fun `OpenAI defaults to the preset's model when listed, even with newer ones`() =
+        runTest {
+            assertEquals("gpt-5", defaultModel(LlmPreset.OPENAI, LlmModel("gpt-5", created = old), LlmModel("gpt-6", created = new)))
+        }
+
+    @Test
+    fun `Gemini defaults to the preset's model in its dateless list`() =
+        runTest {
+            assertEquals("gemini-3.8-flash", defaultModel(LlmPreset.GEMINI, LlmModel("gemini-4-pro"), LlmModel("gemini-3.8-flash")))
+        }
+
+    @Test
+    fun `Gemini without the preset's model in a dateless list leaves it to the user`() =
+        runTest {
+            assertEquals("", defaultModel(LlmPreset.GEMINI, LlmModel("gemini-flash-latest"), LlmModel("gemini-4-pro")))
+        }
+
+    @Test
+    fun `Anthropic defaults to the newest model`() =
+        runTest {
+            assertEquals(
+                "claude-opus-6",
+                defaultModel(LlmPreset.ANTHROPIC, LlmModel("claude-opus-5-5", created = old), LlmModel("claude-opus-6", created = new)),
+            )
+        }
+
+    @Test
+    fun `OpenRouter prefers the newest free model and never a router`() =
+        runTest {
+            assertEquals(
+                "meta/free-mid",
+                defaultModel(
+                    LlmPreset.OPENROUTER,
+                    LlmModel("openrouter/free", created = new, pricedFree = true),
+                    LlmModel("paid-new", created = new),
+                    LlmModel("meta/free-old", created = old, pricedFree = true),
+                    LlmModel("meta/free-mid", created = mid, pricedFree = true),
+                ),
+            )
+        }
+
+    @Test
+    fun `without a free model the newest non-router model is chosen`() =
+        runTest {
+            assertEquals(
+                "paid-mid",
+                defaultModel(
+                    LlmPreset.OPENROUTER,
+                    LlmModel("openrouter/auto", created = new),
+                    LlmModel("paid-old", created = old),
+                    LlmModel("paid-mid", created = mid),
+                ),
+            )
+        }
+
+    @Test
+    fun `Local defaults to the newest model`() =
+        runTest {
+            assertEquals("qwen4", defaultModel(LlmPreset.LOCAL, LlmModel("llama5", created = old), LlmModel("qwen4", created = new)))
+        }
+
+    @Test
+    fun `Other without dates leaves it to the user`() =
+        runTest {
+            assertEquals("", defaultModel(LlmPreset.OTHER, LlmModel("a"), LlmModel("b")))
+        }
+
+    @Test
+    fun `a saved model is never replaced by a reload`() =
+        runTest {
+            provider.models = listOf(LlmModel("claude-opus-6", created = new))
+            val form = form(initial = null)
+            form.show(LlmProviderConfig.of(LlmProviderType.ANTHROPIC, "https://api.anthropic.com/v1", "sk-ant-1", "claude-haiku-4-5"))
+            runCurrent()
+            form.apiKeyState.onValueChange("sk-ant-2")
+            advance(500)
+
+            assertEquals("claude-haiku-4-5", form.modelState.text)
+        }
+
+    @Test
+    fun `a model the user picked is never replaced by a reload`() =
+        runTest {
+            provider.models = listOf(LlmModel("claude-opus-6", created = new), LlmModel("claude-haiku-4-5", created = old))
+            val form = form()
+            form.apiKeyState.onValueChange("sk-ant-1")
+            advance(500)
+            form.modelState.onValueChange("claude-haiku-4-5")
+
+            form.retry()
+            runCurrent()
+
+            assertEquals("claude-haiku-4-5", form.modelState.text)
+        }
 }
