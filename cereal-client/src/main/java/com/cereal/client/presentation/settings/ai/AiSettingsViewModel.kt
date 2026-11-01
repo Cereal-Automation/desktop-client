@@ -41,7 +41,7 @@ class AiSettingsViewModel(
     private val listLlmModelsInteractor: ListLlmModelsInteractor,
     private val errorResolver: ErrorResolver,
 ) {
-    val form = LlmPresetFormState()
+    val form = LlmPresetFormState(scope, dispatcherProvider, listLlmModelsInteractor)
 
     private val _feedbackAction = mutableStateOf<FeedbackAction>(FeedbackAction.None)
     val feedbackAction: State<FeedbackAction> = _feedbackAction
@@ -59,10 +59,7 @@ class AiSettingsViewModel(
             withContext(dispatcherProvider.main) {
                 when (result) {
                     is SuspendableResult.Success -> {
-                        result.value?.let {
-                            form.show(it)
-                            fetchModels(silent = true)
-                        }
+                        result.value?.let(form::show)
                     }
 
                     is SuspendableResult.Failure -> {
@@ -94,32 +91,21 @@ class AiSettingsViewModel(
         _connectionStatus.value = ConnectionStatus.Idle
     }
 
-    /** Checks the form's setup against the provider and refills the model list; saving doesn't need it. */
+    /** Checks the form's setup against the provider and reports the status; the model list loads on its own. */
     fun testConnection() {
         form.clearFieldErrors()
-        fetchModels(silent = false)
-    }
-
-    /** A [silent] fetch (on open) only fills the list: no status, no field errors. */
-    private fun fetchModels(silent: Boolean) {
         val params = form.connectionParams() ?: return
-        if (!silent) _connectionStatus.value = ConnectionStatus.Testing
+        _connectionStatus.value = ConnectionStatus.Testing
         fetchJob?.cancel()
         fetchJob =
             scope.launch(dispatcherProvider.io) {
                 listLlmModelsInteractor(params) { result ->
                     withContext(dispatcherProvider.main) {
-                        when (result) {
-                            is SuspendableResult.Success -> {
-                                form.models.value = result.value.map { it.id }
-                                if (!silent) _connectionStatus.value = ConnectionStatus.Connected(result.value.size)
+                        _connectionStatus.value =
+                            when (result) {
+                                is SuspendableResult.Success -> ConnectionStatus.Connected(result.value.size)
+                                is SuspendableResult.Failure -> connectionFailure(result.error)
                             }
-
-                            is SuspendableResult.Failure -> {
-                                form.models.value = emptyList()
-                                if (!silent) _connectionStatus.value = connectionFailure(result.error)
-                            }
-                        }
                     }
                 }
             }
