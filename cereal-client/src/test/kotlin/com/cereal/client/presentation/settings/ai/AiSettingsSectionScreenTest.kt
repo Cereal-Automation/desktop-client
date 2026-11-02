@@ -271,11 +271,11 @@ class AiSettingsSectionScreenTest {
         }
 
     @Test
-    fun testConnectionReportsTheModelCountAndTheNewestModelIsSelected() =
+    fun testConnectionReportsTheModelCountAndThePresetModelIsSelected() =
         runScreenTest {
             llmProvider.models =
                 listOf(
-                    LlmModel("claude-haiku-4-5", created = Instant.parse("2025-10-01T00:00:00Z")),
+                    LlmModel("claude-haiku-5-5", created = Instant.parse("2025-10-01T00:00:00Z")),
                     LlmModel("claude-opus-5-5", created = Instant.parse("2026-05-01T00:00:00Z")),
                 )
             setScreenContent { AiSettingsSection() }
@@ -285,7 +285,7 @@ class AiSettingsSectionScreenTest {
             onNodeWithText("Test connection").performClick()
 
             awaitText("Connected · 2 models")
-            awaitText("claude-opus-5-5")
+            awaitText("claude-haiku-5-5")
         }
 
     @Test
