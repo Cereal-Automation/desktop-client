@@ -31,6 +31,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.cereal.client.presentation.theme.CerealTheme
+import com.cereal.client.presentation.theme.cerealColors
 import org.jetbrains.compose.resources.DrawableResource
 import org.jetbrains.compose.resources.painterResource
 
@@ -178,8 +179,8 @@ fun CerealTextButton(
 ) {
     val colors =
         when (type) {
-            CerealButtonType.Primary -> ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.primary)
-            CerealButtonType.Secondary -> ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.secondary)
+            CerealButtonType.Primary -> ButtonDefaults.textButtonColors(contentColor = readableOnDark(MaterialTheme.colorScheme.primary))
+            CerealButtonType.Secondary -> ButtonDefaults.textButtonColors(contentColor = readableOnDark(MaterialTheme.colorScheme.secondary))
             CerealButtonType.Surface -> ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.onSurface)
             CerealButtonType.Success -> ButtonDefaults.textButtonColors(contentColor = CerealTheme.colorScheme.success)
             CerealButtonType.Neutral -> ButtonDefaults.textButtonColors(contentColor = CerealTheme.colorScheme.contentSecondary)
@@ -249,11 +250,11 @@ fun CerealOutlinedButton(
     val (colors, borderColor) =
         when (type) {
             CerealButtonType.Primary -> {
-                ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.primary) to MaterialTheme.colorScheme.primary
+                ButtonDefaults.outlinedButtonColors(contentColor = readableOnDark(MaterialTheme.colorScheme.primary)) to MaterialTheme.colorScheme.primary
             }
 
             CerealButtonType.Secondary -> {
-                ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.secondary) to MaterialTheme.colorScheme.secondary
+                ButtonDefaults.outlinedButtonColors(contentColor = readableOnDark(MaterialTheme.colorScheme.secondary)) to MaterialTheme.colorScheme.secondary
             }
 
             CerealButtonType.Surface -> {
@@ -311,11 +312,23 @@ internal fun readableUnderWhite(fill: Color): Color = remember(fill) { fill.read
 /** Darkens a fill until white label text on it meets WCAG AA (4.5:1); covers white-label brand colors too. */
 private fun Color.readableUnderWhite(): Color {
     var fill = this
-    while (WHITE_LUMINANCE_OFFSET / (fill.luminance() + LUMINANCE_OFFSET) < AA_CONTRAST) fill = lerp(fill, Color.Black, DARKEN_STEP)
+    while (WHITE_LUMINANCE_OFFSET / (fill.luminance() + LUMINANCE_OFFSET) < AA_CONTRAST) fill = lerp(fill, Color.Black, COLOR_STEP)
     return fill
+}
+
+/** [color] lightened until, as text on the app's dark surfaces, it meets WCAG AA; computed once per color. */
+@Composable
+internal fun readableOnDark(color: Color): Color = remember(color) { color.readableOnDark() }
+
+/** Lightens text until it meets 4.5:1 on the raised surface color, the lightest surface buttons sit on. */
+private fun Color.readableOnDark(): Color {
+    val backdrop = cerealColors.surfaceRaised.luminance() + LUMINANCE_OFFSET
+    var text = this
+    while ((text.luminance() + LUMINANCE_OFFSET) / backdrop < AA_CONTRAST) text = lerp(text, Color.White, COLOR_STEP)
+    return text
 }
 
 private const val LUMINANCE_OFFSET = 0.05f
 private const val WHITE_LUMINANCE_OFFSET = 1f + LUMINANCE_OFFSET
 private const val AA_CONTRAST = 4.5f
-private const val DARKEN_STEP = 0.05f
+private const val COLOR_STEP = 0.05f

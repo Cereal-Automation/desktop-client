@@ -49,6 +49,7 @@ import com.cereal.client.presentation.theme.CerealTheme
 import com.cereal.client.presentation.view.CerealText
 import com.cereal.client.presentation.view.CerealTextField
 import com.cereal.client.presentation.view.InputBorder
+import com.cereal.client.presentation.view.InputBorderFocused
 import com.cereal_automation.cereal_client.generated.resources.Res
 import com.cereal_automation.cereal_client.generated.resources.script_entry_count
 import com.cereal_automation.cereal_client.generated.resources.script_entry_label
@@ -94,7 +95,7 @@ fun ScriptEntryPicker(
                         .onSizeChanged { triggerWidthPx = it.width }
                         .clip(MediumShape)
                         .background(CerealTheme.colorScheme.inputBackground)
-                        .border(1.dp, if (open) CerealTheme.colorScheme.borderDark else InputBorder, MediumShape)
+                        .border(1.dp, if (open) InputBorderFocused else InputBorder, MediumShape)
                         .clickable(enabled = enabled) { open = true }
                         .semantics { contentDescription = label }
                         .padding(horizontal = 12.dp),

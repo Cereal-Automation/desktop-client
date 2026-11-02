@@ -43,6 +43,7 @@ import androidx.compose.ui.unit.sp
 import com.cereal.client.presentation.theme.CerealTheme
 import com.cereal.client.presentation.theme.CerealTypography
 import com.cereal.client.presentation.theme.cerealColors
+import com.cereal.client.presentation.theme.darkColorScheme
 import com.cereal.client.presentation.view.fields.FormField
 import com.cereal.client.presentation.view.fields.state.TextFieldState
 
@@ -309,6 +310,7 @@ fun SettingsToggleRow(
             checked = checked,
             enabled = enabled,
             onCheckedChange = onCheckedChange,
+            label = title,
         )
     }
 }
@@ -377,7 +379,9 @@ fun TestButton(
     }
 }
 
-internal val InputBorder = cerealColors.border
+// Input outlines need 3:1 against the fill and surface (WCAG 1.4.11); the subtle border token is ~1.2:1.
+internal val InputBorder = darkColorScheme.outline
+internal val InputBorderFocused = cerealColors.contentSecondary
 
 @Composable
 fun SettingsFieldRow(

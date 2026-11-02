@@ -64,6 +64,7 @@ import com.cereal.client.presentation.view.CerealOutlinedIconButton
 import com.cereal.client.presentation.view.CerealText
 import com.cereal.client.presentation.view.CerealTextButton
 import com.cereal.client.presentation.view.CerealTextField
+import com.cereal.client.presentation.view.announceChanges
 import com.cereal_automation.cereal_client.generated.resources.Res
 import com.cereal_automation.cereal_client.generated.resources.proxies_sync_back
 import com.cereal_automation.cereal_client.generated.resources.proxies_sync_cancel
@@ -680,7 +681,7 @@ private fun InlineBanner(
         horizontalArrangement = Arrangement.spacedBy(8.dp),
     ) {
         Icon(icon, contentDescription = null, tint = color, modifier = Modifier.size(15.dp))
-        CerealText(text = text, style = MaterialTheme.typography.bodySmall, color = color)
+        CerealText(text = text, modifier = Modifier.announceChanges(), style = MaterialTheme.typography.bodySmall, color = color)
     }
 }
 

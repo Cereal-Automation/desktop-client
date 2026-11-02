@@ -50,6 +50,7 @@ import com.cereal.client.presentation.view.ClickableUrlText
 import com.cereal.client.presentation.view.ConfirmationDialog
 import com.cereal.client.presentation.view.InfoBox
 import com.cereal.client.presentation.view.SectionLabel
+import com.cereal.client.presentation.view.announceChanges
 import com.cereal.client.presentation.view.fields.DropdownTextField
 import com.cereal.client.presentation.view.fields.FileField
 import com.cereal.client.presentation.view.fields.MAX_OPTION_CARDS
@@ -298,6 +299,7 @@ private fun ConfigSectionHeader(
         if (errorCount > 0) {
             CaptionText(
                 pluralStringResource(Res.plurals.section_error_count, errorCount, errorCount),
+                modifier = Modifier.announceChanges(),
                 color = MaterialTheme.colorScheme.error,
             )
         }
@@ -321,7 +323,7 @@ internal fun FormFieldContent(
     }
 
     is SwitchFieldState -> {
-        Switch(formFieldState)
+        Switch(configurationItem, formFieldState)
     }
 
     is DropDownFieldState<*> -> {
@@ -358,8 +360,11 @@ private fun SecretText(
 }
 
 @Composable
-private fun Switch(state: SwitchFieldState) {
-    SwitchField(state)
+private fun Switch(
+    configurationItem: ConfigurationItem,
+    state: SwitchFieldState,
+) {
+    SwitchField(state, label = configurationItem.definition.name)
 }
 
 @Composable

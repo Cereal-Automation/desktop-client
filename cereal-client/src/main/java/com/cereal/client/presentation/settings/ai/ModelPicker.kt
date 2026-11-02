@@ -40,6 +40,7 @@ import com.cereal.client.presentation.view.CerealCircularProgressIndicator
 import com.cereal.client.presentation.view.CerealText
 import com.cereal.client.presentation.view.CerealTextField
 import com.cereal.client.presentation.view.SettingsTextInput
+import com.cereal.client.presentation.view.announceChanges
 import com.cereal.client.presentation.view.fields.FormField
 import com.cereal.client.presentation.view.text
 import com.cereal_automation.cereal_client.generated.resources.Res
@@ -102,7 +103,7 @@ fun ModelPicker(form: LlmPresetFormState) {
                     Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                         CerealText(
                             list.message.text(),
-                            modifier = Modifier.weight(1f, fill = false),
+                            modifier = Modifier.weight(1f, fill = false).announceChanges(),
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.error,
                         )

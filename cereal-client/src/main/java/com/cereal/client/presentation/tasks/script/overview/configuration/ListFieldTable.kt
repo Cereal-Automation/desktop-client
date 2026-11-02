@@ -325,7 +325,7 @@ private fun TableCell(
         }
 
         is SwitchFieldState -> {
-            SwitchField(state, Modifier.padding(horizontal = 10.dp))
+            SwitchField(state, Modifier.padding(horizontal = 10.dp), label = field.name)
         }
 
         // ponytail: a dropdown cell reuses the outlined dropdown as-is; give it a borderless variant if

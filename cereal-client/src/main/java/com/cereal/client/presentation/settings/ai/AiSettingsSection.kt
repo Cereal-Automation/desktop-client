@@ -17,6 +17,7 @@ import com.cereal.client.presentation.view.CerealText
 import com.cereal.client.presentation.view.SettingsButtonVariant
 import com.cereal.client.presentation.view.SettingsSectionCard
 import com.cereal.client.presentation.view.SettingsSmallButton
+import com.cereal.client.presentation.view.announceChanges
 import com.cereal.client.presentation.view.text
 import com.cereal_automation.cereal_client.generated.resources.Res
 import com.cereal_automation.cereal_client.generated.resources.ai
@@ -44,7 +45,7 @@ fun AiSettingsSection(vm: AiSettingsViewModel = rememberAiSettingsViewModel()) {
             val status = vm.connectionStatus.value
             CerealText(
                 text = status.text(),
-                modifier = Modifier.weight(1f),
+                modifier = Modifier.weight(1f).announceChanges(),
                 color = if (status is ConnectionStatus.Failed) MaterialTheme.colorScheme.error else CerealTheme.colorScheme.contentTertiary,
                 style = MaterialTheme.typography.bodyMedium.copy(lineHeight = 20.sp),
             )

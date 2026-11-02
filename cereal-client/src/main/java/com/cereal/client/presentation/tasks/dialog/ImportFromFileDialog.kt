@@ -40,6 +40,7 @@ import com.cereal.client.presentation.view.CerealOutlinedButton
 import com.cereal.client.presentation.view.CerealText
 import com.cereal.client.presentation.view.CerealTextButton
 import com.cereal.client.presentation.view.Dialog
+import com.cereal.client.presentation.view.announceChanges
 import com.cereal.client.presentation.view.rememberFileDialogLauncher
 import com.cereal_automation.cereal_client.generated.resources.Res
 import com.cereal_automation.cereal_client.generated.resources.import
@@ -124,6 +125,7 @@ fun ImportFromFileDialog(
             if (errorMessage != null) {
                 CerealText(
                     text = errorMessage,
+                    modifier = Modifier.announceChanges(),
                     color = MaterialTheme.colorScheme.error,
                     style = MaterialTheme.typography.bodyMedium,
                 )

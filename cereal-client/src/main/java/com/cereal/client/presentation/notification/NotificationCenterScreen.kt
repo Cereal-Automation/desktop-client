@@ -37,6 +37,7 @@ import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.ripple
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
@@ -225,7 +226,8 @@ private fun NotificationRow(
                 .background(if (expanded) MaterialTheme.colorScheme.surface else MaterialTheme.colorScheme.background)
                 .clickable(
                     onClick = onToggle,
-                    indication = null,
+                    // Ripple (not null) so keyboard focus is visible.
+                    indication = ripple(),
                     interactionSource = remember { MutableInteractionSource() },
                 ),
     ) {

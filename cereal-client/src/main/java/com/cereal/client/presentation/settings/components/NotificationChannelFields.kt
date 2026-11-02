@@ -213,13 +213,15 @@ fun EmailUseTlsField(
     useTls: MutableState<Boolean>,
     onUseTlsChange: (Boolean) -> Unit,
 ) {
+    val label = stringResource(Res.string.email_use_tls)
     SettingsFieldRow(
-        label = stringResource(Res.string.email_use_tls),
+        label = label,
         description = stringResource(Res.string.email_use_tls_desc),
     ) {
         CerealToggle(
             checked = useTls.value,
             onCheckedChange = onUseTlsChange,
+            label = label,
         )
     }
 }
