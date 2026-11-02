@@ -345,7 +345,7 @@ fun ApplicationSettingsScreen(
 
                 // Developers Section
                 item {
-                    SettingsSectionCard(title = stringResource(Res.string.developers), noBorder = true) {
+                    SettingsSectionCard(title = stringResource(Res.string.developers)) {
                         SettingsToggleRow(
                             title = stringResource(Res.string.show_development_scripts),
                             description = stringResource(Res.string.show_development_scripts_desc),
