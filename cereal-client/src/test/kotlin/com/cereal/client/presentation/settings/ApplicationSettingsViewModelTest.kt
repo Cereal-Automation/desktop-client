@@ -307,6 +307,31 @@ class ApplicationSettingsViewModelTest {
         }
 
     @Test
+    fun `channel toggles save only their own enabled flag`() =
+        runTest {
+            val saved = mutableListOf<SaveAllNotificationSettingsInteractor.Params>()
+            coEvery { saveAllNotificationSettingsInteractor(capture(saved), any()) } returns Unit
+            createViewModel()
+            viewModel.telegramBotTokenState.text = "half-typed"
+
+            viewModel.setDesktopNotificationsEnabled(false)
+            viewModel.setTelegramEnabled(true)
+            viewModel.setDiscordWebhookEnabled(true)
+            viewModel.setEmailEnabled(false)
+            dispatcher.scheduler.advanceUntilIdle()
+
+            assertEquals(
+                listOf(
+                    SaveAllNotificationSettingsInteractor.Params(desktopNotificationsEnabled = false),
+                    SaveAllNotificationSettingsInteractor.Params(telegramEnabled = true),
+                    SaveAllNotificationSettingsInteractor.Params(discordEnabled = true),
+                    SaveAllNotificationSettingsInteractor.Params(emailEnabled = false),
+                ),
+                saved,
+            )
+        }
+
+    @Test
     fun `saveAllNotifications shows success feedback and invokes interactor`() =
         runTest {
             coEvery { saveAllNotificationSettingsInteractor(any(), any()) } coAnswers {

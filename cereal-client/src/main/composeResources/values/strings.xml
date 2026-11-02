@@ -93,8 +93,8 @@
     <string name="enable_email_desc">Send task alerts by email over SMTP.</string>
     <string name="enable_telegram">Telegram</string>
     <string name="enable_telegram_desc">Send task alerts to Telegram.</string>
-    <string name="enable_webhook">Discord</string>
-    <string name="enable_webhook_desc">Send task alerts to a Discord webhook.</string>
+    <string name="enable_webhook">Discord webhook</string>
+    <string name="enable_webhook_desc">Send task alerts to a Discord channel.</string>
     <string name="error">Error</string>
     <string name="error_refreshing_scripts">Error refreshing scripts</string>
     <string name="expand">Expand</string>
@@ -178,7 +178,7 @@
     <string name="log_filter_warn">WARN</string>
     <string name="logout">Sign out</string>
     <string name="logs_directory">Logs directory</string>
-    <string name="logs_directory_desc">Opens the logs directory.</string>
+    <string name="logs_directory_desc">Find the log files to attach to a bug report.</string>
     <string name="marketplace">Marketplace</string>
     <string name="marketplace_already_installed">Already installed</string>
     <string name="marketplace_start_new_instance">Start new instance</string>

@@ -264,6 +264,7 @@ class ApplicationSettingsViewModel(
 
     fun setDesktopNotificationsEnabled(enabled: Boolean) {
         _desktopNotificationsEnabled.value = enabled
+        saveNotificationToggle(SaveAllNotificationSettingsInteractor.Params(desktopNotificationsEnabled = enabled))
     }
 
     fun setDevelopmentScriptsEnabled(enabled: Boolean) {
@@ -329,6 +330,7 @@ class ApplicationSettingsViewModel(
 
     fun setDiscordWebhookEnabled(enabled: Boolean) {
         _discordWebhookEnabledState.value = enabled
+        saveNotificationToggle(SaveAllNotificationSettingsInteractor.Params(discordEnabled = enabled))
     }
 
     private fun setSuccessFeedback(message: String) {
@@ -380,10 +382,22 @@ class ApplicationSettingsViewModel(
 
     fun setTelegramEnabled(enabled: Boolean) {
         _telegramEnabled.value = enabled
+        saveNotificationToggle(SaveAllNotificationSettingsInteractor.Params(telegramEnabled = enabled))
     }
 
     fun setEmailEnabled(enabled: Boolean) {
         _emailEnabled.value = enabled
+        saveNotificationToggle(SaveAllNotificationSettingsInteractor.Params(emailEnabled = enabled))
+    }
+
+    /**
+     * Channel toggles save on click like every other toggle on the screen; only the channel's own
+     * flag is written, so half-typed fields in its panel wait for that panel's Save.
+     */
+    private fun saveNotificationToggle(params: SaveAllNotificationSettingsInteractor.Params) {
+        interactorRunner.launch(saveAllNotificationSettingsInteractor, params) {
+            // No-op, the state above is the only publisher.
+        }
     }
 
     fun setEmailUseTls(useTls: Boolean) {

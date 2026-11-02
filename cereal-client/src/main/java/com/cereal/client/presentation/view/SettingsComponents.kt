@@ -87,67 +87,35 @@ fun SettingsSmallButton(
 @Composable
 fun SettingsSectionCard(
     title: String,
-    noBorder: Boolean = false,
     modifier: Modifier = Modifier,
     content: @Composable ColumnScope.() -> Unit,
 ) {
-    if (noBorder) {
-        Column(modifier = modifier.fillMaxWidth()) {
-            Box(
-                modifier =
-                    Modifier
-                        .fillMaxWidth()
-                        .drawBehind {
-                            drawLine(
-                                color = SectionBorder,
-                                start = Offset(0f, size.height),
-                                end = Offset(size.width, size.height),
-                                strokeWidth = 1f,
-                            )
-                        }.padding(top = 5.dp, bottom = 15.dp), // 4/12 × 1.25
-            ) {
-                CerealText(
-                    text = title,
-                    style =
-                        MaterialTheme.typography.titleMedium.copy(
-                            letterSpacing = 0.3.sp,
-                            color = Color.White,
-                        ),
-                )
-            }
-            // 6px × 1.25
-            Column(modifier = Modifier.fillMaxWidth().padding(top = 8.dp)) {
-                content()
-            }
-        }
-    } else {
-        Column(
+    Column(
+        modifier =
+            modifier
+                .fillMaxWidth()
+                .clip(RoundedCornerShape(15.dp)) // 12px × 1.25
+                .border(1.dp, SectionBorder, RoundedCornerShape(15.dp))
+                .background(MaterialTheme.colorScheme.surface, RoundedCornerShape(15.dp)),
+    ) {
+        Box(
             modifier =
-                modifier
+                Modifier
                     .fillMaxWidth()
-                    .clip(RoundedCornerShape(15.dp)) // 12px × 1.25
-                    .border(1.dp, SectionBorder, RoundedCornerShape(15.dp))
-                    .background(MaterialTheme.colorScheme.surface, RoundedCornerShape(15.dp)),
+                    .background(CerealTheme.colorScheme.surfaceHeader)
+                    .padding(horizontal = 22.dp, vertical = 18.dp), // 18/14 × 1.25
         ) {
-            Box(
-                modifier =
-                    Modifier
-                        .fillMaxWidth()
-                        .background(CerealTheme.colorScheme.surfaceHeader)
-                        .padding(horizontal = 22.dp, vertical = 18.dp), // 18/14 × 1.25
-            ) {
-                CerealText(
-                    text = title,
-                    style =
-                        MaterialTheme.typography.titleMedium.copy(
-                            letterSpacing = 0.3.sp,
-                            color = Color.White,
-                        ),
-                )
-            }
-            Column(modifier = Modifier.fillMaxWidth()) {
-                content()
-            }
+            CerealText(
+                text = title,
+                style =
+                    MaterialTheme.typography.titleMedium.copy(
+                        letterSpacing = 0.3.sp,
+                        color = Color.White,
+                    ),
+            )
+        }
+        Column(modifier = Modifier.fillMaxWidth()) {
+            content()
         }
     }
 }
@@ -365,17 +333,20 @@ fun ConfigurationPanel(content: @Composable ColumnScope.() -> Unit) {
     }
 }
 
+/** Footer of a channel's [ConfigurationPanel]: test the typed values, then save them. */
 @Composable
-fun TestButton(
-    text: String,
-    onClick: () -> Unit,
+fun ConfigurationPanelActions(
+    testText: String,
+    onTest: () -> Unit,
+    saveText: String,
+    onSave: () -> Unit,
 ) {
-    Box(modifier = Modifier.fillMaxWidth(), contentAlignment = Alignment.CenterEnd) {
-        SettingsSmallButton(
-            text = text,
-            onClick = onClick,
-            variant = SettingsButtonVariant.Ghost,
-        )
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.End), // 6px × 1.25
+    ) {
+        SettingsSmallButton(text = testText, onClick = onTest, variant = SettingsButtonVariant.Ghost)
+        SettingsSmallButton(text = saveText, onClick = onSave, variant = SettingsButtonVariant.Primary)
     }
 }
 
