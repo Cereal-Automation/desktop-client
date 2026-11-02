@@ -30,7 +30,7 @@ class LoginScreenTest {
 
             onNodeWithText("Email").assertIsDisplayed()
             onNodeWithText("Password").assertIsDisplayed()
-            onNodeWithText("Sign In").assertIsDisplayed()
+            onNodeWithText("Sign in").assertIsDisplayed()
             onNodeWithText("Forgot password?").assertIsDisplayed()
         }
 
@@ -49,7 +49,7 @@ class LoginScreenTest {
 
             // The footer label is rendered with a trailing space, so match on a substring.
             onNodeWithText("New to Cereal?", substring = true).assertExists()
-            onNodeWithText("Create an account").assertExists()
+            onNodeWithText("Create account").assertExists()
         }
 
     @Test
@@ -72,8 +72,8 @@ class LoginScreenTest {
             onAllNodes(hasSetTextAction())[1].performTextInput("hunter2")
 
             // The submit button stays present and clickable after entering credentials.
-            onNodeWithText("Sign In").performClick()
-            onNodeWithText("Sign In").assertExists()
+            onNodeWithText("Sign in").performClick()
+            onNodeWithText("Sign in").assertExists()
         }
 
     @Test
@@ -82,7 +82,7 @@ class LoginScreenTest {
             setScreenContent { LoginScreenUnderTest() }
 
             onNodeWithText("Forgot password?").performClick()
-            onNodeWithText("Create an account").performClick()
+            onNodeWithText("Create account").performClick()
 
             onNodeWithText("Forgot password?").assertExists()
         }

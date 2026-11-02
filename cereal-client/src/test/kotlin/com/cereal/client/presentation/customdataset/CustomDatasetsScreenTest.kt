@@ -35,7 +35,7 @@ class CustomDatasetsScreenTest {
 
             // Column headers are rendered upper-cased by PaneTableHeader.
             onNodeWithText("NAME").assertIsDisplayed()
-            onNodeWithText("ROWS").assertIsDisplayed()
+            onNodeWithText("RECORDS").assertIsDisplayed()
             onNodeWithText("CREATED").assertIsDisplayed()
 
             // A deterministic seeded group and its thousands-formatted row count. The separator is
@@ -70,9 +70,9 @@ class CustomDatasetsScreenTest {
             onAllNodesWithContentDescription("Import").onFirst().performClick()
 
             // ImportFromFileDialog renders its required-fields section and import description.
-            waitUntilAtLeastOneExists(hasText("Required Fields:"), LOAD_TIMEOUT_MS)
-            onNodeWithText("Required Fields:").assertIsDisplayed()
-            onNodeWithText("Upload your data in CSV format. Make sure it matches the required structure.")
+            waitUntilAtLeastOneExists(hasText("Required fields:"), LOAD_TIMEOUT_MS)
+            onNodeWithText("Required fields:").assertIsDisplayed()
+            onNodeWithText("Import a CSV that matches the fields below. Download the template to start.")
                 .assertIsDisplayed()
         }
 

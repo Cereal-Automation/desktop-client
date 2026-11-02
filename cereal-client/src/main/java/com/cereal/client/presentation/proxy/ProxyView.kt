@@ -126,6 +126,7 @@ import com.cereal_automation.cereal_client.generated.resources.proxies_records_c
 import com.cereal_automation.cereal_client.generated.resources.proxies_source_file
 import com.cereal_automation.cereal_client.generated.resources.status
 import kotlinx.coroutines.CoroutineScope
+import org.jetbrains.compose.resources.pluralStringResource
 import org.jetbrains.compose.resources.stringResource
 import org.koin.compose.koinInject
 import org.koin.core.parameter.parametersOf
@@ -550,7 +551,7 @@ private fun ProxyDetailsView(
 ) {
     PaneDetailsHeader(
         title = group.name,
-        crumb = stringResource(Res.string.proxies_records_crumb, group.numberOfItems),
+        crumb = pluralStringResource(Res.plurals.proxies_records_crumb, group.numberOfItems, group.numberOfItems),
         backContentDescription = stringResource(Res.string.proxies_action_back),
         onBack = onBack,
         actions = {

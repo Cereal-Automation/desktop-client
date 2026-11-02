@@ -37,7 +37,7 @@ class NoAiProviderWarningScreenTest {
                 )
             }
             waitUntil(timeoutMillis = 5_000) {
-                onAllNodesWithText("Notification Overrides").fetchSemanticsNodes().isNotEmpty()
+                onAllNodesWithText("Notification overrides").fetchSemanticsNodes().isNotEmpty()
             }
 
             onNodeWithText("Start task").performClick()

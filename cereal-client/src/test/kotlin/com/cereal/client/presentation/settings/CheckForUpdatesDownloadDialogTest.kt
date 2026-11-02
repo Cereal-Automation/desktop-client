@@ -26,14 +26,14 @@ class CheckForUpdatesDownloadDialogTest {
             setScreenContent {
                 CheckForUpdatesDownloadDialog(
                     progress = 0.5f,
-                    statusText = "Downloading update...",
+                    statusText = "Downloading update…",
                     installerFile = null,
                     onOpenInstaller = {},
                     onDismiss = {},
                 )
             }
 
-            onNodeWithText("Downloading update...").assertIsDisplayed()
+            onNodeWithText("Downloading update…").assertIsDisplayed()
         }
 
     @Test
@@ -51,8 +51,8 @@ class CheckForUpdatesDownloadDialogTest {
                 )
             }
 
-            // installer_timer = "Installing update in %1$d seconds..." starting at 5.
-            onNodeWithText("Installing update in 5 seconds...").assertIsDisplayed()
+            // installer_timer = "Installing update in %1$d seconds…" starting at 5.
+            onNodeWithText("Installing update in 5 seconds…").assertIsDisplayed()
             onNodeWithText("UPDATE").assertIsDisplayed()
         }
 

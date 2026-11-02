@@ -109,6 +109,7 @@ import com.cereal_automation.cereal_client.generated.resources.proxies_sync_targ
 import com.cereal_automation.cereal_client.generated.resources.proxies_sync_target_select
 import com.cereal_automation.cereal_client.generated.resources.proxies_sync_title
 import com.cereal_automation.cereal_client.generated.resources.proxies_sync_zero_traffic
+import org.jetbrains.compose.resources.pluralStringResource
 import org.jetbrains.compose.resources.stringResource
 
 private val DialogWidth = 600.dp
@@ -534,7 +535,7 @@ private fun DoneStep(state: SyncWizardState.Open) {
             Icon(Icons.Outlined.CheckCircle, contentDescription = null, tint = CerealTheme.colorScheme.success, modifier = Modifier.size(34.dp))
         }
         CerealText(
-            text = stringResource(Res.string.proxies_sync_done_title, "%,d".format(done.syncedCount)),
+            text = pluralStringResource(Res.plurals.proxies_sync_done_title, done.syncedCount, "%,d".format(done.syncedCount)),
             style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold),
             color = MaterialTheme.colorScheme.onBackground,
         )

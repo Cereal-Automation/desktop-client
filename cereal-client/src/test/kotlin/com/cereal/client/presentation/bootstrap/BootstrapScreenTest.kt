@@ -24,7 +24,7 @@ class BootstrapScreenTest {
             setScreenContent { BootstrapScreen(onCompleted = {}) }
 
             // The app icon image is shown for the entire bootstrap progress and carries the
-            // "App Icon" content description (Res.string.app_icon).
-            onNodeWithContentDescription("App Icon").assertIsDisplayed()
+            // "App icon" content description (Res.string.app_icon).
+            onNodeWithContentDescription("App icon").assertIsDisplayed()
         }
 }

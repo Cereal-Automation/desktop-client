@@ -41,7 +41,7 @@ class MainScreenTest {
             // present rather than expecting a single node. The remaining items are sidebar-only here.
             onAllNodesWithText("Tasks").onFirst().assertIsDisplayed()
             onNodeWithText("Notifications").assertIsDisplayed()
-            onNodeWithText("My Scripts").assertIsDisplayed()
+            onNodeWithText("My scripts").assertIsDisplayed()
             onNodeWithText("Marketplace").assertIsDisplayed()
             onNodeWithText("Proxies").assertIsDisplayed()
             onNodeWithText("Datasets").assertIsDisplayed()

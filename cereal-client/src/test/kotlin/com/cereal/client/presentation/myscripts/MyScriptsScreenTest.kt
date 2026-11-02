@@ -42,7 +42,7 @@ class MyScriptsScreenTest {
         runScreenTest {
             setScreenContent { MyScriptsScreen(onOpenMarketplace = {}) }
 
-            onNodeWithText("My Scripts").assertIsDisplayed()
+            onNodeWithText("My scripts").assertIsDisplayed()
             onNodeWithText("No scripts installed yet").assertIsDisplayed()
             onNodeWithText("Browse marketplace").assertIsDisplayed()
         }

@@ -393,7 +393,7 @@ class HomeViewModelTest {
             vm.onStart()
             advanceUntilIdle()
 
-            assertEquals("A value is required", vm.field("goal").error)
+            assertEquals("Required", vm.field("goal").error)
             assertTrue(world.scriptInstances.getScriptPackageInstances().isEmpty())
         }
 
