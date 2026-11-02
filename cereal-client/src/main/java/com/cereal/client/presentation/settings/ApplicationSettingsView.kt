@@ -2,24 +2,23 @@ package com.cereal.client.presentation.settings
 
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.Image
-import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Code
-import androidx.compose.material.icons.filled.FolderOpen
 import androidx.compose.material.icons.filled.Forum
 import androidx.compose.material.icons.filled.Public
 import androidx.compose.material3.AlertDialog
@@ -53,6 +52,7 @@ import com.cereal.client.presentation.theme.CerealTypography
 import com.cereal.client.presentation.view.CerealText
 import com.cereal.client.presentation.view.CerealTextButton
 import com.cereal.client.presentation.view.ConfigurationPanel
+import com.cereal.client.presentation.view.ConfigurationPanelActions
 import com.cereal.client.presentation.view.ConfirmationDialog
 import com.cereal.client.presentation.view.SettingsActionRow
 import com.cereal.client.presentation.view.SettingsButtonVariant
@@ -60,7 +60,6 @@ import com.cereal.client.presentation.view.SettingsSectionCard
 import com.cereal.client.presentation.view.SettingsSectionRow
 import com.cereal.client.presentation.view.SettingsSmallButton
 import com.cereal.client.presentation.view.SettingsToggleRow
-import com.cereal.client.presentation.view.TestButton
 import com.cereal_automation.cereal_client.generated.resources.Res
 import com.cereal_automation.cereal_client.generated.resources.app_icon
 import com.cereal_automation.cereal_client.generated.resources.application
@@ -124,8 +123,9 @@ import org.koin.compose.koinInject
 import org.koin.core.parameter.parametersOf
 import org.koin.java.KoinJavaComponent
 
-private const val AI_SECTION_INDEX = 3
-private const val PRIVACY_SECTION_INDEX = 6
+// LazyColumn item indices: header, general, AI, notifications, proxies, privacy, …
+private const val AI_SECTION_INDEX = 2
+private const val PRIVACY_SECTION_INDEX = 5
 
 @Composable
 @ExperimentalFoundationApi
@@ -165,48 +165,38 @@ fun ApplicationSettingsScreen(
                         .padding(horizontal = 40.dp), // 32px × 1.25
                 verticalArrangement = Arrangement.spacedBy(50.dp), // 40px × 1.25
             ) {
-                // Header
+                // Header: compact so General starts above the fold.
                 item {
-                    Column(
-                        modifier = Modifier.fillMaxWidth().padding(top = 50.dp), // 40px × 1.25
-                        horizontalAlignment = Alignment.CenterHorizontally,
+                    Row(
+                        modifier = Modifier.fillMaxWidth().padding(top = 40.dp), // 32px × 1.25
+                        verticalAlignment = Alignment.CenterVertically,
                     ) {
-                        Box(
+                        Image(
+                            painter = painterResource(Res.drawable.application),
+                            contentDescription = stringResource(Res.string.app_icon),
                             modifier =
                                 Modifier
-                                    .size(90.dp) // 72px × 1.25
-                                    .background(MaterialTheme.colorScheme.surface, RoundedCornerShape(20.dp)) // 16 × 1.25
-                                    .border(1.dp, CerealTheme.colorScheme.border, RoundedCornerShape(20.dp))
-                                    .padding(12.dp), // 10 × 1.25 ≈ 12
-                            contentAlignment = Alignment.Center,
-                        ) {
-                            Image(
-                                painter = painterResource(Res.drawable.application),
-                                contentDescription = stringResource(Res.string.app_icon),
-                                modifier =
-                                    Modifier
-                                        .fillMaxSize()
-                                        .clip(RoundedCornerShape(10.dp)), // 8 × 1.25
-                                contentScale = ContentScale.Fit,
+                                    .size(40.dp) // 32px × 1.25
+                                    .clip(RoundedCornerShape(10.dp)), // 8 × 1.25
+                            contentScale = ContentScale.Fit,
+                        )
+                        Spacer(modifier = Modifier.width(15.dp)) // 12 × 1.25
+                        Column {
+                            CerealText(
+                                text = applicationConfig.name,
+                                style =
+                                    MaterialTheme.typography.titleLarge.copy(
+                                        color = MaterialTheme.colorScheme.onSurface,
+                                    ),
+                            )
+                            CerealText(
+                                text = stringResource(Res.string.version, applicationConfig.versionName).uppercase(),
+                                style =
+                                    CerealTypography.sectionLabel.copy(
+                                        color = CerealTheme.colorScheme.contentTertiary,
+                                    ),
                             )
                         }
-                        Spacer(modifier = Modifier.height(18.dp)) // 14 × 1.25
-                        CerealText(
-                            text = applicationConfig.name,
-                            style =
-                                MaterialTheme.typography.headlineMedium.copy(
-                                    letterSpacing = (-0.25).sp,
-                                    color = MaterialTheme.colorScheme.onSurface,
-                                ),
-                        )
-                        CerealText(
-                            text = stringResource(Res.string.version, applicationConfig.versionName).uppercase(),
-                            style =
-                                CerealTypography.sectionLabel.copy(
-                                    color = CerealTheme.colorScheme.contentTertiary,
-                                ),
-                            modifier = Modifier.padding(top = 3.dp), // 2 × 1.25
-                        )
                     }
                 }
 
@@ -236,6 +226,11 @@ fun ApplicationSettingsScreen(
                     }
                 }
 
+                // AI Section, keep at AI_SECTION_INDEX.
+                item {
+                    AiSettingsSection(aiVm)
+                }
+
                 // Notifications Section
                 item {
                     SettingsSectionCard(title = stringResource(Res.string.notifications)) {
@@ -260,9 +255,11 @@ fun ApplicationSettingsScreen(
                                     botTokenState = vm.telegramBotTokenState,
                                     chatIdState = vm.telegramChatIdState,
                                 )
-                                TestButton(
-                                    text = stringResource(Res.string.test_message),
-                                    onClick = { vm.testTelegramMessage() },
+                                ConfigurationPanelActions(
+                                    testText = stringResource(Res.string.test_message),
+                                    onTest = { vm.testTelegramMessage() },
+                                    saveText = stringResource(Res.string.save),
+                                    onSave = { vm.saveAllNotifications() },
                                 )
                             }
                         }
@@ -278,9 +275,11 @@ fun ApplicationSettingsScreen(
                         if (vm.discordWebhookEnabledState.value) {
                             ConfigurationPanel {
                                 DiscordWebhookUrlField(vm.discordWebhookUrlState)
-                                TestButton(
-                                    text = stringResource(Res.string.test_webhook),
-                                    onClick = { vm.testDiscordWebhook() },
+                                ConfigurationPanelActions(
+                                    testText = stringResource(Res.string.test_webhook),
+                                    onTest = { vm.testDiscordWebhook() },
+                                    saveText = stringResource(Res.string.save),
+                                    onSave = { vm.saveAllNotifications() },
                                 )
                             }
                         }
@@ -305,69 +304,14 @@ fun ApplicationSettingsScreen(
                                     useTls = vm.emailUseTls,
                                     onUseTlsChange = { vm.setEmailUseTls(it) },
                                 )
-                                TestButton(
-                                    text = stringResource(Res.string.test_message),
-                                    onClick = { vm.testEmailMessage() },
+                                ConfigurationPanelActions(
+                                    testText = stringResource(Res.string.test_message),
+                                    onTest = { vm.testEmailMessage() },
+                                    saveText = stringResource(Res.string.save),
+                                    onSave = { vm.saveAllNotifications() },
                                 )
                             }
                         }
-
-                        // Save Button
-                        Box(
-                            modifier =
-                                Modifier
-                                    .fillMaxWidth()
-                                    .padding(horizontal = 22.dp, vertical = 18.dp), // 18/14 × 1.25
-                            contentAlignment = Alignment.CenterEnd,
-                        ) {
-                            SettingsSmallButton(
-                                text = stringResource(Res.string.save),
-                                onClick = { vm.saveAllNotifications() },
-                                variant = SettingsButtonVariant.Primary,
-                            )
-                        }
-                    }
-                }
-
-                // Keep at AI_SECTION_INDEX (header, general, notifications come first).
-                item {
-                    AiSettingsSection(aiVm)
-                }
-
-                // Get In Touch Section
-                item {
-                    SettingsSectionCard(title = stringResource(Res.string.get_in_touch)) {
-                        SettingsActionRow(
-                            title = stringResource(Res.string.discord_servers),
-                            description = stringResource(Res.string.discord_servers_desc),
-                            actionText = stringResource(Res.string.visit),
-                            icon = { GetInTouchIcon(Icons.Default.Forum) },
-                            onClick = { vm.openUrl(applicationConfig.discordUrl) },
-                        )
-
-                        SettingsActionRow(
-                            title = stringResource(Res.string.github),
-                            description = stringResource(Res.string.github_desc),
-                            actionText = stringResource(Res.string.visit),
-                            icon = { GetInTouchIcon(Icons.Default.Code) },
-                            onClick = { vm.openUrl(applicationConfig.githubUrl) },
-                        )
-
-                        SettingsActionRow(
-                            title = stringResource(Res.string.website),
-                            description = stringResource(Res.string.website_desc),
-                            actionText = stringResource(Res.string.visit),
-                            icon = { GetInTouchIcon(Icons.Default.Public) },
-                            onClick = { vm.openUrl(applicationConfig.websiteUrl) },
-                        )
-
-                        SettingsActionRow(
-                            title = stringResource(Res.string.logs_directory),
-                            description = stringResource(Res.string.logs_directory_desc),
-                            actionText = stringResource(Res.string.open),
-                            icon = { GetInTouchIcon(Icons.Default.FolderOpen) },
-                            onClick = { vm.openPath(applicationConfig.logsDirectory) },
-                        )
                     }
                 }
 
@@ -414,6 +358,41 @@ fun ApplicationSettingsScreen(
                             description = stringResource(Res.string.show_debug_logs_desc),
                             checked = vm.showDebugLogsEnabled.value,
                             onCheckedChange = { vm.setShowDebugLogs(it) },
+                        )
+                        SettingsActionRow(
+                            title = stringResource(Res.string.logs_directory),
+                            description = stringResource(Res.string.logs_directory_desc),
+                            actionText = stringResource(Res.string.open),
+                            onClick = { vm.openPath(applicationConfig.logsDirectory) },
+                        )
+                    }
+                }
+
+                // Get In Touch Section
+                item {
+                    SettingsSectionCard(title = stringResource(Res.string.get_in_touch)) {
+                        SettingsActionRow(
+                            title = stringResource(Res.string.discord_servers),
+                            description = stringResource(Res.string.discord_servers_desc),
+                            actionText = stringResource(Res.string.visit),
+                            icon = { GetInTouchIcon(Icons.Default.Forum) },
+                            onClick = { vm.openUrl(applicationConfig.discordUrl) },
+                        )
+
+                        SettingsActionRow(
+                            title = stringResource(Res.string.github),
+                            description = stringResource(Res.string.github_desc),
+                            actionText = stringResource(Res.string.visit),
+                            icon = { GetInTouchIcon(Icons.Default.Code) },
+                            onClick = { vm.openUrl(applicationConfig.githubUrl) },
+                        )
+
+                        SettingsActionRow(
+                            title = stringResource(Res.string.website),
+                            description = stringResource(Res.string.website_desc),
+                            actionText = stringResource(Res.string.visit),
+                            icon = { GetInTouchIcon(Icons.Default.Public) },
+                            onClick = { vm.openUrl(applicationConfig.websiteUrl) },
                         )
                     }
                 }
@@ -506,7 +485,7 @@ private fun ProxyHealthCheckIntervalRow(
         title = stringResource(Res.string.settings_proxy_health_check_title),
         description = stringResource(Res.string.settings_proxy_health_check_desc),
     ) {
-        androidx.compose.foundation.layout.Row(
+        Row(
             horizontalArrangement = Arrangement.spacedBy(CerealTheme.spacing.xs),
         ) {
             com.cereal.client.domain.model.settings.ProxyHealthCheckInterval.entries.forEach { option ->

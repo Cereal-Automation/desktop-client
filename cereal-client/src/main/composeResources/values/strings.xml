@@ -51,7 +51,7 @@
     <string name="delete_script_instance_confirmation_title">Delete task setup?</string>
     <string name="delete_script_instance_confirmation_message">Delete &#8220;%1$s&#8221;? This will stop and remove all running tasks.</string>
     <string name="desktop_notifications">Desktop</string>
-    <string name="desktop_notifications_desc">Enable desktop notifications.</string>
+    <string name="desktop_notifications_desc">Show notifications from your scripts as system notifications.</string>
     <string name="developers">Developers</string>
     <string name="disabled">Disabled</string>
     <string name="discord">Discord</string>
@@ -90,11 +90,11 @@
     <string name="enable_discord_status">Enable Discord status</string>
     <string name="enable_discord_status_desc">Shows your status and activity in the Discord user panel.</string>
     <string name="enable_email">Email</string>
-    <string name="enable_email_desc">Enable email notifications via SMTP.</string>
+    <string name="enable_email_desc">Email notifications from your scripts through your own SMTP server.</string>
     <string name="enable_telegram">Telegram</string>
-    <string name="enable_telegram_desc">Enable Telegram notifications.</string>
-    <string name="enable_webhook">Discord</string>
-    <string name="enable_webhook_desc">Enable Discord webhook notifications.</string>
+    <string name="enable_telegram_desc">Send notifications from your scripts to a Telegram chat through your own bot.</string>
+    <string name="enable_webhook">Discord webhook</string>
+    <string name="enable_webhook_desc">Post notifications from your scripts to a Discord channel.</string>
     <string name="error">Error</string>
     <string name="error_refreshing_scripts">Error refreshing scripts</string>
     <string name="expand">Expand</string>
@@ -178,7 +178,7 @@
     <string name="log_filter_warn">WARN</string>
     <string name="logout">Logout</string>
     <string name="logs_directory">Logs directory</string>
-    <string name="logs_directory_desc">Opens the logs directory.</string>
+    <string name="logs_directory_desc">Find the log files to attach to a bug report.</string>
     <string name="marketplace">Marketplace</string>
     <string name="marketplace_already_installed">Already installed</string>
     <string name="marketplace_start_new_instance">Start new instance</string>

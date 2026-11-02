@@ -363,17 +363,20 @@ fun ConfigurationPanel(content: @Composable ColumnScope.() -> Unit) {
     }
 }
 
+/** Footer of a channel's [ConfigurationPanel]: test the typed values, then save them. */
 @Composable
-fun TestButton(
-    text: String,
-    onClick: () -> Unit,
+fun ConfigurationPanelActions(
+    testText: String,
+    onTest: () -> Unit,
+    saveText: String,
+    onSave: () -> Unit,
 ) {
-    Box(modifier = Modifier.fillMaxWidth(), contentAlignment = Alignment.CenterEnd) {
-        SettingsSmallButton(
-            text = text,
-            onClick = onClick,
-            variant = SettingsButtonVariant.Ghost,
-        )
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.End), // 6px × 1.25
+    ) {
+        SettingsSmallButton(text = testText, onClick = onTest, variant = SettingsButtonVariant.Ghost)
+        SettingsSmallButton(text = saveText, onClick = onSave, variant = SettingsButtonVariant.Primary)
     }
 }
 
