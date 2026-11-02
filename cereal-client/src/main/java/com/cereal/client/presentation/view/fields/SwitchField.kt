@@ -10,11 +10,13 @@ import com.cereal.client.presentation.view.fields.state.SwitchFieldState
 fun SwitchField(
     state: SwitchFieldState,
     modifier: Modifier = Modifier,
+    label: String? = null,
 ) {
     FormField(state.error, modifier) {
         CerealToggle(
             checked = state.fieldValue,
             onCheckedChange = { state.onValueChange(it) },
+            label = label,
             modifier =
                 Modifier
                     .onFocusChanged { focusState ->

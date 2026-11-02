@@ -41,6 +41,7 @@ import com.cereal.client.presentation.view.CerealButton
 import com.cereal.client.presentation.view.CerealCircularProgressIndicator
 import com.cereal.client.presentation.view.CerealText
 import com.cereal.client.presentation.view.ClickableUrlText
+import com.cereal.client.presentation.view.announceChanges
 import com.cereal.client.presentation.view.text
 import com.cereal_automation.cereal_client.generated.resources.Res
 import com.cereal_automation.cereal_client.generated.resources.ai_api_key
@@ -120,6 +121,7 @@ internal fun HomeConnectForm(viewModel: HomeAiProviderViewModel) {
             val footError = connectError.takeUnless { hasKey }
             CerealText(
                 text = footError ?: stringResource(if (hasKey) Res.string.home_ai_connect_hint else Res.string.home_ai_connect_hint_local),
+                modifier = Modifier.announceChanges(),
                 style = MaterialTheme.typography.bodySmall,
                 color = if (footError != null) MaterialTheme.colorScheme.error else CerealTheme.colorScheme.contentTertiary,
             )

@@ -20,7 +20,8 @@ class CerealColors(
     /** Recessed panels, e.g. tables nested inside a card. */
     val surfaceSunken: Color = Color(0xFF121212),
     val inputBackground: Color = Color(0xFF1C1C1C),
-    val inputPlaceholder: Color = Color(0xFF5A5A5A),
+    /** 4.6:1 on [inputBackground]; placeholder text still needs AA contrast. */
+    val inputPlaceholder: Color = Color(0xFF858585),
     val success: Color = Color(0xFF2ECC71),
     /** Content on [success]; dark, because white on this green fails contrast. */
     val onSuccess: Color = Color(0xFF0C2418),
@@ -58,7 +59,8 @@ val darkColorScheme =
         surfaceTint = Color(0xFFE54848),
         inverseSurface = Color(0xFFE6E1E5),
         inverseOnSurface = Color(0xFF313033),
-        error = Color(0xFFE54848),
+        // Lighter than primary: error text is mostly small, and #E54848 is only 4.3:1 on the background.
+        error = Color(0xFFFF6B6B),
         onError = Color(0xFF1C1C1E),
         errorContainer = Color(0xFF93000A),
         onErrorContainer = Color(0xFFFFDAD6),

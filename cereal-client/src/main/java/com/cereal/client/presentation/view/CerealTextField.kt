@@ -29,7 +29,7 @@ import com.cereal.client.presentation.theme.CerealTheme
 
 /**
  * The app's one text input: the design's filled box (38dp single-line, taller when multi-line) with a
- * 1dp border that darkens on focus and turns red on error. Every text field renders through this so they
+ * 1dp border that brightens on focus and turns red on error. Every text field renders through this so they
  * all look alike; labels, help and error text belong to the caller.
  */
 @Composable
@@ -54,7 +54,7 @@ fun CerealTextField(
     val border =
         when {
             isError -> MaterialTheme.colorScheme.error
-            focused -> CerealTheme.colorScheme.borderDark
+            focused -> InputBorderFocused
             else -> InputBorder
         }
     val style = textStyle.copy(color = if (enabled) MaterialTheme.colorScheme.onSurface else CerealTheme.colorScheme.contentTertiary)

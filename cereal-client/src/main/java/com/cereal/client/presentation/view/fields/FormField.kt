@@ -13,6 +13,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.cereal.client.presentation.view.CerealText
+import com.cereal.client.presentation.view.announceChanges
 
 @Composable
 fun FormField(
@@ -38,7 +39,7 @@ fun FormField(
             Spacer(modifier = Modifier.height(4.dp))
             CerealText(
                 text = textError,
-                modifier = Modifier.fillMaxWidth(),
+                modifier = Modifier.fillMaxWidth().announceChanges(),
                 style = errorTextStyle,
             )
         }

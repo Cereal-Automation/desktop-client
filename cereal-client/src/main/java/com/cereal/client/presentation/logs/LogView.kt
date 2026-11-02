@@ -301,7 +301,8 @@ private fun AutoScrollControl(
                 .toggleable(
                     value = enabled,
                     interactionSource = remember { MutableInteractionSource() },
-                    indication = null,
+                    // Ripple (not null) so keyboard focus is visible.
+                    indication = ripple(),
                     role = Role.Switch,
                     onValueChange = onChange,
                 ),

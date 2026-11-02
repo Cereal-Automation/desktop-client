@@ -3,7 +3,7 @@ package com.cereal.client.presentation.view
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.PointerMatcher
 import androidx.compose.foundation.background
-import androidx.compose.foundation.indication
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.IntrinsicSize
@@ -38,6 +38,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.RectangleShape
@@ -68,6 +69,7 @@ fun ListItem(
 ) {
     var isOverflowMenuExpanded by remember { mutableStateOf(false) }
     var isHovering by remember { mutableStateOf(false) }
+    var hasFocusWithin by remember { mutableStateOf(false) }
     val interactionSource = remember { MutableInteractionSource() }
 
     Card(
@@ -79,16 +81,14 @@ fun ListItem(
                 .onClick(matcher = PointerMatcher.mouse(PointerButton.Secondary), onClick = {
                     isOverflowMenuExpanded = true
                 }, interactionSource = remember { interactionSource })
-                .indication(interactionSource, ripple(color = MaterialTheme.colorScheme.primary))
-                .onClick(
-                    matcher = PointerMatcher.mouse(PointerButton.Primary),
-                    onLongClick = {
-                        onLongClick?.invoke()
-                    },
-                    onClick = {
-                        onClick()
-                    },
-                    interactionSource = remember { interactionSource },
+                // Before the clickable so hasFocus covers the row itself and the actions inside it.
+                .onFocusChanged { hasFocusWithin = it.hasFocus }
+                // combinedClickable (not a mouse-only matcher) so the row is focusable and Enter/Space activate it.
+                .combinedClickable(
+                    interactionSource = interactionSource,
+                    indication = ripple(color = MaterialTheme.colorScheme.primary),
+                    onLongClick = onLongClick,
+                    onClick = onClick,
                 ).onPointerEvent(PointerEventType.Enter) {
                     isHovering = true
                 }.onPointerEvent(PointerEventType.Exit) {
@@ -150,7 +150,7 @@ fun ListItem(
                     ) {
                         content()
                     }
-                    val shouldShowActions = alwaysShowActions || isHovering || isOverflowMenuExpanded
+                    val shouldShowActions = alwaysShowActions || isHovering || hasFocusWithin || isOverflowMenuExpanded
                     if (shouldShowActions) {
                         hoverActions()
                     }

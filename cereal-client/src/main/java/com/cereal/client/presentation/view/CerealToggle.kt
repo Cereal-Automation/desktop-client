@@ -19,13 +19,16 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import com.cereal.client.presentation.theme.CerealTheme
 
 /**
  * On/off switch. Announced as a switch and keyboard-operable (Tab to focus, Space to flip), with a
  * focus ring. Pass a null [onCheckedChange] when a parent row is the `toggleable` (so the label is
- * clickable too); the switch then only renders state.
+ * clickable too); the switch then only renders state. Pass [label] when the visible title is a separate
+ * text, so screen readers announce what the switch controls.
  */
 @Composable
 fun CerealToggle(
@@ -33,6 +36,7 @@ fun CerealToggle(
     onCheckedChange: ((Boolean) -> Unit)?,
     modifier: Modifier = Modifier,
     enabled: Boolean = true,
+    label: String? = null,
 ) {
     val interactionSource = remember { MutableInteractionSource() }
     val focused by interactionSource.collectIsFocusedAsState()
@@ -42,14 +46,15 @@ fun CerealToggle(
     val shape = RoundedCornerShape(10.dp)
     val toggleModifier =
         if (onCheckedChange != null) {
-            Modifier.toggleable(
-                value = checked,
-                enabled = enabled,
-                role = Role.Switch,
-                interactionSource = interactionSource,
-                indication = null,
-                onValueChange = onCheckedChange,
-            )
+            Modifier
+                .toggleable(
+                    value = checked,
+                    enabled = enabled,
+                    role = Role.Switch,
+                    interactionSource = interactionSource,
+                    indication = null,
+                    onValueChange = onCheckedChange,
+                ).then(if (label != null) Modifier.semantics { contentDescription = label } else Modifier)
         } else {
             Modifier
         }

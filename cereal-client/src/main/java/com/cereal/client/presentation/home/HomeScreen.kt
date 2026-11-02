@@ -61,6 +61,7 @@ import com.cereal.client.presentation.view.CerealTextField
 import com.cereal.client.presentation.view.ConfirmationDialog
 import com.cereal.client.presentation.view.InfoBox
 import com.cereal.client.presentation.view.WarningBox
+import com.cereal.client.presentation.view.announceChanges
 import com.cereal.client.presentation.view.table.PaneToolbar
 import com.cereal.client.presentation.view.text
 import com.cereal_automation.cereal_client.generated.resources.Res
@@ -255,7 +256,7 @@ private fun InstallCard(
 ) {
     SlotCard(stringResource(Res.string.home_not_installed_title)) {
         if (state is AgentInstallState.Failed) {
-            CerealText(text = state.message.text(), color = MaterialTheme.colorScheme.error)
+            CerealText(text = state.message.text(), modifier = Modifier.announceChanges(), color = MaterialTheme.colorScheme.error)
         }
         CerealButton(
             onClick = onInstall,
@@ -560,7 +561,7 @@ internal fun ComposerField(
                 },
         )
         val note = error ?: help
-        note?.let { CerealText(it, style = MaterialTheme.typography.bodySmall, color = if (error != null) MaterialTheme.colorScheme.error else CerealTheme.colorScheme.contentTertiary) }
+        note?.let { CerealText(it, modifier = Modifier.announceChanges(), style = MaterialTheme.typography.bodySmall, color = if (error != null) MaterialTheme.colorScheme.error else CerealTheme.colorScheme.contentTertiary) }
     }
 }
 
