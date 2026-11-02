@@ -176,7 +176,9 @@
     <string name="log_filter_err">ERR</string>
     <string name="log_filter_info">INFO</string>
     <string name="log_filter_warn">WARN</string>
-    <string name="logout">Logout</string>
+    <string name="logout">Sign out</string>
+    <string name="logout_confirm_title">Sign out?</string>
+    <string name="logout_confirm_message">You can sign back in at any time.</string>
     <string name="logs_directory">Logs directory</string>
     <string name="logs_directory_desc">Opens the logs directory.</string>
     <string name="marketplace">Marketplace</string>

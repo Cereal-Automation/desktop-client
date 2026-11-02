@@ -38,7 +38,10 @@ fun ProfileScreen(
         )
     }
 
-    if (user?.isGuest == true) {
+    // Render nothing until the user loads, so guests don't briefly see the signed-in layout.
+    if (user == null) return
+
+    if (user.isGuest) {
         GuestProfileScreen(
             onLoginClick = {
                 authDialogMode.value = AuthenticationDialogMode.LOGIN
