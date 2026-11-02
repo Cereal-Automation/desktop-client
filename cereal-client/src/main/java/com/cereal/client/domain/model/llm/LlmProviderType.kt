@@ -17,7 +17,7 @@ enum class LlmProviderType(
 ) {
     ANTHROPIC(
         defaultBaseUrl = "https://api.anthropic.com/v1",
-        defaultModel = "claude-opus-5-5",
+        defaultModel = "claude-haiku-5-5",
         requiresApiKey = true,
     ),
     OPENAI_COMPATIBLE(

@@ -9,9 +9,9 @@ import kotlin.test.assertNull
 
 class LlmProviderConfigTest {
     @Test
-    fun `Anthropic defaults to its base URL and claude-opus-5-5`() {
+    fun `Anthropic defaults to its base URL and claude-haiku-5-5`() {
         assertEquals("https://api.anthropic.com/v1", LlmProviderType.ANTHROPIC.defaultBaseUrl)
-        assertEquals("claude-opus-5-5", LlmProviderType.ANTHROPIC.defaultModel)
+        assertEquals("claude-haiku-5-5", LlmProviderType.ANTHROPIC.defaultModel)
     }
 
     @Test

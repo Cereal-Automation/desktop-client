@@ -246,11 +246,11 @@ class LlmPresetFormStateTest {
         }
 
     @Test
-    fun `Anthropic defaults to the newest model`() =
+    fun `Anthropic defaults to Haiku when listed, even with newer ones`() =
         runTest {
             assertEquals(
-                "claude-opus-6",
-                defaultModel(LlmPreset.ANTHROPIC, LlmModel("claude-opus-5-5", created = old), LlmModel("claude-opus-6", created = new)),
+                "claude-haiku-5-5",
+                defaultModel(LlmPreset.ANTHROPIC, LlmModel("claude-haiku-5-5", created = old), LlmModel("claude-opus-6", created = new)),
             )
         }
 
