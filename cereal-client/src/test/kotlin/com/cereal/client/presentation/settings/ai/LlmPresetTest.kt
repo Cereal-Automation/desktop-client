@@ -27,7 +27,7 @@ class LlmPresetTest {
     @ParameterizedTest
     @CsvSource(
         "GEMINI, OPENAI_COMPATIBLE, https://generativelanguage.googleapis.com/v1beta/openai, gemini-3.8-flash",
-        "ANTHROPIC, ANTHROPIC, https://api.anthropic.com/v1, ''",
+        "ANTHROPIC, ANTHROPIC, https://api.anthropic.com/v1, claude-haiku-5-5",
         "OPENAI, OPENAI_COMPATIBLE, https://api.openai.com/v1, gpt-5",
         "OPENROUTER, OPENAI_COMPATIBLE, https://openrouter.ai/api/v1, ''",
         "LOCAL, OPENAI_COMPATIBLE, http://localhost:11434/v1, ''",
@@ -82,7 +82,7 @@ class LlmPresetTest {
     }
 
     @ParameterizedTest
-    @EnumSource(LlmPreset::class, names = ["OPENAI", "GEMINI"])
+    @EnumSource(LlmPreset::class, names = ["OPENAI", "GEMINI", "ANTHROPIC"])
     fun `a preset with its own model leaves the pick to the user when that model is not listed`(preset: LlmPreset) {
         val listed = listOf(LlmModel("newest", created = Instant.parse("2026-01-01T00:00:00Z"), pricedFree = true))
 

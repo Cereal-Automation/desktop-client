@@ -22,7 +22,7 @@ enum class LlmPreset(
     val keyUrl: String?,
 ) {
     GEMINI(LlmProviderType.OPENAI_COMPATIBLE, "https://generativelanguage.googleapis.com/v1beta/openai", "gemini-3.8-flash", "https://aistudio.google.com/apikey"),
-    ANTHROPIC(LlmProviderType.ANTHROPIC, "https://api.anthropic.com/v1", "", "https://console.anthropic.com/settings/keys"),
+    ANTHROPIC(LlmProviderType.ANTHROPIC, "https://api.anthropic.com/v1", "claude-haiku-5-5", "https://console.anthropic.com/settings/keys"),
     OPENAI(LlmProviderType.OPENAI_COMPATIBLE, "https://api.openai.com/v1", "gpt-5", "https://platform.openai.com/api-keys"),
     OPENROUTER(LlmProviderType.OPENAI_COMPATIBLE, "https://openrouter.ai/api/v1", "", "https://openrouter.ai/keys"),
     LOCAL(LlmProviderType.OPENAI_COMPATIBLE, "http://localhost:11434/v1", "", null),

@@ -81,7 +81,7 @@ class AiSettingsViewModelTest {
     }
 
     @Test
-    fun `a successful test reports the model count and picks no model`() {
+    fun `a successful test reports the model count and keeps the preset's model`() {
         server.enqueue(fixture("anthropic/models.json"))
         val vm = viewModel()
         vm.chooseAnthropicOnServer()
@@ -90,7 +90,7 @@ class AiSettingsViewModelTest {
 
         await { vm.connectionStatus.value is ConnectionStatus.Connected }
         assertEquals(ConnectionStatus.Connected(2), vm.connectionStatus.value)
-        assertEquals("", vm.form.modelState.text)
+        assertEquals("claude-haiku-5-5", vm.form.modelState.text)
     }
 
     @Test
@@ -275,11 +275,11 @@ class AiSettingsViewModelTest {
 
     @Test
     fun `a saved default model is kept when a later key edit reloads the list`() {
-        val provider = InMemoryLlmProvider(models = listOf(LlmModel("claude-opus-5-5", created = Instant.parse("2025-01-01T00:00:00Z"))))
+        val provider = InMemoryLlmProvider(models = listOf(LlmModel("claude-haiku-5-5", created = Instant.parse("2025-01-01T00:00:00Z"))))
         val vm = viewModel(provider)
         vm.selectPreset(LlmPreset.ANTHROPIC)
         vm.form.apiKeyState.onValueChange("sk-ant-1")
-        await { vm.form.modelState.text == "claude-opus-5-5" }
+        await { vm.form.modelList.value is ModelListState.Loaded && vm.form.modelState.text == "claude-haiku-5-5" }
         vm.save()
         await { runBlocking { repository.get() } != null && vm.feedbackAction.value != FeedbackAction.None }
 
@@ -287,7 +287,7 @@ class AiSettingsViewModelTest {
         vm.form.apiKeyState.onValueChange("sk-ant-2")
 
         await { provider.listModelsRequests.size == 2 && vm.form.modelList.value is ModelListState.Loaded }
-        assertEquals("claude-opus-5-5", vm.form.modelState.text)
+        assertEquals("claude-haiku-5-5", vm.form.modelState.text)
     }
 
     @Test
