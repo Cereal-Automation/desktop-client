@@ -36,6 +36,6 @@ class AuthenticatedProfileScreenTest {
             onNodeWithText("Profile").assertIsDisplayed()
             onNodeWithText("View profile").assertIsDisplayed()
             onNodeWithText("Subscriptions").assertIsDisplayed()
-            onNodeWithText("Logout").assertIsDisplayed()
+            onNodeWithText("Sign out").assertIsDisplayed()
         }
 }

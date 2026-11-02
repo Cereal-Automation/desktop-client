@@ -14,7 +14,7 @@ class ScriptConfigurationItemDefinitionCustomDatasetFieldValidator(
         val scriptConfig = scriptConfigProvider()
 
         if (definition.isRequired(scriptConfig) && value == null) {
-            return "A value is required"
+            return "Required"
         }
 
         if (value != null) {

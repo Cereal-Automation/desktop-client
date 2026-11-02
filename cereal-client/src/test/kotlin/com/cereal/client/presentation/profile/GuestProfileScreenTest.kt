@@ -25,12 +25,12 @@ class GuestProfileScreenTest {
             }
 
             onNodeWithText("Guest Profile").assertIsDisplayed()
-            onNodeWithText("Create Account").assertIsDisplayed()
-            onNodeWithText("Sign In").assertIsDisplayed()
+            onNodeWithText("Create account").assertIsDisplayed()
+            onNodeWithText("Sign in").assertIsDisplayed()
             // The locked-features card sits below the fold; assert it exists in the tree.
-            onNodeWithText("Locked Features".uppercase()).assertExists()
-            onNodeWithText("Premium Scripts").assertExists()
-            onNodeWithText("Cloud Sync").assertExists()
+            onNodeWithText("Locked features".uppercase()).assertExists()
+            onNodeWithText("Premium scripts").assertExists()
+            onNodeWithText("Cloud sync").assertExists()
             onNodeWithText("Community").assertExists()
         }
 
@@ -46,7 +46,7 @@ class GuestProfileScreenTest {
                 )
             }
 
-            onNodeWithText("Sign In").performClick()
+            onNodeWithText("Sign in").performClick()
 
             assertEquals(true, loginClicked)
             assertFalse(createAccountClicked)
@@ -64,7 +64,7 @@ class GuestProfileScreenTest {
                 )
             }
 
-            onNodeWithText("Create Account").performClick()
+            onNodeWithText("Create account").performClick()
 
             assertEquals(true, createAccountClicked)
             assertFalse(loginClicked)

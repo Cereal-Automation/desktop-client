@@ -34,7 +34,7 @@ class NotificationOverridesSummaryTest {
 
             setScreenContent { NotificationOverridesSummary(overrides) }
 
-            onNodeWithText("Notification Overrides").assertIsDisplayed()
+            onNodeWithText("Notification overrides").assertIsDisplayed()
             // Non-secret values are shown verbatim.
             onNodeWithText("https://discord.example/webhook").assertIsDisplayed()
             onNodeWithText("12345").assertIsDisplayed()
@@ -56,8 +56,8 @@ class NotificationOverridesSummaryTest {
 
             setScreenContent { NotificationOverridesSummary(overrides) }
 
-            onNodeWithText("Override Discord Settings").assertIsDisplayed()
-            onNodeWithText("Override Telegram Settings").assertDoesNotExist()
-            onNodeWithText("Override Email Settings").assertDoesNotExist()
+            onNodeWithText("Override Discord settings").assertIsDisplayed()
+            onNodeWithText("Override Telegram settings").assertDoesNotExist()
+            onNodeWithText("Override email settings").assertDoesNotExist()
         }
 }

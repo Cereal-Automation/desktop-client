@@ -70,9 +70,9 @@ class NotificationChannelFieldsTest {
             }
 
             // Use labels that do not collide with field placeholder text.
-            onNodeWithText("SMTP Port").assertIsDisplayed()
-            onNodeWithText("From Address").assertIsDisplayed()
-            onNodeWithText("To Address").assertIsDisplayed()
+            onNodeWithText("SMTP port").assertIsDisplayed()
+            onNodeWithText("From address").assertIsDisplayed()
+            onNodeWithText("To address").assertIsDisplayed()
             onNodeWithText("Use TLS").assertIsDisplayed()
         }
 
@@ -89,7 +89,7 @@ class NotificationChannelFieldsTest {
             }
 
             onNodeWithText("Use TLS").assertIsDisplayed()
-            onNodeWithText("Enable TLS encryption for secure connection.").assertIsDisplayed()
+            onNodeWithText("Encrypt the connection to your SMTP server.").assertIsDisplayed()
             assertTrue(useTls.value)
         }
 }
