@@ -1,10 +1,12 @@
 package com.cereal.client.presentation.profile
 
 import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.runtime.Composable
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.test.ExperimentalTestApi
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.onNodeWithText
+import androidx.compose.ui.test.performClick
 import com.cereal.client.application.ApplicationConfig
 import org.koin.compose.koinInject
 import org.koin.core.parameter.parametersOf
@@ -22,20 +24,35 @@ class AuthenticatedProfileScreenTest {
     @Test
     fun rendersAuthenticatedSections() =
         runScreenTest {
-            setScreenContent {
-                val scope = rememberCoroutineScope()
-                val applicationConfig = koinInject<ApplicationConfig>()
-                val vm =
-                    KoinJavaComponent.get<ProfileViewModel>(
-                        ProfileViewModel::class.java,
-                        parameters = { parametersOf(scope) },
-                    )
-                AuthenticatedProfileScreen(applicationConfig = applicationConfig, vm = vm)
-            }
+            setScreenContent { Screen() }
 
             onNodeWithText("Profile").assertIsDisplayed()
             onNodeWithText("View profile").assertIsDisplayed()
             onNodeWithText("Subscriptions").assertIsDisplayed()
             onNodeWithText("Sign out").assertIsDisplayed()
         }
+
+    @Test
+    fun signOutAsksForConfirmation() =
+        runScreenTest {
+            setScreenContent { Screen() }
+
+            onNodeWithText("Sign out").performClick()
+
+            onNodeWithText("Sign out?").assertIsDisplayed()
+            onNodeWithText("Cancel").performClick()
+            onNodeWithText("Sign out?").assertDoesNotExist()
+        }
+
+    @Composable
+    private fun Screen() {
+        val scope = rememberCoroutineScope()
+        val applicationConfig = koinInject<ApplicationConfig>()
+        val vm =
+            KoinJavaComponent.get<ProfileViewModel>(
+                ProfileViewModel::class.java,
+                parameters = { parametersOf(scope) },
+            )
+        AuthenticatedProfileScreen(applicationConfig = applicationConfig, vm = vm)
+    }
 }
