@@ -133,7 +133,7 @@ class ScriptConcurrencyValidatorTest {
                 mainScriptConfiguration = mapOf<String, ConfigValue>("dataset" to datasetGroupValue(numberOfItems = 4)),
                 childScriptConfiguration =
                     mapOf<String, ScriptConfigurationValues>(
-                        "childDataset" to mapOf("childDataset" to datasetGroupValue(numberOfItems = 1)),
+                        "child" to mapOf("childDataset" to datasetGroupValue(numberOfItems = 1)),
                     ),
                 numberOfConcurrentTasks = 5,
             )
@@ -183,7 +183,7 @@ class ScriptConcurrencyValidatorTest {
                 mainScriptConfiguration = emptyMap(),
                 childScriptConfiguration =
                     mapOf<String, ScriptConfigurationValues>(
-                        "childProxy" to mapOf("childProxy" to proxyGroupValue(numberOfItems = 0)),
+                        "child" to mapOf("childProxy" to proxyGroupValue(numberOfItems = 0)),
                     ),
                 numberOfConcurrentTasks = 2,
             )

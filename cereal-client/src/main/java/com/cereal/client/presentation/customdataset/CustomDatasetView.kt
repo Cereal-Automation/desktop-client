@@ -70,8 +70,8 @@ import com.cereal_automation.cereal_client.generated.resources.datasets_empty_pl
 import com.cereal_automation.cereal_client.generated.resources.datasets_encrypted_subtitle
 import com.cereal_automation.cereal_client.generated.resources.datasets_encrypted_title
 import com.cereal_automation.cereal_client.generated.resources.datasets_meta_columns
+import com.cereal_automation.cereal_client.generated.resources.datasets_meta_created
 import com.cereal_automation.cereal_client.generated.resources.datasets_meta_records
-import com.cereal_automation.cereal_client.generated.resources.datasets_meta_updated
 import com.cereal_automation.cereal_client.generated.resources.datasets_records_crumb
 import com.cereal_automation.cereal_client.generated.resources.datasets_records_empty
 import com.cereal_automation.cereal_client.generated.resources.datasets_schema_label
@@ -90,6 +90,7 @@ import com.cereal_automation.cereal_client.generated.resources.schema_type_secre
 import com.cereal_automation.cereal_client.generated.resources.schema_type_text
 import com.cereal_automation.cereal_client.generated.resources.script_datasets
 import kotlinx.coroutines.CoroutineScope
+import org.jetbrains.compose.resources.pluralStringResource
 import org.jetbrains.compose.resources.stringResource
 import org.koin.core.parameter.parametersOf
 import org.koin.java.KoinJavaComponent.get
@@ -288,7 +289,7 @@ private fun DatasetDetailsView(
 ) {
     PaneDetailsHeader(
         title = group.name,
-        crumb = stringResource(Res.string.datasets_records_crumb, group.numberOfItems),
+        crumb = pluralStringResource(Res.plurals.datasets_records_crumb, group.numberOfItems, group.numberOfItems),
         backContentDescription = stringResource(Res.string.datasets_action_back),
         onBack = onBack,
         actions = {
@@ -398,7 +399,7 @@ private fun DatasetGroupMetaStrip(group: CustomDatasetGroup) {
         )
         PaneMetaDivider()
         PaneMetaCell(
-            label = stringResource(Res.string.datasets_meta_updated),
+            label = stringResource(Res.string.datasets_meta_created),
             value = formatCreatedAt(group),
             emphasis = false,
         )

@@ -90,8 +90,8 @@ class ScriptStartCapacityEnforcementScreenTest {
                 // Start the run.
                 onNodeWithText("Start task").performClick()
                 // No notification channels are configured in the in-memory graph, so accept that warning first.
-                waitForText("Continue Anyway")
-                onNodeWithText("Continue Anyway").performClick()
+                waitForText("Continue anyway")
+                onNodeWithText("Continue anyway").performClick()
 
                 // The run is refused: the capacity message is shown, not a started instance.
                 waitForText("your plan allows 100", substring = true)

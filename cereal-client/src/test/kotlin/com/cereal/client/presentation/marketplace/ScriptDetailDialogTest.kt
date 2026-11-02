@@ -44,7 +44,7 @@ class ScriptDetailDialogTest {
             // Metadata-row labels render verbatim; DetailSection titles are uppercased by the screen.
             onNodeWithText("Version").assertExists()
             onNodeWithText("Updated").assertExists()
-            onNodeWithText("Release Notes".uppercase()).assertExists()
+            onNodeWithText("Release notes".uppercase()).assertExists()
             onNodeWithText("Tags".uppercase()).assertExists()
         }
 
@@ -123,7 +123,7 @@ class ScriptDetailDialogTest {
             waitUntil(timeoutMillis = 5_000) {
                 onAllNodes(hasText("Start 7-day trial · €4 / mo")).fetchSemanticsNodes().isNotEmpty()
             }
-            onNodeWithText("Create Account").assertExists()
+            onNodeWithText("Create account").assertExists()
         }
 
     private companion object {

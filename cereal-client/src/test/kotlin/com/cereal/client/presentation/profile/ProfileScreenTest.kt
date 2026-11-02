@@ -21,7 +21,7 @@ class ProfileScreenTest {
             setScreenContent { ProfileScreen() }
 
             onNodeWithText("Guest Profile").assertIsDisplayed()
-            onNodeWithText("Create Account").assertIsDisplayed()
-            onNodeWithText("Sign In").assertIsDisplayed()
+            onNodeWithText("Create account").assertIsDisplayed()
+            onNodeWithText("Sign in").assertIsDisplayed()
         }
 }
