@@ -37,7 +37,7 @@ class ScriptConcurrencyValidator(
             listOfNotNull(
                 childScriptConfigurationDefinition.groupedConfigurationDefinition(),
             ).forEach { definition ->
-                checkConflict(definition, childScriptConfiguration[definition.key])?.let {
+                checkConflict(definition, childScriptConfiguration[childScript.key])?.let {
                     scriptConfigurationItemDefinitionConflicts.add(it)
                 }
             }
@@ -65,7 +65,7 @@ class ScriptConcurrencyValidator(
             val childScriptConfigurationDefinition = childScript.value.configuration
 
             childScriptConfigurationDefinition.proxyConfigurationDefinition()?.let { definition ->
-                checkConflict(definition, childScriptConfiguration[definition.key])?.let {
+                checkConflict(definition, childScriptConfiguration[childScript.key])?.let {
                     scriptConfigurationItemDefinitionConflicts.add(it)
                 }
             }

@@ -447,16 +447,16 @@ class AiSettingsSectionScreenTest {
             setScreenContent { AiSettingsSection() }
             onNodeWithText("Local model").performClick()
 
-            awaitText("Retry")
+            awaitText("Try again")
             onNodeWithText("Bad API key", substring = true).assertIsDisplayed()
             input(AI_MODEL_TAG).performTextReplacement("typed-model")
             input(AI_MODEL_TAG).assertTextEquals("typed-model")
 
             llmProvider.listModelsError = null
-            onNodeWithText("Retry").performClick()
+            onNodeWithText("Try again").performClick()
 
             awaitTag(AI_MODEL_OPEN_TAG)
-            onNodeWithText("Retry").assertDoesNotExist()
+            onNodeWithText("Try again").assertDoesNotExist()
         }
 
     @Test

@@ -288,7 +288,7 @@ class HomeSlotCardsScreenTest {
             waitUntil(timeoutMillis = 5_000) { onAllNodesWithText("Install").fetchSemanticsNodes().isNotEmpty() }
             onNodeWithText("Install").performClick()
 
-            waitUntil(timeoutMillis = 5_000) { onAllNodesWithText("Retry").fetchSemanticsNodes().isNotEmpty() }
+            waitUntil(timeoutMillis = 5_000) { onAllNodesWithText("Try again").fetchSemanticsNodes().isNotEmpty() }
             onNodeWithText("Download failed").assertIsDisplayed()
         }
 

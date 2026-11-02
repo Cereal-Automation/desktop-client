@@ -24,7 +24,7 @@ import kotlin.test.assertTrue
 
 /**
  * Renders [ImportFromFileDialog] on the in-memory harness with a custom dataset type so the
- * "Required Fields:" section is shown. Asserts the action buttons render, that Import is disabled
+ * "Required fields:" section is shown. Asserts the action buttons render, that Import is disabled
  * while no file is selected, and that the close button wiring fires [closeDialog].
  */
 @OptIn(ExperimentalTestApi::class, ExperimentalFoundationApi::class)
@@ -59,7 +59,7 @@ class ImportFromFileDialogTest {
 
             // Title interpolates "CSV" for a custom dataset type.
             onNodeWithText("Import CSV").assertIsDisplayed()
-            onNodeWithText("Required Fields:").assertIsDisplayed()
+            onNodeWithText("Required fields:").assertIsDisplayed()
             onNodeWithText("Open file").assertIsDisplayed()
             onNodeWithText("Download template").assertIsDisplayed()
             onNodeWithText("Import").assertIsDisplayed()

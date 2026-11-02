@@ -12,7 +12,7 @@ class ScriptConfigurationItemDefinitionFileFieldValidator(
         val scriptConfig = scriptConfigProvider()
 
         return if (definition.isRequired(scriptConfig) && value == null) {
-            "A value is required"
+            "Required"
         } else {
             definition.stateModifier?.getError(scriptConfig)
         }

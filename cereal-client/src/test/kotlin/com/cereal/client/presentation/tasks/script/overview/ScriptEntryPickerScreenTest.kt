@@ -51,7 +51,7 @@ class ScriptEntryPickerScreenTest {
     @Test
     fun `a package without variants shows no picker`() =
         runPickerScreenTest(aScriptPackage(PACKAGE_NAME)) {
-            waitForText("Notification Overrides")
+            waitForText("Notification overrides")
             onNodeWithText("available", substring = true).assertDoesNotExist()
         }
 

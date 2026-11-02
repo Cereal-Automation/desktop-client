@@ -46,9 +46,9 @@ class ForgotPasswordScreenTest {
                 .assertIsDisplayed()
             onNodeWithText("Email").assertIsDisplayed()
             // Submit button.
-            onNodeWithText("Send Reset Link").assertIsDisplayed()
+            onNodeWithText("Send reset link").assertIsDisplayed()
             // Footer navigation back to login.
-            onNodeWithText("Back to Sign In").assertIsDisplayed()
+            onNodeWithText("Back to sign in").assertIsDisplayed()
         }
 
     @Test
@@ -98,7 +98,7 @@ class ForgotPasswordScreenTest {
                 )
             }
 
-            onNodeWithText("Back to Sign In").performClick()
+            onNodeWithText("Back to sign in").performClick()
             waitForIdle()
 
             assertTrue(navigatedToLogin)
