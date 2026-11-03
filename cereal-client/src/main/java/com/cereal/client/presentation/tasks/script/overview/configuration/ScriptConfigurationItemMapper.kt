@@ -128,7 +128,7 @@ fun ConfigurationItem.createFormFieldState(
                         ScriptConfigurationItemDefinitionCustomDatasetFieldValidator(definition, scriptConfigProvider),
                     ),
                 onValueChange = onValueChange,
-                onImport = onImportFile?.let { import -> { import(this, it) } },
+                onImport = importer(onImportFile),
                 initialSelectedValue = (value as? ConfigValue.CustomDatasetGroupValue)?.raw,
             )
         }
@@ -141,7 +141,7 @@ fun ConfigurationItem.createFormFieldState(
                         ScriptConfigurationItemDefinitionAnyFieldValidator(definition, scriptConfigProvider),
                     ),
                 onValueChange = onValueChange,
-                onImport = onImportFile?.let { import -> { import(this, it) } },
+                onImport = importer(onImportFile),
                 initialSelectedValue = (value as? ConfigValue.ProxyGroupValue)?.raw,
             )
         }
@@ -159,10 +159,15 @@ fun ConfigurationItem.createFormFieldState(
                     ),
                 initialValue = (value as? ConfigValue.ListValue)?.raw ?: ListRows.EMPTY,
                 onValueChange = { onValueChange(it) },
-                onImport = onImportFile?.let { import -> { import(this, it) } },
+                onImport = importer(onImportFile),
             )
         }
     }
+
+/** [onImportFile] bound to this item, or null when the form offers no import. */
+private fun ConfigurationItem.importer(
+    onImportFile: ((configurationItem: ConfigurationItem, formFieldState: FormFieldState<*, *>) -> Unit)?,
+): ((FormFieldState<*, *>) -> Unit)? = onImportFile?.let { import -> { import(this, it) } }
 
 /**
  * Builds the form field states for one row of a list, reusing [createFormFieldState] so a record
