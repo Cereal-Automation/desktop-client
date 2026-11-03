@@ -52,6 +52,7 @@ import com.cereal.client.presentation.tasks.script.overview.ScriptEntryPicker
 import com.cereal.client.presentation.tasks.script.overview.ScriptSelectionDialog
 import com.cereal.client.presentation.tasks.script.overview.configuration.ConfigField
 import com.cereal.client.presentation.tasks.script.overview.configuration.FormFieldContent
+import com.cereal.client.presentation.tasks.script.overview.configuration.ListField
 import com.cereal.client.presentation.theme.CerealTheme
 import com.cereal.client.presentation.view.CerealButton
 import com.cereal.client.presentation.view.CerealButtonType
@@ -62,6 +63,7 @@ import com.cereal.client.presentation.view.ConfirmationDialog
 import com.cereal.client.presentation.view.InfoBox
 import com.cereal.client.presentation.view.WarningBox
 import com.cereal.client.presentation.view.announceChanges
+import com.cereal.client.presentation.view.fields.state.ListFieldState
 import com.cereal.client.presentation.view.table.PaneToolbar
 import com.cereal.client.presentation.view.text
 import com.cereal_automation.cereal_client.generated.resources.Res
@@ -479,7 +481,11 @@ private fun GoalStep(
                 verticalArrangement = Arrangement.spacedBy(18.dp),
             ) {
                 viewModel.composerFields().forEach { (item, state) ->
-                    ConfigField(item.definition.name, item.definition.description) { FormFieldContent(item, state) }
+                    if (state is ListFieldState) {
+                        ListField(item.definition.name, item.definition.description, isRequired = true, state)
+                    } else {
+                        ConfigField(item.definition.name, item.definition.description) { FormFieldContent(item, state) }
+                    }
                 }
             }
             Row(

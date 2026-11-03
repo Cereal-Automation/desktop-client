@@ -34,6 +34,7 @@ import com.cereal.client.presentation.settings.ai.LlmPreset
 import com.cereal.client.presentation.settings.ai.ModelListState
 import com.cereal.client.presentation.view.UiText
 import com.cereal.client.presentation.view.fields.state.DropDownFieldState
+import com.cereal.client.presentation.view.fields.state.ListFieldState
 import com.cereal.client.presentation.view.fields.state.TextFieldState
 import com.cereal.sdk.statemodifier.ScriptConfig
 import com.cereal.sdk.statemodifier.StateModifier
@@ -468,6 +469,19 @@ class HomeViewModelTest {
             assertEquals(ConfigValue.StringValue("https://shop.example/pliers"), dialog.prefill.instance.mainConfiguration["startUrl"])
             assertEquals(ConfigValue.IntValue(600), dialog.prefill.instance.mainConfiguration["repeatInterval"])
             assertFalse(dialog.startOnCreate)
+        }
+
+    private interface SecretRow
+
+    @Test
+    fun `a required list of inline fields shows on Home, with no import`() =
+        runTest {
+            val rowItems = listOf(anAgentItem("label", ConfigItemType.StringConfigItem, 0), anAgentItem("value", ConfigItemType.SecretConfigItem, 1))
+            val secrets = anAgentItem("secrets", ConfigItemType.ListConfigItem(SecretRow::class, rowItems), 20)
+            val vm = homeWith(anAgentPackage(agentConfigurationItems() + secrets))
+
+            assertEquals(listOf("goal", "startUrl", "runMode", "secrets"), vm.shownKeys())
+            assertFalse((vm.field("secrets") as ListFieldState).showImportButton())
         }
 
     @Test

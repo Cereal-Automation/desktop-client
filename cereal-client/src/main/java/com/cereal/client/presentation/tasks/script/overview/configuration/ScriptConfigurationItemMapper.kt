@@ -28,7 +28,7 @@ import com.cereal.sdk.statemodifier.ScriptConfig
 fun ConfigurationItem.createFormFieldState(
     onValueChange: (FormFieldState<*, *>) -> Unit,
     scriptConfigProvider: () -> ScriptConfig,
-    onImportFile: (configurationItem: ConfigurationItem, formFieldState: FormFieldState<*, *>) -> Unit,
+    onImportFile: ((configurationItem: ConfigurationItem, formFieldState: FormFieldState<*, *>) -> Unit)?,
 ): FormFieldState<*, *> =
     when (definition.type) {
         ConfigItemType.BooleanConfigItem -> {
@@ -128,7 +128,7 @@ fun ConfigurationItem.createFormFieldState(
                         ScriptConfigurationItemDefinitionCustomDatasetFieldValidator(definition, scriptConfigProvider),
                     ),
                 onValueChange = onValueChange,
-                onImport = { onImportFile(this, it) },
+                onImport = onImportFile?.let { import -> { import(this, it) } },
                 initialSelectedValue = (value as? ConfigValue.CustomDatasetGroupValue)?.raw,
             )
         }
@@ -141,7 +141,7 @@ fun ConfigurationItem.createFormFieldState(
                         ScriptConfigurationItemDefinitionAnyFieldValidator(definition, scriptConfigProvider),
                     ),
                 onValueChange = onValueChange,
-                onImport = { onImportFile(this, it) },
+                onImport = onImportFile?.let { import -> { import(this, it) } },
                 initialSelectedValue = (value as? ConfigValue.ProxyGroupValue)?.raw,
             )
         }
@@ -159,7 +159,7 @@ fun ConfigurationItem.createFormFieldState(
                     ),
                 initialValue = (value as? ConfigValue.ListValue)?.raw ?: ListRows.EMPTY,
                 onValueChange = { onValueChange(it) },
-                onImport = { onImportFile(this, it) },
+                onImport = onImportFile?.let { import -> { import(this, it) } },
             )
         }
     }
@@ -186,9 +186,8 @@ private fun createListRow(
             ).createFormFieldState(
                 onValueChange = { row.onFieldValueChanged() },
                 scriptConfigProvider = { RawScriptConfigValues(row.fields()) },
-                onImportFile = { _, _ ->
-                    throw UnsupportedOperationException("Importing from a file is not supported inside a list row.")
-                },
+                // Importing from a file is not supported inside a list row.
+                onImportFile = null,
             )
         row.putFieldState(fieldDefinition.key, fieldState)
     }
