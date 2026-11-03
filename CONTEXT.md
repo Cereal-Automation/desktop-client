@@ -19,6 +19,18 @@ _Avoid_: agent task, job, session, attempt (for the whole run)
 **Goal run report**:
 One record per start of an AI browser agent task, sent to our server with its finish (outcome, cost, duration) when the task ends. Broader than a **goal run**: a restart in Tasks or a concurrency refill is a new report too. A Repeat-mode task is one report from start to stop. See ADR 0011.
 
+**Run trace**:
+The record of one **check**: each snapshot the model saw, each model turn, what each action did, replay and recovery events, the outcome and cost. Covers a check, never a whole goal run.
+_Avoid_: log, session log, transcript
+
+**Failure report**:
+The run trace of a failed or user-flagged check, plus the trace of the learned check whose replay cache it used, sent under its goal run report. See ADR 0012.
+_Avoid_: crash report, bug report
+
+**Share diagnostics**:
+The one privacy setting that covers goal run reports and failure reports, on by default. Replaced "Share my goals". See ADR 0012.
+_Avoid_: share my goals, telemetry setting
+
 **Task setup**:
 One configured ready-made script (or AI browser agent) in Tasks: its config plus a number of concurrent **tasks**, each one run of it. Shown as Group → Task setup → Task. A copy term only; the code type is `ScriptPackageInstance`. "Script" means only the thing a user buys or owns.
 _Avoid_: script, script instance (in copy)

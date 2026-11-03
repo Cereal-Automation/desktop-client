@@ -1,7 +1,7 @@
 # AI browser agent goal runs are reported to our own server, opt-out
 
 ---
-Status: accepted
+Status: accepted, amended by [ADR 0012](0012-failure-reports-under-share-diagnostics.md)
 ---
 
 Users type what they want automated into the AI browser agent's goal composer in plain words. Each goal is a
