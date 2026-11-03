@@ -127,6 +127,21 @@ class TaskExecutor(
                     ),
                 )
             }
+        } catch (e: LinkageError) {
+            // Scripts load SDK classes from this client: one built against a newer SDK can call a method or class
+            // this client lacks. That's an Error, not an Exception, and would otherwise leave the task stuck Running.
+            isTaskActive = false
+            componentProvider?.logger()?.error("Script needs a newer SDK: ${e.message}")
+            result = TaskStatus.Error(OUTDATED_CLIENT_MESSAGE, e.stackTraceToString(), timestamp = Clock.System.now())
+            CrashReporter.report(
+                e,
+                mapOf(
+                    "script_name" to manifest.name,
+                    "script_package" to manifest.packageName,
+                    "script_version_code" to manifest.versionCode,
+                    "task_configuration" to task.configuration,
+                ),
+            )
         } finally {
             isTaskActive = false
             scriptDispatcher.close()
@@ -164,6 +179,9 @@ class TaskExecutor(
             componentProvider.logger().error("Script failed to finish: ${exception.message}")
             // Expected, script-originated errors are surfaced without sending to Sentry.
             if (!exception.isExpectedScriptError()) CrashReporter.report(exception)
+        } catch (error: LinkageError) {
+            componentProvider.logger().error("Script failed to finish, it needs a newer SDK: ${error.message}")
+            CrashReporter.report(error)
         }
     }
 
@@ -210,5 +228,7 @@ class TaskExecutor(
     companion object {
         const val MIN_LOOP_DELAY_MS = 50L
         private const val DEFAULT_ERROR_MESSAGE = "The script failed without error message."
+        private const val OUTDATED_CLIENT_MESSAGE =
+            "This script needs a newer version of Cereal. Update Cereal and start the task again."
     }
 }
