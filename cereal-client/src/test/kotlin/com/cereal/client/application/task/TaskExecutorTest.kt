@@ -62,6 +62,18 @@ class TaskExecutorTest {
         }
 
     @Test
+    fun `a script built against a newer SDK ends the task in Error asking to update the client`() =
+        runTest {
+            val task = mainTaskFixture(scriptClass = NewerSdkScript::class)
+
+            val status = TaskExecutor(task) {}.run()
+
+            val error = assertIs<TaskStatus.Error>(status)
+            assertTrue(error.message.contains("update Cereal", ignoreCase = true))
+            verify { CrashReporter.report(any<NoSuchMethodError>(), any()) }
+        }
+
+    @Test
     fun `a stopped task ends Idle and still finishes the script when onFinish suspends`() =
         runTest {
             val task = mainTaskFixture(scriptClass = SuspendingFinishScript::class)
@@ -89,6 +101,25 @@ class LlmNotConfiguredScript : Script<ScriptConfiguration> {
         provider: ComponentProvider,
         statusUpdate: suspend (message: String) -> Unit,
     ): ExecutionResult = throw LlmException.NotConfigured()
+
+    override suspend fun onFinish(
+        configuration: ScriptConfiguration,
+        provider: ComponentProvider,
+    ) = Unit
+}
+
+/** A script calling an SDK method this client doesn't have, as one built against a newer SDK would. */
+class NewerSdkScript : Script<ScriptConfiguration> {
+    override suspend fun onStart(
+        configuration: ScriptConfiguration,
+        provider: ComponentProvider,
+    ) = true
+
+    override suspend fun execute(
+        configuration: ScriptConfiguration,
+        provider: ComponentProvider,
+        statusUpdate: suspend (message: String) -> Unit,
+    ): ExecutionResult = throw NoSuchMethodError("'void com.cereal.sdk.component.NewComponent.newMethod()'")
 
     override suspend fun onFinish(
         configuration: ScriptConfiguration,
