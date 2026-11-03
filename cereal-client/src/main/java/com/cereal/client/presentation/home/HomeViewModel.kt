@@ -79,10 +79,15 @@ fun ScriptConfigurationItemDefinition.isShownOnHome(config: ScriptConfig): Boole
         else -> !isNullable && defaultValue == null
     }
 
-/** Field types Home renders inline; lists, files, proxies and datasets need the generic form's dialogs. */
+/**
+ * Field types Home renders inline, and lists whose row fields are all such types (Sign-in secrets);
+ * files, proxies and datasets need the generic form's dialogs.
+ */
 private val ScriptConfigurationItemDefinition.isRenderableOnHome: Boolean
     get() =
-        when (type) {
+        when (val type = type) {
+            is ConfigItemType.ListConfigItem -> type.items.all { it.isRenderableOnHome }
+
             ConfigItemType.StringConfigItem,
             ConfigItemType.SecretConfigItem,
             ConfigItemType.IntConfigItem,
@@ -211,8 +216,8 @@ class HomeViewModel(
                     result.handleFailureOrElse(errorResolver) { definition ->
                         // The agent updated while this loaded: its forms were rebuilt, so this one is stale.
                         if (this@HomeViewModel.agent?.manifest?.versionCode != agent.manifest.versionCode) return@handleFailureOrElse
-                        // Home renders no field that imports a file, so there's nothing to open an import for.
-                        val form = ConfigurationItemsFormSection(definition.mainConfiguration) { _, _, _ -> }.apply { applyStateModifiers() }
+                        // Home has no import dialog, so its fields offer no import.
+                        val form = ConfigurationItemsFormSection(definition.mainConfiguration, onImportFile = null).apply { applyStateModifiers() }
                         forms[variantId] = form
                         // The user may have picked another entry while this one loaded.
                         if (selectedEntry.value?.variantId == variantId) _composerForm.value = form

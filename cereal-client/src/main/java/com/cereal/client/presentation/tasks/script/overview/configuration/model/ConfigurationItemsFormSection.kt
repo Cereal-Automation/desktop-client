@@ -18,11 +18,14 @@ import com.cereal.sdk.statemodifier.Visibility
 
 class ConfigurationItemsFormSection(
     private val configurationItems: List<ConfigurationItem>,
+    /** Null where the form can't open an import, which hides the import buttons. */
     private val onImportFile: (
-        configurationItem: ConfigurationItem,
-        formFieldState: FormFieldState<*, *>,
-        formSection: ConfigurationItemsFormSection,
-    ) -> Unit,
+        (
+            configurationItem: ConfigurationItem,
+            formFieldState: FormFieldState<*, *>,
+            formSection: ConfigurationItemsFormSection,
+        ) -> Unit
+    )?,
 ) {
     val configurationItemToFieldState: Map<ConfigurationItem, FormFieldState<*, *>> =
         configurationItems.associateWith {
@@ -33,9 +36,10 @@ class ConfigurationItemsFormSection(
                 scriptConfigProvider = {
                     RawScriptConfigValues(getScriptConfigurationValues())
                 },
-                onImportFile = { configurationItem, formFieldState ->
-                    onImportFile(configurationItem, formFieldState, this)
-                },
+                onImportFile =
+                    onImportFile?.let { import ->
+                        { configurationItem, formFieldState -> import(configurationItem, formFieldState, this) }
+                    },
             )
         }
 
