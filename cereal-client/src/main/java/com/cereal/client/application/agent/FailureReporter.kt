@@ -1,7 +1,6 @@
 package com.cereal.client.application.agent
 
 import com.cereal.client.domain.model.diagnostics.FailureReport
-import com.cereal.client.domain.model.diagnostics.RecentCheck
 import com.cereal.client.domain.model.diagnostics.RunTrace
 import com.cereal.client.domain.provider.FailureReportProvider
 import com.cereal.client.domain.repository.DiagnosticsSharingRepository
@@ -93,14 +92,16 @@ class FailureReporter(
         }
     }
 
-    /** [taskId]'s kept checks, newest first: its own traces only, never the learned ones. */
+    /**
+     * [taskId]'s kept checks, newest first: its own traces only, never the learned ones. Whether Share diagnostics is on
+     * is left to the caller, which hides the list while it's off; [flag] checks it again.
+     */
     fun observeRecentChecks(taskId: String): Flow<List<RecentCheck>> =
         runTraceRepository.observe(taskId).map { traces ->
-            val sharing = diagnosticsSharingRepository.isEnabled()
             traces
                 .filterNot { it.learned }
                 .sortedByDescending { it.receivedAt }
-                .map { RecentCheck(it, sharing && it.canReport(traces)) }
+                .map { RecentCheck(it, it.canReport(traces)) }
         }
 
     /**
@@ -124,8 +125,8 @@ class FailureReporter(
     }
 
     /**
-     * Applies retention and resumes uploads waiting to retry: on app start, hourly, and when Share diagnostics is
-     * turned off, which takes every pending trace's upload claim away for good.
+     * Applies retention and resumes uploads waiting to retry: on app start and hourly. While Share diagnostics is off it
+     * releases them instead, as [releasePendingUploads] does.
      */
     suspend fun resumePendingUploads() {
         val pending =
@@ -142,6 +143,9 @@ class FailureReporter(
             }
         pending.forEach { upload(it) }
     }
+
+    /** For Share diagnostics turned off: takes every pending trace's upload claim away for good. */
+    suspend fun releasePendingUploads() = mutex.withLock { releasePending() }
 
     /** Runs [resumePendingUploads] whenever a user signs in, then hourly while they stay signed in. */
     fun start(users: Flow<Any?>) {
@@ -169,6 +173,7 @@ class FailureReporter(
         val runId = trace.runId ?: return
         if (!uploading.add(trace.id)) return
         try {
+            goalRunReporter.awaitStartReport(runId)
             val learned = runTraceRepository.getAll().find { it.learned && it.check() == trace.check() }
             val bytes = runTraceRepository.readBytes(trace) ?: return
             val report =

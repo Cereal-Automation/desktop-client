@@ -17,7 +17,9 @@ import com.cereal.client.domain.model.script.configuration.ConfigValue
 import com.cereal.client.domain.model.script.configuration.ScriptConfigurationDefinition
 import com.cereal.client.domain.model.task.JobTask
 import com.cereal.client.domain.model.task.Task
+import com.cereal.client.domain.model.telemetry.GoalRunStartReport
 import com.cereal.client.domain.provider.FailureReportProvider
+import com.cereal.client.domain.provider.GoalRunReportProvider
 import com.cereal.client.infrastructure.data.repository.inmemory.InMemoryApplicationConfig
 import com.cereal.client.infrastructure.data.repository.inmemory.InMemoryArtifactRepository
 import com.cereal.client.infrastructure.data.repository.inmemory.InMemoryDiagnosticsSharingRepository
@@ -36,6 +38,7 @@ import io.mockk.every
 import io.mockk.mockk
 import io.mockk.mockkObject
 import io.mockk.unmockkObject
+import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -75,8 +78,9 @@ class TaskManagerRunTraceTest {
     private val sharing = InMemoryDiagnosticsSharingRepository()
     private val clock = TestClock()
     private val reports = InMemoryGoalRunReportProvider()
+    private val gatedReports = GatedGoalRunReportProvider(reports)
     private val goalRunReporter =
-        GoalRunReporter(reports, sharing, InMemoryLlmProviderConfigRepository(), InMemoryApplicationConfig(), CoroutineScope(Dispatchers.Unconfined))
+        GoalRunReporter(gatedReports, sharing, InMemoryLlmProviderConfigRepository(), InMemoryApplicationConfig(), CoroutineScope(Dispatchers.Unconfined))
     private val uploads = InMemoryFailureReportProvider()
     private val failureReporter = FailureReporter(traces, goalRunReporter, sharing, uploads, CoroutineScope(Dispatchers.Unconfined), clock)
     private val taskManager =
@@ -258,6 +262,21 @@ class TaskManagerRunTraceTest {
         }
 
     @Test
+    fun `a failed check uploads only once its goal run's start report went out`() =
+        runTest {
+            val gate = CompletableDeferred<Unit>()
+            gatedReports.gate = gate
+            EmittingScript.emits = listOf(trace("check-1", "crash"))
+
+            run(agentTask())
+            assertTrue(uploads.uploads.isEmpty())
+
+            gate.complete(Unit)
+
+            assertEquals(reports.starts.single().runId, uploads.uploads.single().runId)
+        }
+
+    @Test
     fun `a failed check without a learned trace uploads its own alone`() =
         runTest {
             EmittingScript.emits = listOf(trace("check-1", "fail"))
@@ -408,8 +427,10 @@ class TaskManagerRunTraceTest {
             run(agentTask())
 
             sharing.setEnabled(false)
+            failureReporter.flag(recentChecks().single().id, "It was in stock")
 
-            assertTrue(reportable().isEmpty())
+            assertTrue(uploads.uploads.isEmpty())
+            assertEquals(RunTrace.UploadState.None, recentChecks().single().uploadState)
         }
 
     @Test
@@ -532,6 +553,19 @@ class TaskManagerRunTraceTest {
         fun advance(by: Duration) {
             now += by
         }
+    }
+}
+
+/** Holds start reports back until [gate] completes, so a test can catch an upload racing ahead of its goal run. */
+private class GatedGoalRunReportProvider(
+    private val inner: GoalRunReportProvider,
+) : GoalRunReportProvider by inner {
+    @Volatile
+    var gate: CompletableDeferred<Unit>? = null
+
+    override suspend fun reportStart(report: GoalRunStartReport) {
+        gate?.await()
+        inner.reportStart(report)
     }
 }
 

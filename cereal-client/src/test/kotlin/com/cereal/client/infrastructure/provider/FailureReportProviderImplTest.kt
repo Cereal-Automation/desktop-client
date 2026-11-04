@@ -107,11 +107,22 @@ class FailureReportProviderImplTest {
             assertEquals(Result.Drop, provider.upload(report()) { true })
         }
 
-    @Test
-    fun `a failed put or register is judged the same way`() =
+    @ParameterizedTest
+    @ValueSource(ints = [400, 403, 404])
+    fun `a 4xx from the presigned put is retried, as a fresh presign fixes an expired signature`(status: Int) =
         runTest {
             server.enqueue(presigned())
-            server.enqueue(MockResponse().setResponseCode(403))
+            server.enqueue(MockResponse().setResponseCode(status))
+
+            assertEquals(Result.Retry, provider.upload(report()) { true })
+        }
+
+    @Test
+    fun `a failed register is judged like the presign`() =
+        runTest {
+            server.enqueue(presigned())
+            server.enqueue(MockResponse())
+            server.enqueue(MockResponse().setResponseCode(404))
             assertEquals(Result.Drop, provider.upload(report()) { true })
 
             server.enqueue(presigned())

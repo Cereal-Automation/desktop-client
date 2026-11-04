@@ -12,7 +12,7 @@ import kotlin.coroutines.cancellation.CancellationException
 
 /**
  * Uploads a failure report through the Web app: presign, PUT each trace straight to its presigned Spaces URL, then
- * register. Every step is idempotent on run id + key on the server, so a retry starts over from the presign.
+ * register. A failed PUT is always retried, since a fresh presign fixes an expired signature. Every step is idempotent on run id + key on the server, so a retry starts over from the presign.
  */
 class FailureReportProviderImpl(
     private val apiClient: MarketplaceApiClient,
@@ -48,12 +48,22 @@ class FailureReportProviderImpl(
         val puts = listOf(urls.traceUrl to report.trace) + listOfNotNull(report.learnedTrace?.let { bytes -> urls.learnedTraceUrl?.let { it to bytes } })
         for ((url, bytes) in puts) {
             if (!mayContinue()) return Result.Retry
-            apiClient.putToPresignedUrl(url, bytes)
+            try {
+                apiClient.putToPresignedUrl(url, bytes)
+            } catch (e: ApiException) {
+                // Spaces answers an expired or bad signature with a 4xx; a fresh presign on the retry fixes it.
+                throw PutFailedException(e)
+            }
         }
         if (!mayContinue()) return Result.Retry
         apiClient.registerFailureReport(report.runId, report.key, FailureReportRegisterRequestBody(report.outcome, report.note, clientVersion))
         return Result.Registered
     }
+
+    /** A PUT to a presigned URL failed: retried whatever the status, unlike the presign and register. */
+    private class PutFailedException(
+        cause: ApiException,
+    ) : Exception("trace put failed: ${cause.message}", cause)
 
     private companion object {
         val HTTP_CLIENT_ERRORS = 400..499

@@ -16,7 +16,7 @@ class ArtifactComponentImpl(
         mimeType: String?,
     ) {
         // A run trace is diagnostics, never an artifact the user sees.
-        if (mimeType != null && isRunTraceMimeType(mimeType)) {
+        if (isRunTraceMimeType(mimeType)) {
             failureReporter.receive(taskId, name, mimeType, bytes)
         } else {
             artifactRepository.emit(taskId, name, bytes, mimeType)

@@ -2,8 +2,8 @@ package com.cereal.client.application.interactor.agent
 
 import com.cereal.client.application.FlowInteractor
 import com.cereal.client.application.agent.FailureReporter
+import com.cereal.client.application.agent.RecentCheck
 import com.cereal.client.application.agent.isAiBrowserAgent
-import com.cereal.client.domain.model.diagnostics.RecentCheck
 import com.cereal.client.domain.model.task.Task
 import com.cereal.client.domain.repository.DiagnosticsSharingRepository
 import kotlinx.coroutines.FlowPreview

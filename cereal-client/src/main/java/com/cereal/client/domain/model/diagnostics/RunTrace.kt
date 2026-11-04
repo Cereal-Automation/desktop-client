@@ -1,5 +1,7 @@
 package com.cereal.client.domain.model.diagnostics
 
+import kotlin.contracts.ExperimentalContracts
+import kotlin.contracts.contract
 import kotlin.time.ExperimentalTime
 import kotlin.time.Instant
 
@@ -13,11 +15,14 @@ const val RUN_TRACE_MIME_TYPE = "application/vnd.cereal.run-trace"
 const val RUN_TRACE_OUTCOME_OK = "ok"
 
 /** Whether [mimeType] is [RUN_TRACE_MIME_TYPE], with or without parameters. */
-fun isRunTraceMimeType(mimeType: String?): Boolean =
-    mimeType
+@OptIn(ExperimentalContracts::class)
+fun isRunTraceMimeType(mimeType: String?): Boolean {
+    contract { returns(true) implies (mimeType != null) }
+    return mimeType
         ?.substringBefore(';')
         ?.trim()
         .equals(RUN_TRACE_MIME_TYPE, ignoreCase = true)
+}
 
 /**
  * One kept **run trace**: the record of one check, kept encrypted on this machine. Carries metadata only; the bytes

@@ -14,7 +14,7 @@ class SetShareDiagnosticsEnabledInteractor(
 ) : Interactor<Unit, SetShareDiagnosticsEnabledInteractor.Params>() {
     override suspend fun run(params: Params) {
         diagnosticsSharingRepository.setEnabled(params.enabled)
-        if (!params.enabled) failureReporter.resumePendingUploads()
+        if (!params.enabled) failureReporter.releasePendingUploads()
     }
 
     data class Params(

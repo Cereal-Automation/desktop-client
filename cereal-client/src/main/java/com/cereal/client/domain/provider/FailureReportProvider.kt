@@ -17,10 +17,10 @@ interface FailureReportProvider {
         /** The server holds the report. */
         Registered,
 
-        /** Trying again later may work: a network error, a 5xx, a 429, or a stop before a step. */
+        /** Trying again later may work: a network error, a 5xx, a 429, any failed PUT to a presigned URL, or a stop before a step. */
         Retry,
 
-        /** Trying again won't help: a 404 (no goal run row) or another 4xx. */
+        /** Trying again won't help: a 404 (no goal run row) or another 4xx from the presign or register. */
         Drop,
     }
 }

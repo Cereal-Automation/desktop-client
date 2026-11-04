@@ -39,6 +39,9 @@ class GoalRunReporter(
     /** Started runs by task id. Not persisted: a run the app closed during never gets a finish report. */
     private val runs = ConcurrentHashMap<String, Run>()
 
+    /** Start reports still in flight, by run id: a failure report waits for its run's, or the server has no row for it. */
+    private val startReports = ConcurrentHashMap<String, Job>()
+
     private class Run(
         val id: String,
         val startedAt: Instant,
@@ -51,7 +54,15 @@ class GoalRunReporter(
         if (!task.scriptInstance.packageInstance.definition.isAiBrowserAgent || !diagnosticsSharingRepository.isEnabled()) return
         val runId = UUID.randomUUID().toString()
         val startedAt = Clock.System.now()
-        runs[task.id] = Run(runId, startedAt, launchReport { reportProvider.reportStart(startReport(task, runId, startedAt)) })
+        val start = launchReport { reportProvider.reportStart(startReport(task, runId, startedAt)) }
+        startReports[runId] = start
+        start.invokeOnCompletion { startReports.remove(runId) }
+        runs[task.id] = Run(runId, startedAt, start)
+    }
+
+    /** Suspends until run [runId]'s start report went out or failed; returns at once when none is in flight. */
+    suspend fun awaitStartReport(runId: String) {
+        startReports[runId]?.join()
     }
 
     /** The id of [taskId]'s current goal run; null when it isn't running one or sharing was off at its Start. */
