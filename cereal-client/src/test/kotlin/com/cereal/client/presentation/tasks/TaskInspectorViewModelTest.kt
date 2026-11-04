@@ -291,7 +291,7 @@ class TaskInspectorViewModelTest {
         runTest {
             world.setup("s", null, idle(), packageName = AI_BROWSER_AGENT_PACKAGE)
             world.runTraceRepository.add(check("s-task-1", "check-1", "Sold out"), ByteArray(1))
-            world.goalSharing.setEnabled(false)
+            world.diagnosticsSharing.setEnabled(false)
             val viewModel = start()
 
             viewModel.onTaskClicked(viewModel.task("s-task-1"))

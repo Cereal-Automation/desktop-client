@@ -13,7 +13,6 @@ import com.cereal.client.presentation.brand.BrandPaywallViewModel
 import com.cereal.client.presentation.customdataset.CustomDatasetViewModel
 import com.cereal.client.presentation.error.ErrorResolver
 import com.cereal.client.presentation.home.AgentInstallViewModel
-import com.cereal.client.presentation.home.GoalSharingNoticeViewModel
 import com.cereal.client.presentation.home.HomeActivityViewModel
 import com.cereal.client.presentation.home.HomeAiProviderViewModel
 import com.cereal.client.presentation.home.HomeViewModel
@@ -69,7 +68,6 @@ object ViewModelModule {
             factory { (scope: CoroutineScope) -> HomeAiProviderViewModel(scope, get(), get(), get(), get(), get()) }
             factory { (scope: CoroutineScope) -> AgentInstallViewModel(scope, get(), get(), get()) }
             factory { (scope: CoroutineScope) -> HomeActivityViewModel(scope, get(), get()) }
-            factory { (scope: CoroutineScope) -> GoalSharingNoticeViewModel(scope, get(), get(), get(), get()) }
             factory { (scope: CoroutineScope, onStartNewInstance: Function1<ScriptRequest, Unit>) ->
                 MyScriptsViewModel(
                     scope = scope,

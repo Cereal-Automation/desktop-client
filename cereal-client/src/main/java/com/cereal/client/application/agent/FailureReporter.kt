@@ -1,7 +1,7 @@
 package com.cereal.client.application.agent
 
 import com.cereal.client.domain.model.diagnostics.RunTrace
-import com.cereal.client.domain.repository.GoalSharingRepository
+import com.cereal.client.domain.repository.DiagnosticsSharingRepository
 import com.cereal.client.domain.repository.RunTraceRepository
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
@@ -23,7 +23,7 @@ import kotlin.time.ExperimentalTime
 class FailureReporter(
     private val runTraceRepository: RunTraceRepository,
     private val goalRunReporter: GoalRunReporter,
-    private val goalSharingRepository: GoalSharingRepository,
+    private val diagnosticsSharingRepository: DiagnosticsSharingRepository,
     private val clock: Clock = Clock.System,
 ) {
     private val logger = LoggerFactory.getLogger(FailureReporter::class.java)
@@ -58,7 +58,7 @@ class FailureReporter(
                         receivedAt = clock.now(),
                     )
                 val awaitsUpload =
-                    !trace.learned && trace.failed && runId != null && goalSharingRepository.isEnabled() &&
+                    !trace.learned && trace.failed && runId != null && diagnosticsSharingRepository.isEnabled() &&
                         kept.count { it.runId == runId && it.uploadState in CLAIMED } < MAX_REPORTS_PER_GOAL_RUN
                 runTraceRepository.add(if (awaitsUpload) trace.copy(uploadState = RunTrace.UploadState.Pending) else trace, bytes)
                 prune()

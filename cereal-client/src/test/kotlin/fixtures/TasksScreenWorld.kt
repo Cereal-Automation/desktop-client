@@ -56,7 +56,7 @@ import com.cereal.client.infrastructure.data.repository.inmemory.InMemoryApplica
 import com.cereal.client.infrastructure.data.repository.inmemory.InMemoryApplicationPreferenceRepository
 import com.cereal.client.infrastructure.data.repository.inmemory.InMemoryArtifactRepository
 import com.cereal.client.infrastructure.data.repository.inmemory.InMemoryCustomDatasetRepository
-import com.cereal.client.infrastructure.data.repository.inmemory.InMemoryGoalSharingRepository
+import com.cereal.client.infrastructure.data.repository.inmemory.InMemoryDiagnosticsSharingRepository
 import com.cereal.client.infrastructure.data.repository.inmemory.InMemoryLlmProviderConfigRepository
 import com.cereal.client.infrastructure.data.repository.inmemory.InMemoryLogEventRepository
 import com.cereal.client.infrastructure.data.repository.inmemory.InMemoryProxyRepository
@@ -106,11 +106,11 @@ class TasksScreenWorld(
             override fun linkTaskToScriptInstance(task: JobTask) = Unit
         }
 
-    val goalSharing = InMemoryGoalSharingRepository()
+    val diagnosticsSharing = InMemoryDiagnosticsSharingRepository()
     val runTraceRepository = InMemoryRunTraceRepository()
     private val goalRunReporter =
-        GoalRunReporter(InMemoryGoalRunReportProvider(), goalSharing, InMemoryLlmProviderConfigRepository(), InMemoryApplicationConfig())
-    private val failureReporter = FailureReporter(runTraceRepository, goalRunReporter, goalSharing)
+        GoalRunReporter(InMemoryGoalRunReportProvider(), diagnosticsSharing, InMemoryLlmProviderConfigRepository(), InMemoryApplicationConfig())
+    private val failureReporter = FailureReporter(runTraceRepository, goalRunReporter, diagnosticsSharing)
 
     val taskManager =
         TaskManager(
@@ -172,7 +172,7 @@ class TasksScreenWorld(
             OpenUrlInteractor(systemProvider),
             ObserveArtifactsInteractor(artifactRepository),
             SaveArtifactToFileInteractor(artifactRepository),
-            ObserveRecentChecksInteractor(failureReporter, goalSharing),
+            ObserveRecentChecksInteractor(failureReporter, diagnosticsSharing),
             setConcurrentTaskCountInteractor,
             ObserveTaskSetupSortInteractor(preferences),
             SetTaskSetupSortInteractor(preferences),

@@ -1,14 +1,14 @@
 package com.cereal.client.application.interactor.settings.privacy
 
 import com.cereal.client.application.Interactor
-import com.cereal.client.domain.repository.GoalSharingRepository
+import com.cereal.client.domain.repository.DiagnosticsSharingRepository
 
 /** Takes effect straight away, also for runs already going: the reporter checks the choice again at their finish. */
-class SetGoalSharingEnabledInteractor(
-    private val goalSharingRepository: GoalSharingRepository,
-) : Interactor<Unit, SetGoalSharingEnabledInteractor.Params>() {
+class SetShareDiagnosticsEnabledInteractor(
+    private val diagnosticsSharingRepository: DiagnosticsSharingRepository,
+) : Interactor<Unit, SetShareDiagnosticsEnabledInteractor.Params>() {
     override suspend fun run(params: Params) {
-        goalSharingRepository.setEnabled(params.enabled)
+        diagnosticsSharingRepository.setEnabled(params.enabled)
     }
 
     data class Params(

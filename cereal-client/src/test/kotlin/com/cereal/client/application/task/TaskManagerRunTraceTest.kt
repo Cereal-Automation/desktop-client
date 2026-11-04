@@ -18,7 +18,7 @@ import com.cereal.client.domain.model.task.JobTask
 import com.cereal.client.domain.model.task.Task
 import com.cereal.client.infrastructure.data.repository.inmemory.InMemoryApplicationConfig
 import com.cereal.client.infrastructure.data.repository.inmemory.InMemoryArtifactRepository
-import com.cereal.client.infrastructure.data.repository.inmemory.InMemoryGoalSharingRepository
+import com.cereal.client.infrastructure.data.repository.inmemory.InMemoryDiagnosticsSharingRepository
 import com.cereal.client.infrastructure.data.repository.inmemory.InMemoryLlmProviderConfigRepository
 import com.cereal.client.infrastructure.data.repository.inmemory.InMemoryRunTraceRepository
 import com.cereal.client.infrastructure.data.repository.inmemory.InMemoryScriptInstanceRepository
@@ -64,7 +64,7 @@ class TaskManagerRunTraceTest {
     private val tasksRepository = InMemoryTasksRepository()
     private val artifacts = InMemoryArtifactRepository()
     private val traces = InMemoryRunTraceRepository()
-    private val sharing = InMemoryGoalSharingRepository()
+    private val sharing = InMemoryDiagnosticsSharingRepository()
     private val clock = TestClock()
     private val reports = InMemoryGoalRunReportProvider()
     private val goalRunReporter =
