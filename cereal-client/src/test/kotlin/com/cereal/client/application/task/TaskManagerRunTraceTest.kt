@@ -486,6 +486,37 @@ class TaskManagerRunTraceTest {
         }
 
     @Test
+    fun `a pending report whose bytes are gone is dropped, freeing its place under the cap`() =
+        runTest {
+            uploads.answer = FailureReportProvider.Result.Retry
+            EmittingScript.emits = listOf(trace("check-1", "crash"))
+            run(agentTask())
+
+            traces.bytes.clear()
+            failureReporter.resumePendingUploads()
+
+            assertEquals(1, uploads.uploads.size)
+            assertEquals(RunTrace.UploadState.Dropped, recentChecks().single().uploadState)
+        }
+
+    @Test
+    fun `a flag taken back by turning sharing off still shows reported and isn't offered again`() =
+        runTest {
+            uploads.answer = FailureReportProvider.Result.Retry
+            EmittingScript.emits = listOf(trace("check-1", "ok"))
+            run(agentTask())
+            val setSharing = SetShareDiagnosticsEnabledInteractor(sharing, failureReporter)
+
+            failureReporter.flag(recentChecks().single().id, "It was in stock")
+            setSharing.run(SetShareDiagnosticsEnabledInteractor.Params(false))
+            setSharing.run(SetShareDiagnosticsEnabledInteractor.Params(true))
+
+            val row = failureReporter.observeRecentChecks("task").first().single()
+            assertTrue(row.reported)
+            assertTrue(!row.canReport)
+        }
+
+    @Test
     fun `flagged reports count toward the goal run's cap`() =
         runTest {
             EmittingScript.emits = (1..4).map { trace("check-$it", "crash") } + listOf(trace("check-5", "ok"), trace("check-6", "ok"))

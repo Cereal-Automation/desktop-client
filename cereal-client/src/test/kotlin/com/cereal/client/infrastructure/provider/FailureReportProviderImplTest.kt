@@ -90,8 +90,8 @@ class FailureReportProviderImplTest {
         }
 
     @ParameterizedTest
-    @ValueSource(ints = [429, 500, 503])
-    fun `a 429 or a 5xx is retried`(status: Int) =
+    @ValueSource(ints = [401, 429, 500, 503])
+    fun `a 401, a 429 or a 5xx is retried`(status: Int) =
         runTest {
             server.enqueue(MockResponse().setResponseCode(status))
 
@@ -99,12 +99,23 @@ class FailureReportProviderImplTest {
         }
 
     @ParameterizedTest
-    @ValueSource(ints = [400, 401, 403, 404, 413])
+    @ValueSource(ints = [400, 403, 404, 413])
     fun `a 404 or another 4xx drops the report`(status: Int) =
         runTest {
             server.enqueue(MockResponse().setResponseCode(status))
 
             assertEquals(Result.Drop, provider.upload(report()) { true })
+        }
+
+    @Test
+    fun `a presign without the learned trace's url is retried, never registered without it`() =
+        runTest {
+            server.enqueue(presigned(learned = false))
+            server.enqueue(MockResponse())
+
+            assertEquals(Result.Retry, provider.upload(report(learnedTrace = "learned".toByteArray())) { true })
+            server.takeRequest()
+            assertEquals(1, server.requestCount)
         }
 
     @ParameterizedTest

@@ -30,7 +30,8 @@ class FailureReportProviderImpl(
             throw e
         } catch (e: ApiException) {
             val status = e.httpStatus
-            val drop = status != null && status in HTTP_CLIENT_ERRORS && status != HTTP_TOO_MANY_REQUESTS
+            // A 401 is an access token that expired meanwhile: the next try signs in afresh.
+            val drop = status != null && status in HTTP_CLIENT_ERRORS && status != HTTP_TOO_MANY_REQUESTS && status != HTTP_UNAUTHORIZED
             logger.warn("Failure report ${report.key} ${if (drop) "dropped" else "will be retried"}: ${e.message}")
             if (drop) Result.Drop else Result.Retry
         } catch (e: Exception) {
@@ -45,7 +46,13 @@ class FailureReportProviderImpl(
     ): Result {
         if (!mayContinue()) return Result.Retry
         val urls = apiClient.presignFailureReport(report.runId, report.key, FailureReportUploadRequestBody(learnedTrace = report.learnedTrace != null))
-        val puts = listOf(urls.traceUrl to report.trace) + listOfNotNull(report.learnedTrace?.let { bytes -> urls.learnedTraceUrl?.let { it to bytes } })
+        val learnedPut =
+            report.learnedTrace?.let { bytes ->
+                // Registering without it would lose the learned trace for good: its local copy goes on registration.
+                val url = urls.learnedTraceUrl ?: error("presign returned no learned-trace url")
+                url to bytes
+            }
+        val puts = listOf(urls.traceUrl to report.trace) + listOfNotNull(learnedPut)
         for ((url, bytes) in puts) {
             if (!mayContinue()) return Result.Retry
             try {
@@ -68,5 +75,6 @@ class FailureReportProviderImpl(
     private companion object {
         val HTTP_CLIENT_ERRORS = 400..499
         const val HTTP_TOO_MANY_REQUESTS = 429
+        const val HTTP_UNAUTHORIZED = 401
     }
 }

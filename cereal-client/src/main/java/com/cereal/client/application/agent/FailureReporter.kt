@@ -81,7 +81,7 @@ class FailureReporter(
                         !trace.learned && trace.failed && runId != null && diagnosticsSharingRepository.isEnabled() && !capReached(runId, kept)
                     (if (awaitsUpload) trace.copy(uploadState = RunTrace.UploadState.Pending) else trace).also {
                         runTraceRepository.add(it, bytes)
-                        prune()
+                        prune(kept + it)
                     }
                 }
             if (added.uploadState == RunTrace.UploadState.Pending) scope.launch { upload(added) }
@@ -133,7 +133,7 @@ class FailureReporter(
             try {
                 mutex.withLock {
                     if (!diagnosticsSharingRepository.isEnabled()) releasePending()
-                    prune()
+                    prune(runTraceRepository.getAll())
                     runTraceRepository.getAll().filter { it.uploadState == RunTrace.UploadState.Pending }
                 }
             } catch (e: CancellationException) {
@@ -175,7 +175,14 @@ class FailureReporter(
         try {
             goalRunReporter.awaitStartReport(runId)
             val learned = runTraceRepository.getAll().find { it.learned && it.check() == trace.check() }
-            val bytes = runTraceRepository.readBytes(trace) ?: return
+            val bytes =
+                runTraceRepository.readBytes(trace)
+                    // Nothing left to send: settle it, or it would hold a place under the goal run's cap for 7 days.
+                    ?: return mutex.withLock {
+                        runTraceRepository.getAll().find { it.id == trace.id }?.let {
+                            runTraceRepository.update(it.copy(uploadState = RunTrace.UploadState.Dropped))
+                        }
+                    }
             val report =
                 FailureReport(
                     runId = runId,
@@ -201,7 +208,7 @@ class FailureReporter(
                     }
 
                     current.uploadState == RunTrace.UploadState.Pending && !diagnosticsSharingRepository.isEnabled() -> {
-                        runTraceRepository.update(current.copy(uploadState = RunTrace.UploadState.None))
+                        runTraceRepository.update(current.copy(uploadState = current.released()))
                     }
                 }
             }
@@ -214,16 +221,20 @@ class FailureReporter(
         }
     }
 
-    /** Pending traces lose their upload claim and fall back to the ordinary keep; turning sharing on won't revive them. */
+    /**
+     * Pending traces lose their upload claim and fall back to the ordinary keep; turning sharing on won't revive them.
+     * A flagged one becomes dropped, so its row still shows the user reported it rather than offering the action again.
+     */
     private suspend fun releasePending() =
         runTraceRepository
             .getAll()
             .filter { it.uploadState == RunTrace.UploadState.Pending }
-            .forEach { runTraceRepository.update(it.copy(uploadState = RunTrace.UploadState.None)) }
+            .forEach { runTraceRepository.update(it.copy(uploadState = it.released())) }
+
+    private fun RunTrace.released() = if (failed) RunTrace.UploadState.None else RunTrace.UploadState.Dropped
 
     /** Deletes every trace the keep rules no longer hold (spec #291, "Retention"). */
-    private suspend fun prune() {
-        val all = runTraceRepository.getAll()
+    private suspend fun prune(all: List<RunTrace>) {
         val now = clock.now()
         val fresh = all.filter { now - it.receivedAt < MAX_AGE }
         val own =

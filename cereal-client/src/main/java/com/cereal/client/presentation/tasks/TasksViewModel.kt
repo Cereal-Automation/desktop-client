@@ -555,9 +555,10 @@ class TasksViewModel(
         if (task?.id == observedArtifactTaskId) return
         observedArtifactTaskId = task?.id
         artifactObservationJob?.cancel()
+        // Never leave another task's checks up, where reporting one would flag the wrong task.
+        recentChecks.value = emptyList()
         if (task == null) {
             artifacts.value = emptyList()
-            recentChecks.value = emptyList()
             return
         }
         artifactObservationJob =
