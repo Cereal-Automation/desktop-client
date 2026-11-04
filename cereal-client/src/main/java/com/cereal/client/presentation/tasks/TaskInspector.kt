@@ -35,11 +35,10 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.cereal.client.domain.model.artifact.Artifact
-import com.cereal.client.domain.model.diagnostics.RecentCheck
 import com.cereal.client.domain.model.logging.LoggingEvent
-import com.cereal.client.presentation.logs.RecentChecksSection
 import com.cereal.client.presentation.logs.TaskArtifactsSection
 import com.cereal.client.presentation.logs.TaskLogSection
+import com.cereal.client.presentation.tasks.model.RecentCheckUiModel
 import com.cereal.client.presentation.theme.CerealTheme
 import com.cereal.client.presentation.view.CerealIconButton
 import com.cereal.client.presentation.view.CerealText
@@ -82,7 +81,7 @@ internal fun TaskInspector(
     state: TaskInspectorState,
     events: List<LoggingEvent>,
     artifacts: List<Artifact>,
-    recentChecks: List<RecentCheck>,
+    recentChecks: List<RecentCheckUiModel>,
     onClose: () -> Unit,
     onAction: (TaskInspectorAction) -> Unit,
     onClearLog: () -> Unit,

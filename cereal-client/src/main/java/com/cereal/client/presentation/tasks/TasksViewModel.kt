@@ -19,7 +19,6 @@ import com.cereal.client.application.interactor.task.ObserveTaskSetupSortInterac
 import com.cereal.client.application.interactor.task.SetConcurrentTaskCountInteractor
 import com.cereal.client.application.interactor.task.SetTaskSetupSortInteractor
 import com.cereal.client.domain.model.artifact.Artifact
-import com.cereal.client.domain.model.diagnostics.RecentCheck
 import com.cereal.client.domain.model.logging.LoggingEvent
 import com.cereal.client.domain.model.logging.LoggingPriority
 import com.cereal.client.domain.model.script.ScriptPackageInstance
@@ -30,6 +29,8 @@ import com.cereal.client.domain.model.task.TaskStatus
 import com.cereal.client.domain.repository.LogEventRepository
 import com.cereal.client.presentation.error.ErrorResolver
 import com.cereal.client.presentation.error.handleFailureOrElse
+import com.cereal.client.presentation.tasks.mappers.toUiModel
+import com.cereal.client.presentation.tasks.model.RecentCheckUiModel
 import com.cereal.client.presentation.tasks.model.TaskUiModel
 import com.cereal.client.presentation.tasks.script.overview.ScriptRequest
 import com.cereal.client.presentation.util.InteractorRunner
@@ -117,7 +118,7 @@ class TasksViewModel(
     val artifacts = mutableStateOf<List<Artifact>>(emptyList())
 
     /** The selected task's Recent checks, newest first; empty (so hidden) unless it's the agent and sharing is on. */
-    val recentChecks = mutableStateOf<List<RecentCheck>>(emptyList())
+    val recentChecks = mutableStateOf<List<RecentCheckUiModel>>(emptyList())
 
     /** The VM owns its scope (it's a Koin factory per screen visit), so the screen must release it. */
     fun dispose() {
@@ -576,8 +577,10 @@ class TasksViewModel(
                 }
                 launch {
                     observeRecentChecksInteractor(ObserveRecentChecksInteractor.Params(task))
-                        .map { (it as? SuspendableResult.Success)?.value.orEmpty() }
-                        .collectLatest { checks -> withContext(dispatcherProvider.main) { recentChecks.value = checks } }
+                        .map { result -> result.map { checks -> checks.map { it.toUiModel() } } }
+                        .collectLatest { result ->
+                            withContext(dispatcherProvider.main) { result.handleFailureOrElse(errorResolver) { recentChecks.value = it } }
+                        }
                 }
             }
     }

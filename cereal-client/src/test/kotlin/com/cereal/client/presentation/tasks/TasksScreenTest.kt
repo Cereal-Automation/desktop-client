@@ -34,7 +34,6 @@ import com.cereal.client.domain.repository.RunTraceRepository
 import com.cereal.client.domain.repository.ScriptInstanceRepository
 import com.cereal.client.domain.repository.TasksRepository
 import com.cereal.client.infrastructure.provider.inmemory.InMemoryFailureReportProvider
-import com.cereal.client.presentation.logs.REPORT_NOTE_TEST_TAG
 import fixtures.aScriptInstance
 import fixtures.aScriptPackageInstance
 import kotlinx.coroutines.runBlocking
