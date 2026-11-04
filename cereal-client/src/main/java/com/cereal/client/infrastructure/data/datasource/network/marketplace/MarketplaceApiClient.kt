@@ -34,7 +34,6 @@ import com.cereal.client.infrastructure.data.datasource.network.marketplace.resp
 import com.cereal.client.infrastructure.data.datasource.network.security.CertificatePinnerFactory
 import com.cereal.client.infrastructure.data.datasource.network.util.await
 import kotlinx.coroutines.ExperimentalCoroutinesApi
-import kotlinx.serialization.SerializationException
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.modules.SerializersModule
 import kotlinx.serialization.modules.contextual
@@ -571,15 +570,7 @@ class MarketplaceApiClient(
                 .url(failureReportUrl(runId, key).newBuilder().addPathSegment("uploads").build())
                 .post(json.encodeToString(FailureReportUploadRequestBody.serializer(), body).toRequestBody())
                 .build()
-        return apiClient.newCall(request).await().use { response ->
-            if (!response.isSuccessful) throw apiException(response, null)
-            try {
-                json.decodeFromString(FailureReportUploadResponse.serializer(), response.body.string())
-            } catch (e: SerializationException) {
-                throw ApiException(message = "Unexpected presign response: ${e.message}", httpStatus = response.code)
-                    .apply { initCause(e) }
-            }
-        }
+        return handleResponse(apiClient.newCall(request).await())
     }
 
     /**

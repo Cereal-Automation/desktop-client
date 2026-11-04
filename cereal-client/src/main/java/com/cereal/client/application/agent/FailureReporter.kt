@@ -141,7 +141,8 @@ class FailureReporter(
             } catch (e: Exception) {
                 return logger.warn("Couldn't resume failure report uploads: ${e.message}")
             }
-        pending.forEach { upload(it) }
+        // Each in its own coroutine, so one stuck upload doesn't hold up the rest.
+        pending.forEach { scope.launch { upload(it) } }
     }
 
     /** For Share diagnostics turned off: takes every pending trace's upload claim away for good. */
@@ -178,11 +179,7 @@ class FailureReporter(
             val bytes =
                 runTraceRepository.readBytes(trace)
                     // Nothing left to send: settle it, or it would hold a place under the goal run's cap for 7 days.
-                    ?: return mutex.withLock {
-                        runTraceRepository.getAll().find { it.id == trace.id }?.let {
-                            runTraceRepository.update(it.copy(uploadState = RunTrace.UploadState.Dropped))
-                        }
-                    }
+                    ?: return settle(trace.id) { RunTrace.UploadState.Dropped }
             val report =
                 FailureReport(
                     runId = runId,
@@ -193,22 +190,30 @@ class FailureReporter(
                     learnedTrace = learned?.let { runTraceRepository.readBytes(it) },
                 )
             val result = failureReportProvider.upload(report, diagnosticsSharingRepository::isEnabled)
-            mutex.withLock {
-                val current = runTraceRepository.getAll().find { it.id == trace.id } ?: return
+            settle(trace.id) { current ->
                 when {
                     // Stands even when sharing went off meanwhile: an upload already in flight may finish.
                     result == FailureReportProvider.Result.Registered -> {
-                        runTraceRepository.update(current.copy(uploadState = RunTrace.UploadState.Reported))
                         runTraceRepository.deleteBytes(current)
                         learned?.let { runTraceRepository.delete(listOf(it)) }
+                        RunTrace.UploadState.Reported
                     }
 
-                    current.uploadState == RunTrace.UploadState.Pending && result == FailureReportProvider.Result.Drop -> {
-                        runTraceRepository.update(current.copy(uploadState = RunTrace.UploadState.Dropped))
+                    // Released while the upload ran: it keeps what the release gave it.
+                    current.uploadState != RunTrace.UploadState.Pending -> {
+                        current.uploadState
                     }
 
-                    current.uploadState == RunTrace.UploadState.Pending && !diagnosticsSharingRepository.isEnabled() -> {
-                        runTraceRepository.update(current.copy(uploadState = current.released()))
+                    result == FailureReportProvider.Result.Drop -> {
+                        RunTrace.UploadState.Dropped
+                    }
+
+                    !diagnosticsSharingRepository.isEnabled() -> {
+                        current.released()
+                    }
+
+                    else -> {
+                        current.uploadState
                     }
                 }
             }
@@ -219,6 +224,16 @@ class FailureReporter(
         } finally {
             uploading.remove(trace.id)
         }
+    }
+
+    /** Sets the still-kept trace [id]'s upload state to what [next] decides from its current row. */
+    private suspend fun settle(
+        id: String,
+        next: suspend (RunTrace) -> RunTrace.UploadState,
+    ) = mutex.withLock {
+        val current = runTraceRepository.getAll().find { it.id == id } ?: return@withLock
+        val state = next(current)
+        if (state != current.uploadState) runTraceRepository.update(current.copy(uploadState = state))
     }
 
     /**

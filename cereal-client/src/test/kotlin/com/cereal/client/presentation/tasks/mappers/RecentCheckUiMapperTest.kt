@@ -26,7 +26,7 @@ class RecentCheckUiMapperTest {
             RecentCheckUiModel(
                 traceId = "trace-1",
                 label = "In stock",
-                time = "2026-11-04 13:34:56",
+                time = dateFormatter.withZone(amsterdam).format(java.time.Instant.parse("2026-11-04T12:34:56Z")),
                 failed = true,
                 reported = true,
                 canReport = false,

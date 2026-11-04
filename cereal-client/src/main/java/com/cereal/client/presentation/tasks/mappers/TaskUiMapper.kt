@@ -25,7 +25,7 @@ val taskStatusSortOrder =
         TaskStatus.Success::class to 4,
     )
 
-private val dateFormatter =
+internal val dateFormatter =
     DateTimeFormatter
         .ofLocalizedDateTime(FormatStyle.MEDIUM)
         .withLocale(Locale.getDefault())
