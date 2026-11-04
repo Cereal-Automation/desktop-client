@@ -14,16 +14,16 @@ import com.cereal.client.application.interactor.settings.discord.SetDiscordActiv
 import com.cereal.client.application.interactor.settings.notifications.SaveAllNotificationSettingsInteractor
 import com.cereal.client.application.interactor.settings.notifications.SendNotificationTestMessageInteractor
 import com.cereal.client.application.interactor.settings.privacy.GetCrashReportingEnabledInteractor
-import com.cereal.client.application.interactor.settings.privacy.GetGoalSharingEnabledInteractor
+import com.cereal.client.application.interactor.settings.privacy.GetShareDiagnosticsEnabledInteractor
 import com.cereal.client.application.interactor.settings.privacy.SetCrashReportingEnabledInteractor
-import com.cereal.client.application.interactor.settings.privacy.SetGoalSharingEnabledInteractor
+import com.cereal.client.application.interactor.settings.privacy.SetShareDiagnosticsEnabledInteractor
 import com.cereal.client.application.interactor.settings.proxy.SetProxyHealthCheckIntervalInteractor
 import com.cereal.client.domain.model.app.DownloadStatus
 import com.cereal.client.domain.model.app.UpdateInstallResult
 import com.cereal.client.domain.model.app.Version
 import com.cereal.client.domain.model.settings.ApplicationPreferenceSettings
 import com.cereal.client.domain.model.settings.ProxyHealthCheckInterval
-import com.cereal.client.infrastructure.data.repository.inmemory.InMemoryGoalSharingRepository
+import com.cereal.client.infrastructure.data.repository.inmemory.InMemoryDiagnosticsSharingRepository
 import com.cereal.client.infrastructure.provider.inmemory.InMemoryCrashReportingProvider
 import com.cereal.client.presentation.error.ErrorResolver
 import com.cereal.client.presentation.feedback.FeedbackAction
@@ -71,6 +71,7 @@ class ApplicationSettingsViewModelTest {
     private val crashReportingProvider = InMemoryCrashReportingProvider()
     private val getCrashReportingEnabledInteractor = GetCrashReportingEnabledInteractor(crashReportingProvider)
     private val setCrashReportingEnabledInteractor = SetCrashReportingEnabledInteractor(crashReportingProvider)
+    private val diagnosticsSharing = InMemoryDiagnosticsSharingRepository()
     private val sendNotificationTestMessageInteractor: SendNotificationTestMessageInteractor = mockk(relaxed = true)
     private val saveAllNotificationSettingsInteractor: SaveAllNotificationSettingsInteractor = mockk(relaxed = true)
     private val checkForUpdatesInteractor: CheckForUpdatesInteractor = mockk(relaxed = true)
@@ -106,8 +107,8 @@ class ApplicationSettingsViewModelTest {
                 setDiscordActivityStatusEnabledInteractor = setDiscordActivityStatusEnabledInteractor,
                 getCrashReportingEnabledInteractor = getCrashReportingEnabledInteractor,
                 setCrashReportingEnabledInteractor = setCrashReportingEnabledInteractor,
-                getGoalSharingEnabledInteractor = GetGoalSharingEnabledInteractor(InMemoryGoalSharingRepository()),
-                setGoalSharingEnabledInteractor = SetGoalSharingEnabledInteractor(InMemoryGoalSharingRepository()),
+                getShareDiagnosticsEnabledInteractor = GetShareDiagnosticsEnabledInteractor(diagnosticsSharing),
+                setShareDiagnosticsEnabledInteractor = SetShareDiagnosticsEnabledInteractor(diagnosticsSharing),
                 sendNotificationTestMessageInteractor = sendNotificationTestMessageInteractor,
                 saveAllNotificationSettingsInteractor = saveAllNotificationSettingsInteractor,
                 checkForUpdatesInteractor = checkForUpdatesInteractor,
@@ -563,5 +564,30 @@ class ApplicationSettingsViewModelTest {
             dispatcher.scheduler.advanceUntilIdle()
 
             assertFalse(viewModel.crashReportingEnabled.value)
+        }
+
+    @Test
+    fun `share diagnostics starts on and turning it off is stored`() =
+        runTest {
+            createViewModel()
+            dispatcher.scheduler.advanceUntilIdle()
+            assertTrue(viewModel.shareDiagnosticsEnabled.value)
+
+            viewModel.setShareDiagnosticsEnabled(false)
+            dispatcher.scheduler.advanceUntilIdle()
+
+            assertFalse(viewModel.shareDiagnosticsEnabled.value)
+            assertFalse(diagnosticsSharing.isEnabled())
+        }
+
+    @Test
+    fun `a stored share diagnostics opt-out is what the settings screen shows`() =
+        runTest {
+            diagnosticsSharing.setEnabled(false)
+
+            createViewModel()
+            dispatcher.scheduler.advanceUntilIdle()
+
+            assertFalse(viewModel.shareDiagnosticsEnabled.value)
         }
 }

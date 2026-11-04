@@ -54,7 +54,7 @@ import com.cereal.client.infrastructure.data.repository.inmemory.InMemoryApplica
 import com.cereal.client.infrastructure.data.repository.inmemory.InMemoryApplicationPreferenceRepository
 import com.cereal.client.infrastructure.data.repository.inmemory.InMemoryArtifactRepository
 import com.cereal.client.infrastructure.data.repository.inmemory.InMemoryCustomDatasetRepository
-import com.cereal.client.infrastructure.data.repository.inmemory.InMemoryGoalSharingRepository
+import com.cereal.client.infrastructure.data.repository.inmemory.InMemoryDiagnosticsSharingRepository
 import com.cereal.client.infrastructure.data.repository.inmemory.InMemoryLlmProviderConfigRepository
 import com.cereal.client.infrastructure.data.repository.inmemory.InMemoryLogEventRepository
 import com.cereal.client.infrastructure.data.repository.inmemory.InMemoryProxyRepository
@@ -111,7 +111,7 @@ class TasksScreenWorld(
             scriptInstances,
             JobTaskFactory(noOpScopeLinker),
             artifactRepository,
-            GoalRunReporter(InMemoryGoalRunReportProvider(), InMemoryGoalSharingRepository(), InMemoryLlmProviderConfigRepository(), InMemoryApplicationConfig()),
+            GoalRunReporter(InMemoryGoalRunReportProvider(), InMemoryDiagnosticsSharingRepository(), InMemoryLlmProviderConfigRepository(), InMemoryApplicationConfig()),
         )
 
     private val getOrCreateDefaultTaskGroupInteractor = GetOrCreateDefaultTaskGroupInteractor(tasksRepository)

@@ -18,9 +18,6 @@ enum class BootstrapPreferenceKey(
      */
     CrashReportingEnabled("crash_reporting_enabled", defaultValue = true),
 
-    /** Whether AI browser agent goal runs may be reported (ADR 0011). Opt-*out*, like crash reporting. */
-    GoalSharingEnabled("goal_sharing_enabled", defaultValue = true),
-
-    /** Whether the one-time Home notice that goal sharing is on has been dismissed. */
-    GoalSharingNoticeSeen("goal_sharing_notice_seen", defaultValue = false),
+    /** Whether goal run reports and failure reports may be sent (ADR 0011, ADR 0012). Opt-*out*, like crash reporting. */
+    ShareDiagnosticsEnabled("share_diagnostics_enabled", defaultValue = true),
 }

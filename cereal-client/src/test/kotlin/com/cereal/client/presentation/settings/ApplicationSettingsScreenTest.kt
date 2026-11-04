@@ -14,7 +14,7 @@ import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.onSiblings
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollToNode
-import com.cereal.client.domain.repository.GoalSharingRepository
+import com.cereal.client.domain.repository.DiagnosticsSharingRepository
 import org.koin.java.KoinJavaComponent
 import testutil.runScreenTest
 import testutil.setScreenContent
@@ -38,19 +38,27 @@ class ApplicationSettingsScreenTest {
         }
 
     @Test
-    fun `the goal sharing toggle starts on and flips the stored choice`() =
+    fun `the share diagnostics toggle starts on and flips the stored choice`() =
         runScreenTest {
             setScreenContent { ApplicationSettingsScreen() }
-            val title = "Share my goals to help improve Cereal"
-            onNode(hasScrollToNodeAction()).performScrollToNode(hasText(title))
-            // The Privacy card lists crash reporting, then goal sharing.
+            val title = "Share diagnostics"
+            onNode(hasScrollToNodeAction()).performScrollToNode(hasText(SHARE_DIAGNOSTICS_DESCRIPTION))
+            onNodeWithText(SHARE_DIAGNOSTICS_DESCRIPTION).assertExists()
+            // The Privacy card lists crash reporting, then share diagnostics.
             val toggle = onNodeWithText(title).onSiblings().filter(isToggleable()).onLast()
 
             toggle.assertIsOn()
             toggle.performClick()
 
             toggle.assertIsOff()
-            waitUntil { !KoinJavaComponent.get<GoalSharingRepository>(GoalSharingRepository::class.java).isEnabled() }
-            assertFalse(KoinJavaComponent.get<GoalSharingRepository>(GoalSharingRepository::class.java).isEnabled())
+            waitUntil { !KoinJavaComponent.get<DiagnosticsSharingRepository>(DiagnosticsSharingRepository::class.java).isEnabled() }
+            assertFalse(KoinJavaComponent.get<DiagnosticsSharingRepository>(DiagnosticsSharingRepository::class.java).isEnabled())
         }
+
+    private companion object {
+        const val SHARE_DIAGNOSTICS_DESCRIPTION =
+            "Sends the goals you give the AI agent and how each run went. When a check fails or you report it, " +
+                "also sends what the agent saw on those pages, with passwords, form values and contact details " +
+                "masked. Kept 30 days, used only to fix the agent."
+    }
 }

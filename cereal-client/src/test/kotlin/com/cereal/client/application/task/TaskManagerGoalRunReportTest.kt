@@ -21,7 +21,7 @@ import com.cereal.client.domain.model.telemetry.GoalRunOutcome
 import com.cereal.client.domain.model.telemetry.GoalRunStartReport
 import com.cereal.client.domain.provider.GoalRunReportProvider
 import com.cereal.client.infrastructure.data.repository.inmemory.InMemoryApplicationConfig
-import com.cereal.client.infrastructure.data.repository.inmemory.InMemoryGoalSharingRepository
+import com.cereal.client.infrastructure.data.repository.inmemory.InMemoryDiagnosticsSharingRepository
 import com.cereal.client.infrastructure.data.repository.inmemory.InMemoryLlmProviderConfigRepository
 import com.cereal.client.infrastructure.data.repository.inmemory.InMemoryScriptInstanceRepository
 import com.cereal.client.infrastructure.data.repository.inmemory.InMemoryTasksRepository
@@ -61,7 +61,7 @@ import kotlin.time.ExperimentalTime
 class TaskManagerGoalRunReportTest {
     private val tasksRepository = InMemoryTasksRepository()
     private val reports = InMemoryGoalRunReportProvider()
-    private val sharing = InMemoryGoalSharingRepository(installId = "install-1")
+    private val sharing = InMemoryDiagnosticsSharingRepository(installId = "install-1")
     private val llm = InMemoryLlmProviderConfigRepository(LlmProviderConfig.of(LlmProviderType.ANTHROPIC, LlmProviderType.ANTHROPIC.defaultBaseUrl, "sk-test", "claude-test"))
 
     @BeforeEach
