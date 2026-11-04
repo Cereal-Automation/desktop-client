@@ -12,6 +12,15 @@ interface RunTraceRepository {
 
     suspend fun getAll(): List<RunTrace>
 
+    /** [trace]'s bytes; null once they're gone. */
+    suspend fun readBytes(trace: RunTrace): ByteArray?
+
+    /** Replaces the row of [trace] (same id), leaving its bytes as they are. */
+    suspend fun update(trace: RunTrace)
+
+    /** Removes [trace]'s bytes but keeps its row. */
+    suspend fun deleteBytes(trace: RunTrace)
+
     /** Emits [taskId]'s traces and re-emits whenever they change. */
     fun observe(taskId: String): Flow<List<RunTrace>>
 

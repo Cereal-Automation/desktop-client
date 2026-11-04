@@ -5,6 +5,7 @@ import com.cereal.client.application.agent.AI_BROWSER_AGENT_PACKAGE
 import com.cereal.client.application.agent.FailureReporter
 import com.cereal.client.application.agent.GoalRunReporter
 import com.cereal.client.application.exception.CrashReporter
+import com.cereal.client.application.interactor.settings.privacy.SetShareDiagnosticsEnabledInteractor
 import com.cereal.client.domain.model.diagnostics.RUN_TRACE_MIME_TYPE
 import com.cereal.client.domain.model.diagnostics.RunTrace
 import com.cereal.client.domain.model.script.MainScript
@@ -16,6 +17,7 @@ import com.cereal.client.domain.model.script.configuration.ConfigValue
 import com.cereal.client.domain.model.script.configuration.ScriptConfigurationDefinition
 import com.cereal.client.domain.model.task.JobTask
 import com.cereal.client.domain.model.task.Task
+import com.cereal.client.domain.provider.FailureReportProvider
 import com.cereal.client.infrastructure.data.repository.inmemory.InMemoryApplicationConfig
 import com.cereal.client.infrastructure.data.repository.inmemory.InMemoryArtifactRepository
 import com.cereal.client.infrastructure.data.repository.inmemory.InMemoryDiagnosticsSharingRepository
@@ -23,6 +25,7 @@ import com.cereal.client.infrastructure.data.repository.inmemory.InMemoryLlmProv
 import com.cereal.client.infrastructure.data.repository.inmemory.InMemoryRunTraceRepository
 import com.cereal.client.infrastructure.data.repository.inmemory.InMemoryScriptInstanceRepository
 import com.cereal.client.infrastructure.data.repository.inmemory.InMemoryTasksRepository
+import com.cereal.client.infrastructure.provider.inmemory.InMemoryFailureReportProvider
 import com.cereal.client.infrastructure.provider.inmemory.InMemoryGoalRunReportProvider
 import com.cereal.client.infrastructure.sdkcomponent.ArtifactComponentImpl
 import com.cereal.sdk.ExecutionResult
@@ -35,7 +38,11 @@ import io.mockk.mockkObject
 import io.mockk.unmockkObject
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.test.advanceTimeBy
+import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.runTest
 import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.Assertions.assertEquals
@@ -51,6 +58,7 @@ import java.io.File
 import kotlin.time.Clock
 import kotlin.time.Duration
 import kotlin.time.Duration.Companion.days
+import kotlin.time.Duration.Companion.hours
 import kotlin.time.Duration.Companion.seconds
 import kotlin.time.ExperimentalTime
 import kotlin.time.Instant
@@ -59,7 +67,7 @@ import kotlin.time.Instant
  * Run traces a script emits while [TaskManager] runs it: the real [GoalRunReporter], [FailureReporter] and
  * [ArtifactComponentImpl], over in-memory stores and a clock the test moves.
  */
-@OptIn(ExperimentalTime::class)
+@OptIn(ExperimentalTime::class, ExperimentalCoroutinesApi::class)
 class TaskManagerRunTraceTest {
     private val tasksRepository = InMemoryTasksRepository()
     private val artifacts = InMemoryArtifactRepository()
@@ -69,7 +77,8 @@ class TaskManagerRunTraceTest {
     private val reports = InMemoryGoalRunReportProvider()
     private val goalRunReporter =
         GoalRunReporter(reports, sharing, InMemoryLlmProviderConfigRepository(), InMemoryApplicationConfig(), CoroutineScope(Dispatchers.Unconfined))
-    private val failureReporter = FailureReporter(traces, goalRunReporter, sharing, clock)
+    private val uploads = InMemoryFailureReportProvider()
+    private val failureReporter = FailureReporter(traces, goalRunReporter, sharing, uploads, CoroutineScope(Dispatchers.Unconfined), clock)
     private val taskManager =
         TaskManager(
             dispatcherProvider = CoroutinesDispatcherProvider(),
@@ -225,6 +234,161 @@ class TaskManagerRunTraceTest {
             run(agentTask())
 
             assertTrue(traces.getAll().none { it.key == "check-1" })
+        }
+
+    @Test
+    fun `a failed check uploads right away with its goal run's id and the learned trace emitted before it`() =
+        runTest {
+            EmittingScript.emits =
+                listOf(
+                    trace("check-1", "ok"),
+                    trace("check-2", "crash", learned = true, bytes = "learned".toByteArray()),
+                    trace("check-2", "crash", bytes = "own".toByteArray()),
+                )
+
+            run(agentTask())
+
+            val report = uploads.uploads.single()
+            assertEquals(reports.starts.single().runId, report.runId)
+            assertEquals("check-2", report.key)
+            assertEquals("crash", report.outcome)
+            assertNull(report.note)
+            assertEquals("own", report.trace.decodeToString())
+            assertEquals("learned", report.learnedTrace?.decodeToString())
+        }
+
+    @Test
+    fun `a failed check without a learned trace uploads its own alone`() =
+        runTest {
+            EmittingScript.emits = listOf(trace("check-1", "fail"))
+
+            run(agentTask())
+
+            assertNull(uploads.uploads.single().learnedTrace)
+        }
+
+    @Test
+    fun `a check from a goal run started with sharing off never uploads`() =
+        runTest {
+            sharing.setEnabled(false)
+            EmittingScript.emits = listOf(trace("check-1", "crash"))
+            run(agentTask())
+
+            sharing.setEnabled(true)
+            failureReporter.resumePendingUploads()
+
+            assertTrue(uploads.uploads.isEmpty())
+        }
+
+    @Test
+    fun `a registered report deletes the trace's bytes, shows reported and is never sent again`() =
+        runTest {
+            EmittingScript.emits = listOf(trace("check-1", "crash", learned = true), trace("check-1", "crash"))
+            run(agentTask())
+
+            failureReporter.resumePendingUploads()
+
+            assertEquals(1, uploads.uploads.size)
+            assertEquals(RunTrace.UploadState.Reported, recentChecks().single().uploadState)
+            assertTrue(traces.bytes.isEmpty())
+        }
+
+    @Test
+    fun `a report the server can't take now is kept and retried until it's 7 days old`() =
+        runTest {
+            uploads.answer = FailureReportProvider.Result.Retry
+            EmittingScript.emits = listOf(trace("check-1", "crash"))
+            run(agentTask())
+
+            failureReporter.resumePendingUploads()
+            assertEquals(2, uploads.uploads.size)
+            assertEquals(RunTrace.UploadState.Pending, recentChecks().single().uploadState)
+
+            uploads.answer = FailureReportProvider.Result.Registered
+            clock.advance(7.days)
+            failureReporter.resumePendingUploads()
+
+            assertEquals(2, uploads.uploads.size)
+            assertTrue(recentChecks().isEmpty())
+        }
+
+    @Test
+    fun `a dropped report is never retried`() =
+        runTest {
+            uploads.answer = FailureReportProvider.Result.Drop
+            EmittingScript.emits = listOf(trace("check-1", "crash"))
+            run(agentTask())
+
+            failureReporter.resumePendingUploads()
+
+            assertEquals(1, uploads.uploads.size)
+            assertEquals(RunTrace.UploadState.Dropped, recentChecks().single().uploadState)
+        }
+
+    @Test
+    fun `turning sharing off takes pending reports back for good`() =
+        runTest {
+            uploads.answer = FailureReportProvider.Result.Retry
+            EmittingScript.emits = listOf(trace("check-1", "crash"))
+            run(agentTask())
+            val setSharing = SetShareDiagnosticsEnabledInteractor(sharing, failureReporter)
+
+            setSharing.run(SetShareDiagnosticsEnabledInteractor.Params(false))
+            setSharing.run(SetShareDiagnosticsEnabledInteractor.Params(true))
+            uploads.answer = FailureReportProvider.Result.Registered
+            failureReporter.resumePendingUploads()
+
+            assertEquals(1, uploads.uploads.size)
+            assertEquals(RunTrace.UploadState.None, recentChecks().single().uploadState)
+        }
+
+    @Test
+    fun `sharing turned off before an upload step stops it`() =
+        runTest {
+            uploads.answer = FailureReportProvider.Result.Retry
+            EmittingScript.emits = listOf(trace("check-1", "crash"))
+            run(agentTask())
+
+            sharing.setEnabled(false)
+            failureReporter.resumePendingUploads()
+            sharing.setEnabled(true)
+            failureReporter.resumePendingUploads()
+
+            assertEquals(1, uploads.uploads.size)
+            assertEquals(RunTrace.UploadState.None, recentChecks().single().uploadState)
+        }
+
+    @Test
+    fun `at most 5 failure reports go per goal run`() =
+        runTest {
+            EmittingScript.emits = (1..7).map { trace("check-$it", "crash") }
+
+            run(agentTask())
+            failureReporter.resumePendingUploads()
+
+            assertEquals((1..5).map { "check-$it" }, uploads.uploads.map { it.key })
+        }
+
+    @Test
+    fun `pending reports resume when the app starts with a user signed in, then hourly`() =
+        runTest {
+            uploads.answer = FailureReportProvider.Result.Retry
+            EmittingScript.emits = listOf(trace("check-1", "crash"))
+            run(agentTask())
+            val user = MutableStateFlow<Any?>(null)
+            val restarted = FailureReporter(traces, goalRunReporter, sharing, uploads, backgroundScope, clock)
+
+            restarted.start(user)
+            runCurrent()
+            assertEquals(1, uploads.uploads.size)
+
+            user.value = "user"
+            runCurrent()
+            assertEquals(2, uploads.uploads.size)
+
+            advanceTimeBy(1.hours)
+            runCurrent()
+            assertEquals(3, uploads.uploads.size)
         }
 
     private suspend fun recentChecks(taskId: String = "task"): List<RunTrace> = failureReporter.observeRecentChecks(taskId).first()

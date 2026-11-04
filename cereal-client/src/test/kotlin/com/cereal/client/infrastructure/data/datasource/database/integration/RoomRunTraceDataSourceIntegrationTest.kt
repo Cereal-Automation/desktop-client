@@ -62,6 +62,19 @@ class RoomRunTraceDataSourceIntegrationTest : RoomUserDatabaseTestBase() {
         }
 
     @Test
+    fun `update replaces only that trace's row`() =
+        runTest {
+            val taskId = seedTask()
+            dataSource.insert(testUser, trace("1", taskId))
+            dataSource.insert(testUser, trace("2", taskId))
+            val reported = trace("1", taskId).copy(uploadState = RunTrace.UploadState.Reported, note = "flagged note")
+
+            dataSource.update(testUser, reported)
+
+            assertEquals(setOf(reported, trace("2", taskId)), dataSource.getAll(testUser).toSet())
+        }
+
+    @Test
     fun `delete removes only the given traces`() =
         runTest {
             val taskId = seedTask()

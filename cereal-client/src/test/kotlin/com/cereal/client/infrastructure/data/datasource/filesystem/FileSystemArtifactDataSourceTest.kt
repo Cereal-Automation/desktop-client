@@ -9,6 +9,7 @@ import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.Assertions.assertArrayEquals
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertFalse
+import org.junit.jupiter.api.Assertions.assertNull
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
@@ -61,6 +62,17 @@ class FileSystemArtifactDataSourceTest {
             dataSource.copyToFile(user, "task-1/artifact-1", destination)
 
             assertArrayEquals(bytes, destination.readBytes())
+        }
+
+    @Test
+    fun `write then read round-trips identical bytes, and a missing file reads as null`() =
+        runTest {
+            val bytes = "trace".toByteArray()
+
+            dataSource.write(user, "task-1/trace-1", bytes)
+
+            assertArrayEquals(bytes, dataSource.read(user, "task-1/trace-1"))
+            assertNull(dataSource.read(user, "task-1/trace-2"))
         }
 
     @Test

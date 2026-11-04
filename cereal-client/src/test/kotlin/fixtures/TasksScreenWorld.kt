@@ -64,6 +64,7 @@ import com.cereal.client.infrastructure.data.repository.inmemory.InMemoryRunTrac
 import com.cereal.client.infrastructure.data.repository.inmemory.InMemoryScriptInstanceRepository
 import com.cereal.client.infrastructure.data.repository.inmemory.InMemoryTasksRepository
 import com.cereal.client.infrastructure.provider.inmemory.InMemoryAuthProvider
+import com.cereal.client.infrastructure.provider.inmemory.InMemoryFailureReportProvider
 import com.cereal.client.infrastructure.provider.inmemory.InMemoryGoalRunReportProvider
 import com.cereal.client.infrastructure.provider.inmemory.InMemorySystemProvider
 import com.cereal.client.presentation.error.ErrorResolver
@@ -110,7 +111,7 @@ class TasksScreenWorld(
     val runTraceRepository = InMemoryRunTraceRepository()
     private val goalRunReporter =
         GoalRunReporter(InMemoryGoalRunReportProvider(), diagnosticsSharing, InMemoryLlmProviderConfigRepository(), InMemoryApplicationConfig())
-    private val failureReporter = FailureReporter(runTraceRepository, goalRunReporter, diagnosticsSharing)
+    private val failureReporter = FailureReporter(runTraceRepository, goalRunReporter, diagnosticsSharing, InMemoryFailureReportProvider())
 
     val taskManager =
         TaskManager(

@@ -3,6 +3,7 @@ package com.cereal.client.infrastructure.data.datasource.database.room.dao
 import androidx.room.Dao
 import androidx.room.Insert
 import androidx.room.Query
+import androidx.room.Update
 import com.cereal.client.infrastructure.data.datasource.database.room.entity.RunTraceEntity
 import kotlinx.coroutines.flow.Flow
 
@@ -10,6 +11,9 @@ import kotlinx.coroutines.flow.Flow
 interface RunTraceDao {
     @Insert
     suspend fun insert(entity: RunTraceEntity)
+
+    @Update
+    suspend fun update(entity: RunTraceEntity)
 
     @Query("SELECT * FROM run_trace")
     suspend fun getAll(): List<RunTraceEntity>

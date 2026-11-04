@@ -1,35 +1,54 @@
 package com.cereal.client.application.agent
 
+import com.cereal.client.domain.model.diagnostics.FailureReport
 import com.cereal.client.domain.model.diagnostics.RunTrace
+import com.cereal.client.domain.provider.FailureReportProvider
 import com.cereal.client.domain.repository.DiagnosticsSharingRepository
 import com.cereal.client.domain.repository.RunTraceRepository
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import org.slf4j.LoggerFactory
 import java.util.UUID
+import java.util.concurrent.ConcurrentHashMap
 import kotlin.coroutines.cancellation.CancellationException
 import kotlin.time.Clock
 import kotlin.time.Duration.Companion.days
+import kotlin.time.Duration.Companion.hours
 import kotlin.time.ExperimentalTime
 
 /**
  * The client side of **failure reports** (spec #291, ADR 0012): takes in the run traces the AI browser agent emits,
- * keeps recent ones locally and lists them as Recent checks. A sibling of [GoalRunReporter], whose goal run id it
- * stores with each trace. Never throws at the script: a trace it can't keep is logged and dropped.
+ * keeps recent ones locally, lists them as Recent checks and uploads a failed check's report in the background. A
+ * sibling of [GoalRunReporter], whose goal run id it stores with each trace. Never throws at the script: a trace it
+ * can't keep is logged and dropped, and an upload never blocks or fails the task.
  */
 @OptIn(ExperimentalTime::class)
 class FailureReporter(
     private val runTraceRepository: RunTraceRepository,
     private val goalRunReporter: GoalRunReporter,
     private val diagnosticsSharingRepository: DiagnosticsSharingRepository,
+    private val failureReportProvider: FailureReportProvider,
+    private val scope: CoroutineScope = CoroutineScope(Dispatchers.IO + SupervisorJob()),
     private val clock: Clock = Clock.System,
 ) {
     private val logger = LoggerFactory.getLogger(FailureReporter::class.java)
 
-    /** Intake and retention read, decide and delete over all traces, so they run one at a time. */
+    /** Intake, retention and settling an upload read, decide and write over all traces, so they run one at a time. */
     private val mutex = Mutex()
+
+    /** Ids of traces being uploaded, so a tick and an intake never send the same report at once. */
+    private val uploading = ConcurrentHashMap.newKeySet<String>()
+
+    private var ticks: Job? = null
 
     /** Receives a run trace [taskId]'s script emitted as [name] under the reserved [mimeType]. */
     suspend fun receive(
@@ -41,28 +60,32 @@ class FailureReporter(
         try {
             val emit = RunTraceEmit.parse(name, mimeType) ?: return logger.warn("Refusing a run trace with a malformed type: $mimeType")
             if (bytes.size > MAX_TRACE_BYTES) return logger.warn("Refusing run trace ${emit.key}: ${bytes.size} bytes is over the limit")
-            mutex.withLock {
-                val kept = runTraceRepository.getAll()
-                val runId = goalRunReporter.runId(taskId)
-                val trace =
-                    RunTrace(
-                        id = UUID.randomUUID().toString(),
-                        taskId = taskId,
-                        key = emit.key,
-                        runId = runId,
-                        outcome = emit.outcome,
-                        label = emit.label,
-                        notable = emit.notable,
-                        learned = emit.learned,
-                        sizeBytes = bytes.size.toLong(),
-                        receivedAt = clock.now(),
-                    )
-                val awaitsUpload =
-                    !trace.learned && trace.failed && runId != null && diagnosticsSharingRepository.isEnabled() &&
-                        kept.count { it.runId == runId && it.uploadState in CLAIMED } < MAX_REPORTS_PER_GOAL_RUN
-                runTraceRepository.add(if (awaitsUpload) trace.copy(uploadState = RunTrace.UploadState.Pending) else trace, bytes)
-                prune()
-            }
+            val added =
+                mutex.withLock {
+                    val kept = runTraceRepository.getAll()
+                    val runId = goalRunReporter.runId(taskId)
+                    val trace =
+                        RunTrace(
+                            id = UUID.randomUUID().toString(),
+                            taskId = taskId,
+                            key = emit.key,
+                            runId = runId,
+                            outcome = emit.outcome,
+                            label = emit.label,
+                            notable = emit.notable,
+                            learned = emit.learned,
+                            sizeBytes = bytes.size.toLong(),
+                            receivedAt = clock.now(),
+                        )
+                    val awaitsUpload =
+                        !trace.learned && trace.failed && runId != null && diagnosticsSharingRepository.isEnabled() &&
+                            kept.count { it.runId == runId && it.uploadState in CLAIMED } < MAX_REPORTS_PER_GOAL_RUN
+                    (if (awaitsUpload) trace.copy(uploadState = RunTrace.UploadState.Pending) else trace).also {
+                        runTraceRepository.add(it, bytes)
+                        prune()
+                    }
+                }
+            if (added.uploadState == RunTrace.UploadState.Pending) scope.launch { upload(added) }
         } catch (e: CancellationException) {
             throw e
         } catch (e: Exception) {
@@ -73,8 +96,98 @@ class FailureReporter(
     /** [taskId]'s kept checks, newest first: its own traces only, never the learned ones. */
     fun observeRecentChecks(taskId: String): Flow<List<RunTrace>> = runTraceRepository.observe(taskId).map { traces -> traces.filterNot { it.learned }.sortedByDescending { it.receivedAt } }
 
+    /**
+     * Applies retention and resumes uploads waiting to retry: on app start, hourly, and when Share diagnostics is
+     * turned off, which takes every pending trace's upload claim away for good.
+     */
+    suspend fun resumePendingUploads() {
+        val pending =
+            try {
+                mutex.withLock {
+                    if (!diagnosticsSharingRepository.isEnabled()) releasePending()
+                    prune()
+                    runTraceRepository.getAll().filter { it.uploadState == RunTrace.UploadState.Pending }
+                }
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                return logger.warn("Couldn't resume failure report uploads: ${e.message}")
+            }
+        pending.forEach { upload(it) }
+    }
+
+    /** Runs [resumePendingUploads] whenever a user signs in, then hourly while they stay signed in. */
+    fun start(users: Flow<Any?>) {
+        if (ticks?.isActive == true) return
+        ticks =
+            scope.launch {
+                users.collectLatest { user ->
+                    while (user != null) {
+                        resumePendingUploads()
+                        delay(TICK_INTERVAL)
+                    }
+                }
+            }
+    }
+
     /** Removes every trace of [taskId], for a task being deleted. */
     suspend fun forgetTask(taskId: String) = mutex.withLock { runTraceRepository.deleteForTask(taskId) }
+
+    /**
+     * Uploads [trace]'s failure report, with the learned check's trace when one is kept: a failed check under its
+     * outcome tag, an ok one as `flagged` with its note. Then settles the row by the result: reported (bytes deleted),
+     * dropped, still pending to retry, or back to the ordinary keep when Share diagnostics went off meanwhile.
+     */
+    private suspend fun upload(trace: RunTrace) {
+        val runId = trace.runId ?: return
+        if (!uploading.add(trace.id)) return
+        try {
+            val learned = runTraceRepository.getAll().find { it.learned && it.check() == trace.check() }
+            val bytes = runTraceRepository.readBytes(trace) ?: return
+            val report =
+                FailureReport(
+                    runId = runId,
+                    key = trace.key,
+                    outcome = if (trace.failed) trace.outcome else FailureReport.OUTCOME_FLAGGED,
+                    note = trace.note,
+                    trace = bytes,
+                    learnedTrace = learned?.let { runTraceRepository.readBytes(it) },
+                )
+            val result = failureReportProvider.upload(report, diagnosticsSharingRepository::isEnabled)
+            mutex.withLock {
+                val current = runTraceRepository.getAll().find { it.id == trace.id } ?: return
+                when {
+                    // Stands even when sharing went off meanwhile: an upload already in flight may finish.
+                    result == FailureReportProvider.Result.Registered -> {
+                        runTraceRepository.update(current.copy(uploadState = RunTrace.UploadState.Reported))
+                        runTraceRepository.deleteBytes(current)
+                        learned?.let { runTraceRepository.delete(listOf(it)) }
+                    }
+
+                    current.uploadState == RunTrace.UploadState.Pending && result == FailureReportProvider.Result.Drop -> {
+                        runTraceRepository.update(current.copy(uploadState = RunTrace.UploadState.Dropped))
+                    }
+
+                    current.uploadState == RunTrace.UploadState.Pending && !diagnosticsSharingRepository.isEnabled() -> {
+                        runTraceRepository.update(current.copy(uploadState = RunTrace.UploadState.None))
+                    }
+                }
+            }
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            logger.warn("Failure report ${trace.key} stays pending: ${e.message}")
+        } finally {
+            uploading.remove(trace.id)
+        }
+    }
+
+    /** Pending traces lose their upload claim and fall back to the ordinary keep; turning sharing on won't revive them. */
+    private suspend fun releasePending() =
+        runTraceRepository
+            .getAll()
+            .filter { it.uploadState == RunTrace.UploadState.Pending }
+            .forEach { runTraceRepository.update(it.copy(uploadState = RunTrace.UploadState.None)) }
 
     /** Deletes every trace the keep rules no longer hold (spec #291, "Retention"). */
     private suspend fun prune() {
@@ -88,11 +201,11 @@ class FailureReporter(
                 .values
                 .flatMap { traces ->
                     val latest = traces.sortedByDescending { it.receivedAt }.take(OWN_TRACES_PER_TASK).toSet()
-                    traces.filter { it in latest || it.notable || it.uploadState == RunTrace.UploadState.Pending }
+                    // A reported row holds no bytes; it stays so the goal run's cap still counts it.
+                    traces.filter { it in latest || it.notable || it.uploadState in CLAIMED }
                 }
 
         // A learned trace lives as long as its check's own trace, which arrives just after it.
-        fun RunTrace.check() = Triple(taskId, runId, key)
         val ownChecks = all.filterNot { it.learned }.map { it.check() }.toSet()
         val keptChecks = own.map { it.check() }.toSet()
         val learned = fresh.filter { it.learned && (it.check() in keptChecks || it.check() !in ownChecks) }
@@ -100,11 +213,15 @@ class FailureReporter(
         all.filterNot { it.id in keep }.takeIf { it.isNotEmpty() }?.let { runTraceRepository.delete(it) }
     }
 
+    /** The check a trace belongs to: a learned trace shares it with the check's own trace. */
+    private fun RunTrace.check() = Triple(taskId, runId, key)
+
     private companion object {
         const val MAX_TRACE_BYTES = 1024 * 1024
         const val OWN_TRACES_PER_TASK = 20
         const val MAX_REPORTS_PER_GOAL_RUN = 5
         val MAX_AGE = 7.days
+        val TICK_INTERVAL = 1.hours
         val CLAIMED = setOf(RunTrace.UploadState.Pending, RunTrace.UploadState.Reported)
     }
 

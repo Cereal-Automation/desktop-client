@@ -79,7 +79,7 @@ object ApplicationModule {
             factory { UserAuthManager(get(), get(), get(), get(), get(), get(), get()) }
             single { TaskManager(get(), get(), get(), get(), get(), get(), get(), get()) }
             single { GoalRunReporter(get(), get(), get(), get()) }
-            single { FailureReporter(get(), get(), get()) }
+            single { FailureReporter(get(), get(), get(), get()) }
             single { ScriptManager(get(), get(), get(), get()) }
             single { TaskConfigurationBuilder(get(), get(), get()) }
             single { ScriptLicenseChecker(get(), get()) }
