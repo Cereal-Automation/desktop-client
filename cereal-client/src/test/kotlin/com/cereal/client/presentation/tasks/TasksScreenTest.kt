@@ -16,16 +16,25 @@ import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performScrollTo
+import androidx.compose.ui.test.performTextInput
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.width
+import com.cereal.client.application.agent.AI_BROWSER_AGENT_PACKAGE
+import com.cereal.client.domain.model.diagnostics.RunTrace
 import com.cereal.client.domain.model.proxy.Proxy
 import com.cereal.client.domain.model.script.configuration.ConfigValue
 import com.cereal.client.domain.model.task.JobTask
 import com.cereal.client.domain.model.task.ScriptPackageGroup
 import com.cereal.client.domain.model.task.TaskStatus
+import com.cereal.client.domain.provider.FailureReportProvider
+import com.cereal.client.domain.repository.DiagnosticsSharingRepository
+import com.cereal.client.domain.repository.RunTraceRepository
 import com.cereal.client.domain.repository.ScriptInstanceRepository
 import com.cereal.client.domain.repository.TasksRepository
+import com.cereal.client.infrastructure.provider.inmemory.InMemoryFailureReportProvider
+import com.cereal.client.presentation.logs.REPORT_NOTE_TEST_TAG
 import fixtures.aScriptInstance
 import fixtures.aScriptPackageInstance
 import kotlinx.coroutines.runBlocking
@@ -206,6 +215,82 @@ class TasksScreenTest {
             // The header's button is the first "New task setup"; the menu adds a second.
             assertEquals(2, onAllNodesWithText("New task setup").fetchSemanticsNodes().size)
             onNodeWithText("Delete").assertIsDisplayed()
+        }
+
+    @Test
+    fun anAgentTasksRecentChecksOfferReportingAWrongResult() =
+        runScreenTest {
+            val sharing = KoinJavaComponent.get<DiagnosticsSharingRepository>(DiagnosticsSharingRepository::class.java)
+            val uploads = KoinJavaComponent.get<FailureReportProvider>(FailureReportProvider::class.java) as InMemoryFailureReportProvider
+            seedAgentTaskWithChecks()
+            setScreenContent { TasksScreen() }
+            waitUntil { onAllNodesWithText("Watching the Jordans").fetchSemanticsNodes().isNotEmpty() }
+
+            onNodeWithText("Watching the Jordans").performClick()
+            waitUntil { onAllNodesWithText("RECENT CHECKS").fetchSemanticsNodes().isNotEmpty() }
+            onNodeWithText("In stock").assertExists()
+            onNodeWithText("Checkout crashed").assertExists()
+            // Only the ok check offers it; the failed one goes out on its own.
+            assertEquals(1, onAllNodesWithText("Report wrong result").fetchSemanticsNodes().size)
+
+            onNodeWithText("Report wrong result").performScrollTo().performClick()
+            waitUntil { onAllNodesWithTag(REPORT_NOTE_TEST_TAG).fetchSemanticsNodes().isNotEmpty() }
+            onNodeWithText("What should have happened?").assertExists()
+            onNodeWithTag(REPORT_NOTE_TEST_TAG).performTextInput("x".repeat(600))
+            onNodeWithText("500 / 500").assertExists()
+            onNodeWithText("Submit").performClick()
+
+            waitUntil { onAllNodesWithText("Reported").fetchSemanticsNodes().isNotEmpty() }
+            onNodeWithText("Report wrong result").assertDoesNotExist()
+            val report = uploads.uploads.single()
+            assertEquals("flagged", report.outcome)
+            assertEquals("x".repeat(500), report.note)
+
+            // Share diagnostics off hides the whole section the next time the task is opened.
+            sharing.setEnabled(false)
+            onAllNodesWithText("Watching the Jordans")[0].performClick()
+            waitUntil { onAllNodesWithText("RECENT CHECKS").fetchSemanticsNodes().isEmpty() }
+            onAllNodesWithText("Watching the Jordans")[0].performClick()
+            waitUntil { onAllNodesWithText("Task #1").fetchSemanticsNodes().isNotEmpty() }
+            onNodeWithText("RECENT CHECKS").assertDoesNotExist()
+        }
+
+    /** One AI browser agent task ("Watching the Jordans") with an ok and a failed check of the same goal run. */
+    private fun seedAgentTaskWithChecks() =
+        runBlocking {
+            val group = KoinJavaComponent.get<TasksRepository>(TasksRepository::class.java).createScriptInstanceGroup(ScriptPackageGroup.createDefault())
+            val setup = aScriptPackageInstance("agent", AI_BROWSER_AGENT_PACKAGE)
+            val main = aScriptInstance(setup)
+            KoinJavaComponent.get<ScriptInstanceRepository>(ScriptInstanceRepository::class.java).addScriptPackageInstance(group.id, setup, main)
+            val now = Clock.System.now()
+            KoinJavaComponent.get<TasksRepository>(TasksRepository::class.java).addAllTasks(
+                listOf(
+                    JobTask(
+                        id = "agent-task",
+                        scriptInstance = main,
+                        configuration = emptyMap(),
+                        statusHistory = listOf(TaskStatus.Running("Watching the Jordans", now)),
+                        createdAt = now,
+                    ),
+                ),
+            )
+            val traces = KoinJavaComponent.get<RunTraceRepository>(RunTraceRepository::class.java)
+            listOf("ok" to "In stock", "crash" to "Checkout crashed").forEachIndexed { index, (outcome, label) ->
+                val trace =
+                    RunTrace(
+                        id = "trace-$index",
+                        taskId = "agent-task",
+                        key = "check-$index",
+                        runId = "run-1",
+                        outcome = outcome,
+                        label = label,
+                        notable = false,
+                        learned = false,
+                        sizeBytes = 1,
+                        receivedAt = now + index.milliseconds,
+                    )
+                traces.add(trace, ByteArray(1))
+            }
         }
 
     /**

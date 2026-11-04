@@ -7,6 +7,7 @@ import androidx.compose.runtime.referentialEqualityPolicy
 import androidx.compose.ui.unit.Dp
 import com.cereal.client.application.CoroutinesDispatcherProvider
 import com.cereal.client.application.Interactor
+import com.cereal.client.application.interactor.agent.FlagCheckInteractor
 import com.cereal.client.application.interactor.agent.ObserveRecentChecksInteractor
 import com.cereal.client.application.interactor.artifact.ObserveArtifactsInteractor
 import com.cereal.client.application.interactor.artifact.SaveArtifactToFileInteractor
@@ -18,7 +19,7 @@ import com.cereal.client.application.interactor.task.ObserveTaskSetupSortInterac
 import com.cereal.client.application.interactor.task.SetConcurrentTaskCountInteractor
 import com.cereal.client.application.interactor.task.SetTaskSetupSortInteractor
 import com.cereal.client.domain.model.artifact.Artifact
-import com.cereal.client.domain.model.diagnostics.RunTrace
+import com.cereal.client.domain.model.diagnostics.RecentCheck
 import com.cereal.client.domain.model.logging.LoggingEvent
 import com.cereal.client.domain.model.logging.LoggingPriority
 import com.cereal.client.domain.model.script.ScriptPackageInstance
@@ -67,6 +68,7 @@ class TasksViewModel(
     private val observeArtifactsInteractor: ObserveArtifactsInteractor,
     private val saveArtifactToFileInteractor: SaveArtifactToFileInteractor,
     private val observeRecentChecksInteractor: ObserveRecentChecksInteractor,
+    private val flagCheckInteractor: FlagCheckInteractor,
     private val setConcurrentTaskCountInteractor: SetConcurrentTaskCountInteractor,
     private val observeTaskSetupSortInteractor: ObserveTaskSetupSortInteractor,
     private val setTaskSetupSortInteractor: SetTaskSetupSortInteractor,
@@ -115,7 +117,7 @@ class TasksViewModel(
     val artifacts = mutableStateOf<List<Artifact>>(emptyList())
 
     /** The selected task's Recent checks, newest first; empty (so hidden) unless it's the agent and sharing is on. */
-    val recentChecks = mutableStateOf<List<RunTrace>>(emptyList())
+    val recentChecks = mutableStateOf<List<RecentCheck>>(emptyList())
 
     /** The VM owns its scope (it's a Koin factory per screen visit), so the screen must release it. */
     fun dispose() {
@@ -134,6 +136,14 @@ class TasksViewModel(
             saveArtifactToFileInteractor,
             SaveArtifactToFileInteractor.Params(artifact.id, file),
         )
+    }
+
+    /** Reports the ok check [traceId] as a wrong result; its row then shows "Reported". */
+    fun onReportCheck(
+        traceId: String,
+        note: String,
+    ) {
+        interactorRunner.launch(flagCheckInteractor, FlagCheckInteractor.Params(traceId, note))
     }
 
     private val _selectedTask = mutableStateOf<Task?>(null)

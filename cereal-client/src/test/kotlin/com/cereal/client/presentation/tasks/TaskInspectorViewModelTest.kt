@@ -270,7 +270,7 @@ class TaskInspectorViewModelTest {
             viewModel.onTaskClicked(viewModel.task("s-task-1"))
             settle()
 
-            assertEquals(listOf("In stock", "Sold out"), viewModel.recentChecks.value.map { it.label })
+            assertEquals(listOf("In stock", "Sold out"), viewModel.recentChecks.value.map { it.trace.label })
         }
 
     @Test

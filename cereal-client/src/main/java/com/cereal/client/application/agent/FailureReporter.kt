@@ -1,6 +1,7 @@
 package com.cereal.client.application.agent
 
 import com.cereal.client.domain.model.diagnostics.FailureReport
+import com.cereal.client.domain.model.diagnostics.RecentCheck
 import com.cereal.client.domain.model.diagnostics.RunTrace
 import com.cereal.client.domain.provider.FailureReportProvider
 import com.cereal.client.domain.repository.DiagnosticsSharingRepository
@@ -78,8 +79,7 @@ class FailureReporter(
                             receivedAt = clock.now(),
                         )
                     val awaitsUpload =
-                        !trace.learned && trace.failed && runId != null && diagnosticsSharingRepository.isEnabled() &&
-                            kept.count { it.runId == runId && it.uploadState in CLAIMED } < MAX_REPORTS_PER_GOAL_RUN
+                        !trace.learned && trace.failed && runId != null && diagnosticsSharingRepository.isEnabled() && !capReached(runId, kept)
                     (if (awaitsUpload) trace.copy(uploadState = RunTrace.UploadState.Pending) else trace).also {
                         runTraceRepository.add(it, bytes)
                         prune()
@@ -94,7 +94,34 @@ class FailureReporter(
     }
 
     /** [taskId]'s kept checks, newest first: its own traces only, never the learned ones. */
-    fun observeRecentChecks(taskId: String): Flow<List<RunTrace>> = runTraceRepository.observe(taskId).map { traces -> traces.filterNot { it.learned }.sortedByDescending { it.receivedAt } }
+    fun observeRecentChecks(taskId: String): Flow<List<RecentCheck>> =
+        runTraceRepository.observe(taskId).map { traces ->
+            val sharing = diagnosticsSharingRepository.isEnabled()
+            traces
+                .filterNot { it.learned }
+                .sortedByDescending { it.receivedAt }
+                .map { RecentCheck(it, sharing && it.canReport(traces)) }
+        }
+
+    /**
+     * Reports the ok check [traceId] as a wrong result with the user's [note] (unmasked, at most [MAX_NOTE_LENGTH]
+     * characters): it goes out as a `flagged` failure report through the same upload as a failed check. Does nothing
+     * when the check can no longer be reported.
+     */
+    suspend fun flag(
+        traceId: String,
+        note: String?,
+    ) {
+        val flagged =
+            mutex.withLock {
+                val kept = runTraceRepository.getAll()
+                val trace = kept.find { it.id == traceId }?.takeIf { diagnosticsSharingRepository.isEnabled() && it.canReport(kept) } ?: return
+                trace
+                    .copy(uploadState = RunTrace.UploadState.Pending, note = note?.trim()?.take(MAX_NOTE_LENGTH)?.ifEmpty { null })
+                    .also { runTraceRepository.update(it) }
+            }
+        scope.launch { upload(flagged) }
+    }
 
     /**
      * Applies retention and resumes uploads waiting to retry: on app start, hourly, and when Share diagnostics is
@@ -213,16 +240,27 @@ class FailureReporter(
         all.filterNot { it.id in keep }.takeIf { it.isNotEmpty() }?.let { runTraceRepository.delete(it) }
     }
 
+    /** Whether "Report wrong result" shows for this own trace: kept, ok, not yet flagged, its goal run under the cap. */
+    private fun RunTrace.canReport(kept: List<RunTrace>): Boolean = !learned && !failed && uploadState == RunTrace.UploadState.None && runId != null && !capReached(runId, kept)
+
+    /** The goal run already has its 5 reports, failed and flagged counted together. */
+    private fun capReached(
+        runId: String,
+        kept: List<RunTrace>,
+    ) = kept.count { it.runId == runId && it.uploadState in CLAIMED } >= MAX_REPORTS_PER_GOAL_RUN
+
     /** The check a trace belongs to: a learned trace shares it with the check's own trace. */
     private fun RunTrace.check() = Triple(taskId, runId, key)
 
-    private companion object {
-        const val MAX_TRACE_BYTES = 1024 * 1024
-        const val OWN_TRACES_PER_TASK = 20
-        const val MAX_REPORTS_PER_GOAL_RUN = 5
-        val MAX_AGE = 7.days
-        val TICK_INTERVAL = 1.hours
-        val CLAIMED = setOf(RunTrace.UploadState.Pending, RunTrace.UploadState.Reported)
+    companion object {
+        /** The longest note a user can add when reporting a wrong result. */
+        const val MAX_NOTE_LENGTH = 500
+        private const val MAX_TRACE_BYTES = 1024 * 1024
+        private const val OWN_TRACES_PER_TASK = 20
+        private const val MAX_REPORTS_PER_GOAL_RUN = 5
+        private val MAX_AGE = 7.days
+        private val TICK_INTERVAL = 1.hours
+        private val CLAIMED = setOf(RunTrace.UploadState.Pending, RunTrace.UploadState.Reported)
     }
 
     /** The fields of a run trace emit: its name says own or learned, its MIME parameters say the rest. */
