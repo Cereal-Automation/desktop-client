@@ -150,10 +150,10 @@ class AiSettingsSectionScreenTest {
 
             onNodeWithText("Google Gemini").performClick()
 
-            onNodeWithText("Nothing passes through Cereal", substring = true).assertIsDisplayed()
+            onNodeWithText("never pass through Cereal", substring = true).assertIsDisplayed()
 
             onNodeWithText("Anthropic").performClick()
-            onNodeWithText("Nothing passes through Cereal", substring = true).assertIsDisplayed()
+            onNodeWithText("never pass through Cereal", substring = true).assertIsDisplayed()
         }
 
     @Test

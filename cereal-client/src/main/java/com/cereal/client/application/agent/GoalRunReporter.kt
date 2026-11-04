@@ -7,7 +7,7 @@ import com.cereal.client.domain.model.telemetry.GoalRunFinishReport
 import com.cereal.client.domain.model.telemetry.GoalRunOutcome
 import com.cereal.client.domain.model.telemetry.GoalRunStartReport
 import com.cereal.client.domain.provider.GoalRunReportProvider
-import com.cereal.client.domain.repository.GoalSharingRepository
+import com.cereal.client.domain.repository.DiagnosticsSharingRepository
 import com.cereal.client.domain.repository.LlmProviderConfigRepository
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -29,7 +29,7 @@ import kotlin.time.Instant
 @OptIn(ExperimentalTime::class)
 class GoalRunReporter(
     private val reportProvider: GoalRunReportProvider,
-    private val goalSharingRepository: GoalSharingRepository,
+    private val diagnosticsSharingRepository: DiagnosticsSharingRepository,
     private val llmProviderConfigRepository: LlmProviderConfigRepository,
     private val applicationConfig: ApplicationConfig,
     private val scope: CoroutineScope = CoroutineScope(Dispatchers.IO + SupervisorJob()),
@@ -48,7 +48,7 @@ class GoalRunReporter(
 
     fun onStarted(task: Task) {
         runs.remove(task.id)
-        if (!task.scriptInstance.packageInstance.definition.isAiBrowserAgent || !goalSharingRepository.isEnabled()) return
+        if (!task.scriptInstance.packageInstance.definition.isAiBrowserAgent || !diagnosticsSharingRepository.isEnabled()) return
         val runId = UUID.randomUUID().toString()
         val startedAt = Clock.System.now()
         runs[task.id] = Run(runId, startedAt, launchReport { reportProvider.reportStart(startReport(task, runId, startedAt)) })
@@ -60,7 +60,7 @@ class GoalRunReporter(
     ) {
         val run = runs.remove(task.id) ?: return
         // Checked again so turning sharing off stops reporting for runs already going.
-        if (!goalSharingRepository.isEnabled()) return
+        if (!diagnosticsSharingRepository.isEnabled()) return
         val outcome =
             when (result) {
                 is TaskStatus.Success -> GoalRunOutcome.Succeeded
@@ -91,7 +91,7 @@ class GoalRunReporter(
         // Only these fields leave the machine: never the rest of the task's config, which may hold secrets.
         return GoalRunStartReport(
             runId = runId,
-            installId = goalSharingRepository.installId(),
+            installId = diagnosticsSharingRepository.installId(),
             goal = scrub(details.goal),
             startUrl = scrub(details.startUrl.substringBefore('?').substringBefore('#')),
             runMode = details.mode,

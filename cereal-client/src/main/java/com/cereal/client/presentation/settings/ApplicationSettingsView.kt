@@ -86,8 +86,6 @@ import com.cereal_automation.cereal_client.generated.resources.general
 import com.cereal_automation.cereal_client.generated.resources.get_in_touch
 import com.cereal_automation.cereal_client.generated.resources.github
 import com.cereal_automation.cereal_client.generated.resources.github_desc
-import com.cereal_automation.cereal_client.generated.resources.goal_sharing
-import com.cereal_automation.cereal_client.generated.resources.goal_sharing_desc
 import com.cereal_automation.cereal_client.generated.resources.logs_directory
 import com.cereal_automation.cereal_client.generated.resources.logs_directory_desc
 import com.cereal_automation.cereal_client.generated.resources.notifications
@@ -101,6 +99,8 @@ import com.cereal_automation.cereal_client.generated.resources.settings_proxy_he
 import com.cereal_automation.cereal_client.generated.resources.settings_proxy_health_check_desc
 import com.cereal_automation.cereal_client.generated.resources.settings_proxy_health_check_off
 import com.cereal_automation.cereal_client.generated.resources.settings_proxy_health_check_title
+import com.cereal_automation.cereal_client.generated.resources.share_diagnostics
+import com.cereal_automation.cereal_client.generated.resources.share_diagnostics_desc
 import com.cereal_automation.cereal_client.generated.resources.show_debug_logs
 import com.cereal_automation.cereal_client.generated.resources.show_debug_logs_desc
 import com.cereal_automation.cereal_client.generated.resources.show_development_scripts
@@ -123,9 +123,8 @@ import org.koin.compose.koinInject
 import org.koin.core.parameter.parametersOf
 import org.koin.java.KoinJavaComponent
 
-// LazyColumn item indices: header, general, AI, notifications, proxies, privacy, …
+// LazyColumn item indices: header, general, AI, …
 private const val AI_SECTION_INDEX = 2
-private const val PRIVACY_SECTION_INDEX = 5
 
 @Composable
 @ExperimentalFoundationApi
@@ -142,12 +141,10 @@ fun ApplicationSettingsScreen(
     aiVm: AiSettingsViewModel = rememberAiSettingsViewModel(),
     checkForUpdatesOnOpen: Boolean = false,
     scrollToAiOnOpen: Boolean = false,
-    scrollToPrivacyOnOpen: Boolean = false,
 ) {
     val listState = rememberLazyListState()
     LaunchedEffect(Unit) { if (checkForUpdatesOnOpen) vm.checkForUpdates() }
     LaunchedEffect(Unit) { if (scrollToAiOnOpen) listState.scrollToItem(AI_SECTION_INDEX) }
-    LaunchedEffect(Unit) { if (scrollToPrivacyOnOpen) listState.scrollToItem(PRIVACY_SECTION_INDEX) }
     Scaffold { paddingValues ->
         Box(
             modifier =
@@ -325,7 +322,7 @@ fun ApplicationSettingsScreen(
                     }
                 }
 
-                // Privacy Section, keep at PRIVACY_SECTION_INDEX.
+                // Privacy Section
                 item {
                     SettingsSectionCard(title = stringResource(Res.string.privacy)) {
                         SettingsToggleRow(
@@ -335,10 +332,10 @@ fun ApplicationSettingsScreen(
                             onCheckedChange = { vm.setCrashReportingEnabled(it) },
                         )
                         SettingsToggleRow(
-                            title = stringResource(Res.string.goal_sharing),
-                            description = stringResource(Res.string.goal_sharing_desc),
-                            checked = vm.goalSharingEnabled.value,
-                            onCheckedChange = { vm.setGoalSharingEnabled(it) },
+                            title = stringResource(Res.string.share_diagnostics),
+                            description = stringResource(Res.string.share_diagnostics_desc),
+                            checked = vm.shareDiagnosticsEnabled.value,
+                            onCheckedChange = { vm.setShareDiagnosticsEnabled(it) },
                         )
                     }
                 }
