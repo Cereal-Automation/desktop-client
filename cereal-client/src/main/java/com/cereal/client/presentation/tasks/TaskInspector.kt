@@ -35,7 +35,7 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.cereal.client.domain.model.artifact.Artifact
-import com.cereal.client.domain.model.diagnostics.RunTrace
+import com.cereal.client.domain.model.diagnostics.RecentCheck
 import com.cereal.client.domain.model.logging.LoggingEvent
 import com.cereal.client.presentation.logs.RecentChecksSection
 import com.cereal.client.presentation.logs.TaskArtifactsSection
@@ -82,11 +82,12 @@ internal fun TaskInspector(
     state: TaskInspectorState,
     events: List<LoggingEvent>,
     artifacts: List<Artifact>,
-    recentChecks: List<RunTrace>,
+    recentChecks: List<RecentCheck>,
     onClose: () -> Unit,
     onAction: (TaskInspectorAction) -> Unit,
     onClearLog: () -> Unit,
     onDownloadArtifact: (Artifact) -> Unit,
+    onReportCheck: (traceId: String, note: String) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val task = state.task
@@ -150,7 +151,7 @@ internal fun TaskInspector(
 
             TaskArtifactsSection(artifacts = artifacts, onDownloadArtifact = onDownloadArtifact)
 
-            if (recentChecks.isNotEmpty()) RecentChecksSection(recentChecks)
+            if (recentChecks.isNotEmpty()) RecentChecksSection(recentChecks, onReportCheck)
         }
     }
 }

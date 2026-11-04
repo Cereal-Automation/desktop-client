@@ -3,7 +3,7 @@ package com.cereal.client.application.interactor.agent
 import com.cereal.client.application.FlowInteractor
 import com.cereal.client.application.agent.FailureReporter
 import com.cereal.client.application.agent.isAiBrowserAgent
-import com.cereal.client.domain.model.diagnostics.RunTrace
+import com.cereal.client.domain.model.diagnostics.RecentCheck
 import com.cereal.client.domain.model.task.Task
 import com.cereal.client.domain.repository.DiagnosticsSharingRepository
 import kotlinx.coroutines.FlowPreview
@@ -18,8 +18,8 @@ import kotlinx.coroutines.flow.flowOf
 class ObserveRecentChecksInteractor(
     private val failureReporter: FailureReporter,
     private val diagnosticsSharingRepository: DiagnosticsSharingRepository,
-) : FlowInteractor<List<RunTrace>, ObserveRecentChecksInteractor.Params>() {
-    override suspend fun run(params: Params): Flow<List<RunTrace>> =
+) : FlowInteractor<List<RecentCheck>, ObserveRecentChecksInteractor.Params>() {
+    override suspend fun run(params: Params): Flow<List<RecentCheck>> =
         if (params.task.scriptInstance.packageInstance.definition.isAiBrowserAgent &&
             diagnosticsSharingRepository.isEnabled()
         ) {

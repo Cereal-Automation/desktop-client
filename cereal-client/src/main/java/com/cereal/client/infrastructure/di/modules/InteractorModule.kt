@@ -1,6 +1,7 @@
 package com.cereal.client.infrastructure.di.modules
 
 import com.cereal.client.application.app.VersionCheckService
+import com.cereal.client.application.interactor.agent.FlagCheckInteractor
 import com.cereal.client.application.interactor.agent.GetAiBrowserAgentListingInteractor
 import com.cereal.client.application.interactor.agent.InstallAiBrowserAgentInteractor
 import com.cereal.client.application.interactor.agent.ObserveRecentChecksInteractor
@@ -233,6 +234,7 @@ object InteractorModule {
             factory { DownloadDatasetTemplateFileInteractor(get()) }
             factory { ObserveArtifactsInteractor(get()) }
             factory { ObserveRecentChecksInteractor(get(), get()) }
+            factory { FlagCheckInteractor(get()) }
             factory { SaveArtifactToFileInteractor(get()) }
             factory { AddCustomDatasetItemsFromFileToGroupInteractor(get()) }
             factory { AddProxiesFromFileToGroupInteractor(get()) }

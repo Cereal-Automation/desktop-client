@@ -391,7 +391,101 @@ class TaskManagerRunTraceTest {
             assertEquals(3, uploads.uploads.size)
         }
 
-    private suspend fun recentChecks(taskId: String = "task"): List<RunTrace> = failureReporter.observeRecentChecks(taskId).first()
+    @Test
+    fun `only a kept ok check of a goal run can be reported`() =
+        runTest {
+            EmittingScript.emits = listOf(trace("check-1", "ok"), trace("check-2", "crash"), trace("check-3", "ok", learned = true))
+
+            run(agentTask())
+
+            assertEquals(listOf("check-1"), reportable())
+        }
+
+    @Test
+    fun `a check can't be reported once Share diagnostics is off`() =
+        runTest {
+            EmittingScript.emits = listOf(trace("check-1", "ok"))
+            run(agentTask())
+
+            sharing.setEnabled(false)
+
+            assertTrue(reportable().isEmpty())
+        }
+
+    @Test
+    fun `a check from a goal run without an id can't be reported`() =
+        runTest {
+            sharing.setEnabled(false)
+            EmittingScript.emits = listOf(trace("check-1", "ok"))
+            run(agentTask())
+
+            sharing.setEnabled(true)
+
+            assertTrue(reportable().isEmpty())
+        }
+
+    @Test
+    fun `flagging an ok check sends it as flagged with the note, and the row then shows reported`() =
+        runTest {
+            EmittingScript.emits = listOf(trace("check-1", "ok", bytes = "own".toByteArray()))
+            run(agentTask())
+
+            failureReporter.flag(recentChecks().single().id, "It was in stock")
+
+            val report = uploads.uploads.single()
+            assertEquals(reports.starts.single().runId, report.runId)
+            assertEquals("check-1", report.key)
+            assertEquals("flagged", report.outcome)
+            assertEquals("It was in stock", report.note)
+            assertEquals("own", report.trace.decodeToString())
+            val row = failureReporter.observeRecentChecks("task").first().single()
+            assertTrue(row.reported)
+            assertTrue(!row.canReport)
+        }
+
+    @Test
+    fun `a check is flagged only once`() =
+        runTest {
+            uploads.answer = FailureReportProvider.Result.Retry
+            EmittingScript.emits = listOf(trace("check-1", "ok"))
+            run(agentTask())
+            val id = recentChecks().single().id
+
+            failureReporter.flag(id, null)
+            failureReporter.flag(id, "again")
+
+            assertEquals(listOf<String?>(null), uploads.uploads.map { it.note })
+            assertTrue(
+                failureReporter
+                    .observeRecentChecks("task")
+                    .first()
+                    .single()
+                    .reported,
+            )
+        }
+
+    @Test
+    fun `flagged reports count toward the goal run's cap`() =
+        runTest {
+            EmittingScript.emits = (1..4).map { trace("check-$it", "crash") } + listOf(trace("check-5", "ok"), trace("check-6", "ok"))
+            run(agentTask())
+            assertEquals(listOf("check-6", "check-5"), reportable())
+
+            failureReporter.flag(recentChecks().first { it.key == "check-5" }.id, null)
+
+            assertTrue(reportable().isEmpty())
+            assertEquals(5, uploads.uploads.size)
+        }
+
+    private suspend fun recentChecks(taskId: String = "task"): List<RunTrace> = failureReporter.observeRecentChecks(taskId).first().map { it.trace }
+
+    /** The keys of the checks that offer "Report wrong result". */
+    private suspend fun reportable(taskId: String = "task"): List<String> =
+        failureReporter
+            .observeRecentChecks(taskId)
+            .first()
+            .filter { it.canReport }
+            .map { it.trace.key }
 
     private suspend fun run(task: JobTask) {
         if (tasksRepository.getTask(task.id) == null) tasksRepository.addTask(task)

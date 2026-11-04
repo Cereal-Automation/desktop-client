@@ -4,6 +4,7 @@ import com.cereal.client.application.CoroutinesDispatcherProvider
 import com.cereal.client.application.Interactor
 import com.cereal.client.application.agent.FailureReporter
 import com.cereal.client.application.agent.GoalRunReporter
+import com.cereal.client.application.interactor.agent.FlagCheckInteractor
 import com.cereal.client.application.interactor.agent.ObserveRecentChecksInteractor
 import com.cereal.client.application.interactor.artifact.ObserveArtifactsInteractor
 import com.cereal.client.application.interactor.artifact.SaveArtifactToFileInteractor
@@ -174,6 +175,7 @@ class TasksScreenWorld(
             ObserveArtifactsInteractor(artifactRepository),
             SaveArtifactToFileInteractor(artifactRepository),
             ObserveRecentChecksInteractor(failureReporter, diagnosticsSharing),
+            FlagCheckInteractor(failureReporter),
             setConcurrentTaskCountInteractor,
             ObserveTaskSetupSortInteractor(preferences),
             SetTaskSetupSortInteractor(preferences),
