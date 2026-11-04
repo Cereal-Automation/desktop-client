@@ -1,6 +1,7 @@
 package com.cereal.client.application.task
 
 import com.cereal.client.application.CoroutinesDispatcherProvider
+import com.cereal.client.application.agent.FailureReporter
 import com.cereal.client.application.agent.GoalRunReporter
 import com.cereal.client.application.exception.MaxConcurrentTasksReachedException
 import com.cereal.client.domain.model.exception.InvalidScriptConfigurationException
@@ -41,6 +42,7 @@ class TaskManager(
     private val jobTaskFactory: JobTaskFactory,
     private val artifactRepository: ArtifactRepository,
     private val goalRunReporter: GoalRunReporter,
+    private val failureReporter: FailureReporter,
 ) {
     private val scope = CoroutineScope(Dispatchers.Default + SupervisorJob())
 
@@ -132,6 +134,7 @@ class TaskManager(
         // must be removed explicitly. Only done here (a genuine delete) — never on the restart path, which re-persists
         // the same task id and must keep its artifacts.
         artifactRepository.deleteForTask(task.id)
+        failureReporter.forgetTask(task.id)
         tasksRepository.deletePersistedTask(task.id)
         tasksRepository.removeTask(task)
     }

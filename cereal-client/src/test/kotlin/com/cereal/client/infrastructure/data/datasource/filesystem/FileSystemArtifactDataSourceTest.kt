@@ -7,6 +7,7 @@ import io.mockk.mockk
 import kotlinx.coroutines.test.runTest
 import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.Assertions.assertArrayEquals
+import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertFalse
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.BeforeEach
@@ -84,5 +85,17 @@ class FileSystemArtifactDataSourceTest {
 
             val taskDir = File(File(File(tempDir, "Artifacts"), user.id), "task-1")
             assertFalse(taskDir.exists())
+        }
+
+    @Test
+    fun `delete removes only that file`() =
+        runTest {
+            dataSource.write(user, "task-1/artifact-1", "a".toByteArray())
+            dataSource.write(user, "task-1/artifact-2", "b".toByteArray())
+
+            dataSource.delete(user, "task-1/artifact-1")
+
+            val taskDir = File(File(File(tempDir, "Artifacts"), user.id), "task-1")
+            assertEquals(listOf("artifact-2"), taskDir.list()!!.toList())
         }
 }

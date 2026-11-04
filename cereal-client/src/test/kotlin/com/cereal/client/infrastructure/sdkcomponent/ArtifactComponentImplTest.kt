@@ -3,6 +3,7 @@ package com.cereal.client.infrastructure.sdkcomponent
 import com.cereal.client.domain.model.artifact.Artifact
 import com.cereal.client.domain.repository.ArtifactRepository
 import com.cereal.client.infrastructure.data.repository.inmemory.InMemoryArtifactRepository
+import io.mockk.mockk
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.test.runTest
@@ -16,7 +17,7 @@ class ArtifactComponentImplTest {
     fun `emit should forward the artifact to the repository scoped to the task`() =
         runTest {
             val repository = InMemoryArtifactRepository()
-            val component = ArtifactComponentImpl(repository, taskId = "task-1")
+            val component = ArtifactComponentImpl(repository, mockk(), taskId = "task-1")
 
             component.emit("export.csv", "a,b".toByteArray(), "text/csv")
 
@@ -46,7 +47,7 @@ class ArtifactComponentImplTest {
 
                     override suspend fun deleteForTask(taskId: String) = throw UnsupportedOperationException()
                 }
-            val component = ArtifactComponentImpl(failing, taskId = "task-1")
+            val component = ArtifactComponentImpl(failing, mockk(), taskId = "task-1")
 
             assertThrows<IllegalStateException> {
                 component.emit("export.csv", "a".toByteArray(), null)

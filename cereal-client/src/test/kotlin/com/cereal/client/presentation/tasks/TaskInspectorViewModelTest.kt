@@ -1,5 +1,7 @@
 package com.cereal.client.presentation.tasks
 
+import com.cereal.client.application.agent.AI_BROWSER_AGENT_PACKAGE
+import com.cereal.client.domain.model.diagnostics.RunTrace
 import com.cereal.client.domain.model.logging.LoggingEvent
 import com.cereal.client.domain.model.logging.LoggingPriority
 import com.cereal.client.domain.model.task.Task
@@ -20,6 +22,9 @@ import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
 import java.util.Date
 import kotlin.test.assertIs
+import kotlin.time.Duration.Companion.minutes
+import kotlin.time.ExperimentalTime
+import kotlin.time.Instant
 
 /** The task inspector (#220): selecting a task row, and what the inspector shows, on the real graph (see [TasksScreenWorld]). */
 @OptIn(ExperimentalCoroutinesApi::class)
@@ -253,6 +258,66 @@ class TaskInspectorViewModelTest {
             assertEquals(listOf("first task's line"), viewModel.logViewerMessages.value.map { it.message })
             assertEquals(emptyList<String>(), viewModel.artifacts.value.map { it.name })
         }
+
+    @Test
+    fun `an agent task's inspector lists its recent checks newest first`() =
+        runTest {
+            world.setup("s", null, idle(), packageName = AI_BROWSER_AGENT_PACKAGE)
+            world.runTraceRepository.add(check("s-task-1", "check-1", "Sold out", minute = 1), ByteArray(1))
+            world.runTraceRepository.add(check("s-task-1", "check-2", "In stock", minute = 2), ByteArray(1))
+            val viewModel = start()
+
+            viewModel.onTaskClicked(viewModel.task("s-task-1"))
+            settle()
+
+            assertEquals(listOf("In stock", "Sold out"), viewModel.recentChecks.value.map { it.label })
+        }
+
+    @Test
+    fun `recent checks are hidden for a task that isn't the agent`() =
+        runTest {
+            world.setup("s", null, idle())
+            world.runTraceRepository.add(check("s-task-1", "check-1", "Sold out"), ByteArray(1))
+            val viewModel = start()
+
+            viewModel.onTaskClicked(viewModel.task("s-task-1"))
+            settle()
+
+            assertTrue(viewModel.recentChecks.value.isEmpty())
+        }
+
+    @Test
+    fun `recent checks are hidden while Share diagnostics is off`() =
+        runTest {
+            world.setup("s", null, idle(), packageName = AI_BROWSER_AGENT_PACKAGE)
+            world.runTraceRepository.add(check("s-task-1", "check-1", "Sold out"), ByteArray(1))
+            world.goalSharing.setEnabled(false)
+            val viewModel = start()
+
+            viewModel.onTaskClicked(viewModel.task("s-task-1"))
+            settle()
+
+            assertTrue(viewModel.recentChecks.value.isEmpty())
+        }
+
+    @OptIn(ExperimentalTime::class)
+    private fun check(
+        taskId: String,
+        key: String,
+        label: String,
+        minute: Int = 0,
+    ) = RunTrace(
+        id = key,
+        taskId = taskId,
+        key = key,
+        runId = "run-1",
+        outcome = "ok",
+        label = label,
+        notable = false,
+        learned = false,
+        sizeBytes = 1,
+        receivedAt = Instant.parse("2026-11-04T12:00:00Z") + minute.minutes,
+    )
 
     private var logClock = 0L
 

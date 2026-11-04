@@ -146,6 +146,7 @@ fun TasksScreen(
                             state = inspector,
                             events = viewModel.logViewerMessages.value,
                             artifacts = viewModel.artifacts.value,
+                            recentChecks = viewModel.recentChecks.value,
                             onClose = viewModel::closeInspector,
                             onAction = viewModel::onInspectorAction,
                             onClearLog = viewModel::clearLogs,

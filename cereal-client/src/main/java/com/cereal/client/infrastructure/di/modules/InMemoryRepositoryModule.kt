@@ -16,6 +16,7 @@ import com.cereal.client.domain.repository.NotificationSettingsRepository
 import com.cereal.client.domain.repository.ProxyProviderConnectorRepository
 import com.cereal.client.domain.repository.ProxyProviderCredentialRepository
 import com.cereal.client.domain.repository.ProxyRepository
+import com.cereal.client.domain.repository.RunTraceRepository
 import com.cereal.client.domain.repository.ScriptInstanceRepository
 import com.cereal.client.domain.repository.ScriptPreferenceRepository
 import com.cereal.client.domain.repository.ScriptRepository
@@ -37,6 +38,7 @@ import com.cereal.client.infrastructure.data.repository.inmemory.InMemoryNotific
 import com.cereal.client.infrastructure.data.repository.inmemory.InMemoryProxyProviderConnectorRepository
 import com.cereal.client.infrastructure.data.repository.inmemory.InMemoryProxyProviderCredentialRepository
 import com.cereal.client.infrastructure.data.repository.inmemory.InMemoryProxyRepository
+import com.cereal.client.infrastructure.data.repository.inmemory.InMemoryRunTraceRepository
 import com.cereal.client.infrastructure.data.repository.inmemory.InMemoryScriptInstanceRepository
 import com.cereal.client.infrastructure.data.repository.inmemory.InMemoryScriptPreferenceRepository
 import com.cereal.client.infrastructure.data.repository.inmemory.InMemoryScriptRepository
@@ -76,6 +78,7 @@ object InMemoryRepositoryModule {
             single<ScriptRepository> { InMemoryScriptRepository() }
             single<LogEventRepository> { InMemoryLogEventRepository() }
             single<ArtifactRepository> { InMemoryArtifactRepository() }
+            single<RunTraceRepository> { InMemoryRunTraceRepository() }
             single<ProxyRepository> { InMemoryProxyRepository(initialGroups = SandboxSampleData.proxyGroups()) }
             single<SessionRepository> { InMemorySessionRepository() }
             single<ProxyProviderConnectorRepository> {

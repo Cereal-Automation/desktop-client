@@ -54,6 +54,9 @@ class GoalRunReporter(
         runs[task.id] = Run(runId, startedAt, launchReport { reportProvider.reportStart(startReport(task, runId, startedAt)) })
     }
 
+    /** The id of [taskId]'s current goal run; null when it isn't running one or sharing was off at its Start. */
+    fun runId(taskId: String): String? = runs[taskId]?.id
+
     fun onFinished(
         task: Task,
         result: TaskStatus,

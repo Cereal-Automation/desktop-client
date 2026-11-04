@@ -21,6 +21,12 @@ interface ArtifactFileDataSource {
         destination: File,
     )
 
+    /** Removes the file stored at [relativePath], if any. */
+    suspend fun delete(
+        user: User,
+        relativePath: String,
+    )
+
     /** Removes every stored artifact file belonging to [taskId]. */
     suspend fun deleteForTask(
         user: User,

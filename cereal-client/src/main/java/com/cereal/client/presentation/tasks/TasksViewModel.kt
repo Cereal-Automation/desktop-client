@@ -7,6 +7,7 @@ import androidx.compose.runtime.referentialEqualityPolicy
 import androidx.compose.ui.unit.Dp
 import com.cereal.client.application.CoroutinesDispatcherProvider
 import com.cereal.client.application.Interactor
+import com.cereal.client.application.interactor.agent.ObserveRecentChecksInteractor
 import com.cereal.client.application.interactor.artifact.ObserveArtifactsInteractor
 import com.cereal.client.application.interactor.artifact.SaveArtifactToFileInteractor
 import com.cereal.client.application.interactor.script.ReportScriptIssueInteractor
@@ -17,6 +18,7 @@ import com.cereal.client.application.interactor.task.ObserveTaskSetupSortInterac
 import com.cereal.client.application.interactor.task.SetConcurrentTaskCountInteractor
 import com.cereal.client.application.interactor.task.SetTaskSetupSortInteractor
 import com.cereal.client.domain.model.artifact.Artifact
+import com.cereal.client.domain.model.diagnostics.RunTrace
 import com.cereal.client.domain.model.logging.LoggingEvent
 import com.cereal.client.domain.model.logging.LoggingPriority
 import com.cereal.client.domain.model.script.ScriptPackageInstance
@@ -64,6 +66,7 @@ class TasksViewModel(
     private val openUrlInteractor: OpenUrlInteractor,
     private val observeArtifactsInteractor: ObserveArtifactsInteractor,
     private val saveArtifactToFileInteractor: SaveArtifactToFileInteractor,
+    private val observeRecentChecksInteractor: ObserveRecentChecksInteractor,
     private val setConcurrentTaskCountInteractor: SetConcurrentTaskCountInteractor,
     private val observeTaskSetupSortInteractor: ObserveTaskSetupSortInteractor,
     private val setTaskSetupSortInteractor: SetTaskSetupSortInteractor,
@@ -110,6 +113,9 @@ class TasksViewModel(
     val dialogState get() = dialogManager.dialogState
     val logViewerMessages = mutableStateOf<List<LoggingEvent>>(emptyList())
     val artifacts = mutableStateOf<List<Artifact>>(emptyList())
+
+    /** The selected task's Recent checks, newest first; empty (so hidden) unless it's the agent and sharing is on. */
+    val recentChecks = mutableStateOf<List<RunTrace>>(emptyList())
 
     /** The VM owns its scope (it's a Koin factory per screen visit), so the screen must release it. */
     fun dispose() {
@@ -540,21 +546,29 @@ class TasksViewModel(
         artifactObservationJob?.cancel()
         if (task == null) {
             artifacts.value = emptyList()
+            recentChecks.value = emptyList()
             return
         }
         artifactObservationJob =
             scope.launch(dispatcherProvider.io) {
-                observeArtifactsInteractor(ObserveArtifactsInteractor.Params(task.id))
-                    .map { result ->
-                        when (result) {
-                            is SuspendableResult.Success -> result.value
-                            is SuspendableResult.Failure -> emptyList()
+                launch {
+                    observeArtifactsInteractor(ObserveArtifactsInteractor.Params(task.id))
+                        .map { result ->
+                            when (result) {
+                                is SuspendableResult.Success -> result.value
+                                is SuspendableResult.Failure -> emptyList()
+                            }
+                        }.collectLatest { list ->
+                            withContext(dispatcherProvider.main) {
+                                artifacts.value = list
+                            }
                         }
-                    }.collectLatest { list ->
-                        withContext(dispatcherProvider.main) {
-                            artifacts.value = list
-                        }
-                    }
+                }
+                launch {
+                    observeRecentChecksInteractor(ObserveRecentChecksInteractor.Params(task))
+                        .map { (it as? SuspendableResult.Success)?.value.orEmpty() }
+                        .collectLatest { checks -> withContext(dispatcherProvider.main) { recentChecks.value = checks } }
+                }
             }
     }
 

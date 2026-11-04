@@ -88,6 +88,7 @@ class TaskManagerGoalRunReportTest {
             artifactRepository = mockk(relaxed = true),
             // Unconfined runs each report inline, so a report has arrived once the task's job has.
             goalRunReporter = GoalRunReporter(provider, sharing, llm, InMemoryApplicationConfig(), CoroutineScope(Dispatchers.Unconfined)),
+            failureReporter = mockk(relaxed = true),
         )
 
     private suspend fun TaskManager.run(task: JobTask) {
