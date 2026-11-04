@@ -3,7 +3,9 @@ package com.cereal.client.presentation.profile
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.ui.test.ExperimentalTestApi
 import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.onNodeWithText
+import androidx.compose.ui.test.waitUntilAtLeastOneExists
 import testutil.runScreenTest
 import testutil.setScreenContent
 import kotlin.test.Test
@@ -19,6 +21,9 @@ class ProfileScreenTest {
     fun rendersProfileScreen() =
         runScreenTest {
             setScreenContent { ProfileScreen() }
+
+            // The user loads asynchronously and the screen renders nothing until it has.
+            waitUntilAtLeastOneExists(hasText("Guest Profile"), timeoutMillis = 5_000)
 
             onNodeWithText("Guest Profile").assertIsDisplayed()
             onNodeWithText("Create account").assertIsDisplayed()
