@@ -19,6 +19,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.awaitCancellation
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.runTest
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertTrue
@@ -99,7 +100,9 @@ class TaskManagerTest {
 
             val taskManager =
                 TaskManager(
-                    dispatcherProvider = CoroutinesDispatcherProvider(),
+                    // The script job never runs, so the first task stays Running: on the real IO dispatcher it could finish (and
+                    // legitimately be started again) before the second call.
+                    dispatcherProvider = CoroutinesDispatcherProvider().copy(io = StandardTestDispatcher()),
                     tasksRepository = tasksRepository,
                     taskConfigurationBuilder = taskConfigurationBuilder,
                     scriptInstanceRepository = scriptInstanceRepository,
