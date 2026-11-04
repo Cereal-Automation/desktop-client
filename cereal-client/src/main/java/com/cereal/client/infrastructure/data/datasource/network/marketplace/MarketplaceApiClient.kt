@@ -52,6 +52,7 @@ import java.security.SecureRandom
 import java.util.concurrent.TimeUnit
 
 @OptIn(ExperimentalCoroutinesApi::class)
+@Suppress("TooManyFunctions")
 class MarketplaceApiClient(
     url: String,
     version: String,
@@ -576,6 +577,7 @@ class MarketplaceApiClient(
                 json.decodeFromString(FailureReportUploadResponse.serializer(), response.body.string())
             } catch (e: SerializationException) {
                 throw ApiException(message = "Unexpected presign response: ${e.message}", httpStatus = response.code)
+                    .apply { initCause(e) }
             }
         }
     }
