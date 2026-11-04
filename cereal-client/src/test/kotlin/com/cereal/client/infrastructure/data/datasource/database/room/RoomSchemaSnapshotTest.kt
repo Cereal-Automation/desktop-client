@@ -44,6 +44,15 @@ class RoomSchemaSnapshotTest {
         helper.runMigrationsAndValidate(14, listOf(DatabaseConnector.MIGRATION_13_14)).close()
     }
 
+    @Test
+    fun userDatabaseMigration14To15MatchesExportedSchema(
+        @TempDir tempDir: Path,
+    ) {
+        val helper = helper(tempDir, "user.db", UserRoomDatabase::class)
+        helper.createDatabase(14).close()
+        helper.runMigrationsAndValidate(15, listOf(DatabaseConnector.MIGRATION_14_15)).close()
+    }
+
     private fun helper(
         tempDir: Path,
         databaseName: String,

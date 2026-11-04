@@ -52,6 +52,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.cereal.client.domain.model.artifact.Artifact
+import com.cereal.client.domain.model.diagnostics.RunTrace
 import com.cereal.client.domain.model.logging.LoggingEvent
 import com.cereal.client.domain.model.logging.LoggingPriority
 import com.cereal.client.presentation.theme.CerealTheme
@@ -63,6 +64,8 @@ import com.cereal.client.presentation.view.SectionLabel
 import com.cereal_automation.cereal_client.generated.resources.Res
 import com.cereal_automation.cereal_client.generated.resources.artifacts
 import com.cereal_automation.cereal_client.generated.resources.auto_scroll
+import com.cereal_automation.cereal_client.generated.resources.check_outcome_failed
+import com.cereal_automation.cereal_client.generated.resources.check_outcome_ok
 import com.cereal_automation.cereal_client.generated.resources.clear
 import com.cereal_automation.cereal_client.generated.resources.copy_all_logs
 import com.cereal_automation.cereal_client.generated.resources.download_artifact
@@ -74,6 +77,7 @@ import com.cereal_automation.cereal_client.generated.resources.log_filter_warn
 import com.cereal_automation.cereal_client.generated.resources.no_log_lines_match_filter
 import com.cereal_automation.cereal_client.generated.resources.no_output_yet
 import com.cereal_automation.cereal_client.generated.resources.none_yet
+import com.cereal_automation.cereal_client.generated.resources.recent_checks
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import org.jetbrains.compose.resources.stringResource
@@ -222,6 +226,33 @@ fun TaskArtifactsSection(
         }
         artifacts.forEach { artifact ->
             ArtifactRow(artifact = artifact, onDownload = { onDownloadArtifact(artifact) })
+        }
+    }
+}
+
+/** The selected agent task's kept checks: time, outcome and label. Read-only: a trace is never viewable. */
+@Composable
+fun RecentChecksSection(checks: List<RunTrace>) {
+    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        SectionLabel(text = stringResource(Res.string.recent_checks).uppercase(), contentPadding = PaddingValues())
+        checks.forEach { check ->
+            val shape = RoundedCornerShape(8.dp)
+            Column(
+                modifier =
+                    Modifier
+                        .fillMaxWidth()
+                        .border(1.dp, CerealTheme.colorScheme.border, shape)
+                        .padding(horizontal = 12.dp, vertical = 8.dp),
+            ) {
+                CerealText(text = check.label, color = CerealTheme.colorScheme.contentSecondary, maxLines = 1, style = CerealTypography.logLine)
+                val outcome = stringResource(if (check.failed) Res.string.check_outcome_failed else Res.string.check_outcome_ok)
+                CerealText(
+                    text = "${TimestampFormatter.format(Date(check.receivedAt.toEpochMilliseconds()).toInstant())} · $outcome",
+                    color = if (check.failed) MaterialTheme.colorScheme.error else CerealTheme.colorScheme.contentTertiary,
+                    maxLines = 1,
+                    style = MaterialTheme.typography.bodySmall.copy(fontFamily = FontFamily.Monospace),
+                )
+            }
         }
     }
 }

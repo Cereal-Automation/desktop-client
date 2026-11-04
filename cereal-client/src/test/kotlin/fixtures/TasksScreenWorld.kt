@@ -2,7 +2,9 @@ package fixtures
 
 import com.cereal.client.application.CoroutinesDispatcherProvider
 import com.cereal.client.application.Interactor
+import com.cereal.client.application.agent.FailureReporter
 import com.cereal.client.application.agent.GoalRunReporter
+import com.cereal.client.application.interactor.agent.ObserveRecentChecksInteractor
 import com.cereal.client.application.interactor.artifact.ObserveArtifactsInteractor
 import com.cereal.client.application.interactor.artifact.SaveArtifactToFileInteractor
 import com.cereal.client.application.interactor.script.GetScriptsInGroupInteractor
@@ -58,6 +60,7 @@ import com.cereal.client.infrastructure.data.repository.inmemory.InMemoryDiagnos
 import com.cereal.client.infrastructure.data.repository.inmemory.InMemoryLlmProviderConfigRepository
 import com.cereal.client.infrastructure.data.repository.inmemory.InMemoryLogEventRepository
 import com.cereal.client.infrastructure.data.repository.inmemory.InMemoryProxyRepository
+import com.cereal.client.infrastructure.data.repository.inmemory.InMemoryRunTraceRepository
 import com.cereal.client.infrastructure.data.repository.inmemory.InMemoryScriptInstanceRepository
 import com.cereal.client.infrastructure.data.repository.inmemory.InMemoryTasksRepository
 import com.cereal.client.infrastructure.provider.inmemory.InMemoryAuthProvider
@@ -103,6 +106,12 @@ class TasksScreenWorld(
             override fun linkTaskToScriptInstance(task: JobTask) = Unit
         }
 
+    val diagnosticsSharing = InMemoryDiagnosticsSharingRepository()
+    val runTraceRepository = InMemoryRunTraceRepository()
+    private val goalRunReporter =
+        GoalRunReporter(InMemoryGoalRunReportProvider(), diagnosticsSharing, InMemoryLlmProviderConfigRepository(), InMemoryApplicationConfig())
+    private val failureReporter = FailureReporter(runTraceRepository, goalRunReporter, diagnosticsSharing)
+
     val taskManager =
         TaskManager(
             dispatcherProvider,
@@ -111,7 +120,8 @@ class TasksScreenWorld(
             scriptInstances,
             JobTaskFactory(noOpScopeLinker),
             artifactRepository,
-            GoalRunReporter(InMemoryGoalRunReportProvider(), InMemoryDiagnosticsSharingRepository(), InMemoryLlmProviderConfigRepository(), InMemoryApplicationConfig()),
+            goalRunReporter,
+            failureReporter,
         )
 
     private val getOrCreateDefaultTaskGroupInteractor = GetOrCreateDefaultTaskGroupInteractor(tasksRepository)
@@ -162,6 +172,7 @@ class TasksScreenWorld(
             OpenUrlInteractor(systemProvider),
             ObserveArtifactsInteractor(artifactRepository),
             SaveArtifactToFileInteractor(artifactRepository),
+            ObserveRecentChecksInteractor(failureReporter, diagnosticsSharing),
             setConcurrentTaskCountInteractor,
             ObserveTaskSetupSortInteractor(preferences),
             SetTaskSetupSortInteractor(preferences),
@@ -177,7 +188,8 @@ class TasksScreenWorld(
      * Adds a task setup to [group] (the default group when null) with one task per entry of [taskStatuses],
      * numbered in that order (`<id>-task-1`, `<id>-task-2`, ...). Its main [configuration] is empty unless given (a
      * [proxyGroup] makes the task count adjustable); [configurationItems] are the script's configuration definition.
-     * Its script is licensed with [capacity]; null leaves it unlicensed. Its script is called [name] and links to [supportUrl].
+     * Its script is licensed with [capacity]; null leaves it unlicensed. Its script is called [name] and links to [supportUrl];
+     * its package is [packageName].
      */
     suspend fun setup(
         id: String,
@@ -188,17 +200,18 @@ class TasksScreenWorld(
         capacity: ScriptCapacity? = ScriptCapacity.None,
         name: String = "Test",
         supportUrl: String? = null,
+        packageName: String = "com.example.$id",
     ): ScriptPackageInstance {
-        if (capacity != null) subscriptions += subscription("com.example.$id", capacity)
+        if (capacity != null) subscriptions += subscription(packageName, capacity)
         val definition =
-            aScriptPackage("com.example.$id").let {
+            aScriptPackage(packageName).let {
                 it.copy(
                     manifest = it.manifest.copy(name = name, supportUrl = supportUrl),
                     mainScript = it.mainScript!!.copy(configuration = it.mainScript.configuration.copy(configurationItems = configurationItems)),
                 )
             }
         val packageInstance =
-            aScriptPackageInstance(id, "com.example.$id").copy(
+            aScriptPackageInstance(id, packageName).copy(
                 mainConfiguration = configuration,
                 definition = definition,
                 numberOfConcurrentTasks = taskStatuses.size.coerceAtLeast(1),

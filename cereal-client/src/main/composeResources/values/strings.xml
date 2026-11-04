@@ -653,6 +653,9 @@
     <string name="ai_connection_bad_key">Bad API key: the provider rejected it.</string>
     <string name="ai_connection_unreachable">Unreachable: check the base URL and your connection.</string>
     <string name="artifacts">Artifacts</string>
+    <string name="recent_checks">Recent checks</string>
+    <string name="check_outcome_ok">OK</string>
+    <string name="check_outcome_failed">Failed</string>
     <string name="latest_message">Latest message</string>
     <string name="log">Log</string>
     <string name="no_output_yet">No output yet</string>

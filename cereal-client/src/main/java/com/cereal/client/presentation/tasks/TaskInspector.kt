@@ -35,7 +35,9 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.cereal.client.domain.model.artifact.Artifact
+import com.cereal.client.domain.model.diagnostics.RunTrace
 import com.cereal.client.domain.model.logging.LoggingEvent
+import com.cereal.client.presentation.logs.RecentChecksSection
 import com.cereal.client.presentation.logs.TaskArtifactsSection
 import com.cereal.client.presentation.logs.TaskLogSection
 import com.cereal.client.presentation.theme.CerealTheme
@@ -74,12 +76,13 @@ internal fun clampInspectorWidth(
 
 internal const val TASK_INSPECTOR_TEST_TAG = "task_inspector"
 
-/** The selected task beside the list: its status, actions, latest message, values, log and artifacts. */
+/** The selected task beside the list: its status, actions, latest message, values, log, artifacts and recent checks. */
 @Composable
 internal fun TaskInspector(
     state: TaskInspectorState,
     events: List<LoggingEvent>,
     artifacts: List<Artifact>,
+    recentChecks: List<RunTrace>,
     onClose: () -> Unit,
     onAction: (TaskInspectorAction) -> Unit,
     onClearLog: () -> Unit,
@@ -146,6 +149,8 @@ internal fun TaskInspector(
             TaskLogSection(events = events, onClear = onClearLog)
 
             TaskArtifactsSection(artifacts = artifacts, onDownloadArtifact = onDownloadArtifact)
+
+            if (recentChecks.isNotEmpty()) RecentChecksSection(recentChecks)
         }
     }
 }

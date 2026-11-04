@@ -3,6 +3,7 @@ package com.cereal.client.infrastructure.di.modules
 import com.cereal.client.application.app.VersionCheckService
 import com.cereal.client.application.interactor.agent.GetAiBrowserAgentListingInteractor
 import com.cereal.client.application.interactor.agent.InstallAiBrowserAgentInteractor
+import com.cereal.client.application.interactor.agent.ObserveRecentChecksInteractor
 import com.cereal.client.application.interactor.agent.PrefillGoalRunFormInteractor
 import com.cereal.client.application.interactor.agent.StartGoalRunInteractor
 import com.cereal.client.application.interactor.app.CheckForUpdatesInteractor
@@ -231,6 +232,7 @@ object InteractorModule {
             factory { ReadProxyFileInteractor(get()) }
             factory { DownloadDatasetTemplateFileInteractor(get()) }
             factory { ObserveArtifactsInteractor(get()) }
+            factory { ObserveRecentChecksInteractor(get(), get()) }
             factory { SaveArtifactToFileInteractor(get()) }
             factory { AddCustomDatasetItemsFromFileToGroupInteractor(get()) }
             factory { AddProxiesFromFileToGroupInteractor(get()) }
