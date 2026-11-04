@@ -25,6 +25,14 @@ class InMemoryRunTraceRepository : RunTraceRepository {
 
     override suspend fun getAll(): List<RunTrace> = traces.value
 
+    override suspend fun readBytes(trace: RunTrace): ByteArray? = bytes[trace.id]
+
+    override suspend fun update(trace: RunTrace) = traces.update { all -> all.map { if (it.id == trace.id) trace else it } }
+
+    override suspend fun deleteBytes(trace: RunTrace) {
+        bytes.remove(trace.id)
+    }
+
     override fun observe(taskId: String): Flow<List<RunTrace>> = traces.map { all -> all.filter { it.taskId == taskId } }
 
     override suspend fun delete(traces: List<RunTrace>) {

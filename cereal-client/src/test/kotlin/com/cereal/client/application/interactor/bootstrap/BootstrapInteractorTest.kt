@@ -47,6 +47,7 @@ class BootstrapInteractorTest {
                 versionCheckService = versionCheckService,
                 proxyHealthSweepScheduler = proxyHealthSweepScheduler,
                 notificationHistoryRepository = notificationHistoryRepository,
+                failureReporter = mockk(relaxed = true),
             )
     }
 

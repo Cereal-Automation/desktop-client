@@ -27,6 +27,14 @@ class RoomRunTraceDataSource(
             .getAll()
             .map { it.toRunTrace() }
 
+    override suspend fun update(
+        user: User,
+        trace: RunTrace,
+    ) {
+        val userDatabase = roomDatabases.getUserDatabase(user)
+        userDatabase.immediateWriteTransaction { userDatabase.runTraceDao().update(trace.toEntity()) }
+    }
+
     override fun observeByTaskId(
         user: User,
         taskId: String,

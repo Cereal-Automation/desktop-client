@@ -27,6 +27,16 @@ class FileSystemArtifactDataSource(
         file.writeBytes(encrypted)
     }
 
+    override suspend fun read(
+        user: User,
+        relativePath: String,
+    ): ByteArray? =
+        withContext(Dispatchers.IO) {
+            resolve(user, relativePath)
+                .takeIf { it.exists() }
+                ?.let { Encryption.decryptBytes(it.readBytes(), fileKey(user)) }
+        }
+
     override suspend fun copyToFile(
         user: User,
         relativePath: String,

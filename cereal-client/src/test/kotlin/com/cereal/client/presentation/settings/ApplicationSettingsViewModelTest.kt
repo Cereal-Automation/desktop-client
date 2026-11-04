@@ -108,7 +108,7 @@ class ApplicationSettingsViewModelTest {
                 getCrashReportingEnabledInteractor = getCrashReportingEnabledInteractor,
                 setCrashReportingEnabledInteractor = setCrashReportingEnabledInteractor,
                 getShareDiagnosticsEnabledInteractor = GetShareDiagnosticsEnabledInteractor(diagnosticsSharing),
-                setShareDiagnosticsEnabledInteractor = SetShareDiagnosticsEnabledInteractor(diagnosticsSharing),
+                setShareDiagnosticsEnabledInteractor = SetShareDiagnosticsEnabledInteractor(diagnosticsSharing, mockk(relaxed = true)),
                 sendNotificationTestMessageInteractor = sendNotificationTestMessageInteractor,
                 saveAllNotificationSettingsInteractor = saveAllNotificationSettingsInteractor,
                 checkForUpdatesInteractor = checkForUpdatesInteractor,

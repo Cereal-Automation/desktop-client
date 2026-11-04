@@ -28,6 +28,12 @@ class RunTraceRepositoryImpl(
 
     override suspend fun getAll(): List<RunTrace> = runTraceDataSource.getAll(userSession.requireUser())
 
+    override suspend fun readBytes(trace: RunTrace): ByteArray? = diagnosticsFileDataSource.read(userSession.requireUser(), trace.relativePath)
+
+    override suspend fun update(trace: RunTrace) = runTraceDataSource.update(userSession.requireUser(), trace)
+
+    override suspend fun deleteBytes(trace: RunTrace) = diagnosticsFileDataSource.delete(userSession.requireUser(), trace.relativePath)
+
     @OptIn(ExperimentalCoroutinesApi::class)
     override fun observe(taskId: String): Flow<List<RunTrace>> =
         userSession.getUserFlow().flatMapLatest { user ->

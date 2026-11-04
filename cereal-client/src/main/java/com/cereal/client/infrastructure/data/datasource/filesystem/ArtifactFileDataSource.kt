@@ -14,6 +14,12 @@ interface ArtifactFileDataSource {
         bytes: ByteArray,
     )
 
+    /** Decrypts the artifact stored at [relativePath]; null when there's no such file. */
+    suspend fun read(
+        user: User,
+        relativePath: String,
+    ): ByteArray?
+
     /** Decrypts the artifact stored at [relativePath] and writes the plaintext bytes to [destination]. */
     suspend fun copyToFile(
         user: User,

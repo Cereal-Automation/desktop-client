@@ -2,6 +2,7 @@ package com.cereal.client.application.interactor.bootstrap
 
 import com.cereal.client.application.ApplicationConfig
 import com.cereal.client.application.FlowInteractor
+import com.cereal.client.application.agent.FailureReporter
 import com.cereal.client.application.app.UpdateCheckResult
 import com.cereal.client.application.app.VersionCheckService
 import com.cereal.client.application.auth.UserAuthManager
@@ -30,6 +31,7 @@ class BootstrapInteractor(
     private val versionCheckService: VersionCheckService,
     private val proxyHealthSweepScheduler: ProxyHealthSweepScheduler,
     private val notificationHistoryRepository: NotificationHistoryRepository,
+    private val failureReporter: FailureReporter,
 ) : FlowInteractor<BootstrapProgress, BootstrapInteractor.Params>() {
     private val logger = LoggerFactory.getLogger(BootstrapInteractor::class.java)
 
@@ -131,6 +133,7 @@ class BootstrapInteractor(
         systemRepository.createTrayIcon()
         periodicScriptSyncer.start()
         proxyHealthSweepScheduler.start()
+        failureReporter.start(userAuthManager.getAuthenticatedUserFlow())
     }
 
     private fun createApplicationHomeFolder() {

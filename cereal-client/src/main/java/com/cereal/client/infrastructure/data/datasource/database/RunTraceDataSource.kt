@@ -13,6 +13,12 @@ interface RunTraceDataSource {
 
     suspend fun getAll(user: User): List<RunTrace>
 
+    /** Replaces the row with [trace]'s id. */
+    suspend fun update(
+        user: User,
+        trace: RunTrace,
+    )
+
     fun observeByTaskId(
         user: User,
         taskId: String,

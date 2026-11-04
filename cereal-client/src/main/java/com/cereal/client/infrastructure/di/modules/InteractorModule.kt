@@ -119,7 +119,7 @@ object InteractorModule {
     val modules =
         module {
             single { VersionCheckService(get(), get()) }
-            factory { BootstrapInteractor(get(), get(), get(), get(), get(), get(), get()) }
+            factory { BootstrapInteractor(get(), get(), get(), get(), get(), get(), get(), get()) }
             factory { OpenUrlInteractor(get()) }
             factory { OpenFileInteractor(get()) }
             factory { InstallUpdateInteractor(get()) }
@@ -193,7 +193,7 @@ object InteractorModule {
             factory { GetCrashReportingEnabledInteractor(get()) }
             factory { SetCrashReportingEnabledInteractor(get()) }
             factory { GetShareDiagnosticsEnabledInteractor(get()) }
-            factory { SetShareDiagnosticsEnabledInteractor(get()) }
+            factory { SetShareDiagnosticsEnabledInteractor(get(), get()) }
             factory { SendNotificationTestMessageInteractor(get(), get()) }
             factory { SaveAllNotificationSettingsInteractor(get()) }
             factory { GetLlmProviderConfigInteractor(get()) }
