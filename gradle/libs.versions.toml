@@ -3,7 +3,7 @@
 kotlin = "2.4.21"
 compose = "1.12.2"
 compose-material3 = "1.9.0"
-ksp = "2.3.12"
+ksp = "2.3.13"
 jakarta-mail = "2.1.5"
 angus-mail = "2.0.5"
 
@@ -33,13 +33,13 @@ kotlinx-collections-immutable = "0.5.2"
 json-schema-validator = "0.5.5"
 kotlin-csv = "1.10.0"
 kamel = "1.0.9"
-ktor = "3.6.0"
+ktor = "3.6.1"
 kdriver = "0.6.1"
 markdown-renderer = "0.46.0"
 sekret = "2.4.0"
 sekret-lib = "2.4.0"
-cereal-sdk = "1.15.0"
-cereal-test-utils = "1.15.0"
+cereal-sdk = "1.16.0"
+cereal-test-utils = "1.16.0"
 
 # Java native interface
 jna = "5.19.1"
@@ -54,10 +54,10 @@ coroutines-test = "1.11.0"
 ktlint = "14.2.0"
 detekt = "1.23.8"
 
-sentry-gradle = "6.24.0"
+sentry-gradle = "6.25.0"
 buildconfig = "6.1.2"
 
-versions = "0.66.0"
+versions = "0.67.0"
 kover = "0.9.11"
 
 [libraries]
