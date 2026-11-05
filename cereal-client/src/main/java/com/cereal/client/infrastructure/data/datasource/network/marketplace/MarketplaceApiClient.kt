@@ -539,6 +539,7 @@ class MarketplaceApiClient(
 
     /**
      * Reports how the run [runId] ended.
+     * @throws AuthenticationException - if there is no token; nothing is sent then.
      * @throws IOException - on a connectivity problem or timeout.
      * @throws ApiException - if a non 2xx response was received.
      */
@@ -556,6 +557,7 @@ class MarketplaceApiClient(
 
     /**
      * Presigns the uploads of the failure report [key] of run [runId] (spec #291).
+     * @throws AuthenticationException - if there is no token; nothing is sent then.
      * @throws IOException - on a connectivity problem or timeout.
      * @throws ApiException - if a non 2xx response was received or its body isn't the expected json.
      */
@@ -598,6 +600,7 @@ class MarketplaceApiClient(
 
     /**
      * Registers the uploaded failure report [key] of run [runId]; the server then writes its `report.json`.
+     * @throws AuthenticationException - if there is no token; nothing is sent then.
      * @throws IOException - on a connectivity problem or timeout.
      * @throws ApiException - if a non 2xx response was received.
      */
