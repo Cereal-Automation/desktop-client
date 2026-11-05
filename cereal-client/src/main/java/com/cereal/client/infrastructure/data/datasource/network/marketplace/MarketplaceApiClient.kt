@@ -522,7 +522,8 @@ class MarketplaceApiClient(
     suspend fun getAuthenticatedUser(): User = getUser()
 
     /**
-     * Reports an AI browser agent run's start (ADR 0011). Sends the user or guest token when there is one.
+     * Reports an AI browser agent run's start (ADR 0011), with the user or guest token the endpoint requires.
+     * @throws AuthenticationException - if there is no token; nothing is sent then.
      * @throws IOException - on a connectivity problem or timeout.
      * @throws ApiException - if a non 2xx response was received.
      */
@@ -564,6 +565,7 @@ class MarketplaceApiClient(
         key: String,
         body: FailureReportUploadRequestBody,
     ): FailureReportUploadResponse {
+        requireToken()
         val request =
             Request
                 .Builder()
@@ -624,6 +626,7 @@ class MarketplaceApiClient(
         .build()
 
     private suspend fun sendTelemetry(request: Request) {
+        requireToken()
         apiClient.newCall(request).await().use { response ->
             if (!response.isSuccessful) throw apiException(response, null)
         }

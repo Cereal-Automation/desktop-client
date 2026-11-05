@@ -24,8 +24,8 @@ coverage, so an opt-in would rebuild the problem 0009 described. We pair the def
   on the server;
 - only the goal and a few run facts leave the machine, never the rest of the task's configuration;
 - records keyed by a pseudonymous install id (a random UUID in the bootstrap preferences), never an email. The
-  user or guest token is sent when there is one, as on every API call, so the endpoint can rate-limit; the record
-  itself stores no account details;
+  telemetry endpoints (goal run and failure reports) require a user or guest token, which they also rate-limit
+  on; without one the client sends nothing. The record itself stores no account details;
 - 12-month retention, enforced by a scheduled prune on the server.
 
 ## Consequences

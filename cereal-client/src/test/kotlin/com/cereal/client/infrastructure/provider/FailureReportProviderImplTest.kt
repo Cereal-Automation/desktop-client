@@ -21,19 +21,21 @@ class FailureReportProviderImplTest {
     @AfterEach
     fun tearDown() = server.shutdown()
 
-    private val provider =
+    private fun provider(token: String? = "user-token") =
         FailureReportProviderImpl(
             MarketplaceApiClient(
                 url = server.url("/").toString(),
                 version = "2.0.0",
                 tokenDataSource =
                     object : AuthorizationInterceptor.TokenDataSource {
-                        override fun getToken() = "user-token"
+                        override fun getToken() = token
                     },
                 verifySignature = false,
             ),
             clientVersion = "2.0.0",
         )
+
+    private val provider = provider()
 
     private fun report(
         learnedTrace: ByteArray? = null,
@@ -160,5 +162,12 @@ class FailureReportProviderImplTest {
 
             assertEquals(Result.Retry, result)
             assertEquals(1, server.requestCount)
+        }
+
+    @Test
+    fun `without a token nothing is sent and the report is retried after the next sign-in`() =
+        runTest {
+            assertEquals(Result.Retry, provider(token = null).upload(report()) { true })
+            assertEquals(0, server.requestCount)
         }
 }
