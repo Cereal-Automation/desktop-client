@@ -269,6 +269,35 @@ object DatabaseConnector {
         }
 
     /**
+     * Migration from version 14 to 15: Add run_trace table for the run traces kept for failure reports.
+     */
+    internal val MIGRATION_14_15 =
+        object : Migration(14, 15) {
+            override fun migrate(connection: SQLiteConnection) {
+                connection.execSQL(
+                    """
+                    CREATE TABLE IF NOT EXISTS run_trace (
+                        id TEXT NOT NULL PRIMARY KEY,
+                        task_id TEXT NOT NULL,
+                        `key` TEXT NOT NULL,
+                        run_id TEXT,
+                        outcome TEXT NOT NULL,
+                        label TEXT NOT NULL,
+                        notable INTEGER NOT NULL,
+                        learned INTEGER NOT NULL,
+                        size_bytes INTEGER NOT NULL,
+                        received_at INTEGER NOT NULL,
+                        upload_state TEXT NOT NULL,
+                        note TEXT,
+                        FOREIGN KEY (task_id) REFERENCES task(id) ON DELETE CASCADE
+                    )
+                    """.trimIndent(),
+                )
+                connection.execSQL("CREATE INDEX IF NOT EXISTS index_run_trace_task_id ON run_trace(task_id)")
+            }
+        }
+
+    /**
      * Connect to an application Room database
      *
      * @param directory The directory where the database file should be stored
@@ -318,6 +347,7 @@ object DatabaseConnector {
                 MIGRATION_11_12,
                 MIGRATION_12_13,
                 MIGRATION_13_14,
+                MIGRATION_14_15,
             )
         }
     }

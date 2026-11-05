@@ -7,7 +7,9 @@ import io.mockk.mockk
 import kotlinx.coroutines.test.runTest
 import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.Assertions.assertArrayEquals
+import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertFalse
+import org.junit.jupiter.api.Assertions.assertNull
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
@@ -63,6 +65,17 @@ class FileSystemArtifactDataSourceTest {
         }
 
     @Test
+    fun `write then read round-trips identical bytes, and a missing file reads as null`() =
+        runTest {
+            val bytes = "trace".toByteArray()
+
+            dataSource.write(user, "task-1/trace-1", bytes)
+
+            assertArrayEquals(bytes, dataSource.read(user, "task-1/trace-1"))
+            assertNull(dataSource.read(user, "task-1/trace-2"))
+        }
+
+    @Test
     fun `stored bytes are encrypted at rest`() =
         runTest {
             val bytes = "plaintext-secret".toByteArray()
@@ -84,5 +97,17 @@ class FileSystemArtifactDataSourceTest {
 
             val taskDir = File(File(File(tempDir, "Artifacts"), user.id), "task-1")
             assertFalse(taskDir.exists())
+        }
+
+    @Test
+    fun `delete removes only that file`() =
+        runTest {
+            dataSource.write(user, "task-1/artifact-1", "a".toByteArray())
+            dataSource.write(user, "task-1/artifact-2", "b".toByteArray())
+
+            dataSource.delete(user, "task-1/artifact-1")
+
+            val taskDir = File(File(File(tempDir, "Artifacts"), user.id), "task-1")
+            assertEquals(listOf("artifact-2"), taskDir.list()!!.toList())
         }
 }

@@ -19,6 +19,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.awaitCancellation
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.runTest
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertTrue
@@ -99,13 +100,16 @@ class TaskManagerTest {
 
             val taskManager =
                 TaskManager(
-                    dispatcherProvider = CoroutinesDispatcherProvider(),
+                    // The script job never runs, so the first task stays Running: on the real IO dispatcher it could finish (and
+                    // legitimately be started again) before the second call.
+                    dispatcherProvider = CoroutinesDispatcherProvider().copy(io = StandardTestDispatcher()),
                     tasksRepository = tasksRepository,
                     taskConfigurationBuilder = taskConfigurationBuilder,
                     scriptInstanceRepository = scriptInstanceRepository,
                     jobTaskFactory = mockk(relaxed = true),
                     artifactRepository = mockk(relaxed = true),
                     goalRunReporter = mockk(relaxed = true),
+                    failureReporter = mockk(relaxed = true),
                 )
 
             val task = buildTask("task-race")
@@ -162,6 +166,7 @@ class TaskManagerTest {
                     jobTaskFactory = mockk(relaxed = true),
                     artifactRepository = mockk(relaxed = true),
                     goalRunReporter = mockk(relaxed = true),
+                    failureReporter = mockk(relaxed = true),
                 )
 
             // Simulate a task that was persisted in the Running state when the app was closed.
@@ -200,6 +205,7 @@ class TaskManagerTest {
                     jobTaskFactory = mockk(relaxed = true),
                     artifactRepository = mockk(relaxed = true),
                     goalRunReporter = mockk(relaxed = true),
+                    failureReporter = mockk(relaxed = true),
                 )
             tasksRepository.addTask(buildTask("running", listOf(TaskStatus.Running("Working", Clock.System.now()))).copy(scriptInstance = capturedScript))
             tasksRepository.addTask(buildTask("idle").copy(scriptInstance = capturedScript))
@@ -222,6 +228,7 @@ class TaskManagerTest {
                     jobTaskFactory = mockk(relaxed = true),
                     artifactRepository = mockk(relaxed = true),
                     goalRunReporter = mockk(relaxed = true),
+                    failureReporter = mockk(relaxed = true),
                 )
             tasksRepository.addTask(
                 buildTask("running", statusHistory = listOf(TaskStatus.Running("Working", Clock.System.now()))),

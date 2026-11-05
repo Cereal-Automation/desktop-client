@@ -7,6 +7,8 @@ import androidx.compose.runtime.referentialEqualityPolicy
 import androidx.compose.ui.unit.Dp
 import com.cereal.client.application.CoroutinesDispatcherProvider
 import com.cereal.client.application.Interactor
+import com.cereal.client.application.interactor.agent.FlagCheckInteractor
+import com.cereal.client.application.interactor.agent.ObserveRecentChecksInteractor
 import com.cereal.client.application.interactor.artifact.ObserveArtifactsInteractor
 import com.cereal.client.application.interactor.artifact.SaveArtifactToFileInteractor
 import com.cereal.client.application.interactor.script.ReportScriptIssueInteractor
@@ -27,6 +29,8 @@ import com.cereal.client.domain.model.task.TaskStatus
 import com.cereal.client.domain.repository.LogEventRepository
 import com.cereal.client.presentation.error.ErrorResolver
 import com.cereal.client.presentation.error.handleFailureOrElse
+import com.cereal.client.presentation.tasks.mappers.toUiModel
+import com.cereal.client.presentation.tasks.model.RecentCheckUiModel
 import com.cereal.client.presentation.tasks.model.TaskUiModel
 import com.cereal.client.presentation.tasks.script.overview.ScriptRequest
 import com.cereal.client.presentation.util.InteractorRunner
@@ -64,6 +68,8 @@ class TasksViewModel(
     private val openUrlInteractor: OpenUrlInteractor,
     private val observeArtifactsInteractor: ObserveArtifactsInteractor,
     private val saveArtifactToFileInteractor: SaveArtifactToFileInteractor,
+    private val observeRecentChecksInteractor: ObserveRecentChecksInteractor,
+    private val flagCheckInteractor: FlagCheckInteractor,
     private val setConcurrentTaskCountInteractor: SetConcurrentTaskCountInteractor,
     private val observeTaskSetupSortInteractor: ObserveTaskSetupSortInteractor,
     private val setTaskSetupSortInteractor: SetTaskSetupSortInteractor,
@@ -111,6 +117,9 @@ class TasksViewModel(
     val logViewerMessages = mutableStateOf<List<LoggingEvent>>(emptyList())
     val artifacts = mutableStateOf<List<Artifact>>(emptyList())
 
+    /** The selected task's Recent checks, newest first; empty (so hidden) unless it's the agent and sharing is on. */
+    val recentChecks = mutableStateOf<List<RecentCheckUiModel>>(emptyList())
+
     /** The VM owns its scope (it's a Koin factory per screen visit), so the screen must release it. */
     fun dispose() {
         scope.cancel()
@@ -128,6 +137,14 @@ class TasksViewModel(
             saveArtifactToFileInteractor,
             SaveArtifactToFileInteractor.Params(artifact.id, file),
         )
+    }
+
+    /** Reports the ok check [traceId] as a wrong result; its row then shows "Reported". */
+    fun onReportCheck(
+        traceId: String,
+        note: String,
+    ) {
+        interactorRunner.launch(flagCheckInteractor, FlagCheckInteractor.Params(traceId, note))
     }
 
     private val _selectedTask = mutableStateOf<Task?>(null)
@@ -538,23 +555,34 @@ class TasksViewModel(
         if (task?.id == observedArtifactTaskId) return
         observedArtifactTaskId = task?.id
         artifactObservationJob?.cancel()
+        // Never leave another task's checks up, where reporting one would flag the wrong task.
+        recentChecks.value = emptyList()
         if (task == null) {
             artifacts.value = emptyList()
             return
         }
         artifactObservationJob =
             scope.launch(dispatcherProvider.io) {
-                observeArtifactsInteractor(ObserveArtifactsInteractor.Params(task.id))
-                    .map { result ->
-                        when (result) {
-                            is SuspendableResult.Success -> result.value
-                            is SuspendableResult.Failure -> emptyList()
+                launch {
+                    observeArtifactsInteractor(ObserveArtifactsInteractor.Params(task.id))
+                        .map { result ->
+                            when (result) {
+                                is SuspendableResult.Success -> result.value
+                                is SuspendableResult.Failure -> emptyList()
+                            }
+                        }.collectLatest { list ->
+                            withContext(dispatcherProvider.main) {
+                                artifacts.value = list
+                            }
                         }
-                    }.collectLatest { list ->
-                        withContext(dispatcherProvider.main) {
-                            artifacts.value = list
+                }
+                launch {
+                    observeRecentChecksInteractor(ObserveRecentChecksInteractor.Params(task))
+                        .map { result -> result.map { checks -> checks.map { it.toUiModel() } } }
+                        .collectLatest { result ->
+                            withContext(dispatcherProvider.main) { result.handleFailureOrElse(errorResolver) { recentChecks.value = it } }
                         }
-                    }
+                }
             }
     }
 

@@ -7,7 +7,7 @@ import com.cereal.client.domain.model.telemetry.GoalRunFinishReport
 import com.cereal.client.domain.model.telemetry.GoalRunOutcome
 import com.cereal.client.domain.model.telemetry.GoalRunStartReport
 import com.cereal.client.domain.provider.GoalRunReportProvider
-import com.cereal.client.domain.repository.GoalSharingRepository
+import com.cereal.client.domain.repository.DiagnosticsSharingRepository
 import com.cereal.client.domain.repository.LlmProviderConfigRepository
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -29,7 +29,7 @@ import kotlin.time.Instant
 @OptIn(ExperimentalTime::class)
 class GoalRunReporter(
     private val reportProvider: GoalRunReportProvider,
-    private val goalSharingRepository: GoalSharingRepository,
+    private val diagnosticsSharingRepository: DiagnosticsSharingRepository,
     private val llmProviderConfigRepository: LlmProviderConfigRepository,
     private val applicationConfig: ApplicationConfig,
     private val scope: CoroutineScope = CoroutineScope(Dispatchers.IO + SupervisorJob()),
@@ -38,6 +38,9 @@ class GoalRunReporter(
 
     /** Started runs by task id. Not persisted: a run the app closed during never gets a finish report. */
     private val runs = ConcurrentHashMap<String, Run>()
+
+    /** Start reports still in flight, by run id: a failure report waits for its run's, or the server has no row for it. */
+    private val startReports = ConcurrentHashMap<String, Job>()
 
     private class Run(
         val id: String,
@@ -48,11 +51,22 @@ class GoalRunReporter(
 
     fun onStarted(task: Task) {
         runs.remove(task.id)
-        if (!task.scriptInstance.packageInstance.definition.isAiBrowserAgent || !goalSharingRepository.isEnabled()) return
+        if (!task.scriptInstance.packageInstance.definition.isAiBrowserAgent || !diagnosticsSharingRepository.isEnabled()) return
         val runId = UUID.randomUUID().toString()
         val startedAt = Clock.System.now()
-        runs[task.id] = Run(runId, startedAt, launchReport { reportProvider.reportStart(startReport(task, runId, startedAt)) })
+        val start = launchReport { reportProvider.reportStart(startReport(task, runId, startedAt)) }
+        startReports[runId] = start
+        start.invokeOnCompletion { startReports.remove(runId) }
+        runs[task.id] = Run(runId, startedAt, start)
     }
+
+    /** Suspends until run [runId]'s start report went out or failed; returns at once when none is in flight. */
+    suspend fun awaitStartReport(runId: String) {
+        startReports[runId]?.join()
+    }
+
+    /** The id of [taskId]'s current goal run; null when it isn't running one or sharing was off at its Start. */
+    fun runId(taskId: String): String? = runs[taskId]?.id
 
     fun onFinished(
         task: Task,
@@ -60,7 +74,7 @@ class GoalRunReporter(
     ) {
         val run = runs.remove(task.id) ?: return
         // Checked again so turning sharing off stops reporting for runs already going.
-        if (!goalSharingRepository.isEnabled()) return
+        if (!diagnosticsSharingRepository.isEnabled()) return
         val outcome =
             when (result) {
                 is TaskStatus.Success -> GoalRunOutcome.Succeeded
@@ -91,7 +105,7 @@ class GoalRunReporter(
         // Only these fields leave the machine: never the rest of the task's config, which may hold secrets.
         return GoalRunStartReport(
             runId = runId,
-            installId = goalSharingRepository.installId(),
+            installId = diagnosticsSharingRepository.installId(),
             goal = scrub(details.goal),
             startUrl = scrub(details.startUrl.substringBefore('?').substringBefore('#')),
             runMode = details.mode,

@@ -18,6 +18,7 @@ import com.cereal.client.infrastructure.data.datasource.database.room.dao.LogEve
 import com.cereal.client.infrastructure.data.datasource.database.room.dao.NotificationHistoryDao
 import com.cereal.client.infrastructure.data.datasource.database.room.dao.ProxyDao
 import com.cereal.client.infrastructure.data.datasource.database.room.dao.ProxyProviderConnectorDao
+import com.cereal.client.infrastructure.data.datasource.database.room.dao.RunTraceDao
 import com.cereal.client.infrastructure.data.datasource.database.room.dao.ScriptInstanceDao
 import com.cereal.client.infrastructure.data.datasource.database.room.dao.ScriptPreferenceDao
 import com.cereal.client.infrastructure.data.datasource.database.room.entity.ArtifactEntity
@@ -31,6 +32,7 @@ import com.cereal.client.infrastructure.data.datasource.database.room.entity.Not
 import com.cereal.client.infrastructure.data.datasource.database.room.entity.ProxyEntity
 import com.cereal.client.infrastructure.data.datasource.database.room.entity.ProxyGroupEntity
 import com.cereal.client.infrastructure.data.datasource.database.room.entity.ProxyProviderConnectorEntity
+import com.cereal.client.infrastructure.data.datasource.database.room.entity.RunTraceEntity
 import com.cereal.client.infrastructure.data.datasource.database.room.entity.ScriptConfigurationEntity
 import com.cereal.client.infrastructure.data.datasource.database.room.entity.ScriptConfigurationItemEntity
 import com.cereal.client.infrastructure.data.datasource.database.room.entity.ScriptEntity
@@ -94,8 +96,9 @@ abstract class ApplicationRoomDatabase : RoomDatabase() {
         NotificationHistoryEntity::class,
         NotificationHistoryAttemptEntity::class,
         ArtifactEntity::class,
+        RunTraceEntity::class,
     ],
-    version = 14,
+    version = 15,
     exportSchema = true,
 )
 @TypeConverters(
@@ -123,6 +126,8 @@ abstract class UserRoomDatabase : RoomDatabase() {
     abstract fun notificationHistoryDao(): NotificationHistoryDao
 
     abstract fun artifactDao(): ArtifactDao
+
+    abstract fun runTraceDao(): RunTraceDao
 }
 
 /**

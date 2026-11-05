@@ -10,6 +10,8 @@ import com.cereal.client.infrastructure.data.datasource.network.marketplace.inte
 import com.cereal.client.infrastructure.data.datasource.network.marketplace.interceptor.ClientVersionInterceptor
 import com.cereal.client.infrastructure.data.datasource.network.marketplace.interceptor.JsonHeadersInterceptor
 import com.cereal.client.infrastructure.data.datasource.network.marketplace.interceptor.SignatureInterceptor
+import com.cereal.client.infrastructure.data.datasource.network.marketplace.request.FailureReportRegisterRequestBody
+import com.cereal.client.infrastructure.data.datasource.network.marketplace.request.FailureReportUploadRequestBody
 import com.cereal.client.infrastructure.data.datasource.network.marketplace.request.ForgotPasswordRequestBody
 import com.cereal.client.infrastructure.data.datasource.network.marketplace.request.GoalRunFinishRequestBody
 import com.cereal.client.infrastructure.data.datasource.network.marketplace.request.GoalRunStartRequestBody
@@ -19,6 +21,7 @@ import com.cereal.client.infrastructure.data.datasource.network.marketplace.requ
 import com.cereal.client.infrastructure.data.datasource.network.marketplace.request.RegisterRequestBody
 import com.cereal.client.infrastructure.data.datasource.network.marketplace.responses.CheckScriptLicenseResponse
 import com.cereal.client.infrastructure.data.datasource.network.marketplace.responses.ErrorResponse
+import com.cereal.client.infrastructure.data.datasource.network.marketplace.responses.FailureReportUploadResponse
 import com.cereal.client.infrastructure.data.datasource.network.marketplace.responses.LoginResponse
 import com.cereal.client.infrastructure.data.datasource.network.marketplace.responses.ScriptDownloadLinkResponse
 import com.cereal.client.infrastructure.data.datasource.network.marketplace.responses.SubscribeScriptResponse
@@ -34,6 +37,7 @@ import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.modules.SerializersModule
 import kotlinx.serialization.modules.contextual
+import okhttp3.HttpUrl.Companion.toHttpUrl
 import okhttp3.HttpUrl.Companion.toHttpUrlOrNull
 import okhttp3.OkHttpClient
 import okhttp3.Request
@@ -47,6 +51,7 @@ import java.security.SecureRandom
 import java.util.concurrent.TimeUnit
 
 @OptIn(ExperimentalCoroutinesApi::class)
+@Suppress("TooManyFunctions")
 class MarketplaceApiClient(
     url: String,
     version: String,
@@ -547,6 +552,76 @@ class MarketplaceApiClient(
             .patch(json.encodeToString(GoalRunFinishRequestBody.serializer(), body).toRequestBody())
             .build(),
     )
+
+    /**
+     * Presigns the uploads of the failure report [key] of run [runId] (spec #291).
+     * @throws IOException - on a connectivity problem or timeout.
+     * @throws ApiException - if a non 2xx response was received or its body isn't the expected json.
+     */
+    @Throws(IOException::class, ApiException::class)
+    suspend fun presignFailureReport(
+        runId: String,
+        key: String,
+        body: FailureReportUploadRequestBody,
+    ): FailureReportUploadResponse {
+        val request =
+            Request
+                .Builder()
+                .url(failureReportUrl(runId, key).newBuilder().addPathSegment("uploads").build())
+                .post(json.encodeToString(FailureReportUploadRequestBody.serializer(), body).toRequestBody())
+                .build()
+        return handleResponse(apiClient.newCall(request).await())
+    }
+
+    /**
+     * PUTs [bytes] to a presigned [url], without our headers: no token, no content type, which the URL doesn't sign.
+     * @throws IOException - on a connectivity problem or timeout.
+     * @throws ApiException - if a non 2xx response was received.
+     */
+    @Throws(IOException::class, ApiException::class)
+    suspend fun putToPresignedUrl(
+        url: String,
+        bytes: ByteArray,
+    ) {
+        val request =
+            Request
+                .Builder()
+                .url(url)
+                .put(bytes.toRequestBody())
+                .build()
+        downloadClient.newCall(request).await().use { response ->
+            if (!response.isSuccessful) throw apiException(response, null)
+        }
+    }
+
+    /**
+     * Registers the uploaded failure report [key] of run [runId]; the server then writes its `report.json`.
+     * @throws IOException - on a connectivity problem or timeout.
+     * @throws ApiException - if a non 2xx response was received.
+     */
+    @Throws(IOException::class, ApiException::class)
+    suspend fun registerFailureReport(
+        runId: String,
+        key: String,
+        body: FailureReportRegisterRequestBody,
+    ) = sendTelemetry(
+        Request
+            .Builder()
+            .url(failureReportUrl(runId, key))
+            .put(json.encodeToString(FailureReportRegisterRequestBody.serializer(), body).toRequestBody())
+            .build(),
+    )
+
+    private fun failureReportUrl(
+        runId: String,
+        key: String,
+    ) = "${apiUrl}telemetry/goal-runs"
+        .toHttpUrl()
+        .newBuilder()
+        .addPathSegment(runId)
+        .addPathSegment("failure-reports")
+        .addPathSegment(key)
+        .build()
 
     private suspend fun sendTelemetry(request: Request) {
         apiClient.newCall(request).await().use { response ->

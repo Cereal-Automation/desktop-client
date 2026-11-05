@@ -146,9 +146,11 @@ fun TasksScreen(
                             state = inspector,
                             events = viewModel.logViewerMessages.value,
                             artifacts = viewModel.artifacts.value,
+                            recentChecks = viewModel.recentChecks.value,
                             onClose = viewModel::closeInspector,
                             onAction = viewModel::onInspectorAction,
                             onClearLog = viewModel::clearLogs,
+                            onReportCheck = viewModel::onReportCheck,
                             onDownloadArtifact = { artifact ->
                                 openFileDialog(FileDialog.SAVE)?.let { file ->
                                     viewModel.onDownloadArtifact(artifact, file)

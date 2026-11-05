@@ -1,11 +1,13 @@
 package com.cereal.client.infrastructure.di.modules
 
+import com.cereal.client.application.ApplicationConfig
 import com.cereal.client.domain.provider.AppUpdateProvider
 import com.cereal.client.domain.provider.AuthProvider
 import com.cereal.client.domain.provider.CheckoutProvider
 import com.cereal.client.domain.provider.CrashReportingProvider
 import com.cereal.client.domain.provider.DatasetFileProvider
 import com.cereal.client.domain.provider.DiscordProvider
+import com.cereal.client.domain.provider.FailureReportProvider
 import com.cereal.client.domain.provider.GoalRunReportProvider
 import com.cereal.client.domain.provider.LlmProvider
 import com.cereal.client.domain.provider.LoggerProvider
@@ -21,6 +23,7 @@ import com.cereal.client.infrastructure.provider.CheckoutProviderImpl
 import com.cereal.client.infrastructure.provider.CrashReportingProviderImpl
 import com.cereal.client.infrastructure.provider.DatasetFileProviderImpl
 import com.cereal.client.infrastructure.provider.DiscordProviderImpl
+import com.cereal.client.infrastructure.provider.FailureReportProviderImpl
 import com.cereal.client.infrastructure.provider.GoalRunReportProviderImpl
 import com.cereal.client.infrastructure.provider.LlmProviderImpl
 import com.cereal.client.infrastructure.provider.LoggerProviderImpl
@@ -67,5 +70,6 @@ object ProviderModule {
             // path holder that deliberately re-resolves the application home on every access.
             single<CrashReportingProvider> { CrashReportingProviderImpl(BootstrapPreferences.default, get()) }
             single<GoalRunReportProvider> { GoalRunReportProviderImpl(get()) }
+            single<FailureReportProvider> { FailureReportProviderImpl(get(), get<ApplicationConfig>().versionName) }
         }
 }

@@ -28,4 +28,6 @@ interface DatabaseProvider {
     fun getLogEventDataSource(): LogEventDataSource
 
     fun getNotificationHistoryDataSource(): NotificationHistoryDataSource
+
+    fun getRunTraceDataSource(): RunTraceDataSource
 }

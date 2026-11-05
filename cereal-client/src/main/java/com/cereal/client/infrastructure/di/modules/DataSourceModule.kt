@@ -15,6 +15,7 @@ import com.cereal.client.infrastructure.data.datasource.database.LogEventDataSou
 import com.cereal.client.infrastructure.data.datasource.database.NotificationHistoryDataSource
 import com.cereal.client.infrastructure.data.datasource.database.ProxyDataSource
 import com.cereal.client.infrastructure.data.datasource.database.ProxyProviderConnectorDataSource
+import com.cereal.client.infrastructure.data.datasource.database.RunTraceDataSource
 import com.cereal.client.infrastructure.data.datasource.database.ScriptInstanceDataSource
 import com.cereal.client.infrastructure.data.datasource.database.ScriptPreferenceDataSource
 import com.cereal.client.infrastructure.data.datasource.database.room.RoomDatabaseProvider
@@ -104,6 +105,7 @@ object DataSourceModule {
             single<LogEventDataSource> { get<DatabaseProvider>().getLogEventDataSource() }
             single<NotificationHistoryDataSource> { get<DatabaseProvider>().getNotificationHistoryDataSource() }
             single<ArtifactDataSource> { get<DatabaseProvider>().getArtifactDataSource() }
+            single<RunTraceDataSource> { get<DatabaseProvider>().getRunTraceDataSource() }
 
             single { BrowserDataSource() }
             single<OAuthDataSource> {

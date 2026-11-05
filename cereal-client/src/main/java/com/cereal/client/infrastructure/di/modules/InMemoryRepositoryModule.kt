@@ -7,8 +7,8 @@ import com.cereal.client.domain.repository.ApplicationPreferenceRepository
 import com.cereal.client.domain.repository.ApplicationRepository
 import com.cereal.client.domain.repository.ArtifactRepository
 import com.cereal.client.domain.repository.CustomDatasetRepository
+import com.cereal.client.domain.repository.DiagnosticsSharingRepository
 import com.cereal.client.domain.repository.FeatureFlagRepository
-import com.cereal.client.domain.repository.GoalSharingRepository
 import com.cereal.client.domain.repository.LlmProviderConfigRepository
 import com.cereal.client.domain.repository.LogEventRepository
 import com.cereal.client.domain.repository.NotificationHistoryRepository
@@ -16,6 +16,7 @@ import com.cereal.client.domain.repository.NotificationSettingsRepository
 import com.cereal.client.domain.repository.ProxyProviderConnectorRepository
 import com.cereal.client.domain.repository.ProxyProviderCredentialRepository
 import com.cereal.client.domain.repository.ProxyRepository
+import com.cereal.client.domain.repository.RunTraceRepository
 import com.cereal.client.domain.repository.ScriptInstanceRepository
 import com.cereal.client.domain.repository.ScriptPreferenceRepository
 import com.cereal.client.domain.repository.ScriptRepository
@@ -29,7 +30,7 @@ import com.cereal.client.infrastructure.data.repository.inmemory.InMemoryApplica
 import com.cereal.client.infrastructure.data.repository.inmemory.InMemoryApplicationRepository
 import com.cereal.client.infrastructure.data.repository.inmemory.InMemoryArtifactRepository
 import com.cereal.client.infrastructure.data.repository.inmemory.InMemoryCustomDatasetRepository
-import com.cereal.client.infrastructure.data.repository.inmemory.InMemoryGoalSharingRepository
+import com.cereal.client.infrastructure.data.repository.inmemory.InMemoryDiagnosticsSharingRepository
 import com.cereal.client.infrastructure.data.repository.inmemory.InMemoryLlmProviderConfigRepository
 import com.cereal.client.infrastructure.data.repository.inmemory.InMemoryLogEventRepository
 import com.cereal.client.infrastructure.data.repository.inmemory.InMemoryNotificationHistoryRepository
@@ -37,6 +38,7 @@ import com.cereal.client.infrastructure.data.repository.inmemory.InMemoryNotific
 import com.cereal.client.infrastructure.data.repository.inmemory.InMemoryProxyProviderConnectorRepository
 import com.cereal.client.infrastructure.data.repository.inmemory.InMemoryProxyProviderCredentialRepository
 import com.cereal.client.infrastructure.data.repository.inmemory.InMemoryProxyRepository
+import com.cereal.client.infrastructure.data.repository.inmemory.InMemoryRunTraceRepository
 import com.cereal.client.infrastructure.data.repository.inmemory.InMemoryScriptInstanceRepository
 import com.cereal.client.infrastructure.data.repository.inmemory.InMemoryScriptPreferenceRepository
 import com.cereal.client.infrastructure.data.repository.inmemory.InMemoryScriptRepository
@@ -76,6 +78,7 @@ object InMemoryRepositoryModule {
             single<ScriptRepository> { InMemoryScriptRepository() }
             single<LogEventRepository> { InMemoryLogEventRepository() }
             single<ArtifactRepository> { InMemoryArtifactRepository() }
+            single<RunTraceRepository> { InMemoryRunTraceRepository() }
             single<ProxyRepository> { InMemoryProxyRepository(initialGroups = SandboxSampleData.proxyGroups()) }
             single<SessionRepository> { InMemorySessionRepository() }
             single<ProxyProviderConnectorRepository> {
@@ -87,7 +90,7 @@ object InMemoryRepositoryModule {
             single<NotificationSettingsRepository> { InMemoryNotificationSettingsRepository() }
             single<ProxyProviderCredentialRepository> { InMemoryProxyProviderCredentialRepository() }
             single<LlmProviderConfigRepository> { InMemoryLlmProviderConfigRepository() }
-            single<GoalSharingRepository> { InMemoryGoalSharingRepository() }
+            single<DiagnosticsSharingRepository> { InMemoryDiagnosticsSharingRepository() }
             // Feature flags are pure build configuration (no database/network/native deps), so the
             // sandbox graph uses the real impl rather than an in-memory fake. Tests that need to
             // force a specific flag state override this binding with InMemoryFeatureFlagRepository.

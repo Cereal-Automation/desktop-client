@@ -8,11 +8,13 @@ import kotlinx.coroutines.withContext
 import java.io.File
 
 /**
- * Stores artifact bytes under `<databaseDirectory>/Artifacts/<userId>/<taskId>/<artifactId>`, encrypted at rest with
- * the user's file-encryption key — the same AES/GCM scheme used for script jars (see ADR-0001).
+ * Stores artifact bytes under `<databaseDirectory>/<directoryName>/<userId>/<taskId>/<artifactId>`, encrypted at rest
+ * with the user's file-encryption key — the same AES/GCM scheme used for script jars (see ADR-0001). Run traces use the
+ * same format under [DIAGNOSTICS_DIRECTORY].
  */
 class FileSystemArtifactDataSource(
     private val config: ApplicationConfig,
+    private val directoryName: String = ARTIFACTS_DIRECTORY,
 ) : ArtifactFileDataSource {
     override suspend fun write(
         user: User,
@@ -25,6 +27,16 @@ class FileSystemArtifactDataSource(
         file.writeBytes(encrypted)
     }
 
+    override suspend fun read(
+        user: User,
+        relativePath: String,
+    ): ByteArray? =
+        withContext(Dispatchers.IO) {
+            resolve(user, relativePath)
+                .takeIf { it.exists() }
+                ?.let { Encryption.decryptBytes(it.readBytes(), fileKey(user)) }
+        }
+
     override suspend fun copyToFile(
         user: User,
         relativePath: String,
@@ -34,6 +46,14 @@ class FileSystemArtifactDataSource(
         val decrypted = Encryption.decryptBytes(encrypted, fileKey(user))
         destination.parentFile?.mkdirs()
         destination.writeBytes(decrypted)
+    }
+
+    override suspend fun delete(
+        user: User,
+        relativePath: String,
+    ) = withContext(Dispatchers.IO) {
+        resolve(user, relativePath).delete()
+        Unit
     }
 
     override suspend fun deleteForTask(
@@ -49,12 +69,13 @@ class FileSystemArtifactDataSource(
         relativePath: String,
     ) = File(userDirectory(user), relativePath)
 
-    private fun userDirectory(user: User) = File(File(config.databaseDirectory, ARTIFACTS_DIRECTORY), user.id)
+    private fun userDirectory(user: User) = File(File(config.databaseDirectory, directoryName), user.id)
 
     private fun fileKey(user: User) = Encryption.getEncryptionKey(config.fileEncryptionKey, user.encryptionKey, ENCRYPTION_KEY_SIZE_BYTES)
 
-    private companion object {
-        private const val ARTIFACTS_DIRECTORY = "Artifacts"
+    companion object {
+        const val ARTIFACTS_DIRECTORY = "Artifacts"
+        const val DIAGNOSTICS_DIRECTORY = "Diagnostics"
         private const val ENCRYPTION_KEY_SIZE_BYTES = 32
     }
 }

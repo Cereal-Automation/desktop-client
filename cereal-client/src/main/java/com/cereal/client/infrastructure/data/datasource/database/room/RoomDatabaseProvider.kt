@@ -8,6 +8,7 @@ import com.cereal.client.infrastructure.data.datasource.database.LogEventDataSou
 import com.cereal.client.infrastructure.data.datasource.database.NotificationHistoryDataSource
 import com.cereal.client.infrastructure.data.datasource.database.ProxyDataSource
 import com.cereal.client.infrastructure.data.datasource.database.ProxyProviderConnectorDataSource
+import com.cereal.client.infrastructure.data.datasource.database.RunTraceDataSource
 import com.cereal.client.infrastructure.data.datasource.database.ScriptInstanceDataSource
 import com.cereal.client.infrastructure.data.datasource.database.ScriptPreferenceDataSource
 import com.cereal.client.infrastructure.data.datasource.database.room.mapper.DatasetMapper
@@ -26,6 +27,8 @@ class RoomDatabaseProvider(
 ) : DatabaseProvider,
     KoinComponent {
     override fun getArtifactDataSource(): ArtifactDataSource = RoomArtifactDataSource(roomDatabases)
+
+    override fun getRunTraceDataSource(): RunTraceDataSource = RoomRunTraceDataSource(roomDatabases)
 
     override fun getDatasetDataSource(): DatasetDataSource {
         val datasetMapper = get<DatasetMapper>()

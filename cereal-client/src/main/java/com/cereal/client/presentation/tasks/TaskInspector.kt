@@ -38,6 +38,7 @@ import com.cereal.client.domain.model.artifact.Artifact
 import com.cereal.client.domain.model.logging.LoggingEvent
 import com.cereal.client.presentation.logs.TaskArtifactsSection
 import com.cereal.client.presentation.logs.TaskLogSection
+import com.cereal.client.presentation.tasks.model.RecentCheckUiModel
 import com.cereal.client.presentation.theme.CerealTheme
 import com.cereal.client.presentation.view.CerealIconButton
 import com.cereal.client.presentation.view.CerealText
@@ -74,16 +75,18 @@ internal fun clampInspectorWidth(
 
 internal const val TASK_INSPECTOR_TEST_TAG = "task_inspector"
 
-/** The selected task beside the list: its status, actions, latest message, values, log and artifacts. */
+/** The selected task beside the list: its status, actions, latest message, values, log, artifacts and recent checks. */
 @Composable
 internal fun TaskInspector(
     state: TaskInspectorState,
     events: List<LoggingEvent>,
     artifacts: List<Artifact>,
+    recentChecks: List<RecentCheckUiModel>,
     onClose: () -> Unit,
     onAction: (TaskInspectorAction) -> Unit,
     onClearLog: () -> Unit,
     onDownloadArtifact: (Artifact) -> Unit,
+    onReportCheck: (traceId: String, note: String) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val task = state.task
@@ -146,6 +149,8 @@ internal fun TaskInspector(
             TaskLogSection(events = events, onClear = onClearLog)
 
             TaskArtifactsSection(artifacts = artifacts, onDownloadArtifact = onDownloadArtifact)
+
+            if (recentChecks.isNotEmpty()) RecentChecksSection(recentChecks, onReportCheck)
         }
     }
 }

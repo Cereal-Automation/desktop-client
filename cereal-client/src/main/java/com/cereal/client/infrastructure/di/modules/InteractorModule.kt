@@ -1,8 +1,10 @@
 package com.cereal.client.infrastructure.di.modules
 
 import com.cereal.client.application.app.VersionCheckService
+import com.cereal.client.application.interactor.agent.FlagCheckInteractor
 import com.cereal.client.application.interactor.agent.GetAiBrowserAgentListingInteractor
 import com.cereal.client.application.interactor.agent.InstallAiBrowserAgentInteractor
+import com.cereal.client.application.interactor.agent.ObserveRecentChecksInteractor
 import com.cereal.client.application.interactor.agent.PrefillGoalRunFormInteractor
 import com.cereal.client.application.interactor.agent.StartGoalRunInteractor
 import com.cereal.client.application.interactor.app.CheckForUpdatesInteractor
@@ -89,11 +91,9 @@ import com.cereal.client.application.interactor.settings.discord.SetDiscordActiv
 import com.cereal.client.application.interactor.settings.notifications.SaveAllNotificationSettingsInteractor
 import com.cereal.client.application.interactor.settings.notifications.SendNotificationTestMessageInteractor
 import com.cereal.client.application.interactor.settings.privacy.GetCrashReportingEnabledInteractor
-import com.cereal.client.application.interactor.settings.privacy.GetGoalSharingEnabledInteractor
-import com.cereal.client.application.interactor.settings.privacy.GetGoalSharingNoticeSeenInteractor
-import com.cereal.client.application.interactor.settings.privacy.MarkGoalSharingNoticeSeenInteractor
+import com.cereal.client.application.interactor.settings.privacy.GetShareDiagnosticsEnabledInteractor
 import com.cereal.client.application.interactor.settings.privacy.SetCrashReportingEnabledInteractor
-import com.cereal.client.application.interactor.settings.privacy.SetGoalSharingEnabledInteractor
+import com.cereal.client.application.interactor.settings.privacy.SetShareDiagnosticsEnabledInteractor
 import com.cereal.client.application.interactor.settings.proxy.ObserveProxyHealthCheckIntervalInteractor
 import com.cereal.client.application.interactor.settings.proxy.SetProxyHealthCheckIntervalInteractor
 import com.cereal.client.application.interactor.task.ChangeScriptPackageInstanceGroupInteractor
@@ -120,7 +120,7 @@ object InteractorModule {
     val modules =
         module {
             single { VersionCheckService(get(), get()) }
-            factory { BootstrapInteractor(get(), get(), get(), get(), get(), get(), get()) }
+            factory { BootstrapInteractor(get(), get(), get(), get(), get(), get(), get(), get()) }
             factory { OpenUrlInteractor(get()) }
             factory { OpenFileInteractor(get()) }
             factory { InstallUpdateInteractor(get()) }
@@ -193,10 +193,8 @@ object InteractorModule {
             factory { SetDiscordActivityStatusEnabledInteractor(get(), get()) }
             factory { GetCrashReportingEnabledInteractor(get()) }
             factory { SetCrashReportingEnabledInteractor(get()) }
-            factory { GetGoalSharingEnabledInteractor(get()) }
-            factory { SetGoalSharingEnabledInteractor(get()) }
-            factory { GetGoalSharingNoticeSeenInteractor(get()) }
-            factory { MarkGoalSharingNoticeSeenInteractor(get()) }
+            factory { GetShareDiagnosticsEnabledInteractor(get()) }
+            factory { SetShareDiagnosticsEnabledInteractor(get(), get()) }
             factory { SendNotificationTestMessageInteractor(get(), get()) }
             factory { SaveAllNotificationSettingsInteractor(get()) }
             factory { GetLlmProviderConfigInteractor(get()) }
@@ -235,6 +233,8 @@ object InteractorModule {
             factory { ReadProxyFileInteractor(get()) }
             factory { DownloadDatasetTemplateFileInteractor(get()) }
             factory { ObserveArtifactsInteractor(get()) }
+            factory { ObserveRecentChecksInteractor(get(), get()) }
+            factory { FlagCheckInteractor(get()) }
             factory { SaveArtifactToFileInteractor(get()) }
             factory { AddCustomDatasetItemsFromFileToGroupInteractor(get()) }
             factory { AddProxiesFromFileToGroupInteractor(get()) }
