@@ -522,7 +522,8 @@ class MarketplaceApiClient(
     suspend fun getAuthenticatedUser(): User = getUser()
 
     /**
-     * Reports an AI browser agent run's start (ADR 0011). Sends the user or guest token when there is one.
+     * Reports an AI browser agent run's start (ADR 0011), with the user or guest token the endpoint requires.
+     * @throws AuthenticationException - if there is no token; nothing is sent then.
      * @throws IOException - on a connectivity problem or timeout.
      * @throws ApiException - if a non 2xx response was received.
      */
@@ -538,6 +539,7 @@ class MarketplaceApiClient(
 
     /**
      * Reports how the run [runId] ended.
+     * @throws AuthenticationException - if there is no token; nothing is sent then.
      * @throws IOException - on a connectivity problem or timeout.
      * @throws ApiException - if a non 2xx response was received.
      */
@@ -555,6 +557,7 @@ class MarketplaceApiClient(
 
     /**
      * Presigns the uploads of the failure report [key] of run [runId] (spec #291).
+     * @throws AuthenticationException - if there is no token; nothing is sent then.
      * @throws IOException - on a connectivity problem or timeout.
      * @throws ApiException - if a non 2xx response was received or its body isn't the expected json.
      */
@@ -564,6 +567,7 @@ class MarketplaceApiClient(
         key: String,
         body: FailureReportUploadRequestBody,
     ): FailureReportUploadResponse {
+        requireToken()
         val request =
             Request
                 .Builder()
@@ -596,6 +600,7 @@ class MarketplaceApiClient(
 
     /**
      * Registers the uploaded failure report [key] of run [runId]; the server then writes its `report.json`.
+     * @throws AuthenticationException - if there is no token; nothing is sent then.
      * @throws IOException - on a connectivity problem or timeout.
      * @throws ApiException - if a non 2xx response was received.
      */
@@ -624,6 +629,7 @@ class MarketplaceApiClient(
         .build()
 
     private suspend fun sendTelemetry(request: Request) {
+        requireToken()
         apiClient.newCall(request).await().use { response ->
             if (!response.isSuccessful) throw apiException(response, null)
         }

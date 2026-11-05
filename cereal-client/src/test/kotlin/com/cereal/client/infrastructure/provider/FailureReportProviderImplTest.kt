@@ -21,14 +21,14 @@ class FailureReportProviderImplTest {
     @AfterEach
     fun tearDown() = server.shutdown()
 
-    private val provider =
+    private fun provider(token: String? = "user-token") =
         FailureReportProviderImpl(
             MarketplaceApiClient(
                 url = server.url("/").toString(),
                 version = "2.0.0",
                 tokenDataSource =
                     object : AuthorizationInterceptor.TokenDataSource {
-                        override fun getToken() = "user-token"
+                        override fun getToken() = token
                     },
                 verifySignature = false,
             ),
@@ -54,7 +54,7 @@ class FailureReportProviderImplTest {
             server.enqueue(MockResponse())
             server.enqueue(MockResponse().setResponseCode(201))
 
-            val result = provider.upload(report()) { true }
+            val result = provider().upload(report()) { true }
 
             assertEquals(Result.Registered, result)
             val presign = server.takeRequest()
@@ -81,7 +81,7 @@ class FailureReportProviderImplTest {
             server.enqueue(MockResponse())
             server.enqueue(MockResponse())
 
-            provider.upload(report(learnedTrace = "learned".toByteArray(), outcome = "flagged", note = "It was sold out")) { true }
+            provider().upload(report(learnedTrace = "learned".toByteArray(), outcome = "flagged", note = "It was sold out")) { true }
 
             assertEquals("""{"learnedTrace":true}""", server.takeRequest().body.readUtf8())
             val puts = listOf(server.takeRequest(), server.takeRequest()).associate { it.path to it.body.readUtf8() }
@@ -95,7 +95,7 @@ class FailureReportProviderImplTest {
         runTest {
             server.enqueue(MockResponse().setResponseCode(status))
 
-            assertEquals(Result.Retry, provider.upload(report()) { true })
+            assertEquals(Result.Retry, provider().upload(report()) { true })
         }
 
     @ParameterizedTest
@@ -104,7 +104,7 @@ class FailureReportProviderImplTest {
         runTest {
             server.enqueue(MockResponse().setResponseCode(status))
 
-            assertEquals(Result.Drop, provider.upload(report()) { true })
+            assertEquals(Result.Drop, provider().upload(report()) { true })
         }
 
     @Test
@@ -113,7 +113,7 @@ class FailureReportProviderImplTest {
             server.enqueue(presigned(learned = false))
             server.enqueue(MockResponse())
 
-            assertEquals(Result.Retry, provider.upload(report(learnedTrace = "learned".toByteArray())) { true })
+            assertEquals(Result.Retry, provider().upload(report(learnedTrace = "learned".toByteArray())) { true })
             server.takeRequest()
             assertEquals(1, server.requestCount)
         }
@@ -125,7 +125,7 @@ class FailureReportProviderImplTest {
             server.enqueue(presigned())
             server.enqueue(MockResponse().setResponseCode(status))
 
-            assertEquals(Result.Retry, provider.upload(report()) { true })
+            assertEquals(Result.Retry, provider().upload(report()) { true })
         }
 
     @Test
@@ -134,12 +134,12 @@ class FailureReportProviderImplTest {
             server.enqueue(presigned())
             server.enqueue(MockResponse())
             server.enqueue(MockResponse().setResponseCode(404))
-            assertEquals(Result.Drop, provider.upload(report()) { true })
+            assertEquals(Result.Drop, provider().upload(report()) { true })
 
             server.enqueue(presigned())
             server.enqueue(MockResponse())
             server.enqueue(MockResponse().setResponseCode(502))
-            assertEquals(Result.Retry, provider.upload(report()) { true })
+            assertEquals(Result.Retry, provider().upload(report()) { true })
         }
 
     @Test
@@ -147,7 +147,7 @@ class FailureReportProviderImplTest {
         runTest {
             server.enqueue(MockResponse().setSocketPolicy(SocketPolicy.DISCONNECT_AT_START))
 
-            assertEquals(Result.Retry, provider.upload(report()) { true })
+            assertEquals(Result.Retry, provider().upload(report()) { true })
         }
 
     @Test
@@ -156,9 +156,16 @@ class FailureReportProviderImplTest {
             server.enqueue(presigned())
             var steps = 0
 
-            val result = provider.upload(report()) { steps++ < 1 }
+            val result = provider().upload(report()) { steps++ < 1 }
 
             assertEquals(Result.Retry, result)
             assertEquals(1, server.requestCount)
+        }
+
+    @Test
+    fun `without a token nothing is sent and the report is retried after the next sign-in`() =
+        runTest {
+            assertEquals(Result.Retry, provider(token = null).upload(report()) { true })
+            assertEquals(0, server.requestCount)
         }
 }

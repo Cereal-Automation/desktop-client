@@ -15,7 +15,6 @@ import okhttp3.mockwebserver.MockWebServer
 import okhttp3.mockwebserver.SocketPolicy
 import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.Assertions.assertEquals
-import org.junit.jupiter.api.Assertions.assertNull
 import org.junit.jupiter.api.Test
 import java.math.BigDecimal
 import kotlin.time.ExperimentalTime
@@ -28,7 +27,7 @@ class GoalRunReportProviderImplTest {
     @AfterEach
     fun tearDown() = server.shutdown()
 
-    private fun provider(token: String? = null) =
+    private fun provider(token: String? = "user-token") =
         GoalRunReportProviderImpl(
             MarketplaceApiClient(
                 url = server.url("/").toString(),
@@ -103,13 +102,12 @@ class GoalRunReportProviderImplTest {
         }
 
     @Test
-    fun `without a token no authorization header is sent`() =
+    fun `without a token nothing is sent, as the endpoints refuse it`() =
         runTest {
-            server.enqueue(MockResponse().setResponseCode(202))
+            provider(token = null).reportStart(start)
+            provider(token = null).reportFinish(GoalRunFinishReport("run-1", GoalRunOutcome.Stopped, null, 1))
 
-            provider().reportStart(start)
-
-            assertNull(server.takeRequest().getHeader("Authorization"))
+            assertEquals(0, server.requestCount)
         }
 
     @Test
