@@ -6,6 +6,7 @@ import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
+import com.cereal.client.domain.model.task.UserInteraction
 import com.cereal.client.presentation.tasks.mappers.toUiModel
 import com.cereal.client.presentation.tasks.model.TaskUiModel
 import fixtures.aTask
@@ -128,6 +129,30 @@ class TaskRowTest {
         }
 
     @Test
+    fun waitingConfirmationShowsWaitingForYouAndReview() =
+        runScreenTest {
+            var reviewed = false
+            val waiting =
+                aTask(id = "task-1", packageName = "com.example.script", running = true)
+                    .copy(userInteraction = aConfirmation())
+                    .toUiModel(taskNumber = 1)
+            setScreenContent {
+                TaskRow(
+                    taskItem = waiting,
+                    isSelected = false,
+                    onStartTask = {},
+                    onStopTask = {},
+                    onRowClick = {},
+                    onContinueClick = { reviewed = true },
+                )
+            }
+
+            onNodeWithText("Waiting for you").assertIsDisplayed()
+            onNodeWithText("Review").performClick()
+            assertTrue(reviewed)
+        }
+
+    @Test
     fun clickingRowFiresCallback() =
         runScreenTest {
             var clicked = false
@@ -145,6 +170,17 @@ class TaskRowTest {
             assertTrue(clicked)
         }
 }
+
+private fun aConfirmation() =
+    UserInteraction.Confirmation(
+        title = "Checkout",
+        question = "Place order on amazon.com?",
+        details = emptyList(),
+        url = null,
+        confirmLabel = "Yes, place order",
+        declineLabel = "No, stop here",
+        expiresAt = null,
+    )
 
 private fun taskUiModel(
     taskNumber: Int = 1,

@@ -2,10 +2,16 @@
 
 package com.cereal.client.domain.model.task
 
+import com.cereal.client.domain.model.notification.ScriptDiscordNotification
+import com.cereal.client.domain.model.notification.ScriptNotification
+import com.cereal.client.domain.model.notification.discordLink
+import com.cereal.client.domain.model.notification.discordPlainText
 import com.cereal.client.domain.model.script.ScriptConfigurationValues
 import com.cereal.client.domain.model.script.ScriptInstance
+import com.cereal.sdk.component.userinteraction.ConfirmationResult
 import com.cereal.sdk.component.userinteraction.WebResourceRequest
 import kotlinx.coroutines.CancellableContinuation
+import kotlinx.coroutines.CompletableDeferred
 import kotlin.time.ExperimentalTime
 import kotlin.time.Instant
 
@@ -29,6 +35,39 @@ sealed class UserInteraction {
         val description: String,
         val continuation: CancellableContinuation<String>,
     ) : UserInteraction()
+
+    /**
+     * A script's `requestConfirmation`, waiting for an answer. Plain text throughout; [url] is the only link.
+     * [answer] is a CompletableDeferred, not a continuation like the other interactions, because two answerers race
+     * (the window and remote approval): the first `complete` wins and later ones are ignored.
+     */
+    data class Confirmation(
+        val title: String,
+        val question: String,
+        val details: List<String>,
+        val url: String?,
+        val confirmLabel: String,
+        val declineLabel: String,
+        /** When it counts as Expired, or null when it never expires. */
+        val expiresAt: Instant?,
+        val answer: CompletableDeferred<ConfirmationResult> = CompletableDeferred(),
+    ) : UserInteraction() {
+        /** The plain heads-up sent on the user's notification channels when this starts waiting. */
+        fun headsUp(): ScriptNotification =
+            ScriptNotification(
+                title = question,
+                message = listOfNotNull(url, ConfirmationText.WAITING_IN_CEREAL).joinToString("\n"),
+                discordMessage =
+                    ScriptDiscordNotification(
+                        content =
+                            listOfNotNull(
+                                "**${discordPlainText(question)}**",
+                                url?.let(::discordLink),
+                                ConfirmationText.WAITING_IN_CEREAL,
+                            ).joinToString("\n"),
+                    ),
+            )
+    }
 }
 
 typealias TaskId = String

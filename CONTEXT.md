@@ -95,6 +95,14 @@ _Avoid_: notification inbox, notification log, alerts panel, activity feed
 A `NotificationHistory` whose `timestamp` is newer than `lastSeenAt` — the per-user "last time the center was viewed" timestamp held in `ApplicationPreferenceRepository`. The sidebar badge counts unseen notifications. `lastSeenAt` advances to the newest notification's timestamp on opening the center and stays pinned there while the center is the active screen, so items viewed live never re-badge.
 _Avoid_: unread, new notification, pending notification
 
+**Waiting for you**:
+The task row's state while a script's confirmation (`requestConfirmation`) waits for the user's answer in its own window. It ends when the user confirms or declines (in the window or by remote approval), when it expires, or when the task stops. Starting to wait sends a plain heads-up on the task's notification channels.
+_Avoid_: pending, blocked, paused, needs attention
+
+**Remote approval**:
+Answering a waiting confirmation away from the desk: it is sent as a message with Confirm and Decline buttons on a channel that takes them (today a private Telegram chat), and the first answer from the window or a button wins. When the confirmation ends, the buttons are stripped and the message says how it ended. Sits behind `RemoteApprovalProvider`; a channel it reached gets no plain heads-up.
+_Avoid_: remote confirm, Telegram buttons, mobile approval
+
 ## Feature flags
 
 **Feature flag**:

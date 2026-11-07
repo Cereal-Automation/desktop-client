@@ -101,7 +101,13 @@ internal fun TaskInspector(
                 style = MaterialTheme.typography.titleMedium,
                 color = MaterialTheme.colorScheme.onSurface,
             )
-            StatusChip(status = task.status, isRunning = task.isRunning, isError = task.isError, isSuccess = task.isSuccess)
+            StatusChip(
+                status = task.status,
+                isRunning = task.isRunning,
+                isError = task.isError,
+                isSuccess = task.isSuccess,
+                isWaitingForYou = task.isWaitingForYou,
+            )
             Spacer(Modifier.weight(1f))
             CerealIconButton(onClick = onClose) {
                 Icon(

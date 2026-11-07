@@ -239,7 +239,7 @@ internal fun SingleTaskSetupRow(
             Modifier
                 .fillMaxWidth()
                 .clip(RoundedCornerShape(CardRadius))
-                .background(if (isSelected) RowSelectedBg else Color.Transparent)
+                .background(task.rowBackground(isSelected))
                 .clickable(onClick = onClick),
     ) {
         if (isSelected) {
@@ -262,7 +262,13 @@ internal fun SingleTaskSetupRow(
             TitleAndMessage(section, task, Modifier.weight(1f))
             TimeSince(task.statusSince)
             if (task.isRunning) ActivityIndicator(size = 18.dp)
-            StatusChip(status = task.status, isRunning = task.isRunning, isError = task.isError, isSuccess = task.isSuccess)
+            StatusChip(
+                status = task.status,
+                isRunning = task.isRunning,
+                isError = task.isError,
+                isSuccess = task.isSuccess,
+                isWaitingForYou = task.isWaitingForYou,
+            )
             section.stepper?.let { ConcurrentTaskStepper(it, onDecreaseTasks, onIncreaseTasks) }
             TaskActionButton(task, onStartTask, onStopTask, onContinueClick)
             SetupMenu(section, onMenuOptionSelected)

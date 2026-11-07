@@ -53,9 +53,13 @@ object TaskScopeModule {
                     )
                 }
                 scoped<UserInteractionComponent> {
+                    val task = getSource<Task>() ?: throw RuntimeException("Task is required")
                     UserInteractionComponentImpl(
                         get(),
-                        getSource<Task>()?.id ?: throw RuntimeException("Task is required"),
+                        task.id,
+                        get(),
+                        get(),
+                        task.scriptInstance.getScriptPackageInstance(),
                         get(),
                     )
                 }

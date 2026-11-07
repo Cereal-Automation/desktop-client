@@ -2,20 +2,33 @@ package com.cereal.client.infrastructure.data.notification.telegram
 
 import com.cereal.client.application.exception.CerealException
 import com.cereal.client.infrastructure.data.notification.telegram.mapper.TelegramModelMapper
+import com.cereal.client.infrastructure.data.notification.telegram.model.TelegramUpdate
 import com.cereal.sdk.component.notification.telegram.model.TelegramMessage
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonElement
+import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.add
+import kotlinx.serialization.json.addJsonArray
+import kotlinx.serialization.json.addJsonObject
+import kotlinx.serialization.json.buildJsonObject
+import kotlinx.serialization.json.decodeFromJsonElement
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
+import kotlinx.serialization.json.long
 import kotlinx.serialization.json.longOrNull
+import kotlinx.serialization.json.put
+import kotlinx.serialization.json.putJsonArray
+import kotlinx.serialization.json.putJsonObject
 import okhttp3.MediaType.Companion.toMediaTypeOrNull
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import okhttp3.RequestBody.Companion.toRequestBody
 import org.slf4j.LoggerFactory
 import java.io.IOException
+import java.util.concurrent.TimeUnit
 import kotlin.time.Duration.Companion.seconds
 
 class TelegramHttpClient(
@@ -52,7 +65,7 @@ class TelegramHttpClient(
 
         repeat(maxAttempts) { attempt ->
             when (val result = sendOnce(request)) {
-                SendResult.Success -> return
+                is SendResult.Success -> return
                 is SendResult.PermanentFailure -> throw CerealException("Telegram rejected the message (HTTP ${result.statusCode}).")
                 is SendResult.Retryable -> if (attempt < maxAttempts - 1) delay(result.delayMs)
             }
@@ -60,10 +73,120 @@ class TelegramHttpClient(
         throw CerealException("Unable to deliver Telegram message after $maxAttempts attempts.")
     }
 
-    private suspend fun sendOnce(request: Request): SendResult =
+    /** Sends [text] with one row of inline buttons, (label, callback_data) each; returns the message id. */
+    suspend fun sendMessageWithButtons(
+        botToken: String,
+        chatId: String,
+        text: String,
+        buttons: List<Pair<String, String>>,
+    ): Long =
+        call(
+            botToken,
+            "sendMessage",
+            buildJsonObject {
+                put("chat_id", chatId)
+                put("text", text)
+                putJsonObject("reply_markup") {
+                    putJsonArray("inline_keyboard") {
+                        addJsonArray {
+                            buttons.forEach { (label, data) ->
+                                addJsonObject {
+                                    put("text", label)
+                                    put("callback_data", data)
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+        ).jsonObject
+            .getValue("message_id")
+            .jsonPrimitive.long
+
+    /** Long-polls for button presses; [offset] confirms every update before it. */
+    suspend fun getUpdates(
+        botToken: String,
+        offset: Long?,
+        timeoutSeconds: Int,
+    ): List<TelegramUpdate> =
+        json.decodeFromJsonElement<List<TelegramUpdate>>(
+            call(
+                botToken,
+                "getUpdates",
+                buildJsonObject {
+                    offset?.let { put("offset", it) }
+                    put("timeout", timeoutSeconds)
+                    putJsonArray("allowed_updates") { add("callback_query") }
+                },
+                maxAttempts = 1,
+                client = httpClient.newBuilder().readTimeout((timeoutSeconds + POLL_READ_MARGIN_SECONDS).toLong(), TimeUnit.SECONDS).build(),
+            ),
+        )
+
+    suspend fun answerCallbackQuery(
+        botToken: String,
+        callbackQueryId: String,
+        text: String?,
+    ) {
+        call(
+            botToken,
+            "answerCallbackQuery",
+            buildJsonObject {
+                put("callback_query_id", callbackQueryId)
+                text?.let { put("text", it) }
+            },
+        )
+    }
+
+    /** Replaces the message's text; without a reply_markup Telegram drops its buttons. */
+    suspend fun editMessageText(
+        botToken: String,
+        chatId: String,
+        messageId: Long,
+        text: String,
+    ) {
+        call(
+            botToken,
+            "editMessageText",
+            buildJsonObject {
+                put("chat_id", chatId)
+                put("message_id", messageId)
+                put("text", text)
+            },
+        )
+    }
+
+    /** One Bot API call with the same 429 back-off as [sendMessage]; returns its `result`. */
+    private suspend fun call(
+        botToken: String,
+        method: String,
+        body: JsonObject,
+        maxAttempts: Int = 3,
+        client: OkHttpClient = httpClient,
+    ): JsonElement {
+        val request =
+            Request
+                .Builder()
+                .post(body.toString().toRequestBody(jsonMediaType))
+                .url("$baseUrl/bot$botToken/$method")
+                .build()
+        repeat(maxAttempts) { attempt ->
+            when (val result = sendOnce(request, client)) {
+                is SendResult.Success -> return json.parseToJsonElement(result.body).jsonObject.getValue("result")
+                is SendResult.PermanentFailure -> throw CerealException("Telegram rejected $method (HTTP ${result.statusCode}).")
+                is SendResult.Retryable -> if (attempt < maxAttempts - 1) delay(result.delayMs)
+            }
+        }
+        throw CerealException("Telegram $method failed after $maxAttempts attempts.")
+    }
+
+    private suspend fun sendOnce(
+        request: Request,
+        client: OkHttpClient = httpClient,
+    ): SendResult =
         try {
             withContext(Dispatchers.IO) {
-                httpClient.newCall(request).execute().use { response ->
+                client.newCall(request).execute().use { response ->
                     when {
                         response.code == HTTP_TOO_MANY_REQUESTS -> {
                             logger.warn("Rate limited by Telegram, retrying...")
@@ -72,7 +195,7 @@ class TelegramHttpClient(
 
                         response.isSuccessful -> {
                             logger.debug("Successfully sent Telegram message")
-                            SendResult.Success
+                            SendResult.Success(response.body.string())
                         }
 
                         else -> {
@@ -102,7 +225,9 @@ class TelegramHttpClient(
             ?: RETRY_DELAY_MS
 
     private sealed interface SendResult {
-        data object Success : SendResult
+        data class Success(
+            val body: String,
+        ) : SendResult
 
         data class Retryable(
             val delayMs: Long,
@@ -117,5 +242,6 @@ class TelegramHttpClient(
         private const val HTTP_TOO_MANY_REQUESTS = 429
         private const val RETRY_DELAY_MS = 1000L
         private const val MAX_RETRY_AFTER_MS = 30_000L
+        private const val POLL_READ_MARGIN_SECONDS = 10
     }
 }

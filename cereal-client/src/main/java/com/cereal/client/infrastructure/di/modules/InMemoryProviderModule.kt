@@ -13,6 +13,7 @@ import com.cereal.client.domain.provider.LoggerProvider
 import com.cereal.client.domain.provider.MarketplaceProvider
 import com.cereal.client.domain.provider.NotificationProvider
 import com.cereal.client.domain.provider.ProxyConnectionProvider
+import com.cereal.client.domain.provider.RemoteApprovalProvider
 import com.cereal.client.domain.provider.ScriptInstallProvider
 import com.cereal.client.domain.provider.SystemProvider
 import com.cereal.client.infrastructure.provider.LlmProviderImpl
@@ -28,6 +29,7 @@ import com.cereal.client.infrastructure.provider.inmemory.InMemoryLoggerProvider
 import com.cereal.client.infrastructure.provider.inmemory.InMemoryMarketplaceProvider
 import com.cereal.client.infrastructure.provider.inmemory.InMemoryNotificationProvider
 import com.cereal.client.infrastructure.provider.inmemory.InMemoryProxyConnectionProvider
+import com.cereal.client.infrastructure.provider.inmemory.InMemoryRemoteApprovalProvider
 import com.cereal.client.infrastructure.provider.inmemory.InMemoryScriptInstallProvider
 import com.cereal.client.infrastructure.provider.inmemory.InMemorySystemProvider
 import org.koin.core.module.Module
@@ -63,5 +65,6 @@ object InMemoryProviderModule {
             }
             single<CheckoutProvider> { InMemoryCheckoutProvider() }
             single<LlmProvider> { LlmProviderImpl(get(), get()) }
+            single<RemoteApprovalProvider> { InMemoryRemoteApprovalProvider() }
         }
 }

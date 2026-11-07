@@ -299,6 +299,7 @@ fun TasksScreen(
                 UserInteractionWindow(
                     userInteraction = userInteraction,
                     taskNumber = taskUiModel.taskNumber,
+                    reviewRequests = viewModel.confirmationReviews[taskUiModel.id.id] ?: 0,
                     closeWindow = {
                         viewModel.finishUserInteraction(taskUiModel)
                     },
@@ -463,6 +464,10 @@ private fun continueTask(
     task: TaskUiModel,
     viewModel: TasksViewModel,
 ) {
+    if (task.id.userInteraction is UserInteraction.Confirmation) {
+        viewModel.reviewConfirmation(task)
+        return
+    }
     // The button lingers until the cleared interaction propagates; a second
     // click must not resume the continuation again.
     (task.id.userInteraction as? UserInteraction.ContinueButton)

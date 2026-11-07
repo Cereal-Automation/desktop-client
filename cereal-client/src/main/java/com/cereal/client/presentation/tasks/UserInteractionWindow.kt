@@ -1,15 +1,22 @@
 package com.cereal.client.presentation.tasks
 
+import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -17,6 +24,8 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalUriHandler
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Window
 import androidx.compose.ui.window.rememberWindowState
@@ -24,12 +33,16 @@ import com.cereal.client.application.exception.ChromeNotInstalledException
 import com.cereal.client.domain.model.task.UserInteraction
 import com.cereal.client.presentation.theme.CerealTheme
 import com.cereal.client.presentation.view.CerealButton
+import com.cereal.client.presentation.view.CerealButtonType
+import com.cereal.client.presentation.view.CerealOutlinedButton
 import com.cereal.client.presentation.view.CerealText
 import com.cereal.client.presentation.view.CerealTextField
+import com.cereal.sdk.component.userinteraction.ConfirmationResult
 import com.cereal.sdk.component.userinteraction.UserInteractionCanceledException
 import com.cereal.sdk.component.userinteraction.WebResourceException
 import com.cereal.sdk.component.userinteraction.WebResourceRequest
 import com.cereal_automation.cereal_client.generated.resources.Res
+import com.cereal_automation.cereal_client.generated.resources.confirmation_expires_in
 import com.cereal_automation.cereal_client.generated.resources.submit
 import com.cereal_automation.cereal_client.generated.resources.task_title_with_number
 import dev.kdriver.cdp.domain.Network
@@ -50,14 +63,24 @@ import org.jetbrains.compose.resources.stringResource
 import java.net.URLDecoder
 import kotlin.coroutines.resume
 import kotlin.coroutines.resumeWithException
+import kotlin.time.Clock
+import kotlin.time.Duration
+import kotlin.time.Duration.Companion.seconds
+import kotlin.time.ExperimentalTime
+import kotlin.time.Instant
 
 @Composable
 fun UserInteractionWindow(
     userInteraction: UserInteraction,
     taskNumber: Int? = null,
+    reviewRequests: Int = 0,
     closeWindow: () -> Unit,
 ) {
     when (userInteraction) {
+        is UserInteraction.Confirmation -> {
+            ConfirmationWindow(userInteraction, taskNumber, reviewRequests, closeWindow)
+        }
+
         is UserInteraction.Browser -> {
             BrowserWindow(userInteraction, taskNumber, closeWindow)
         }
@@ -298,3 +321,125 @@ private fun TextInputWindow(
         }
     }
 }
+
+/**
+ * A script's `requestConfirmation`, always on top. Closing it declines. Expiry and a stopped task need nothing
+ * here: the component clears the interaction, which removes the window.
+ */
+@OptIn(ExperimentalTime::class)
+@Composable
+private fun ConfirmationWindow(
+    confirmation: UserInteraction.Confirmation,
+    taskNumber: Int?,
+    reviewRequests: Int,
+    closeWindow: () -> Unit,
+) {
+    var now by remember { mutableStateOf(Clock.System.now()) }
+    LaunchedEffect(confirmation) {
+        while (true) {
+            delay(1.seconds)
+            now = Clock.System.now()
+        }
+    }
+    Window(
+        onCloseRequest = {
+            confirmation.answer.complete(ConfirmationResult.Declined)
+            closeWindow()
+        },
+        title =
+            taskNumber?.let { stringResource(Res.string.task_title_with_number, it, confirmation.title) }
+                ?: confirmation.title,
+        state = rememberWindowState(width = 460.dp, height = 400.dp),
+        alwaysOnTop = true,
+    ) {
+        // Review on the task row: bring a buried or minimized window back.
+        LaunchedEffect(reviewRequests) {
+            if (reviewRequests > 0) {
+                window.isMinimized = false
+                window.toFront()
+                window.requestFocus()
+            }
+        }
+        CerealTheme {
+            Surface(modifier = Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
+                ConfirmationContent(confirmation, now)
+            }
+        }
+    }
+}
+
+/** The confirmation's question, details, page link, countdown and buttons; every text is shown as plain text. */
+@OptIn(ExperimentalTime::class)
+@Composable
+internal fun ConfirmationContent(
+    confirmation: UserInteraction.Confirmation,
+    now: Instant,
+) {
+    Column(modifier = Modifier.fillMaxSize()) {
+        Column(
+            modifier = Modifier.weight(1f).verticalScroll(rememberScrollState()).padding(20.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            CerealText(
+                text = confirmation.question,
+                style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
+            )
+            confirmation.details.forEachIndexed { index, paragraph ->
+                CerealText(
+                    text = paragraph,
+                    color = if (index == 0) MaterialTheme.colorScheme.onSurface else CerealTheme.colorScheme.contentSecondary,
+                )
+            }
+            confirmation.url?.let { PageLink(it) }
+        }
+        Row(
+            modifier =
+                Modifier
+                    .fillMaxWidth()
+                    .background(CerealTheme.colorScheme.surfaceRaised)
+                    .padding(horizontal = 20.dp, vertical = 12.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            Box(Modifier.weight(1f)) {
+                confirmation.expiresAt?.let { expiresAt ->
+                    CerealText(
+                        text =
+                            stringResource(
+                                Res.string.confirmation_expires_in,
+                                (expiresAt - now).toCountdown(),
+                                confirmation.declineLabel,
+                            ),
+                        color = CerealTheme.colorScheme.contentTertiary,
+                        style = MaterialTheme.typography.labelMedium,
+                    )
+                }
+            }
+            CerealOutlinedButton(
+                onClick = { confirmation.answer.complete(ConfirmationResult.Declined) },
+                type = CerealButtonType.Neutral,
+            ) {
+                CerealText(confirmation.declineLabel)
+            }
+            CerealButton(onClick = { confirmation.answer.complete(ConfirmationResult.Confirmed) }) {
+                CerealText(confirmation.confirmLabel)
+            }
+        }
+    }
+}
+
+/** The step's page; only a web address opens, anything else stays plain text. */
+@Composable
+private fun PageLink(url: String) {
+    val uriHandler = LocalUriHandler.current
+    val isWeb = url.startsWith("https://") || url.startsWith("http://")
+    CerealText(
+        text = url,
+        color = if (isWeb) CerealTheme.colorScheme.link else CerealTheme.colorScheme.contentSecondary,
+        style = MaterialTheme.typography.bodySmall,
+        modifier = if (isWeb) Modifier.clickable { uriHandler.openUri(url) } else Modifier,
+    )
+}
+
+/** mm:ss, never below 0:00. */
+internal fun Duration.toCountdown(): String = coerceAtLeast(Duration.ZERO).toComponents { minutes, seconds, _ -> "%d:%02d".format(minutes, seconds) }
