@@ -55,7 +55,7 @@ object Injector {
             val koinModules =
                 if (BuildConfig.FLAVOR == "mock") {
                     appModules(InMemoryRepositoryModule.modules, InMemoryProviderModule.modules) +
-                        SandboxRepositoryModule.modules
+                        SandboxRepositoryModule.modules()
                 } else {
                     appModules(RepositoryModule.modules, ProviderModule.modules)
                 }
