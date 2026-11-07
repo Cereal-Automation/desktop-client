@@ -68,15 +68,15 @@ fun homeComposerSlot(
     }
 
 /**
- * Whether Home shows this field: one the user has to fill in. That is a field the script marks
- * [Visibility.VisibleRequired] right now, or a non-null one without a default; a field with a default
- * stays behind More options.
+ * Whether Home shows this field: one the run needs a value for. That is a field the script marks
+ * [Visibility.VisibleRequired] right now, or any non-null one not [Visibility.Hidden], prefilled with its
+ * default when it has one. Nullable fields stay behind More options.
  */
 fun ScriptConfigurationItemDefinition.isShownOnHome(config: ScriptConfig): Boolean =
     when (stateModifier?.getVisibility(config)) {
         Visibility.Hidden -> false
         Visibility.VisibleRequired -> true
-        else -> !isNullable && defaultValue == null
+        else -> !isNullable
     }
 
 /**

@@ -249,7 +249,7 @@ class HomeViewModelTest {
     }
 
     @Test
-    fun `in Once Home shows only the fields the script requires, not the ones with defaults`() =
+    fun `in Once Home shows only the fields the script requires, not the nullable ones`() =
         runTest {
             val vm = homeWith()
 
@@ -274,6 +274,23 @@ class HomeViewModelTest {
             val agent = anAgentPackage(agentConfigurationItems() + anAgentItem("apiKey", ConfigItemType.SecretConfigItem, 10))
 
             assertEquals(listOf("goal", "startUrl", "runMode", "apiKey"), homeWith(agent).shownKeys())
+        }
+
+    @Test
+    fun `a non-null field with a default shows, even when the script marks it optional`() =
+        runTest {
+            // Like product-checkout's Quantity: an Int defaulting to 1 whose state modifier returns VisibleOptional.
+            val optional =
+                object : StateModifier {
+                    override fun getVisibility(scriptConfig: ScriptConfig) = Visibility.VisibleOptional
+
+                    override fun getError(scriptConfig: ScriptConfig): String? = null
+                }
+            val quantity = anAgentItem("quantity", ConfigItemType.IntConfigItem, 6, ConfigValue.IntValue(1), optional)
+            val vm = homeWith(anAgentPackage(agentConfigurationItems() + quantity))
+
+            assertEquals(listOf("goal", "startUrl", "runMode", "quantity"), vm.shownKeys())
+            assertEquals("1", (vm.field("quantity") as TextFieldState<*>).text)
         }
 
     @Test

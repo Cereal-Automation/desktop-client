@@ -77,7 +77,7 @@ val fakeRunModeType = ConfigItemType.EnumConfigItem(FakeRunMode::class as KClass
 
 /**
  * The agent's definition as the client sees it: what Home shows (goal, start URL, run mode, and in Repeat check every
- * and vary by) plus one defaulted item that stays behind More options.
+ * and vary by) plus one nullable item that stays behind More options.
  */
 fun agentConfigurationItems(): List<ScriptConfigurationItemDefinition> =
     listOf(
@@ -86,7 +86,7 @@ fun agentConfigurationItems(): List<ScriptConfigurationItemDefinition> =
         anAgentItem("runMode", fakeRunModeType, 2, defaultValue = ConfigValue.EnumValue(FakeRunMode.Once), stateModifier = AlwaysRequired),
         anAgentItem("repeatInterval", ConfigItemType.IntConfigItem, 3, defaultValue = ConfigValue.IntValue(300), stateModifier = RepeatOnly),
         anAgentItem("repeatJitter", ConfigItemType.IntConfigItem, 4, defaultValue = ConfigValue.IntValue(20), stateModifier = RepeatOnly),
-        anAgentItem("maxSteps", ConfigItemType.IntConfigItem, 31, defaultValue = ConfigValue.IntValue(40)),
+        anAgentItem("maxSteps", ConfigItemType.IntConfigItem, 31, defaultValue = ConfigValue.IntValue(40)).copy(isNullable = true),
     )
 
 /** An installed AI browser agent whose definition has the given [items] ([agentConfigurationItems] by default). */
