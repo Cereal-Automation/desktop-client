@@ -2,6 +2,7 @@ package com.cereal.client.infrastructure.di.modules
 
 import FileDownloader
 import com.cereal.client.application.ApplicationConfig
+import com.cereal.client.application.CoroutinesDispatcherProvider
 import com.cereal.client.domain.model.OperatingSystemType
 import com.cereal.client.domain.service.ProxyHealthChecker
 import com.cereal.client.infrastructure.data.datasource.auth.UserTokenDataSource
@@ -59,6 +60,8 @@ import com.cereal.client.infrastructure.data.notification.discord.DiscordHttpCli
 import com.cereal.client.infrastructure.data.notification.telegram.TelegramHttpClient
 import com.cereal.client.infrastructure.data.notification.telegram.TelegramRemoteApproval
 import com.cereal_automation.cereal_client.BuildConfig
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.SupervisorJob
 import okhttp3.OkHttpClient
 import org.koin.dsl.module
 
@@ -83,10 +86,7 @@ object DataSourceModule {
             }
             single { DiscordHttpClient() }
             single { TelegramHttpClient() }
-            single {
-                // Quitting strips the Telegram buttons of every waiting confirmation (best effort, a few seconds).
-                TelegramRemoteApproval(get(), get()).also { Runtime.getRuntime().addShutdownHook(Thread(it::stripAll)) }
-            }
+            single { TelegramRemoteApproval(get(), get(), CoroutineScope(SupervisorJob() + get<CoroutinesDispatcherProvider>().io)) }
             single { DiscordRpcDataSource.create() }
             single { FileSystemScriptsDataSource(get(), get(), get()) }
             // Installer downloads are staged under the per-user app home directory (owner-only),

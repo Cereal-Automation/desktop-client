@@ -2,6 +2,8 @@ package com.cereal.client.infrastructure.data.notification.telegram
 
 import com.cereal.client.application.CoroutinesDispatcherProvider
 import com.cereal.client.application.interactor.notification.SendNotificationFromScriptInstanceInteractor
+import com.cereal.client.domain.model.notification.NotificationChannelType
+import com.cereal.client.domain.model.notification.NotificationDeliveryStatus
 import com.cereal.client.domain.model.notification.NotificationResolver
 import com.cereal.client.domain.model.notification.ScriptNotificationOverrides
 import com.cereal.client.domain.model.notification.TelegramNotificationData
@@ -11,6 +13,7 @@ import com.cereal.client.domain.model.task.UserInteraction
 import com.cereal.client.infrastructure.data.repository.inmemory.InMemoryNotificationHistoryRepository
 import com.cereal.client.infrastructure.data.repository.inmemory.InMemoryNotificationSettingsRepository
 import com.cereal.client.infrastructure.data.repository.inmemory.InMemoryTasksRepository
+import com.cereal.client.infrastructure.provider.RemoteApprovalProviderImpl
 import com.cereal.client.infrastructure.provider.inmemory.InMemoryNotificationProvider
 import com.cereal.client.infrastructure.sdkcomponent.UserInteractionComponentImpl
 import com.cereal.sdk.component.userinteraction.ConfirmationResult
@@ -66,6 +69,7 @@ class TelegramRemoteApprovalTest {
     private val settings = InMemoryNotificationSettingsRepository()
     private val notificationProvider = InMemoryNotificationProvider()
     private val tasksRepository = InMemoryTasksRepository()
+    private val history = InMemoryNotificationHistoryRepository()
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     private val approval =
         TelegramRemoteApproval(
@@ -92,11 +96,11 @@ class TelegramRemoteApprovalTest {
         SendNotificationFromScriptInstanceInteractor(
             notificationProvider,
             settings,
-            InMemoryNotificationHistoryRepository(),
+            history,
             NotificationResolver(),
         ),
         overrides?.let { o -> mockk<ScriptPackageInstance> { every { notificationOverrides } returns o } },
-        approval,
+        RemoteApprovalProviderImpl(approval),
     )
 
     private suspend fun telegramSetUp(chatId: String = CHAT_ID) {
@@ -317,6 +321,37 @@ class TelegramRemoteApprovalTest {
             assertEquals(1, telegram.callsTo("editMessageText").size, "stripped once")
         }
 
+    @Test
+    fun `quitting right after a confirmation ends waits for its message to be stripped`() =
+        runBlocking {
+            telegramSetUp()
+            telegram.editDelayMillis = 500
+            val result = startAsking()
+            telegram.awaitSent()
+            telegram.awaitCall("getUpdates")
+            shown().answer.complete(ConfirmationResult.Declined)
+            result.await()
+
+            approval.stripAll()
+
+            assertEquals(1, telegram.editsDone.get(), "stripped before quit returns")
+        }
+
+    @Test
+    fun `a failed button message is recorded and Telegram gets the plain heads-up instead`() =
+        runBlocking {
+            telegramSetUp()
+            telegram.failButtons = true
+
+            val result = startAsking()
+            val headsUp = withTimeout(5.seconds) { history.observeByTaskId("task-1").first { it.isNotEmpty() }.single() }
+            result.cancelAndJoin()
+
+            val telegramAttempts = history.observeAttempts(headsUp.id).first().filter { it.channel == NotificationChannelType.TELEGRAM }
+            assertTrue(telegramAttempts.any { it.status == NotificationDeliveryStatus.FAILURE }, "button send recorded")
+            assertTrue(notificationProvider.sent.any { it is TelegramNotificationData }, "plain Telegram heads-up")
+        }
+
     companion object {
         const val BOT_TOKEN = "123456:ABC-def_ghi"
         const val CHAT_ID = "42"
@@ -333,12 +368,20 @@ class FakeTelegram : Dispatcher() {
     val maxConcurrentPolls = AtomicInteger()
     private var nextUpdateId = 100L
 
+    @Volatile var editDelayMillis = 0L
+
+    @Volatile var failButtons = false
+    val editsDone = AtomicInteger()
+
     override fun dispatch(request: RecordedRequest): MockResponse {
         val method = request.path!!.substringAfterLast('/')
         val body = Json.parseToJsonElement(request.body.readUtf8().ifEmpty { "{}" }).jsonObject
         calls += method to body
         return when (method) {
             "sendMessage" -> {
+                if (failButtons && "reply_markup" in body) {
+                    return MockResponse().setResponseCode(400).setBody("""{"ok":false,"description":"Bad Request"}""")
+                }
                 sentMessages += body
                 ok("""{"message_id":${TelegramRemoteApprovalTest.MESSAGE_ID},"chat":{"id":${body.string("chat_id")}}}""")
             }
@@ -355,6 +398,12 @@ class FakeTelegram : Dispatcher() {
                 } finally {
                     polling.decrementAndGet()
                 }
+            }
+
+            "editMessageText" -> {
+                Thread.sleep(editDelayMillis)
+                editsDone.incrementAndGet()
+                ok("true")
             }
 
             else -> {

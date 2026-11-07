@@ -43,3 +43,11 @@ data class ScriptEmailNotification(
     val password: String? = null,
     val useTls: Boolean? = null,
 )
+
+private val DISCORD_MARKDOWN = Regex("""[\\*_~`|>#\-\[\]()]""")
+
+/** [text] as Discord shows it literally: markdown escaped, and `@` broken by a zero-width space so nobody is pinged. */
+fun discordPlainText(text: String): String = text.replace(DISCORD_MARKDOWN, "\\\\$0").replace("@", "@\u200B")
+
+/** [url] as a Discord link without a preview, or as plain text when it can't be one. */
+fun discordLink(url: String): String = if (url.none { it.isWhitespace() || it == '>' || it == '@' }) "<$url>" else discordPlainText(url)

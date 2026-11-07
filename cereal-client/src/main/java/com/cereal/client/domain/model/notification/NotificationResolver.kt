@@ -5,7 +5,8 @@ package com.cereal.client.domain.model.notification
  *
  * It owns three concerns that previously lived, interleaved, in the send interactor:
  * - **Channel selection** — a channel is in play when it is globally enabled, or the script
- *   provided an override for it (system/desktop has no override path).
+ *   provided an override for it (system/desktop has no override path), and the caller didn't
+ *   exclude it (remote approval already messaged it).
  * - **Channel override priority** — each field is resolved `script value > override > global setting`.
  * - **Validation** — a required field missing from all three layers (or a value rejected by the
  *   channel's own [Notification] invariants) yields [ChannelResolution.MissingConfig] rather than a
@@ -18,6 +19,7 @@ class NotificationResolver {
         request: ScriptNotification,
         overrides: ScriptNotificationOverrides?,
         config: GlobalNotificationConfig,
+        excluded: Set<NotificationChannelType> = emptySet(),
     ): List<ChannelResolution> =
         buildList {
             if (config.discord.enabled || overrides?.discordOverrides != null) {
@@ -32,7 +34,7 @@ class NotificationResolver {
             if (config.desktopEnabled) {
                 add(resolveSystem(request))
             }
-        }
+        }.filterNot { it.channel in excluded }
 
     private fun resolveDiscord(
         request: ScriptNotification,

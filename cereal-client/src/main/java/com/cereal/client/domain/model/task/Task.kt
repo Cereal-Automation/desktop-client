@@ -2,7 +2,10 @@
 
 package com.cereal.client.domain.model.task
 
+import com.cereal.client.domain.model.notification.ScriptDiscordNotification
 import com.cereal.client.domain.model.notification.ScriptNotification
+import com.cereal.client.domain.model.notification.discordLink
+import com.cereal.client.domain.model.notification.discordPlainText
 import com.cereal.client.domain.model.script.ScriptConfigurationValues
 import com.cereal.client.domain.model.script.ScriptInstance
 import com.cereal.sdk.component.userinteraction.ConfirmationResult
@@ -35,7 +38,8 @@ sealed class UserInteraction {
 
     /**
      * A script's `requestConfirmation`, waiting for an answer. Plain text throughout; [url] is the only link.
-     * The first [answer] wins (`complete` ignores later ones), so the window and a remote channel can race.
+     * [answer] is a CompletableDeferred, not a continuation like the other interactions, because two answerers race
+     * (the window and remote approval): the first `complete` wins and later ones are ignored.
      */
     data class Confirmation(
         val title: String,
@@ -52,7 +56,16 @@ sealed class UserInteraction {
         fun headsUp(): ScriptNotification =
             ScriptNotification(
                 title = question,
-                message = listOfNotNull(url, "Waiting for your answer in Cereal.").joinToString("\n"),
+                message = listOfNotNull(url, ConfirmationText.WAITING_IN_CEREAL).joinToString("\n"),
+                discordMessage =
+                    ScriptDiscordNotification(
+                        content =
+                            listOfNotNull(
+                                "**${discordPlainText(question)}**",
+                                url?.let(::discordLink),
+                                ConfirmationText.WAITING_IN_CEREAL,
+                            ).joinToString("\n"),
+                    ),
             )
     }
 }

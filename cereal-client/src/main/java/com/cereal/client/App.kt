@@ -3,6 +3,7 @@ package com.cereal.client
 import com.cereal.client.application.ApplicationConfig
 import com.cereal.client.application.Environment
 import com.cereal.client.domain.model.featureflag.FeatureFlag
+import com.cereal.client.domain.provider.RemoteApprovalProvider
 import com.cereal.client.domain.repository.FeatureFlagRepository
 import com.cereal.client.infrastructure.crashreporting.CrashReportingClient
 import com.cereal.client.infrastructure.di.Injector
@@ -75,6 +76,10 @@ object App {
         }
 
         logActiveFeatureFlags(koin)
+
+        // Quitting strips the remote approval buttons of every waiting confirmation (best effort, a few seconds).
+        val remoteApproval = koin.get<RemoteApprovalProvider>()
+        Runtime.getRuntime().addShutdownHook(Thread(remoteApproval::stripAll))
 
         return koin
     }

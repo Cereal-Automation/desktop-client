@@ -29,14 +29,14 @@ class SendNotificationFromScriptInstanceInteractor(
 ) : Interactor<Unit, SendNotificationFromScriptInstanceInteractor.Params>() {
     override suspend fun run(params: Params) {
         val resolutions =
-            notificationResolver
-                .resolve(
-                    request = params.notification,
-                    overrides = params.scriptPackageInstance?.notificationOverrides,
-                    config = readGlobalConfig(),
-                ).filterNot { params.skipTelegram && it.channel == NotificationChannelType.TELEGRAM }
+            notificationResolver.resolve(
+                request = params.notification,
+                overrides = params.scriptPackageInstance?.notificationOverrides,
+                config = readGlobalConfig(),
+                excluded = params.excludedChannels,
+            )
 
-        val attempts = mutableListOf<ChannelAttempt>()
+        val attempts = params.priorAttempts.toMutableList()
         try {
             for (resolution in resolutions) {
                 attempts +=
@@ -131,7 +131,9 @@ class SendNotificationFromScriptInstanceInteractor(
         val notification: ScriptNotification,
         val taskId: String,
         val scriptPackageInstance: ScriptPackageInstance? = null,
-        /** Leave Telegram out, when remote approval already messages it. */
-        val skipTelegram: Boolean = false,
+        /** Channels to leave out, such as Telegram when remote approval already messaged it. */
+        val excludedChannels: Set<NotificationChannelType> = emptySet(),
+        /** Attempts already made for this notification elsewhere (remote approval's message), recorded with it. */
+        val priorAttempts: List<ChannelAttempt> = emptyList(),
     )
 }

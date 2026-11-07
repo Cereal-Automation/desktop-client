@@ -1,23 +1,24 @@
 package com.cereal.client.infrastructure.data.notification.telegram
 
+import com.cereal.client.domain.model.notification.ChannelAttempt
+import com.cereal.client.domain.model.notification.NotificationChannelType
+import com.cereal.client.domain.model.notification.NotificationDeliveryStatus
 import com.cereal.client.domain.model.notification.ScriptNotificationOverrides
+import com.cereal.client.domain.model.task.ConfirmationText
 import com.cereal.client.domain.model.task.UserInteraction
 import com.cereal.client.domain.repository.NotificationSettingsRepository
 import com.cereal.client.infrastructure.data.notification.telegram.model.TelegramUpdate
 import com.cereal.sdk.component.userinteraction.ConfirmationResult
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.ExperimentalCoroutinesApi
-import kotlinx.coroutines.NonCancellable
-import kotlinx.coroutines.SupervisorJob
-import kotlinx.coroutines.async
-import kotlinx.coroutines.awaitAll
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.joinAll
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
-import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeoutOrNull
 import org.slf4j.LoggerFactory
 import java.time.ZoneId
@@ -39,11 +40,11 @@ import kotlin.time.toJavaInstant
 class TelegramRemoteApproval(
     private val client: TelegramHttpClient,
     private val settings: NotificationSettingsRepository,
-    private val scope: CoroutineScope = CoroutineScope(SupervisorJob() + Dispatchers.IO),
+    private val scope: CoroutineScope,
     private val zone: ZoneId = ZoneId.systemDefault(),
     private val pollTimeoutSeconds: Int = 25,
 ) {
-    data class Target(
+    private data class Target(
         val botToken: String,
         val chatId: String,
     )
@@ -58,6 +59,7 @@ class TelegramRemoteApproval(
     private val logger = LoggerFactory.getLogger(TelegramRemoteApproval::class.java)
     private val lock = Any()
     private val waiting = mutableMapOf<String, Waiting>()
+    private val stripping = mutableSetOf<Job>()
     private val pollers = mutableSetOf<String>()
     private val offsets = mutableMapOf<String, Long>()
 
@@ -65,7 +67,7 @@ class TelegramRemoteApproval(
      * The task's Telegram (its override, else the global setting when enabled) when the chat is private, the
      * only kind that gets buttons. Private chat ids are positive; groups and channels are negative.
      */
-    suspend fun targetFor(overrides: ScriptNotificationOverrides?): Target? {
+    private suspend fun targetFor(overrides: ScriptNotificationOverrides?): Target? {
         val override = overrides?.telegramOverrides
         if (override == null && !settings.isTelegramEnabled().first()) return null
         val botToken = override?.botToken ?: settings.getTelegramBotToken().first().ifEmpty { return null }
@@ -73,51 +75,67 @@ class TelegramRemoteApproval(
         return Target(botToken, chatId).takeIf { (chatId.toLongOrNull() ?: 0) > 0 }
     }
 
-    /** Sends [confirmation] with buttons to [target], then, once it ends, strips them with how it ended. */
-    @OptIn(ExperimentalCoroutinesApi::class)
+    /**
+     * Sends [confirmation] with buttons to the task's private Telegram chat; once its answer completes, strips them
+     * with how it ended. Returns the send attempt, or null when the task has no such chat.
+     */
     suspend fun offer(
-        target: Target,
+        overrides: ScriptNotificationOverrides?,
         confirmation: UserInteraction.Confirmation,
-    ) {
+    ): ChannelAttempt? {
+        val target = targetFor(overrides) ?: return null
         val id = UUID.randomUUID().toString().replace("-", "")
         val text = text(confirmation)
         val messageId =
             try {
-                // Not cancellable: a stop mid-send must still get the message, to strip it below.
-                withContext(NonCancellable) {
-                    client.sendMessageWithButtons(
-                        target.botToken,
-                        target.chatId,
-                        text,
-                        listOf(confirmation.confirmLabel to "$id:$CONFIRM", confirmation.declineLabel to "$id:$DECLINE"),
-                    )
-                }
+                client.sendMessageWithButtons(
+                    target.botToken,
+                    target.chatId,
+                    text,
+                    listOf(confirmation.confirmLabel to "$id:$CONFIRM", confirmation.declineLabel to "$id:$DECLINE"),
+                )
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Exception) {
                 logger.warn("Unable to send the Telegram confirmation.", e)
-                return
+                return ChannelAttempt(NotificationChannelType.TELEGRAM, NotificationDeliveryStatus.FAILURE, null, e.message)
             }
         val entry = Waiting(target, messageId, text, confirmation.answer)
         synchronized(lock) {
             waiting[id] = entry
             if (pollers.add(target.botToken)) scope.launch { poll(target.botToken) }
         }
-        try {
-            confirmation.answer.await()
-        } finally {
-            val ending = if (confirmation.answer.isCompleted) ending(confirmation.answer.getCompleted()) else NO_LONGER_WAITING
+        confirmation.answer.invokeOnCompletion { cause -> end(id, entry, cause) }
+        return ChannelAttempt(NotificationChannelType.TELEGRAM, NotificationDeliveryStatus.SUCCESS, text, null)
+    }
+
+    @OptIn(ExperimentalCoroutinesApi::class)
+    private fun end(
+        id: String,
+        entry: Waiting,
+        cause: Throwable?,
+    ) {
+        // A cancelled answer is a stopped task.
+        val ending = if (cause == null) ending(entry.answer.getCompleted()) else ConfirmationText.NO_LONGER_WAITING
+        synchronized(lock) {
             // Not ours to strip when quitting already did.
-            if (synchronized(lock) { waiting.remove(id) } != null) scope.launch { strip(entry, ending) }
+            if (waiting.remove(id) == null) return
+            // Lazy, so it is tracked before it can finish; quitting waits for it.
+            val job = scope.launch(start = CoroutineStart.LAZY) { strip(entry, ending) }
+            stripping += job
+            job.invokeOnCompletion { synchronized(lock) { stripping -= job } }
+            job.start()
         }
     }
 
-    /** At quit: strips the buttons of every waiting confirmation, best effort within [timeout]. */
+    /** At quit: strips every waiting confirmation and waits for strips in flight, best effort within [timeout]. */
     fun stripAll(timeout: Duration = 3.seconds) {
-        val all = synchronized(lock) { waiting.values.toList().also { waiting.clear() } }
-        if (all.isEmpty()) return
+        val (all, inFlight) = synchronized(lock) { waiting.values.toList().also { waiting.clear() } to stripping.toList() }
+        if (all.isEmpty() && inFlight.isEmpty()) return
         runBlocking {
-            withTimeoutOrNull(timeout) { all.map { async(Dispatchers.IO) { strip(it, NO_LONGER_WAITING) } }.awaitAll() }
+            withTimeoutOrNull(timeout) {
+                (all.map { scope.launch { strip(it, ConfirmationText.NO_LONGER_WAITING) } } + inFlight).joinAll()
+            }
         }
     }
 
@@ -169,10 +187,10 @@ class TelegramRemoteApproval(
             bestEffort { client.answerCallbackQuery(botToken, press.id, null) }
             return
         }
-        bestEffort { client.answerCallbackQuery(botToken, press.id, STALE_PRESS) }
+        bestEffort { client.answerCallbackQuery(botToken, press.id, ConfirmationText.STALE_PRESS) }
         val message = press.message ?: return
         message.text?.let { text ->
-            bestEffort { client.editMessageText(botToken, message.chat.id.toString(), message.messageId, "$text\n\n$NO_LONGER_WAITING") }
+            bestEffort { client.editMessageText(botToken, message.chat.id.toString(), message.messageId, "$text\n\n${ConfirmationText.NO_LONGER_WAITING}") }
         }
     }
 
@@ -200,21 +218,19 @@ class TelegramRemoteApproval(
             add(confirmation.question)
             addAll(confirmation.details)
             confirmation.url?.let(::add)
-            confirmation.expiresAt?.let { add("Expires at ${EXPIRY_FORMAT.withZone(zone).format(it.toJavaInstant())}") }
+            confirmation.expiresAt?.let { add(ConfirmationText.EXPIRES_AT.format(EXPIRY_FORMAT.withZone(zone).format(it.toJavaInstant()))) }
         }.joinToString("\n\n")
 
     private fun ending(result: ConfirmationResult): String =
         when (result) {
-            ConfirmationResult.Confirmed -> "Confirmed"
-            ConfirmationResult.Declined -> "Declined"
-            ConfirmationResult.Expired -> "Expired"
+            ConfirmationResult.Confirmed -> ConfirmationText.CONFIRMED
+            ConfirmationResult.Declined -> ConfirmationText.DECLINED
+            ConfirmationResult.Expired -> ConfirmationText.EXPIRED
         }
 
     private companion object {
         const val CONFIRM = "c"
         const val DECLINE = "d"
-        const val NO_LONGER_WAITING = "No longer waiting"
-        const val STALE_PRESS = "This confirmation is no longer waiting"
         val RETRY_DELAY = 5.seconds
         val EXPIRY_FORMAT: DateTimeFormatter = DateTimeFormatter.ofPattern("HH:mm")
     }
