@@ -125,7 +125,11 @@ class TasksViewModel(
         scope.cancel()
     }
 
+    /** Logs at or before this epoch-millis stay hidden; Clear only hides, the persisted logs remain. */
+    private val logsClearedAt = MutableStateFlow(0L)
+
     fun clearLogs() {
+        logsClearedAt.value = System.currentTimeMillis()
         logViewerMessages.value = emptyList()
     }
 
@@ -524,6 +528,7 @@ class TasksViewModel(
         if (task?.id == observedTaskId) return
         observedTaskId = task?.id
         logObservationJob?.cancel()
+        logsClearedAt.value = 0L
         if (task == null) {
             logViewerMessages.value = emptyList()
             return
@@ -539,10 +544,11 @@ class TasksViewModel(
                             is SuspendableResult.Failure -> false
                         }
                     },
-                ) { logEvents, allTasks, showDebugLogs ->
+                    logsClearedAt,
+                ) { logEvents, allTasks, showDebugLogs, clearedAt ->
                     val currentTask = allTasks.find { it.id == task.id }
                     val merged = mergeLogEventsWithStatusHistory(logEvents, currentTask?.statusHistory ?: emptyList(), task.id)
-                    if (showDebugLogs) merged else merged.filter { it.priority != LoggingPriority.DEBUG }
+                    merged.filter { it.timestamp.time > clearedAt && (showDebugLogs || it.priority != LoggingPriority.DEBUG) }
                 }.collectLatest { filtered ->
                     withContext(dispatcherProvider.main) {
                         logViewerMessages.value = filtered
