@@ -24,7 +24,7 @@ class SandboxDatasetFileProviderTest {
             koinApplication {
                 modules(
                     Injector.appModules(InMemoryRepositoryModule.modules, InMemoryProviderModule.modules) +
-                        SandboxRepositoryModule.modules,
+                        SandboxRepositoryModule.modules(dir),
                 )
             }.koin
         val type =
