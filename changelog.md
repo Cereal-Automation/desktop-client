@@ -14,6 +14,9 @@
 * Scripts built on SDK 1.17.0 can ask you to confirm a step (placing an order, paying, sending) in a window of its
   own that stays on top. The task row shows *Waiting for you* with a **Review** button that brings the window back,
   your notification channels get a heads-up, and an unanswered confirmation expires and counts as No.
+* With Telegram set up for a task in a private chat, a confirmation's heads-up carries Confirm and Decline buttons,
+  so you can answer from your phone. The first answer, in the window or on Telegram, wins; the message then says how
+  it ended.
 
 # Changed
 

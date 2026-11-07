@@ -57,6 +57,7 @@ import com.cereal.client.infrastructure.data.datasource.os.WindowsNotificationDa
 import com.cereal.client.infrastructure.data.datasource.os.WindowsUpdateInstaller
 import com.cereal.client.infrastructure.data.notification.discord.DiscordHttpClient
 import com.cereal.client.infrastructure.data.notification.telegram.TelegramHttpClient
+import com.cereal.client.infrastructure.data.notification.telegram.TelegramRemoteApproval
 import com.cereal_automation.cereal_client.BuildConfig
 import okhttp3.OkHttpClient
 import org.koin.dsl.module
@@ -82,6 +83,10 @@ object DataSourceModule {
             }
             single { DiscordHttpClient() }
             single { TelegramHttpClient() }
+            single {
+                // Quitting strips the Telegram buttons of every waiting confirmation (best effort, a few seconds).
+                TelegramRemoteApproval(get(), get()).also { Runtime.getRuntime().addShutdownHook(Thread(it::stripAll)) }
+            }
             single { DiscordRpcDataSource.create() }
             single { FileSystemScriptsDataSource(get(), get(), get()) }
             // Installer downloads are staged under the per-user app home directory (owner-only),

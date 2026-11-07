@@ -60,6 +60,7 @@ object TaskScopeModule {
                         get(),
                         get(),
                         task.scriptInstance.getScriptPackageInstance(),
+                        get(),
                     )
                 }
                 scoped<ArtifactComponent> {

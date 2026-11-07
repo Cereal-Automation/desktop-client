@@ -7,6 +7,7 @@ import com.cereal.client.domain.model.script.ScriptPackageInstance
 import com.cereal.client.domain.model.task.TaskStatus
 import com.cereal.client.domain.model.task.UserInteraction
 import com.cereal.client.domain.repository.TasksRepository
+import com.cereal.client.infrastructure.data.notification.telegram.TelegramRemoteApproval
 import com.cereal.sdk.component.userinteraction.ConfirmationResult
 import com.cereal.sdk.component.userinteraction.UserInteractionComponent
 import com.cereal.sdk.component.userinteraction.WebResourceRequest
@@ -29,6 +30,7 @@ class UserInteractionComponentImpl(
     private val dispatcherProvider: CoroutinesDispatcherProvider,
     private val sendNotification: SendNotificationFromScriptInstanceInteractor,
     private val scriptPackageInstance: ScriptPackageInstance?,
+    private val remoteApproval: TelegramRemoteApproval,
 ) : UserInteractionComponent {
     override suspend fun showUrl(
         title: String,
@@ -106,9 +108,14 @@ class UserInteractionComponentImpl(
             )
         tasksRepository.setUserInteraction(taskId, confirmation)
         try {
+            val telegram = remoteApproval.targetFor(scriptPackageInstance?.notificationOverrides)
             return coroutineScope {
-                launch { sendHeadsUp(confirmation) }
-                withTimeoutOrNull(timeout) { confirmation.answer.await() } ?: ConfirmationResult.Expired
+                launch { sendHeadsUp(confirmation, skipTelegram = telegram != null) }
+                telegram?.let { launch { remoteApproval.offer(it, confirmation) } }
+                withTimeoutOrNull(timeout) { confirmation.answer.await() }
+                // Nobody answered in time; a racing answer that got in first still wins.
+                confirmation.answer.complete(ConfirmationResult.Expired)
+                confirmation.answer.await()
             }
         } finally {
             // Expired or cancelled: settle the answer so a late one (window, remote) can't win, then clear the row.
@@ -119,16 +126,19 @@ class UserInteractionComponentImpl(
 
     /**
      * The plain heads-up on the task's notification channels (no buttons), so someone away from the desk
-     * hears a task is waiting. Remote approval (Telegram buttons) replaces this for a channel that can answer.
+     * hears a task is waiting. Remote approval (Telegram buttons) replaces this on Telegram when [skipTelegram].
      */
-    private suspend fun sendHeadsUp(confirmation: UserInteraction.Confirmation) =
-        sendNotification(
-            SendNotificationFromScriptInstanceInteractor.Params(
-                notification = confirmation.headsUp(),
-                taskId = taskId,
-                scriptPackageInstance = scriptPackageInstance,
-            ),
-        )
+    private suspend fun sendHeadsUp(
+        confirmation: UserInteraction.Confirmation,
+        skipTelegram: Boolean,
+    ) = sendNotification(
+        SendNotificationFromScriptInstanceInteractor.Params(
+            notification = confirmation.headsUp(),
+            taskId = taskId,
+            scriptPackageInstance = scriptPackageInstance,
+            skipTelegram = skipTelegram,
+        ),
+    )
 
     private suspend fun updateStatus(message: String) {
         tasksRepository.addStatusHistory(taskId, TaskStatus.Running(message, Clock.System.now()))

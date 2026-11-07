@@ -6,6 +6,8 @@ import com.cereal.client.domain.model.notification.NotificationResolver
 import com.cereal.client.domain.model.script.ScriptInstance
 import com.cereal.client.domain.model.task.JobTask
 import com.cereal.client.domain.model.task.UserInteraction
+import com.cereal.client.infrastructure.data.notification.telegram.TelegramHttpClient
+import com.cereal.client.infrastructure.data.notification.telegram.TelegramRemoteApproval
 import com.cereal.client.infrastructure.data.repository.inmemory.InMemoryNotificationHistoryRepository
 import com.cereal.client.infrastructure.data.repository.inmemory.InMemoryNotificationSettingsRepository
 import com.cereal.client.infrastructure.data.repository.inmemory.InMemoryTasksRepository
@@ -57,6 +59,8 @@ class UserInteractionComponentImplTest {
                 NotificationResolver(),
             ),
             scriptPackageInstance = null,
+            // Telegram isn't set up, so remote approval never sends; TelegramRemoteApprovalTest covers it.
+            TelegramRemoteApproval(TelegramHttpClient(baseUrl = "http://127.0.0.1:9"), InMemoryNotificationSettingsRepository()),
         )
 
     private suspend fun aStoredTask(tasksRepository: InMemoryTasksRepository): JobTask {
