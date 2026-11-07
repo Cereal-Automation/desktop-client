@@ -44,6 +44,7 @@ import io.mockk.mockk
 import io.mockk.slot
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
@@ -461,13 +462,31 @@ class TasksViewModelTest {
     }
 
     @Test
-    fun `clearLogs empties the log viewer messages`() {
-        createViewModel()
+    fun `clearLogs keeps cleared logs hidden when a new log arrives`() =
+        runTest(UnconfinedTestDispatcher()) {
+            val unconfined = UnconfinedTestDispatcher(testScheduler)
+            val task = mockk<Task>(relaxed = true)
+            every { task.id } returns "task-1"
+            every { task.statusHistory } returns emptyList()
+            val oldEvent = LoggingEvent(priority = LoggingPriority.INFO, tag = "task-1", message = "old", timestamp = Date(0))
+            val logs = MutableStateFlow(listOf(oldEvent))
+            every { logEventRepository.observeLogEvents("task-1") } returns logs
+            coEvery { observeShowDebugLogsInteractor(any()) } returns flowOf(SuspendableResult.Success(true))
+            val vm = buildViewModel(CoroutinesDispatcherProvider(unconfined, unconfined, unconfined))
+            vm.onTaskClicked(task)
 
-        viewModel.clearLogs()
+            vm.clearLogs()
+            val newEvent =
+                LoggingEvent(
+                    priority = LoggingPriority.INFO,
+                    tag = "task-1",
+                    message = "new",
+                    timestamp = Date(System.currentTimeMillis() + 1_000),
+                )
+            logs.value = listOf(oldEvent, newEvent)
 
-        assertTrue(viewModel.logViewerMessages.value.isEmpty())
-    }
+            assertEquals(listOf("new"), vm.logViewerMessages.value.map { it.message })
+        }
 
     @Test
     fun `onAddScriptClicked opens script selection for the default group`() =
