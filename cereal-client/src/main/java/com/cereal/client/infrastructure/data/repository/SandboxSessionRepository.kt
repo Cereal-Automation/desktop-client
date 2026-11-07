@@ -12,7 +12,7 @@ import kotlinx.coroutines.flow.Flow
  * [com.cereal.client.infrastructure.data.repository.inmemory.InMemorySessionRepository] used by UI
  * tests (which keeps its own session state), this delegates session management to the real
  * [UserSession]. That matters for a *running* app: `setSessionUser` opens the Koin `UserScope` and
- * populates the session that the rest of the graph reads from — e.g. [FileSystemScriptRepository],
+ * populates the session that the rest of the graph reads from — e.g. [ScriptRepositoryImpl],
  * which resolves the current user via `UserSession.requireUser()`. Without it the auth state and
  * the session disagree and script loading throws `UserNotAuthenticatedException`.
  */

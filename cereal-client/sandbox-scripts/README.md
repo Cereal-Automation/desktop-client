@@ -7,7 +7,7 @@ Drop `*.jar` script packages in this folder to have them available in the sandbo
 When you build/run with `flavor=mock` (the repo default), every `*.jar` here is bundled into the
 app's resources under `sandbox-scripts/`. On startup [`SandboxScriptSeeder`](../src/main/java/com/cereal/client/infrastructure/data/repository/SandboxScriptSeeder.kt)
 copies each one into the sandbox user's script directory, where
-[`FileSystemScriptRepository`](../src/main/java/com/cereal/client/infrastructure/data/repository/FileSystemScriptRepository.kt)
+[`SeedingScriptRepository`](../src/main/java/com/cereal/client/infrastructure/data/repository/SeedingScriptRepository.kt)
 reads it like any installed script. Subscriptions are derived from the installed scripts, so the
 periodic sync keeps them instead of pruning them.
 

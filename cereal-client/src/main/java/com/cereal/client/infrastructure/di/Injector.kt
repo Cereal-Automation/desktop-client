@@ -3,7 +3,6 @@ package com.cereal.client.infrastructure.di
 import com.cereal.client.infrastructure.di.modules.ApplicationModule
 import com.cereal.client.infrastructure.di.modules.DataSourceModule
 import com.cereal.client.infrastructure.di.modules.InMemoryProviderModule
-import com.cereal.client.infrastructure.di.modules.InMemoryRepositoryModule
 import com.cereal.client.infrastructure.di.modules.InteractorModule
 import com.cereal.client.infrastructure.di.modules.NotificationModule
 import com.cereal.client.infrastructure.di.modules.ProviderModule
@@ -24,7 +23,7 @@ import org.koin.core.module.Module
 object Injector {
     /**
      * The full application module list. The repository module is injectable so tests (and the
-     * sandboxed `mock` flavor) can substitute in-memory repository implementations while reusing
+     * `mock` flavor) can substitute in-memory implementations while reusing
      * the real ViewModel/interactor wiring.
      */
     fun appModules(
@@ -45,20 +44,18 @@ object Injector {
             UserScopeModule.modules,
         )
 
+    /**
+     * The sandboxed `mock` flavor: real repositories, fake network-backed providers, plus the
+     * [SandboxRepositoryModule] overrides (Sekret-free config, offline session/login, seeded scripts).
+     */
+    fun sandboxModules(): List<Module> = appModules(RepositoryModule.modules, InMemoryProviderModule.modules) + SandboxRepositoryModule.modules
+
     fun initialize(): Koin =
         startKoin {
             slf4jLogger(level = Level.ERROR)
 
-            // The `mock` flavor runs the app sandboxed against in-memory repositories (no network,
-            // database or native libraries). SandboxRepositoryModule is layered on top to restore a
-            // few deliberately disk-backed repositories (e.g. local script JARs) for local dev.
             val koinModules =
-                if (BuildConfig.FLAVOR == "mock") {
-                    appModules(InMemoryRepositoryModule.modules, InMemoryProviderModule.modules) +
-                        SandboxRepositoryModule.modules
-                } else {
-                    appModules(RepositoryModule.modules, ProviderModule.modules)
-                }
+                if (BuildConfig.FLAVOR == "mock") sandboxModules() else appModules()
 
             modules(koinModules)
         }.koin
