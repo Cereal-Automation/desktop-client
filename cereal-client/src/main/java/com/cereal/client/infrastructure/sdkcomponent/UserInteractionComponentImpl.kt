@@ -2,16 +2,24 @@ package com.cereal.client.infrastructure.sdkcomponent
 
 import com.cereal.client.application.CoroutinesDispatcherProvider
 import com.cereal.client.application.exception.CrashReporter
+import com.cereal.client.application.interactor.notification.SendNotificationFromScriptInstanceInteractor
+import com.cereal.client.domain.model.script.ScriptPackageInstance
 import com.cereal.client.domain.model.task.TaskStatus
 import com.cereal.client.domain.model.task.UserInteraction
 import com.cereal.client.domain.repository.TasksRepository
+import com.cereal.sdk.component.userinteraction.ConfirmationResult
 import com.cereal.sdk.component.userinteraction.UserInteractionComponent
 import com.cereal.sdk.component.userinteraction.WebResourceRequest
 import kotlinx.coroutines.CancellableContinuation
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.NonCancellable
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.suspendCancellableCoroutine
+import kotlinx.coroutines.withContext
+import kotlinx.coroutines.withTimeoutOrNull
 import kotlin.time.Clock
+import kotlin.time.Duration
 import kotlin.time.ExperimentalTime
 
 @OptIn(ExperimentalTime::class)
@@ -19,6 +27,8 @@ class UserInteractionComponentImpl(
     private val tasksRepository: TasksRepository,
     private val taskId: String,
     private val dispatcherProvider: CoroutinesDispatcherProvider,
+    private val sendNotification: SendNotificationFromScriptInstanceInteractor,
+    private val scriptPackageInstance: ScriptPackageInstance?,
 ) : UserInteractionComponent {
     override suspend fun showUrl(
         title: String,
@@ -74,6 +84,51 @@ class UserInteractionComponentImpl(
                 continuation = continuation,
             )
         }
+
+    override suspend fun requestConfirmation(
+        title: String,
+        question: String,
+        details: List<String>,
+        url: String?,
+        confirmLabel: String,
+        declineLabel: String,
+        timeout: Duration,
+    ): ConfirmationResult {
+        val confirmation =
+            UserInteraction.Confirmation(
+                title = title,
+                question = question,
+                details = details,
+                url = url,
+                confirmLabel = confirmLabel,
+                declineLabel = declineLabel,
+                expiresAt = if (timeout.isFinite()) Clock.System.now() + timeout else null,
+            )
+        tasksRepository.setUserInteraction(taskId, confirmation)
+        try {
+            return coroutineScope {
+                launch { sendHeadsUp(confirmation) }
+                withTimeoutOrNull(timeout) { confirmation.answer.await() } ?: ConfirmationResult.Expired
+            }
+        } finally {
+            // Expired or cancelled: settle the answer so a late one (window, remote) can't win, then clear the row.
+            confirmation.answer.complete(ConfirmationResult.Expired)
+            withContext(NonCancellable) { tasksRepository.setUserInteraction(taskId, null) }
+        }
+    }
+
+    /**
+     * The plain heads-up on the task's notification channels (no buttons), so someone away from the desk
+     * hears a task is waiting. Remote approval (Telegram buttons) replaces this for a channel that can answer.
+     */
+    private suspend fun sendHeadsUp(confirmation: UserInteraction.Confirmation) =
+        sendNotification(
+            SendNotificationFromScriptInstanceInteractor.Params(
+                notification = confirmation.headsUp(),
+                taskId = taskId,
+                scriptPackageInstance = scriptPackageInstance,
+            ),
+        )
 
     private suspend fun updateStatus(message: String) {
         tasksRepository.addStatusHistory(taskId, TaskStatus.Running(message, Clock.System.now()))

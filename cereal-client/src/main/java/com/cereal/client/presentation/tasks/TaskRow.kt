@@ -13,6 +13,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.wrapContentWidth
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -48,10 +49,12 @@ import com.cereal_automation.cereal_client.generated.resources.continue_action
 import com.cereal_automation.cereal_client.generated.resources.continue_task
 import com.cereal_automation.cereal_client.generated.resources.ic_play
 import com.cereal_automation.cereal_client.generated.resources.ic_stop
+import com.cereal_automation.cereal_client.generated.resources.review_confirmation
 import com.cereal_automation.cereal_client.generated.resources.seconds_ago
 import com.cereal_automation.cereal_client.generated.resources.start_task
 import com.cereal_automation.cereal_client.generated.resources.stop_task
 import com.cereal_automation.cereal_client.generated.resources.task_ready
+import com.cereal_automation.cereal_client.generated.resources.waiting_for_you
 import kotlinx.coroutines.delay
 import org.jetbrains.compose.resources.painterResource
 import org.jetbrains.compose.resources.stringResource
@@ -78,7 +81,7 @@ internal fun TaskRow(
         modifier =
             Modifier
                 .fillMaxWidth()
-                .background(if (isSelected) RowSelectedBg else Color.Transparent)
+                .background(taskItem.rowBackground(isSelected))
                 .clickable(
                     onClick = onRowClick,
                     // Neutral indication: a red ripple/focus overlay made the selected row look errored.
@@ -86,7 +89,16 @@ internal fun TaskRow(
                     interactionSource = interactionSource,
                 ),
     ) {
-        if (isSelected) {
+        if (taskItem.isWaitingForYou) {
+            Box(
+                modifier =
+                    Modifier
+                        .matchParentSize()
+                        .wrapContentWidth(Alignment.Start)
+                        .width(3.dp)
+                        .background(CerealTheme.colorScheme.info),
+            )
+        } else if (isSelected) {
             Box(
                 modifier =
                     Modifier
@@ -145,6 +157,7 @@ internal fun TaskRow(
                 isRunning = taskItem.isRunning,
                 isError = taskItem.isError,
                 isSuccess = taskItem.isSuccess,
+                isWaitingForYou = taskItem.isWaitingForYou,
             )
 
             TaskActionButton(taskItem, onStartTask, onStopTask, onContinueClick)
@@ -179,7 +192,23 @@ internal fun TaskMessage(
     )
 }
 
-/** Continue while the task awaits it, else Stop while it runs, else Start. */
+/** The task waits for the user to answer a confirmation. */
+internal val TaskUiModel.isWaitingForYou: Boolean
+    get() = id.userInteraction is UserInteraction.Confirmation
+
+/** A waiting task's row stands out; otherwise the selected row is shaded. */
+@Composable
+internal fun TaskUiModel.rowBackground(isSelected: Boolean): Color =
+    when {
+        isWaitingForYou -> CerealTheme.colorScheme.info.copy(alpha = 0.05f)
+        isSelected -> RowSelectedBg
+        else -> Color.Transparent
+    }
+
+/**
+ * Continue while the task awaits it, or Review (bring the confirmation window to the front) while a confirmation
+ * waits; both call [onContinueClick]. Else Stop while it runs, else Start.
+ */
 @Composable
 internal fun TaskActionButton(
     task: TaskUiModel,
@@ -198,6 +227,13 @@ internal fun TaskActionButton(
                 modifier = Modifier.size(ButtonDefaults.IconSize),
             )
             CerealText(text = stringResource(Res.string.continue_action))
+        }
+    } else if (task.isWaitingForYou) {
+        CerealToolbarButton(
+            variant = CerealToolbarButtonVariant.Primary,
+            onClick = { onContinueClick?.invoke() },
+        ) {
+            CerealText(text = stringResource(Res.string.review_confirmation))
         }
     } else if (task.isRunning) {
         TaskActionIcon(
@@ -260,7 +296,18 @@ internal fun StatusChip(
     isRunning: Boolean,
     isError: Boolean,
     isSuccess: Boolean,
+    isWaitingForYou: Boolean = false,
 ) {
+    if (isWaitingForYou) {
+        val info = CerealTheme.colorScheme.info
+        Pill(
+            text = stringResource(Res.string.waiting_for_you),
+            contentColor = info,
+            backgroundColor = info.copy(alpha = 0.16f),
+            leadingDot = true,
+        )
+        return
+    }
     val (textColor, bgColor) =
         when {
             isError -> {

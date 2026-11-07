@@ -34,6 +34,9 @@
     <string name="confirm">Confirm</string>
     <string name="contact_support">Contact support</string>
     <string name="continue_action">Continue</string>
+    <string name="review_confirmation">Review</string>
+    <string name="waiting_for_you">Waiting for you</string>
+    <string name="confirmation_expires_in">Expires in %1$s · then counts as %2$s</string>
     <string name="continue_task">Continue task</string>
     <string name="copy_all_logs">Copy all logs</string>
     <string name="copy_from_existing_script">Copy from existing script</string>

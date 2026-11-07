@@ -2,6 +2,7 @@ package com.cereal.client.presentation.tasks
 
 import androidx.compose.runtime.State
 import androidx.compose.runtime.derivedStateOf
+import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.referentialEqualityPolicy
 import androidx.compose.ui.unit.Dp
@@ -169,6 +170,9 @@ class TasksViewModel(
     }
 
     val userInteractions = mutableStateOf<List<TaskUiModel>>(emptyList())
+
+    /** Per task, how often Review was pressed; each press brings its confirmation window to the front. */
+    val confirmationReviews = mutableStateMapOf<String, Int>()
 
     private var logObservationJob: Job? = null
     private var observedTaskId: String? = null
@@ -471,6 +475,10 @@ class TasksViewModel(
 
     fun closeDialog() {
         dialogManager.closeDialog()
+    }
+
+    fun reviewConfirmation(taskUiModel: TaskUiModel) {
+        confirmationReviews[taskUiModel.id.id] = (confirmationReviews[taskUiModel.id.id] ?: 0) + 1
     }
 
     fun finishUserInteraction(taskUiModel: TaskUiModel) {
