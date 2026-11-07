@@ -57,10 +57,8 @@ import org.koin.dsl.module
  * in-memory implementation so the app graph runs without touching the database, filesystem or
  * native libraries. Providers have their own in-memory twin in [InMemoryProviderModule].
  *
- * Used in two places:
- *  - the sandboxed `mock` flavor at runtime (selected in [com.cereal.client.infrastructure.di.Injector]);
- *  - UI/screen tests, which pass it to [com.cereal.client.infrastructure.di.Injector.appModules]
- *    *instead of* [RepositoryModule].
+ * Used by UI/screen tests, which pass it to [com.cereal.client.infrastructure.di.Injector.appModules]
+ * *instead of* [RepositoryModule]. (The sandboxed `mock` flavor runs the real [RepositoryModule].)
  *
  * Like [RepositoryModule], it also owns the shared singletons (`UserSession`,
  * `FileSystemProxyTemplateDataSource`, the background schedulers) since it replaces that module
@@ -71,7 +69,7 @@ object InMemoryRepositoryModule {
     val modules =
         module {
             // Overrides ApplicationModule's CerealConfiguration, whose constructor resolves
-            // encryption keys via the Sekret native library (not available in the sandbox/test JVM).
+            // encryption keys via the Sekret native library (not available in the test JVM).
             single<ApplicationConfig> { InMemoryApplicationConfig() }
 
             single<TasksRepository> { InMemoryTasksRepository() }

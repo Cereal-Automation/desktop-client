@@ -1,49 +1,48 @@
 package com.cereal.client.infrastructure.di.modules
 
+import com.cereal.client.application.ApplicationConfig
 import com.cereal.client.domain.provider.AuthProvider
 import com.cereal.client.domain.provider.DatasetFileProvider
-import com.cereal.client.domain.repository.LogEventRepository
-import com.cereal.client.domain.repository.NotificationHistoryRepository
+import com.cereal.client.domain.provider.LoggerProvider
 import com.cereal.client.domain.repository.ScriptRepository
 import com.cereal.client.domain.repository.SessionRepository
-import com.cereal.client.infrastructure.data.repository.FileSystemScriptRepository
 import com.cereal.client.infrastructure.data.repository.SandboxScriptSeeder
 import com.cereal.client.infrastructure.data.repository.SandboxSessionRepository
-import com.cereal.client.infrastructure.data.repository.SandboxTextFileLogEventRepository
-import com.cereal.client.infrastructure.data.repository.SandboxTextFileNotificationHistoryRepository
+import com.cereal.client.infrastructure.data.repository.ScriptRepositoryImpl
+import com.cereal.client.infrastructure.data.repository.SeedingScriptRepository
+import com.cereal.client.infrastructure.data.repository.inmemory.InMemoryApplicationConfig
 import com.cereal.client.infrastructure.provider.DatasetFileProviderImpl
+import com.cereal.client.infrastructure.provider.LoggerProviderImpl
 import com.cereal.client.infrastructure.provider.SandboxAuthProvider
 import org.koin.dsl.module
+import java.io.File
 
 /**
- * Sandbox-only overrides layered on top of [InMemoryRepositoryModule] for the `mock` flavor.
+ * Sandbox-only overrides for the `mock` flavor, loaded after the real [RepositoryModule] and the
+ * fake [InMemoryProviderModule] in [com.cereal.client.infrastructure.di.Injector].
  *
- * Everything stays in-memory except where a *running* sandbox app needs real local behaviour:
- *  - [FileSystemScriptRepository] reads scripts from disk and seeds the bundled sample
- *    (via [SandboxScriptSeeder]) so a runnable script is present out-of-the-box;
- *  - [SandboxUserRepository] drives the real [com.cereal.client.infrastructure.data.datasource.auth.UserSession]
- *    so logging in opens the Koin `UserScope` and populates the session the rest of the graph
- *    (including the script repository) reads from.
- *  - log events and notifications are mirrored to plain-text files under
- *    `~/Cereal-Sandbox/` (see [SandboxTextFileLogEventRepository]) for easy inspection.
- *  - [DatasetFileProviderImpl] reads and writes the import files picked in the real native file
- *    dialogs, so downloading a template and importing a file actually work.
- *
- * UI tests do not load this module, so they remain fully hermetic against the in-memory
- * `InMemoryScriptRepository` / `InMemoryUserRepository`.
- *
- * Loaded after [InMemoryRepositoryModule] in
- * [com.cereal.client.infrastructure.di.Injector], so these definitions override the in-memory ones.
+ * The sandbox runs the real repositories (Room database, key-value store, filesystem) and only
+ * fakes what goes over the network. So the overrides here are:
+ *  - a Sekret-free [ApplicationConfig] whose data lives under `~/Cereal-Sandbox/`, kept apart from
+ *    a real install's data;
+ *  - [SandboxSessionRepository] / [SandboxAuthProvider] in place of the marketplace-backed session
+ *    and login, driving the real [com.cereal.client.infrastructure.data.datasource.auth.UserSession];
+ *  - [SeedingScriptRepository], the real [ScriptRepositoryImpl] plus seeding of the bundled sample
+ *    scripts (the marketplace download that normally installs them is unavailable);
+ *  - real (non-network) providers that [InMemoryProviderModule] would otherwise no-op: logging to
+ *    the real log repository and dataset import/export files.
  */
 object SandboxRepositoryModule {
     val modules =
         module {
+            single<ApplicationConfig> {
+                InMemoryApplicationConfig(baseDir = File(System.getProperty("user.home"), "Cereal-Sandbox"))
+            }
             single { SandboxScriptSeeder(get()) }
-            single<ScriptRepository> { FileSystemScriptRepository(get(), get(), get()) }
+            single<ScriptRepository> { SeedingScriptRepository(ScriptRepositoryImpl(get(), get(), get()), get(), get()) }
             single<SessionRepository> { SandboxSessionRepository(get()) }
             single<AuthProvider> { SandboxAuthProvider(get()) }
-            single<LogEventRepository> { SandboxTextFileLogEventRepository() }
-            single<NotificationHistoryRepository> { SandboxTextFileNotificationHistoryRepository() }
+            single<LoggerProvider> { LoggerProviderImpl(get()) }
             single<DatasetFileProvider> { DatasetFileProviderImpl(get(), get(), get()) }
         }
 }

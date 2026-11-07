@@ -22,10 +22,7 @@ class SandboxDatasetFileProviderTest {
     ) {
         val koin =
             koinApplication {
-                modules(
-                    Injector.appModules(InMemoryRepositoryModule.modules, InMemoryProviderModule.modules) +
-                        SandboxRepositoryModule.modules,
-                )
+                modules(Injector.sandboxModules())
             }.koin
         val type =
             DatasetType.Custom(

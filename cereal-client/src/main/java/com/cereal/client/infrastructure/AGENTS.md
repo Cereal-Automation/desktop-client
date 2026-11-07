@@ -106,7 +106,7 @@ bridges, third-party SDKs, or outbound channels) by composing one or more dataso
 
 Wire all implementations to their interfaces via Koin modules.
 
-- One module file per concern (`DataSourceModule`, `RepositoryModule`, `ProviderModule`, `NotificationModule`, etc.). Data repositories are bound in `RepositoryModule`; providers in `ProviderModule` (with in-memory twins `InMemoryRepositoryModule` / `InMemoryProviderModule` for the `mock` flavor and tests).
+- One module file per concern (`DataSourceModule`, `RepositoryModule`, `ProviderModule`, `NotificationModule`, etc.). Data repositories are bound in `RepositoryModule`; providers in `ProviderModule` (with in-memory twins `InMemoryRepositoryModule` (tests) / `InMemoryProviderModule` (`mock` flavor and tests)).
 - Koin scopes (`UserScope`, `TaskScope`, `ScriptInstanceScope`, `ScriptPackageInstanceScope`) are first-class: use the correct scope for lifecycle-bound dependencies.
 - `Injector.initialize()` is the single entry point — do not load modules piecemeal from elsewhere.
 - All bindings use constructor injection. Never call `get()` outside DI modules.
@@ -159,7 +159,7 @@ Implement the SDK's `ComponentProvider` interface to expose app capabilities (lo
 - Always open and close scopes explicitly; never leak a scoped dependency into a wider scope.
 
 ### Mock Flavor
-- For the `mock` build flavor, use in-memory **repositories / providers / components** (e.g. `InMemoryMarketplaceProvider`, `InMemorySessionRepository`, `InMemoryAuthProvider`, `InMemoryScriptRepository`, `FakeLicenseComponent`) rather than mocking datasources. They are bound in `InMemoryRepositoryModule` / `InMemoryProviderModule` (selected in `Injector` for the `mock` flavor), with `SandboxRepositoryModule` layering disk-backed sandbox overrides on top. The only remaining datasource-level fakes are `FakeSubscriptionDataSource` (in-memory subscriptions) and `MockObjectStorageDataSource`.
+- The `mock` build flavor runs the **real repositories** (`RepositoryModule`: Room, key-value store, filesystem) and fakes only what goes over the network: in-memory providers from `InMemoryProviderModule` (e.g. `InMemoryMarketplaceProvider`, `InMemoryAuthProvider`), the datasource fakes `FakeSubscriptionDataSource` / `MockObjectStorageDataSource`, and `FakeLicenseComponent`. `SandboxRepositoryModule` layers on a Sekret-free config (data under `~/Cereal-Sandbox/`), the offline session/login, sample-script seeding and real non-network providers. The wiring is `Injector.sandboxModules()`. `InMemoryRepositoryModule` is for tests only.
 - Gate fakes behind `BuildConfig.FLAVOR == "mock"` in `DataSourceModule` / `RepositoryModule` / `ScriptPackageInstanceScopeModule`.
 - New fakes go next to their real counterparts (`infrastructure/data/repository/Fake*Repository.kt`, etc.) and must never be referenced from production wiring.
 
