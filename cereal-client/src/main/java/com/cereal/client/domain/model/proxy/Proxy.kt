@@ -1,5 +1,6 @@
 package com.cereal.client.domain.model.proxy
 
+import com.cereal.client.domain.model.script.configuration.Secret
 import java.util.UUID
 
 data class Proxy(
@@ -24,6 +25,14 @@ data class Proxy(
             require(it.isNotBlank()) { "Password must not be blank if provided" }
         }
     }
+
+    /**
+     * Masks the credentials. Crash reports and debug dumps (task configurations, interactor params)
+     * are built from `toString`, so the generated data-class version would leak the password.
+     */
+    override fun toString(): String =
+        "Proxy(id=$id, address=$address, port=$port, username=${username?.let { Secret.MASK }}, " +
+            "password=${password?.let { Secret.MASK }}, health=$health)"
 
     private companion object {
         private const val MAX_PORT = 65535
