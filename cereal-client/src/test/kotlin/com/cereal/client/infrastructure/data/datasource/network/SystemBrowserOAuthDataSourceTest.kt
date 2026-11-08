@@ -10,6 +10,7 @@ import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.assertThrows
+import java.net.HttpURLConnection
 import java.net.URI
 import java.net.URLDecoder
 import kotlin.time.Duration.Companion.seconds
@@ -112,6 +113,27 @@ class SystemBrowserOAuthDataSourceTest {
                     // A hostile/probe local request with the wrong state must be ignored...
                     deliver(q.getValue("redirect"), "code=attacker&state=wrong-state")
                     // ...and the legitimate redirect that follows must still win.
+                    deliver(q.getValue("redirect"), "code=real-code&state=${q.getValue("state")}")
+                    true
+                })
+
+            val code = dataSource.obtainOneTimeCode(OAuthProvider.GOOGLE)
+
+            assertEquals("real-code", code)
+        }
+
+    @Test
+    fun `a stateless HEAD request does not abort a valid sign-in`() =
+        runBlocking {
+            val dataSource =
+                SystemBrowserOAuthDataSource(config, openBrowser = { url ->
+                    val q = queryOf(url)
+                    // HEAD closes the response body in sendResponseHeaders, so writing the failure
+                    // page throws; that error must not cancel the pending sign-in.
+                    val head = URI("${q.getValue("redirect")}/").toURL().openConnection() as HttpURLConnection
+                    head.requestMethod = "HEAD"
+                    head.responseCode
+                    head.disconnect()
                     deliver(q.getValue("redirect"), "code=real-code&state=${q.getValue("state")}")
                     true
                 })

@@ -9,6 +9,7 @@ import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.TimeoutCancellationException
 import kotlinx.coroutines.withTimeout
 import org.slf4j.LoggerFactory
+import java.io.IOException
 import java.net.InetAddress
 import java.net.InetSocketAddress
 import java.net.URLDecoder
@@ -67,19 +68,25 @@ class SystemBrowserOAuthDataSource(
         expectedState: String,
         result: CompletableDeferred<String>,
     ) {
-        try {
-            val params = parseQuery(exchange.requestURI.rawQuery)
-            val state = params["state"]
+        val params = parseQuery(exchange.requestURI.rawQuery)
+        val state = params["state"]
 
-            // Only a request bearing the exact high-entropy state may drive the outcome. This
-            // ignores favicon/preflight probes and, crucially, prevents another local process from
-            // cancelling a legitimate in-flight sign-in with a wrong-state request — such requests
-            // get the failure page but must NOT complete the deferred. Compared in constant time.
-            if (state == null || !constantTimeEquals(state, expectedState)) {
+        // Only a request bearing the exact high-entropy state may drive the outcome. This
+        // ignores favicon/preflight probes and, crucially, prevents another local process from
+        // cancelling a legitimate in-flight sign-in with a wrong-state request — such requests
+        // get the failure page but must NOT complete the deferred. Compared in constant time.
+        // Answering them sits outside the try below: a failure while replying (a `HEAD` request
+        // closes the body stream, a peer resets the connection) must not reach the deferred either.
+        if (state == null || !constantTimeEquals(state, expectedState)) {
+            try {
                 respond(exchange, FAILURE_HTML)
-                return
+            } catch (e: IOException) {
+                logger.debug("Ignored failure answering an unauthenticated loopback request", e)
             }
+            return
+        }
 
+        try {
             val code = params["code"]
             when {
                 params["error"] != null -> {

@@ -4,6 +4,8 @@ import org.junit.jupiter.api.Test
 import java.util.UUID
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
+import kotlin.test.assertFalse
+import kotlin.test.assertTrue
 
 class ProxyTest {
     @Test
@@ -218,6 +220,24 @@ class ProxyTest {
                 )
             }
         assertEquals("Password must not be blank if provided", exception.message)
+    }
+
+    @Test
+    fun `toString masks the credentials`() {
+        val proxy =
+            Proxy(
+                id = UUID.randomUUID(),
+                address = "proxy.example.com",
+                port = 8080,
+                username = "proxyuser",
+                password = "s3cret-pass",
+            )
+
+        val rendered = proxy.toString()
+
+        assertFalse(rendered.contains("proxyuser"))
+        assertFalse(rendered.contains("s3cret-pass"))
+        assertTrue(rendered.contains("proxy.example.com"))
     }
 
     @Test
