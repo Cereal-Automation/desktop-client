@@ -233,7 +233,7 @@ jobs:
 
       - name: Upload build logs on failure
         if: failure()
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: build-logs-macos-arm64
           path: cereal-client/build/compose/logs/
@@ -343,7 +343,7 @@ jobs:
 
       - name: Upload build logs on failure
         if: failure()
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: build-logs-macos-x64
           path: cereal-client/build/compose/logs/
@@ -435,7 +435,7 @@ jobs:
           tag: ${{ github.event_name == 'workflow_dispatch' && format('cereal-client/{0}', github.event.inputs.version) || github.ref_name }}
 
       - name: Create Github Release
-        uses: softprops/action-gh-release@efb35369e0ad2afab669f228072c1b0d510eae64 # v3.0.3
+        uses: softprops/action-gh-release@8a0cd651e5b2365bd640854a3fa5dfc70e4875f3 # v3.0.4
         with:
           # On a tag push the tag already exists; on manual dispatch the action creates
           # this tag on the checked-out commit before publishing the release.
