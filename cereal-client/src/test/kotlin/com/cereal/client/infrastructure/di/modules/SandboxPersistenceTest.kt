@@ -2,6 +2,8 @@ package com.cereal.client.infrastructure.di.modules
 
 import com.cereal.client.application.interactor.script.StartScriptInteractor
 import com.cereal.client.application.task.TaskManager
+import com.cereal.client.domain.model.diagnostics.FailureReport
+import com.cereal.client.domain.model.diagnostics.RunTrace
 import com.cereal.client.domain.model.llm.LlmProviderConfig
 import com.cereal.client.domain.model.llm.LlmProviderType
 import com.cereal.client.domain.model.script.configuration.ConfigValue
@@ -10,7 +12,9 @@ import com.cereal.client.domain.model.task.ScriptPackageGroup
 import com.cereal.client.domain.model.task.TaskStatus
 import com.cereal.client.domain.model.url.WebUrl
 import com.cereal.client.domain.provider.AuthProvider
+import com.cereal.client.domain.provider.FailureReportProvider
 import com.cereal.client.domain.repository.LlmProviderConfigRepository
+import com.cereal.client.domain.repository.RunTraceRepository
 import com.cereal.client.domain.repository.ScriptInstanceRepository
 import com.cereal.client.domain.repository.ScriptPreferenceRepository
 import com.cereal.client.domain.repository.ScriptRepository
@@ -20,6 +24,7 @@ import com.cereal.client.infrastructure.di.Injector
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
 import org.junit.jupiter.api.AfterEach
+import org.junit.jupiter.api.Assertions.assertArrayEquals
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertFalse
 import org.junit.jupiter.api.Assertions.assertNull
@@ -33,6 +38,7 @@ import java.io.ByteArrayOutputStream
 import java.io.File
 import java.util.jar.JarEntry
 import java.util.jar.JarOutputStream
+import java.util.zip.GZIPOutputStream
 import kotlin.time.Clock
 
 /**
@@ -51,7 +57,7 @@ class SandboxPersistenceTest {
     }
 
     @Test
-    fun `llm config, groups, task setups and script preferences survive a restart`() =
+    fun `llm config, groups, task setups, script preferences and recent checks survive a restart`() =
         runBlocking {
             val llmConfig =
                 LlmProviderConfig(
@@ -84,6 +90,11 @@ class SandboxPersistenceTest {
                     val task = tasks.getTasks(taskSetup).first()
                     tasks.createPersistedTask(task.id)
                     tasks.addStatusHistory(task.id, TaskStatus.Running(timestamp = Clock.System.now()))
+
+                    koin.get<RunTraceRepository>().add(runTrace(task.id), TRACE_BYTES)
+                    koin.get<FailureReportProvider>().upload(
+                        FailureReport("run-1", "check-1", "flagged", "wrong price", TRACE_BYTES, null),
+                    ) { true }
                     taskSetup.id to task.id
                 }
 
@@ -104,6 +115,19 @@ class SandboxPersistenceTest {
                 val restored = koin.get<TasksRepository>().getTasks(taskSetup)
                 assertTrue(restored.single { it.id == runningTaskId }.status is TaskStatus.Idle)
                 assertFalse(restored.any { it.status is TaskStatus.Running })
+
+                // Recent checks survive, with their bytes readable as plain files for debugging.
+                val traces = koin.get<RunTraceRepository>()
+                val trace = traces.getAll().single()
+                assertEquals(runningTaskId, trace.taskId)
+                assertArrayEquals(TRACE_BYTES, traces.readBytes(trace))
+                val plainCopy = sandboxDir.resolve("diagnostics").walk().single { it.name == "${trace.id}.jsonl" }
+                assertEquals(TRACE_JSON, plainCopy.readText())
+
+                // A reported check is written to disk instead of uploaded.
+                val report = sandboxDir.resolve("failure-reports").listFiles()!!.single()
+                assertTrue(report.resolve("report.txt").readText().contains("note: wrong price"))
+                assertEquals(TRACE_JSON, report.resolve("trace.jsonl").readText())
             }
         }
 
@@ -166,7 +190,27 @@ class SandboxPersistenceTest {
         File(userScriptsDir, "persist.jar").writeBytes(bytes)
     }
 
+    private fun runTrace(taskId: String) =
+        RunTrace(
+            id = "trace-1",
+            taskId = taskId,
+            key = "check-1",
+            runId = "run-1",
+            outcome = "ok",
+            label = "Price check",
+            notable = false,
+            learned = false,
+            sizeBytes = TRACE_BYTES.size.toLong(),
+            receivedAt = Clock.System.now(),
+        )
+
     private companion object {
+        const val TRACE_JSON = "{\"type\":\"header\"}\n"
+
+        /** A run trace as the agent emits it: gzipped JSON Lines. */
+        val TRACE_BYTES: ByteArray =
+            ByteArrayOutputStream().also { out -> GZIPOutputStream(out).use { it.write(TRACE_JSON.toByteArray()) } }.toByteArray()
+
         const val PACKAGE_NAME = "com.example.persist"
         const val GROUP_ID = "6f1c2a7e-3b0d-4c1e-9a55-2d8f0e4b7c11"
     }
