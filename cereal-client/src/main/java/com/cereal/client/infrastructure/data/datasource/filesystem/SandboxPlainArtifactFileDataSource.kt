@@ -4,10 +4,13 @@ import com.cereal.client.domain.model.user.User
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import java.io.File
+import java.util.zip.GZIPInputStream
 
 /**
  * [ArtifactFileDataSource] for the sandboxed `mock` flavor that stores bytes **unencrypted** under
- * `<baseDirectory>/<userId>/<relativePath>`, so they can be opened directly while debugging.
+ * `<baseDirectory>/<userId>/<relativePath>`, so they can be opened directly while debugging. Gzipped bytes (run
+ * traces are gzipped JSON Lines) also get a decompressed `<relativePath>.jsonl` copy beside them, readable with
+ * `cat`/`jq`; the gzipped original stays the source of truth, since it is what gets read back and reported.
  * Dev-only: production uses the encrypted [FileSystemArtifactDataSource].
  */
 class SandboxPlainArtifactFileDataSource(
@@ -21,6 +24,8 @@ class SandboxPlainArtifactFileDataSource(
         val file = File(userDirectory(user), relativePath)
         file.parentFile?.mkdirs()
         file.writeBytes(bytes)
+        if (bytes.isGzip()) plainCopy(file).writeBytes(bytes.gunzipIfGzip())
+        Unit
     }
 
     override suspend fun read(
@@ -45,7 +50,9 @@ class SandboxPlainArtifactFileDataSource(
         user: User,
         relativePath: String,
     ) = withContext(Dispatchers.IO) {
-        File(userDirectory(user), relativePath).delete()
+        val file = File(userDirectory(user), relativePath)
+        file.delete()
+        plainCopy(file).delete()
         Unit
     }
 
@@ -58,4 +65,16 @@ class SandboxPlainArtifactFileDataSource(
     }
 
     private fun userDirectory(user: User) = File(baseDirectory, user.id)
+
+    private fun plainCopy(file: File) = File(file.path + PLAIN_COPY_EXTENSION)
+
+    companion object {
+        private const val PLAIN_COPY_EXTENSION = ".jsonl"
+
+        /** Whether these bytes start with the gzip magic number. */
+        fun ByteArray.isGzip() = size >= 2 && this[0] == 0x1f.toByte() && this[1] == 0x8b.toByte()
+
+        /** These bytes decompressed when gzipped, else as they are. */
+        fun ByteArray.gunzipIfGzip(): ByteArray = if (isGzip()) GZIPInputStream(inputStream()).use { it.readBytes() } else this
+    }
 }

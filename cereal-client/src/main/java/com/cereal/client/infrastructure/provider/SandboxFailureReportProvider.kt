@@ -2,6 +2,7 @@ package com.cereal.client.infrastructure.provider
 
 import com.cereal.client.domain.model.diagnostics.FailureReport
 import com.cereal.client.domain.provider.FailureReportProvider
+import com.cereal.client.infrastructure.data.datasource.filesystem.SandboxPlainArtifactFileDataSource.Companion.gunzipIfGzip
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import java.io.File
@@ -10,8 +11,8 @@ import java.time.Instant
 
 /**
  * [FailureReportProvider] for the sandboxed `mock` flavor: instead of uploading, writes each report to its own folder
- * under [directory] (`report.txt` with run id, key, outcome and note, plus `trace` and, when present, `learned-trace`)
- * so what would have been sent can be inspected.
+ * under [directory] (`report.txt` with run id, key, outcome and note, plus `trace.jsonl` and, when present,
+ * `learned-trace.jsonl`, decompressed to plain JSON Lines) so what would have been sent can be inspected.
  */
 class SandboxFailureReportProvider(
     private val directory: File,
@@ -33,8 +34,8 @@ class SandboxFailureReportProvider(
                     note: ${report.note.orEmpty()}
                     """.trimIndent() + "\n",
                 )
-                File(folder, "trace").writeBytes(report.trace)
-                report.learnedTrace?.let { File(folder, "learned-trace").writeBytes(it) }
+                File(folder, "trace.jsonl").writeBytes(report.trace.gunzipIfGzip())
+                report.learnedTrace?.let { File(folder, "learned-trace.jsonl").writeBytes(it.gunzipIfGzip()) }
                 FailureReportProvider.Result.Registered
             } catch (e: IOException) {
                 FailureReportProvider.Result.Retry

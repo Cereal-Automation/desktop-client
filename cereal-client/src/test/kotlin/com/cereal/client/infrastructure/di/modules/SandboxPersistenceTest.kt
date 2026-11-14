@@ -38,6 +38,7 @@ import java.io.ByteArrayOutputStream
 import java.io.File
 import java.util.jar.JarEntry
 import java.util.jar.JarOutputStream
+import java.util.zip.GZIPOutputStream
 import kotlin.time.Clock
 
 /**
@@ -120,12 +121,13 @@ class SandboxPersistenceTest {
                 val trace = traces.getAll().single()
                 assertEquals(runningTaskId, trace.taskId)
                 assertArrayEquals(TRACE_BYTES, traces.readBytes(trace))
-                assertTrue(sandboxDir.resolve("diagnostics").walk().any { it.isFile && it.readBytes().contentEquals(TRACE_BYTES) })
+                val plainCopy = sandboxDir.resolve("diagnostics").walk().single { it.name == "${trace.id}.jsonl" }
+                assertEquals(TRACE_JSON, plainCopy.readText())
 
                 // A reported check is written to disk instead of uploaded.
                 val report = sandboxDir.resolve("failure-reports").listFiles()!!.single()
                 assertTrue(report.resolve("report.txt").readText().contains("note: wrong price"))
-                assertArrayEquals(TRACE_BYTES, report.resolve("trace").readBytes())
+                assertEquals(TRACE_JSON, report.resolve("trace.jsonl").readText())
             }
         }
 
@@ -203,7 +205,12 @@ class SandboxPersistenceTest {
         )
 
     private companion object {
-        val TRACE_BYTES = "{\"steps\":[]}".toByteArray()
+        const val TRACE_JSON = "{\"type\":\"header\"}\n"
+
+        /** A run trace as the agent emits it: gzipped JSON Lines. */
+        val TRACE_BYTES: ByteArray =
+            ByteArrayOutputStream().also { out -> GZIPOutputStream(out).use { it.write(TRACE_JSON.toByteArray()) } }.toByteArray()
+
         const val PACKAGE_NAME = "com.example.persist"
         const val GROUP_ID = "6f1c2a7e-3b0d-4c1e-9a55-2d8f0e4b7c11"
     }
