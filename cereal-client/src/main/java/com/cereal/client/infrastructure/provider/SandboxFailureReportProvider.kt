@@ -5,6 +5,7 @@ import com.cereal.client.domain.provider.FailureReportProvider
 import com.cereal.client.infrastructure.data.datasource.filesystem.SandboxPlainArtifactFileDataSource.Companion.gunzipIfGzip
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import org.slf4j.LoggerFactory
 import java.io.File
 import java.io.IOException
 import java.time.Instant
@@ -17,6 +18,8 @@ import java.time.Instant
 class SandboxFailureReportProvider(
     private val directory: File,
 ) : FailureReportProvider {
+    private val logger = LoggerFactory.getLogger(SandboxFailureReportProvider::class.java)
+
     override suspend fun upload(
         report: FailureReport,
         mayContinue: () -> Boolean,
@@ -38,6 +41,7 @@ class SandboxFailureReportProvider(
                 report.learnedTrace?.let { File(folder, "learned-trace.jsonl").writeBytes(it.gunzipIfGzip()) }
                 FailureReportProvider.Result.Registered
             } catch (e: IOException) {
+                logger.warn("Couldn't write failure report ${report.key} to $directory; will retry.", e)
                 FailureReportProvider.Result.Retry
             }
         }
