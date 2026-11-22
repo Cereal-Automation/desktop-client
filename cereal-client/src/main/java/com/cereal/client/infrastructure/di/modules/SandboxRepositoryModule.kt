@@ -3,16 +3,20 @@ package com.cereal.client.infrastructure.di.modules
 import com.cereal.client.application.ApplicationConfig
 import com.cereal.client.domain.provider.AuthProvider
 import com.cereal.client.domain.provider.DatasetFileProvider
+import com.cereal.client.domain.provider.FailureReportProvider
 import com.cereal.client.domain.repository.LlmProviderConfigRepository
 import com.cereal.client.domain.repository.LogEventRepository
 import com.cereal.client.domain.repository.NotificationHistoryRepository
+import com.cereal.client.domain.repository.RunTraceRepository
 import com.cereal.client.domain.repository.ScriptInstanceRepository
 import com.cereal.client.domain.repository.ScriptPreferenceRepository
 import com.cereal.client.domain.repository.ScriptRepository
 import com.cereal.client.domain.repository.SessionRepository
 import com.cereal.client.domain.repository.TasksRepository
+import com.cereal.client.infrastructure.data.datasource.filesystem.SandboxPlainArtifactFileDataSource
 import com.cereal.client.infrastructure.data.repository.FileSystemScriptRepository
 import com.cereal.client.infrastructure.data.repository.LlmProviderConfigRepositoryImpl
+import com.cereal.client.infrastructure.data.repository.RunTraceRepositoryImpl
 import com.cereal.client.infrastructure.data.repository.SandboxScriptSeeder
 import com.cereal.client.infrastructure.data.repository.SandboxSessionRepository
 import com.cereal.client.infrastructure.data.repository.SandboxTextFileLogEventRepository
@@ -24,6 +28,7 @@ import com.cereal.client.infrastructure.data.repository.inmemory.InMemoryApplica
 import com.cereal.client.infrastructure.data.repository.sandboxOutputDirectory
 import com.cereal.client.infrastructure.provider.DatasetFileProviderImpl
 import com.cereal.client.infrastructure.provider.SandboxAuthProvider
+import com.cereal.client.infrastructure.provider.SandboxFailureReportProvider
 import org.koin.core.module.Module
 import org.koin.dsl.module
 import java.io.File
@@ -42,6 +47,9 @@ import java.io.File
  *  - the LLM provider config and everything under Tasks (groups, task setups, their tasks and
  *    per-setup script preferences) use the production Room-backed repositories, so they survive a
  *    restart. Delete `~/Cereal-Sandbox/` (or its `db/` folder) to reset;
+ *  - Recent checks (run traces) use the Room-backed [RunTraceRepositoryImpl] with their bytes stored unencrypted
+ *    under `~/Cereal-Sandbox/diagnostics/<userId>/<taskId>/<traceId>`, and reported checks are written to
+ *    `~/Cereal-Sandbox/failure-reports/` by [SandboxFailureReportProvider] instead of being uploaded;
  *  - [DatasetFileProviderImpl] reads and writes the import files picked in the real native file
  *    dialogs, so downloading a template and importing a file actually work.
  *
@@ -70,5 +78,9 @@ object SandboxRepositoryModule {
             single<LogEventRepository> { SandboxTextFileLogEventRepository(File(baseDirectory, "logs.txt")) }
             single<NotificationHistoryRepository> { SandboxTextFileNotificationHistoryRepository(File(baseDirectory, "notifications.txt")) }
             single<DatasetFileProvider> { DatasetFileProviderImpl(get(), get(), get()) }
+            single<RunTraceRepository> {
+                RunTraceRepositoryImpl(get(), SandboxPlainArtifactFileDataSource(File(baseDirectory, "diagnostics")), get())
+            }
+            single<FailureReportProvider> { SandboxFailureReportProvider(File(baseDirectory, "failure-reports")) }
         }
 }
